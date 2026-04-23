@@ -6,6 +6,8 @@
   <meta name="theme-color" content="#2d5016">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
   <title>Mais-Rechner</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -427,6 +429,41 @@
       fahrgassenBreite: 0
     };
 
+    const STORAGE_KEY = 'mais_rechner_v1';
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {}
+    }
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          state = { ...state, ...parsed };
+          // Restore UI from state
+          if (state.hektar > 0) document.getElementById('hektar').value = state.hektar;
+          if (state.koerner > 0) document.getElementById('koerner').value = state.koerner;
+          if (state.duenger > 0) document.getElementById('duenger').value = state.duenger;
+          if (state.fahrgassenEnabled) {
+            document.getElementById('fahrgassen_toggle').classList.add('active');
+            document.getElementById('fahrgassen_settings').classList.add('open');
+            if (state.fahrgassenBreite > 0) {
+              document.getElementById('fahrgassen_breite').value = state.fahrgassenBreite;
+              const pct = (1 / (state.fahrgassenBreite + 1) * 100).toFixed(1);
+              document.getElementById('fahrgassen_saved').textContent = state.fahrgassenBreite + ' m → ~' + pct + '% weniger Körner';
+            }
+          }
+          if (state.hektar > 0 && state.koerner > 0) {
+            renderResults();
+            document.getElementById('results').style.display = 'block';
+          }
+        }
+      } catch (e) {}
+    }
+
     function fahrgassenToggle() {
       const btn = document.getElementById('fahrgassen_toggle');
       const settings = document.getElementById('fahrgassen_settings');
@@ -437,6 +474,7 @@
         document.getElementById('fahrgassen_saved').textContent = '';
         renderResults();
       }
+      saveState();
     }
 
     function fahrgassenUpdate() {
@@ -449,6 +487,7 @@
         document.getElementById('fahrgassen_saved').textContent = '';
       }
       if (state.hektar > 0) renderResults();
+      saveState();
     }
 
     function berechne() {
@@ -485,6 +524,7 @@
         return remainingSaecke >= 0 && remainingDuenger >= 0;
       });
 
+      saveState();
       renderResults();
       document.getElementById('results').style.display = 'block';
     }
@@ -520,11 +560,13 @@
       sackEl.value = '';
       duengerEl.value = '';
 
+      saveState();
       renderResults();
     }
 
     function drillRemove(index) {
       state.entries.splice(index, 1);
+      saveState();
       renderResults();
     }
 
@@ -590,7 +632,10 @@
       document.getElementById('fahrgassen_settings').classList.remove('open');
       document.getElementById('fahrgassen_breite').value = '';
       document.getElementById('fahrgassen_saved').textContent = '';
+      saveState();
     }
+
+    document.addEventListener('DOMContentLoaded', loadState);
   </script>
 </body>
 </html>
