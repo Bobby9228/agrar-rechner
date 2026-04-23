@@ -418,27 +418,7 @@
     <p class="info">Daten werden nur lokal gespeichert – keine Internetverbindung nötig</p>
   </div>
 
-  <script>
-    // --- Safe localStorage wrapper ---
-    var _savedState = null;
-    (function _lsInit() {
-      try {
-        var t = '__lssav__';
-        localStorage.setItem(t, t);
-        localStorage.removeItem(t);
-        _savedState = JSON.parse(localStorage.getItem('mais_rechner_v1') || 'null');
-        if (_savedState) {
-          // re-hydrate state from saved
-        }
-      } catch(_e) {
-        _savedState = null;
-      }
-    })();
-    function _sv(s) {
-      try { localStorage.setItem('mais_rechner_v1', JSON.stringify(s)); } catch(_e) {}
-    }
-
-    // State
+  <script>// --- State ---
     var state = {
       hektar: 0,
       koerner: 0,
@@ -447,15 +427,28 @@
       fahrgassenEnabled: false,
       fahrgassenBreite: 0
     };
-    if (_savedState && typeof _savedState === 'object') {
-      state.hektar = _savedState.hektar || 0;
-      state.koerner = _savedState.koerner || 0;
-      state.duenger = _savedState.duenger || 0;
-      state.entries = _savedState.entries || [];
-      state.fahrgassenEnabled = _savedState.fahrgassenEnabled || false;
-      state.fahrgassenBreite = _savedState.fahrgassenBreite || 0;
+
+    // --- Safe localStorage wrapper ---
+    var LS_KEY = 'mais_rechner_v1';
+    function sv() {
+      try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e) {}
+    }
+    function lv() {
+      try {
+        var raw = localStorage.getItem(LS_KEY);
+        if (raw) {
+          var d = JSON.parse(raw);
+          if (d.hektar) state.hektar = d.hektar;
+          if (d.koerner) state.koerner = d.koerner;
+          if (d.duenger) state.duenger = d.duenger;
+          if (d.entries) state.entries = d.entries;
+          if (d.fahrgassenEnabled !== undefined) state.fahrgassenEnabled = d.fahrgassenEnabled;
+          if (d.fahrgassenBreite) state.fahrgassenBreite = d.fahrgassenBreite;
+        }
+      } catch(e) {}
     }
 
+    // --- Functions ---
     function fahrgassenToggle() {
       var btn = document.getElementById('fahrgassen_toggle');
       var settings = document.getElementById('fahrgassen_settings');
@@ -465,7 +458,7 @@
       if (!state.fahrgassenEnabled) {
         document.getElementById('fahrgassen_saved').textContent = '';
       }
-      _sv(state);
+      sv();
     }
 
     function fahrgassenUpdate() {
@@ -476,7 +469,7 @@
       } else {
         document.getElementById('fahrgassen_saved').textContent = '';
       }
-      _sv(state);
+      sv();
     }
 
     function berechne() {
@@ -505,12 +498,12 @@
         var remD = getTotalDuenger() - e.duenger;
         return remS >= 0 && remD >= 0;
       });
-      _sv(state);
+      sv();
       renderResults();
       document.getElementById('results').style.display = 'block';
     }
 
-    function getKörnerGesamt() {
+    function getKornerGesamt() {
       if (!state.hektar || !state.koerner) return 0;
       var k = state.hektar * state.koerner;
       if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
@@ -521,7 +514,7 @@
 
     function getTotalSaecke() {
       if (!state.hektar || !state.koerner) return 0;
-      return Math.ceil(getKörnerGesamt() / 50000);
+      return Math.ceil(getKornerGesamt() / 50000);
     }
 
     function getTotalDuenger() {
@@ -538,18 +531,18 @@
       state.entries.push({ sack: sack, duenger: duenger });
       sackEl.value = '';
       duengerEl.value = '';
-      _sv(state);
+      sv();
       renderResults();
     }
 
     function drillRemove(idx) {
       state.entries.splice(idx, 1);
-      _sv(state);
+      sv();
       renderResults();
     }
 
     function renderResults() {
-      var kornerGesamt = getKörnerGesamt();
+      var kornerGesamt = getKornerGesamt();
       var sacke = getTotalSaecke();
       var duengerTotal = getTotalDuenger();
       document.getElementById('r_korner').textContent = Math.round(kornerGesamt).toLocaleString('de-DE');
@@ -583,7 +576,7 @@
           var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
           var dl = ds ? ' + ' + ds + ' Dünger' : '';
           html += '<div class="drill-entry">' +
-            '<span class="entry-text"><span>#' + (i+1) + '</span> – ' + e.sack + ' ' + sl + dl + '</span>' +
+            '<span class="entry-text"><span>#' + (i+1) + '</span> - ' + e.sack + ' ' + sl + dl + '</span>' +
             '<button class="btn-danger" onclick="drillRemove(' + i + ')">✕</button></div>';
         });
         container.innerHTML = html;
@@ -604,11 +597,12 @@
       document.getElementById('fahrgassen_settings').classList.remove('open');
       document.getElementById('fahrgassen_breite').value = '';
       document.getElementById('fahrgassen_saved').textContent = '';
-      _sv(state);
+      sv();
     }
 
-    // Restore UI from state after DOM is ready
-    (function _uiRestore() {
+    // --- Init after DOM is ready ---
+    function initUI() {
+      lv();
       if (state.hektar > 0) document.getElementById('hektar').value = state.hektar;
       if (state.koerner > 0) document.getElementById('koerner').value = state.koerner;
       if (state.duenger > 0) document.getElementById('duenger').value = state.duenger;
@@ -624,7 +618,15 @@
         renderResults();
         document.getElementById('results').style.display = 'block';
       }
-    })();
-</script>
+    }
+
+    if (document.addEventListener) {
+      document.addEventListener('DOMContentLoaded', initUI);
+    } else {
+      document.attachEvent('onreadystatechange', function() {
+        if (document.readyState === 'complete') initUI();
+      });
+    }
+  </script>
 </body>
 </html>
