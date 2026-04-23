@@ -443,7 +443,7 @@
       const breite = parseFloat(document.getElementById('fahrgassen_breite').value) || 0;
       state.fahrgassenBreite = breite;
       if (breite > 0) {
-        const pct = ((breite / (breite + 1)) * 100).toFixed(1);
+        const pct = (1 / (breite + 1) * 100).toFixed(1);
         document.getElementById('fahrgassen_saved').textContent = breite + ' m → ~' + pct + '% weniger Körner';
       } else {
         document.getElementById('fahrgassen_saved').textContent = '';
@@ -493,7 +493,7 @@
       if (!state.hektar || !state.koerner) return 0;
       let körner = state.hektar * state.koerner;
       if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
-        körner = körner * (1 - state.fahrgassenBreite / (state.fahrgassenBreite + 1));
+        körner = körner * (state.fahrgassenBreite / (state.fahrgassenBreite + 1));
       }
       return körner;
     }
