@@ -430,20 +430,33 @@
     };
 
     const STORAGE_KEY = 'mais_rechner_v1';
+    let storageAvailable = false;
+
+    (function storageTest() {
+      try {
+        const test = '__storage_test__';
+        localStorage.setItem(test, test);
+        localStorage.removeItem(test);
+        storageAvailable = true;
+      } catch (e) {
+        storageAvailable = false;
+      }
+    })();
 
     function saveState() {
+      if (!storageAvailable) return;
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       } catch (e) {}
     }
 
     function loadState() {
+      if (!storageAvailable) return;
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
           state = { ...state, ...parsed };
-          // Restore UI from state
           if (state.hektar > 0) document.getElementById('hektar').value = state.hektar;
           if (state.koerner > 0) document.getElementById('koerner').value = state.koerner;
           if (state.duenger > 0) document.getElementById('duenger').value = state.duenger;
