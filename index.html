@@ -73,6 +73,12 @@
     input::placeholder {
       color: #aaa;
     }
+    .error-msg {
+      font-size: 0.8rem;
+      color: #d32f2f;
+      margin-top: 4px;
+      min-height: 18px;
+    }
     .unit {
       font-size: 0.8rem;
       color: #888;
@@ -141,11 +147,13 @@
       <div class="field">
         <label for="hektar">Hektar</label>
         <input type="number" id="hektar" placeholder="z.B. 12.5" step="0.1" min="0">
+        <div class="error-msg" id="err_hektar"></div>
       </div>
       <div class="field">
         <label for="koerner">Körner pro Hektar</label>
         <input type="number" id="koerner" placeholder="z.B. 90000" min="0">
         <div class="unit">üblich: 80.000 – 100.000</div>
+        <div class="error-msg" id="err_koerner"></div>
       </div>
     </div>
 
@@ -187,14 +195,27 @@
 
   <script>
     function berechne() {
+      document.getElementById('err_hektar').textContent = '';
+      document.getElementById('err_koerner').textContent = '';
+      document.getElementById('hektar').style.borderColor = '';
+      document.getElementById('koerner').style.borderColor = '';
+
       const h = parseFloat(document.getElementById('hektar').value);
       const k = parseFloat(document.getElementById('koerner').value);
       const d = parseFloat(document.getElementById('duenger').value);
 
-      if (isNaN(h) || h <= 0 || isNaN(k) || k <= 0) {
-        alert('Bitte Hektar und Körner pro ha ausfüllen');
-        return;
+      let valid = true;
+      if (isNaN(h) || h <= 0) {
+        document.getElementById('err_hektar').textContent = 'Bitte Hektar eingeben';
+        document.getElementById('hektar').style.borderColor = '#d32f2f';
+        valid = false;
       }
+      if (isNaN(k) || k <= 0) {
+        document.getElementById('err_koerner').textContent = 'Bitte Körner pro ha eingeben';
+        document.getElementById('koerner').style.borderColor = '#d32f2f';
+        valid = false;
+      }
+      if (!valid) return;
 
       const körnerGesamt = h * k;
       const säcke = Math.ceil(körnerGesamt / 50000);
@@ -204,14 +225,15 @@
       document.getElementById('r_säcke').textContent = säcke + ' Stück';
 
       const duengerEl = document.getElementById('r_duenger');
-      const infoEl = documentElementById('r_info');
+      const infoEl = document.getElementById('r_info');
+      const sackLabel = säcke === 1 ? 'Sack' : 'Säcke';
 
       if (duengerGesamt !== null) {
         duengerEl.textContent = duengerGesamt.toLocaleString('de-DE') + ' kg';
-        infoEl.textContent = duengerGesamt + ' kg Dünger, ' + säcke + ' Säcke Saat';
+        infoEl.textContent = duengerGesamt.toLocaleString('de-DE') + ' kg Dünger, ' + säcke + ' ' + sackLabel + ' Saat';
       } else {
         duengerEl.textContent = '—';
-        infoEl.textContent = säcke + ' Säcke Saat (ohne Dünger)';
+        infoEl.textContent = säcke + ' ' + sackLabel + ' Saat (ohne Dünger)';
       }
 
       document.getElementById('results').style.display = 'block';
