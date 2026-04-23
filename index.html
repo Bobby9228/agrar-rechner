@@ -350,11 +350,11 @@
         <h2>📦 Gesamtbedarf</h2>
         <div class="result-row">
           <span class="label">Benötigte Körner</span>
-          <span class="value" id="r_körner">—</span>
+          <span class="value" id="r_korner">—</span>
         </div>
         <div class="result-row">
           <span class="label">Säcke Maissaat (50.000)</span>
-          <span class="value" id="r_säcke">—</span>
+          <span class="value" id="r_sacke">—</span>
         </div>
         <div class="result-row">
           <span class="label">Dünger gesamt</span>
@@ -419,8 +419,27 @@
   </div>
 
   <script>
+    // --- Safe localStorage wrapper ---
+    var _savedState = null;
+    (function _lsInit() {
+      try {
+        var t = '__lssav__';
+        localStorage.setItem(t, t);
+        localStorage.removeItem(t);
+        _savedState = JSON.parse(localStorage.getItem('mais_rechner_v1') || 'null');
+        if (_savedState) {
+          // re-hydrate state from saved
+        }
+      } catch(_e) {
+        _savedState = null;
+      }
+    })();
+    function _sv(s) {
+      try { localStorage.setItem('mais_rechner_v1', JSON.stringify(s)); } catch(_e) {}
+    }
+
     // State
-    let state = {
+    var state = {
       hektar: 0,
       koerner: 0,
       duenger: 0,
@@ -428,79 +447,36 @@
       fahrgassenEnabled: false,
       fahrgassenBreite: 0
     };
-
-    const STORAGE_KEY = 'mais_rechner_v1';
-    let storageAvailable = false;
-
-    (function storageTest() {
-      try {
-        const test = '__storage_test__';
-        localStorage.setItem(test, test);
-        localStorage.removeItem(test);
-        storageAvailable = true;
-      } catch (e) {
-        storageAvailable = false;
-      }
-    })();
-
-    function saveState() {
-      if (!storageAvailable) return;
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      } catch (e) {}
-    }
-
-    function loadState() {
-      if (!storageAvailable) return;
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          state = { ...state, ...parsed };
-          if (state.hektar > 0) document.getElementById('hektar').value = state.hektar;
-          if (state.koerner > 0) document.getElementById('koerner').value = state.koerner;
-          if (state.duenger > 0) document.getElementById('duenger').value = state.duenger;
-          if (state.fahrgassenEnabled) {
-            document.getElementById('fahrgassen_toggle').classList.add('active');
-            document.getElementById('fahrgassen_settings').classList.add('open');
-            if (state.fahrgassenBreite > 0) {
-              document.getElementById('fahrgassen_breite').value = state.fahrgassenBreite;
-              const pct = (1 / (state.fahrgassenBreite + 1) * 100).toFixed(1);
-              document.getElementById('fahrgassen_saved').textContent = state.fahrgassenBreite + ' m → ~' + pct + '% weniger Körner';
-            }
-          }
-          if (state.hektar > 0 && state.koerner > 0) {
-            renderResults();
-            document.getElementById('results').style.display = 'block';
-          }
-        }
-      } catch (e) {}
+    if (_savedState && typeof _savedState === 'object') {
+      state.hektar = _savedState.hektar || 0;
+      state.koerner = _savedState.koerner || 0;
+      state.duenger = _savedState.duenger || 0;
+      state.entries = _savedState.entries || [];
+      state.fahrgassenEnabled = _savedState.fahrgassenEnabled || false;
+      state.fahrgassenBreite = _savedState.fahrgassenBreite || 0;
     }
 
     function fahrgassenToggle() {
-      const btn = document.getElementById('fahrgassen_toggle');
-      const settings = document.getElementById('fahrgassen_settings');
+      var btn = document.getElementById('fahrgassen_toggle');
+      var settings = document.getElementById('fahrgassen_settings');
       state.fahrgassenEnabled = !state.fahrgassenEnabled;
       btn.classList.toggle('active', state.fahrgassenEnabled);
       settings.classList.toggle('open', state.fahrgassenEnabled);
       if (!state.fahrgassenEnabled) {
         document.getElementById('fahrgassen_saved').textContent = '';
-        renderResults();
       }
-      saveState();
+      _sv(state);
     }
 
     function fahrgassenUpdate() {
-      const breite = parseFloat(document.getElementById('fahrgassen_breite').value) || 0;
+      var breite = parseFloat(document.getElementById('fahrgassen_breite').value) || 0;
       state.fahrgassenBreite = breite;
       if (breite > 0) {
-        const pct = (1 / (breite + 1) * 100).toFixed(1);
-        document.getElementById('fahrgassen_saved').textContent = breite + ' m → ~' + pct + '% weniger Körner';
+        document.getElementById('fahrgassen_saved').textContent = breite + ' m -> ~' + (1 / (breite + 1) * 100).toFixed(1) + '% weniger Körner';
       } else {
         document.getElementById('fahrgassen_saved').textContent = '';
       }
-      if (state.hektar > 0) renderResults();
-      saveState();
+      _sv(state);
     }
 
     function berechne() {
@@ -508,47 +484,39 @@
       document.getElementById('err_koerner').textContent = '';
       document.getElementById('hektar').style.borderColor = '';
       document.getElementById('koerner').style.borderColor = '';
-
-      const h = parseFloat(document.getElementById('hektar').value);
-      const k = parseFloat(document.getElementById('koerner').value);
-      const d = parseFloat(document.getElementById('duenger').value);
-
-      let valid = true;
+      var h = parseFloat(document.getElementById('hektar').value);
+      var k = parseFloat(document.getElementById('koerner').value);
+      var d = parseFloat(document.getElementById('duenger').value);
       if (isNaN(h) || h <= 0) {
         document.getElementById('err_hektar').textContent = 'Bitte Hektar eingeben';
         document.getElementById('hektar').style.borderColor = '#d32f2f';
-        valid = false;
+        return;
       }
       if (isNaN(k) || k <= 0) {
         document.getElementById('err_koerner').textContent = 'Bitte Körner pro ha eingeben';
         document.getElementById('koerner').style.borderColor = '#d32f2f';
-        valid = false;
+        return;
       }
-      if (!valid) return;
-
       state.hektar = h;
       state.koerner = k;
       state.duenger = d;
-
-      // Filter entries that would exceed remaining (optional: allow overshoot but warn)
-      state.entries = state.entries.filter(e => {
-        const remainingSaecke = getTotalSaecke() - e.sack;
-        const remainingDuenger = getTotalDuenger() - e.duenger;
-        return remainingSaecke >= 0 && remainingDuenger >= 0;
+      state.entries = state.entries.filter(function(e) {
+        var remS = getTotalSaecke() - e.sack;
+        var remD = getTotalDuenger() - e.duenger;
+        return remS >= 0 && remD >= 0;
       });
-
-      saveState();
+      _sv(state);
       renderResults();
       document.getElementById('results').style.display = 'block';
     }
 
     function getKörnerGesamt() {
       if (!state.hektar || !state.koerner) return 0;
-      let körner = state.hektar * state.koerner;
+      var k = state.hektar * state.koerner;
       if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
-        körner = körner * (state.fahrgassenBreite / (state.fahrgassenBreite + 1));
+        k = k * (state.fahrgassenBreite / (state.fahrgassenBreite + 1));
       }
-      return körner;
+      return k;
     }
 
     function getTotalSaecke() {
@@ -562,72 +530,63 @@
     }
 
     function drillAdd() {
-      const sackEl = document.getElementById('drill_sack');
-      const duengerEl = document.getElementById('drill_duenger');
-      const sack = parseInt(sackEl.value) || 0;
-      const duenger = parseFloat(duengerEl.value) || 0;
-
+      var sackEl = document.getElementById('drill_sack');
+      var duengerEl = document.getElementById('drill_duenger');
+      var sack = parseInt(sackEl.value) || 0;
+      var duenger = parseFloat(duengerEl.value) || 0;
       if (sack <= 0 && duenger <= 0) return;
-
-      state.entries.push({ sack, duenger });
+      state.entries.push({ sack: sack, duenger: duenger });
       sackEl.value = '';
       duengerEl.value = '';
-
-      saveState();
+      _sv(state);
       renderResults();
     }
 
-    function drillRemove(index) {
-      state.entries.splice(index, 1);
-      saveState();
+    function drillRemove(idx) {
+      state.entries.splice(idx, 1);
+      _sv(state);
       renderResults();
     }
 
     function renderResults() {
-      const körnerGesamt = getKörnerGesamt();
-      const säcke = getTotalSaecke();
-      const duengerTotal = getTotalDuenger();
-
-      document.getElementById('r_körner').textContent = körnerGesamt.toLocaleString('de-DE');
-      document.getElementById('r_säcke').textContent = säcke + ' Stück';
+      var kornerGesamt = getKörnerGesamt();
+      var sacke = getTotalSaecke();
+      var duengerTotal = getTotalDuenger();
+      document.getElementById('r_korner').textContent = Math.round(kornerGesamt).toLocaleString('de-DE');
+      document.getElementById('r_sacke').textContent = sacke + ' Stück';
       document.getElementById('r_duenger').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
-
-      const sackLabel = säcke === 1 ? 'Sack' : 'Säcke';
+      var sLabel = sacke === 1 ? 'Sack' : 'Säcke';
       if (duengerTotal > 0) {
-        document.getElementById('r_info').textContent = duengerTotal.toLocaleString('de-DE') + ' kg Dünger, ' + säcke + ' ' + sackLabel + ' Saat';
+        document.getElementById('r_info').textContent = duengerTotal.toLocaleString('de-DE') + ' kg Dünger, ' + sacke + ' ' + sLabel + ' Saat';
       } else {
-        document.getElementById('r_info').textContent = säcke + ' ' + sackLabel + ' Saat (ohne Dünger)';
+        document.getElementById('r_info').textContent = sacke + ' ' + sLabel + ' Saat (ohne Dünger)';
       }
-
-      // Drill summary
-      const usedSack = state.entries.reduce((sum, e) => sum + e.sack, 0);
-      const usedDuenger = state.entries.reduce((sum, e) => sum + e.duenger, 0);
-      const remainingSack = Math.max(0, säcke - usedSack);
-      const remainingDuenger = Math.max(0, duengerTotal - usedDuenger);
-
-      document.getElementById('ds_saat_total').textContent = säcke + ' ' + sackLabel;
-      document.getElementById('ds_saat_used').textContent = usedSack + ' ' + (usedSack === 1 ? 'Sack' : 'Säcke');
-      document.getElementById('ds_saat_remaining').textContent = remainingSack + ' ' + (remainingSack === 1 ? 'Sack' : 'Säcke');
-
-      const duengerLabel = 'kg Dünger';
+      var usedSack = state.entries.reduce(function(s, e) { return s + e.sack; }, 0);
+      var usedDuenger = state.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+      var remSack = Math.max(0, sacke - usedSack);
+      var remDuenger = Math.max(0, duengerTotal - usedDuenger);
+      var sUsedLabel = usedSack === 1 ? 'Sack' : 'Säcke';
+      var sRemLabel = remSack === 1 ? 'Sack' : 'Säcke';
+      document.getElementById('ds_saat_total').textContent = sacke + ' ' + sLabel;
+      document.getElementById('ds_saat_used').textContent = usedSack + ' ' + sUsedLabel;
+      document.getElementById('ds_saat_remaining').textContent = remSack + ' ' + sRemLabel;
       document.getElementById('ds_duenger_total').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
       document.getElementById('ds_duenger_used').textContent = usedDuenger > 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' : '0 kg';
-      document.getElementById('ds_duenger_remaining').textContent = duengerTotal > 0 ? remainingDuenger.toLocaleString('de-DE') + ' kg' : '—';
-
-      // Entries list
-      const container = document.getElementById('drill_entries');
+      document.getElementById('ds_duenger_remaining').textContent = duengerTotal > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' : '—';
+      var container = document.getElementById('drill_entries');
       if (state.entries.length === 0) {
         container.innerHTML = '<div class="drill-empty">Noch nichts eingefüllt</div>';
       } else {
-        container.innerHTML = state.entries.map((e, i) => {
-          const sLabel = e.sack === 1 ? 'Sack' : 'Säcke';
-          const dStr = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
-          const dLabel = dStr ? ' + ' + dStr + ' Dünger' : '';
-          return '<div class="drill-entry">' +
-            '<span class="entry-text"><span>#' + (i + 1) + '</span> – ' + e.sack + ' ' + sLabel + dLabel + '</span>' +
-            '<button class="btn-danger" onclick="drillRemove(' + i + ')">✕</button>' +
-          '</div>';
-        }).join('');
+        var html = '';
+        state.entries.forEach(function(e, i) {
+          var sl = e.sack === 1 ? 'Sack' : 'Säcke';
+          var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
+          var dl = ds ? ' + ' + ds + ' Dünger' : '';
+          html += '<div class="drill-entry">' +
+            '<span class="entry-text"><span>#' + (i+1) + '</span> – ' + e.sack + ' ' + sl + dl + '</span>' +
+            '<button class="btn-danger" onclick="drillRemove(' + i + ')">✕</button></div>';
+        });
+        container.innerHTML = html;
       }
     }
 
@@ -645,10 +604,27 @@
       document.getElementById('fahrgassen_settings').classList.remove('open');
       document.getElementById('fahrgassen_breite').value = '';
       document.getElementById('fahrgassen_saved').textContent = '';
-      saveState();
+      _sv(state);
     }
 
-    document.addEventListener('DOMContentLoaded', loadState);
-  </script>
+    // Restore UI from state after DOM is ready
+    (function _uiRestore() {
+      if (state.hektar > 0) document.getElementById('hektar').value = state.hektar;
+      if (state.koerner > 0) document.getElementById('koerner').value = state.koerner;
+      if (state.duenger > 0) document.getElementById('duenger').value = state.duenger;
+      if (state.fahrgassenEnabled) {
+        document.getElementById('fahrgassen_toggle').classList.add('active');
+        document.getElementById('fahrgassen_settings').classList.add('open');
+        if (state.fahrgassenBreite > 0) {
+          document.getElementById('fahrgassen_breite').value = state.fahrgassenBreite;
+          document.getElementById('fahrgassen_saved').textContent = state.fahrgassenBreite + ' m -> ~' + (1 / (state.fahrgassenBreite + 1) * 100).toFixed(1) + '% weniger Körner';
+        }
+      }
+      if (state.hektar > 0 && state.koerner > 0) {
+        renderResults();
+        document.getElementById('results').style.display = 'block';
+      }
+    })();
+</script>
 </body>
 </html>
