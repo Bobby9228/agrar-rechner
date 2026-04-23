@@ -227,6 +227,72 @@
     .btn-add:active {
       background: #3a6318;
     }
+
+    /* Fahrgassen */
+    .fahrgassen-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #e8f0de;
+    }
+    .fahrgassen-toggle:last-child {
+      border-bottom: none;
+    }
+    .fahrgassen-toggle label {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+    .toggle-btn {
+      width: 52px;
+      height: 28px;
+      border-radius: 14px;
+      background: #ccc;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle-btn::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 24px;
+      height: 24px;
+      border-radius: 12px;
+      background: white;
+      transition: left 0.2s;
+    }
+    .toggle-btn.active {
+      background: #4a7c23;
+    }
+    .toggle-btn.active::after {
+      left: 26px;
+    }
+    .fahrgassen-settings {
+      margin-top: 12px;
+      padding: 12px;
+      background: #f0f4e8;
+      border-radius: 8px;
+      display: none;
+    }
+    .fahrgassen-settings.open {
+      display: block;
+    }
+    .fahrgassen-info {
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 6px;
+    }
+    .fahrgassen-saved {
+      font-size: 0.85rem;
+      color: #4a7c23;
+      font-weight: 600;
+      margin-top: 8px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -255,6 +321,22 @@
         <label for="duenger">Dünger (kg/ha)</label>
         <input type="number" id="duenger" placeholder="z.B. 150" min="0">
         <div class="unit">Kilogramm pro Hektar</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🛤️ Fahrgassen</h2>
+      <div class="fahrgassen-toggle">
+        <label for="fahrgassen_toggle">Fahrgassen aktiviert</label>
+        <button class="toggle-btn" id="fahrgassen_toggle" onclick="fahrgassenToggle()"></button>
+      </div>
+      <div class="fahrgassen-settings" id="fahrgassen_settings">
+        <div class="field" style="margin-bottom:8px;">
+          <label for="fahrgassen_breite">Breite der Fahrgasse (m)</label>
+          <input type="number" id="fahrgassen_breite" placeholder="z.B. 24" min="0" oninput="fahrgassenUpdate()">
+          <div class="fahrgassen-info">1 Reihe = 50 cm. Fahrgassen reduzieren nur die Körner, Dünger läuft voll durch.</div>
+        </div>
+        <div class="fahrgassen-saved" id="fahrgassen_saved"></div>
       </div>
     </div>
 
@@ -340,8 +422,34 @@
       hektar: 0,
       koerner: 0,
       duenger: 0,
-      entries: []
+      entries: [],
+      fahrgassenEnabled: false,
+      fahrgassenBreite: 0
     };
+
+    function fahrgassenToggle() {
+      const btn = document.getElementById('fahrgassen_toggle');
+      const settings = document.getElementById('fahrgassen_settings');
+      state.fahrgassenEnabled = !state.fahrgassenEnabled;
+      btn.classList.toggle('active', state.fahrgassenEnabled);
+      settings.classList.toggle('open', state.fahrgassenEnabled);
+      if (!state.fahrgassenEnabled) {
+        document.getElementById('fahrgassen_saved').textContent = '';
+        renderResults();
+      }
+    }
+
+    function fahrgassenUpdate() {
+      const breite = parseFloat(document.getElementById('fahrgassen_breite').value) || 0;
+      state.fahrgassenBreite = breite;
+      if (breite > 0) {
+        const pct = ((breite / 600) * 100).toFixed(1);
+        document.getElementById('fahrgassen_saved').textContent = breite + ' m → ~' + pct + '% weniger Körner';
+      } else {
+        document.getElementById('fahrgassen_saved').textContent = '';
+      }
+      if (state.hektar > 0) renderResults();
+    }
 
     function berechne() {
       document.getElementById('err_hektar').textContent = '';
@@ -381,10 +489,18 @@
       document.getElementById('results').style.display = 'block';
     }
 
+    function getKörnerGesamt() {
+      if (!state.hektar || !state.koerner) return 0;
+      let körner = state.hektar * state.koerner;
+      if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
+        körner = körner * (1 - state.fahrgassenBreite / 600);
+      }
+      return körner;
+    }
+
     function getTotalSaecke() {
       if (!state.hektar || !state.koerner) return 0;
-      const körnerGesamt = state.hektar * state.koerner;
-      return Math.ceil(körnerGesamt / 50000);
+      return Math.ceil(getKörnerGesamt() / 50000);
     }
 
     function getTotalDuenger() {
@@ -413,7 +529,7 @@
     }
 
     function renderResults() {
-      const körnerGesamt = state.hektar * state.koerner;
+      const körnerGesamt = getKörnerGesamt();
       const säcke = getTotalSaecke();
       const duengerTotal = getTotalDuenger();
 
@@ -461,7 +577,7 @@
     }
 
     function resetAll() {
-      state = { hektar: 0, koerner: 0, duenger: 0, entries: [] };
+      state = { hektar: 0, koerner: 0, duenger: 0, entries: [], fahrgassenEnabled: false, fahrgassenBreite: 0 };
       document.getElementById('hektar').value = '';
       document.getElementById('koerner').value = '';
       document.getElementById('duenger').value = '';
@@ -470,6 +586,10 @@
       document.getElementById('hektar').style.borderColor = '';
       document.getElementById('koerner').style.borderColor = '';
       document.getElementById('results').style.display = 'none';
+      document.getElementById('fahrgassen_toggle').classList.remove('active');
+      document.getElementById('fahrgassen_settings').classList.remove('open');
+      document.getElementById('fahrgassen_breite').value = '';
+      document.getElementById('fahrgassen_saved').textContent = '';
     }
   </script>
 </body>
