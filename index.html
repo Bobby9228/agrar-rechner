@@ -686,8 +686,8 @@ html += '<button class="tab-btn' + (isActive ? ' active' : '') + '" onclick="swi
       return n.toFixed(1) + (n === 1.0 ? ' Einheit' : ' Einheiten');
     }
 
-    // Formats number with thousand separators while typing, keeps cursor in place
-    function onInputFormat(el, type) {
+    // Formats number with thousand separators while typing, places cursor at end
+    function onInputFormat(el) {
       var raw = el.value.replace(/[^\d,.-]/g, '').replace(',', '.');
       var num = parseFloat(raw);
       if (isNaN(num)) return;
@@ -695,11 +695,8 @@ html += '<button class="tab-btn' + (isActive ? ' active' : '') + '" onclick="swi
       var intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
       var formatted = parts.length > 1 ? intPart + ',' + parts[1] : intPart;
       if (el.value !== formatted) {
-        var selStart = el.selectionStart;
-        var selEnd = el.selectionEnd;
         el.value = formatted;
-        var diff = el.value.length - raw.replace('.', '').length;
-        el.setSelectionRange(selStart + diff, selEnd + diff);
+        el.setSelectionRange(el.value.length, el.value.length);
       }
     }
 
