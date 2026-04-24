@@ -563,6 +563,7 @@
       var einheiten = getTotalEinheiten();
       var duengerTotal = getTotalDuenger();
       document.getElementById('r_korner').textContent = Math.round(kornerGesamt).toLocaleString('de-DE');
+=======
       document.getElementById('r_einheiten').textContent = formatEinheit(einheiten);
       document.getElementById('r_duenger').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
       var sLabel = einheiten === 1.0 ? 'Einheit' : 'Einheiten';
