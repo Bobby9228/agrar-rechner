@@ -300,7 +300,7 @@
 <body>
   <div class="container">
     <h1>🌾 Mais-Rechner</h1>
-    <p class="subtitle">Säcke & Dünger für Aussaat</p>
+    <p class="subtitle">Einheiten & Dünger für Aussaat</p>
 
     <div class="card">
       <h2>📐 Fläche & Dichte</h2>
@@ -353,15 +353,15 @@
           <span class="value" id="r_korner">—</span>
         </div>
         <div class="result-row">
-          <span class="label">Säcke Maissaat (50.000)</span>
-          <span class="value" id="r_sacke">—</span>
+          <span class="label">Einheiten Maissaat (50.000)</span>
+          <span class="value" id="r_einheiten">—</span>
         </div>
         <div class="result-row">
           <span class="label">Dünger gesamt</span>
           <span class="value" id="r_duenger">—</span>
         </div>
         <div class="result-row">
-          <span class="label">Benötigte Säcke</span>
+          <span class="label">Benötigte Einheiten</span>
           <span class="value small" id="r_info">—</span>
         </div>
       </div>
@@ -399,8 +399,8 @@
 
         <div class="inline-row">
           <div class="field">
-            <label for="drill_sack">Säcke eingefüllt</label>
-            <input type="number" id="drill_sack" placeholder="z.B. 10" min="0">
+            <label for="drill_einheit">Einheiten eingefüllt</label>
+            <input type="number" id="drill_einheit" placeholder="z.B. 10" min="0">
           </div>
           <div class="field">
             <label for="drill_duenger">Dünger (kg)</label>
@@ -494,7 +494,7 @@
       state.koerner = k;
       state.duenger = d;
       state.entries = state.entries.filter(function(e) {
-        var remS = getTotalSaecke() - e.sack;
+        var remS = getTotalEinheiten() - e.einheit;
         var remD = getTotalDuenger() - e.duenger;
         return remS >= 0 && remD >= 0;
       });
@@ -512,7 +512,7 @@
       return k;
     }
 
-    function getTotalSaecke() {
+    function getTotalEinheiten() {
       if (!state.hektar || !state.koerner) return 0;
       return Math.ceil(getKornerGesamt() / 50000);
     }
@@ -523,13 +523,13 @@
     }
 
     function drillAdd() {
-      var sackEl = document.getElementById('drill_sack');
+      var einheitEl = document.getElementById('drill_einheit');
       var duengerEl = document.getElementById('drill_duenger');
-      var sack = parseInt(sackEl.value) || 0;
+      var einheit = parseInt(einheitEl.value) || 0;
       var duenger = parseFloat(duengerEl.value) || 0;
-      if (sack <= 0 && duenger <= 0) return;
-      state.entries.push({ sack: sack, duenger: duenger });
-      sackEl.value = '';
+      if (einheit <= 0 && duenger <= 0) return;
+      state.entries.push({ einheit: einheit, duenger: duenger });
+      einheitEl.value = '';
       duengerEl.value = '';
       sv();
       renderResults();
@@ -543,26 +543,26 @@
 
     function renderResults() {
       var kornerGesamt = getKornerGesamt();
-      var sacke = getTotalSaecke();
+      var einheiten = getTotalEinheiten();
       var duengerTotal = getTotalDuenger();
       document.getElementById('r_korner').textContent = Math.round(kornerGesamt).toLocaleString('de-DE');
-      document.getElementById('r_sacke').textContent = sacke + ' Stück';
+      document.getElementById('r_einheiten').textContent = einheiten + ' Stück';
       document.getElementById('r_duenger').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
-      var sLabel = sacke === 1 ? 'Sack' : 'Säcke';
+      var sLabel = einheiten === 1 ? 'Einheit' : 'Einheiten';
       if (duengerTotal > 0) {
-        document.getElementById('r_info').textContent = duengerTotal.toLocaleString('de-DE') + ' kg Dünger, ' + sacke + ' ' + sLabel + ' Saat';
+        document.getElementById('r_info').textContent = duengerTotal.toLocaleString('de-DE') + ' kg Dünger, ' + einheiten + ' ' + sLabel + ' Saat';
       } else {
-        document.getElementById('r_info').textContent = sacke + ' ' + sLabel + ' Saat (ohne Dünger)';
+        document.getElementById('r_info').textContent = einheiten + ' ' + sLabel + ' Saat (ohne Dünger)';
       }
-      var usedSack = state.entries.reduce(function(s, e) { return s + e.sack; }, 0);
+      var usedEinheit = state.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = state.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-      var remSack = Math.max(0, sacke - usedSack);
+      var remEinheit = Math.max(0, einheiten - usedEinheit);
       var remDuenger = Math.max(0, duengerTotal - usedDuenger);
-      var sUsedLabel = usedSack === 1 ? 'Sack' : 'Säcke';
-      var sRemLabel = remSack === 1 ? 'Sack' : 'Säcke';
-      document.getElementById('ds_saat_total').textContent = sacke + ' ' + sLabel;
-      document.getElementById('ds_saat_used').textContent = usedSack + ' ' + sUsedLabel;
-      document.getElementById('ds_saat_remaining').textContent = remSack + ' ' + sRemLabel;
+      var sUsedLabel = usedEinheit === 1 ? 'Einheit' : 'Einheiten';
+      var sRemLabel = remEinheit === 1 ? 'Einheit' : 'Einheiten';
+      document.getElementById('ds_saat_total').textContent = einheiten + ' ' + sLabel;
+      document.getElementById('ds_saat_used').textContent = usedEinheit + ' ' + sUsedLabel;
+      document.getElementById('ds_saat_remaining').textContent = remEinheit + ' ' + sRemLabel;
       document.getElementById('ds_duenger_total').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
       document.getElementById('ds_duenger_used').textContent = usedDuenger > 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' : '0 kg';
       document.getElementById('ds_duenger_remaining').textContent = duengerTotal > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' : '—';
@@ -572,11 +572,11 @@
       } else {
         var html = '';
         state.entries.forEach(function(e, i) {
-          var sl = e.sack === 1 ? 'Sack' : 'Säcke';
+          var sl = e.einheit === 1 ? 'Einheit' : 'Einheiten';
           var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
           var dl = ds ? ' + ' + ds + ' Dünger' : '';
           html += '<div class="drill-entry">' +
-            '<span class="entry-text"><span>#' + (i+1) + '</span> - ' + e.sack + ' ' + sl + dl + '</span>' +
+            '<span class="entry-text"><span>#' + (i+1) + '</span> - ' + e.einheit + ' ' + sl + dl + '</span>' +
             '<button class="btn-danger" onclick="drillRemove(' + i + ')">✕</button></div>';
         });
         container.innerHTML = html;
