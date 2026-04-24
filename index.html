@@ -168,13 +168,13 @@
 
     /* Tabs */
     .tab-bar {
-      display: none;
+      display: flex;
       gap: 6px;
       margin-bottom: 12px;
       flex-wrap: wrap;
     }
-    .tab-bar.visible {
-      display: flex;
+    .tab-bar.hidden {
+      display: none;
     }
     .tab-btn {
       display: flex;
@@ -548,10 +548,11 @@
     function renderTabs() {
       var bar = document.getElementById('tab_bar');
       if (state.reiter.length <= 1) {
-        bar.classList.remove('visible');
+        bar.classList.add('hidden');
+        bar.innerHTML = '';
         return;
       }
-      bar.classList.add('visible');
+      bar.classList.remove('hidden');
       var html = '';
       state.reiter.forEach(function(r, i) {
         var isActive = i === state.activeReiter;
