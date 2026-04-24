@@ -290,6 +290,15 @@
       margin-top: 4px;
       border-top: 1px solid #d0deb8;
     }
+    .drill-summary-total {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 2px solid #4a7c23;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #2d5016;
+      text-align: center;
+    }
     .inline-row {
       display: flex;
       gap: 8px;
@@ -488,6 +497,7 @@
           <span>Dünger verbleibend</span>
           <span id="ds_duenger_remaining">—</span>
         </div>
+        <div class="drill-summary-total" id="ds_total_summary">—</div>
       </div>
       <div id="drill_entries"></div>
     </div>
@@ -757,8 +767,16 @@ state.reiter.forEach(function(r, i) {
       document.getElementById('ds_duenger_total').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
       document.getElementById('ds_duenger_used').textContent = usedDuenger > 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' : '0 kg';
       document.getElementById('ds_duenger_remaining').textContent = duengerTotal > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' : '—';
+      var totalEinheit = state.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+      var totalHektarDrill = state.entries.reduce(function(s, e) { return s + (e.hektar || 0); }, 0);
+      var totalDuengerDrill = state.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
+      var parts = [];
+      if (totalHektarDrill > 0) parts.push(totalHektarDrill.toFixed(1) + ' ha');
+      parts.push(formatEinheit(totalEinheit));
+      if (totalDuengerDrill > 0) parts.push(totalDuengerDrill.toLocaleString('de-DE') + ' kg Dünger');
+      document.getElementById('ds_total_summary').textContent = state.entries.length > 0 ? parts.join(', ') + ' eingefüllt' : '—';
       var container = document.getElementById('drill_entries');
-      document.getElementById('drill_summary').style.display = (einheiten > 0 || duengerTotal > 0) ? 'block' : 'none';
+      document.getElementById('drill_summary').style.display = (einheiten > 0 || duengerTotal > 0 || state.entries.length > 0) ? 'block' : 'none';
       document.getElementById('drill_section').style.display = 'block';
       if (state.entries.length === 0) {
         container.innerHTML = '<div class="drill-empty">Noch nichts eingefüllt</div>';
