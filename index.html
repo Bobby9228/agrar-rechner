@@ -402,12 +402,12 @@
       <h2>📐 Fläche & Aussaatstärke</h2>
       <div class="field">
         <label for="hektar">Hektar</label>
-        <input type="text" inputmode="decimal" id="hektar" placeholder="z.B. 12.5" inputmode="decimal" oninput="onInputFormat(this, 'decimal')">
+        <input type="text" inputmode="decimal" id="hektar" placeholder="z.B. 12,5" oninput="onInputFormat(this, 'decimal')">
         <div class="error-msg" id="err_hektar"></div>
       </div>
       <div class="field">
         <label for="koerner">Körner pro Hektar</label>
-        <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" inputmode="numeric" oninput="onInputFormat(this, 'integer')">
+        <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" oninput="onInputFormat(this, 'integer')">
         <div class="unit">üblich: 80.000 – 100.000</div>
         <div class="error-msg" id="err_koerner"></div>
       </div>
@@ -417,7 +417,7 @@
       <h2>🧪 Dünger</h2>
       <div class="field">
         <label for="duenger">Dünger (kg/ha)</label>
-        <input type="text" inputmode="decimal" id="duenger" placeholder="z.B. 150" inputmode="decimal" oninput="onInputFormat(this, 'decimal')">
+        <input type="text" inputmode="decimal" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal')">
       </div>
 
       <div class="fahrgassen-toggle">
@@ -427,7 +427,7 @@
       <div class="fahrgassen-settings" id="fahrgassen_settings">
         <div class="field" style="margin-bottom:8px">
           <label for="fahrgassen_breite">Fahrgassenbreite (m)</label>
-          <input type="text" inputmode="decimal" id="fahrgassen_breite" placeholder="z.B. 24" inputmode="decimal" oninput="onInputFormat(this, 'decimal')">
+          <input type="text" inputmode="decimal" id="fahrgassen_breite" placeholder="z.B. 24" oninput="onInputFormat(this, 'decimal')" onchange="fahrgassenUpdate()" onblur="fahrgassenUpdate()">
         </div>
         <div class="fahrgassen-saved" id="fahrgassen_saved"></div>
         <div class="fahrgassen-info">Die Körnerzahl wird um ca. 1/Fahrgassenbreite × 100 % reduziert.</div>
@@ -463,12 +463,12 @@
         </div>
         <div class="field">
           <label for="drill_hektar">Hektar-Zähler</label>
-          <input type="text" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5.2" inputmode="decimal" oninput="onInputFormat(this, 'decimal')">
+          <input type="text" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal')">
         </div>
       </div>
       <div class="field">
         <label for="drill_duenger">Dünger (kg)</label>
-        <input type="text" inputmode="decimal" id="drill_duenger" placeholder="z.B. 500" inputmode="decimal" oninput="onInputFormat(this, 'decimal')">
+        <input type="text" inputmode="decimal" id="drill_duenger" placeholder="z.B. 500" oninput="onInputFormat(this, 'decimal')">
       </div>
       <button class="btn-add" onclick="drillAdd()">+ Einfüllen</button>
 
@@ -725,17 +725,48 @@ function fahrgassenUpdate() {
       return parseFloat(s.replace(/\./g, '')) || 0;
     }
 
-    // Formats number with thousand separators while typing, places cursor at end
-    function onInputFormat(el) {
-      var raw = el.value.replace(/[^\d,.-]/g, '').replace(',', '.');
-      var num = parseFloat(raw);
-      if (isNaN(num)) return;
-      var parts = raw.split('.');
-      var intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-      var formatted = parts.length > 1 ? intPart + ',' + parts[1] : intPart;
+    // Formats number with DE thousand separators while typing.
+    // mode: 'integer' (koerner) or 'decimal' (hektar, duenger, etc.)
+    // Key fix: strip ALL existing formatting dots before re-formatting,
+    // otherwise dots from a previous format step get misinterpreted as decimal.
+    function onInputFormat(el, mode) {
+      var val = el.value;
+      if (!val) return;
+
+      var hasComma = val.indexOf(',') !== -1;
+      var digitsOnly = val.replace(/[^\d]/g, '');
+      if (!digitsOnly) return;
+
+      if (mode === 'integer') {
+        // Pure integer: strip everything, format with DE thousand dots
+        var n = parseInt(digitsOnly, 10);
+        if (isNaN(n)) return;
+        var formatted = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        if (el.value !== formatted) {
+          el.value = formatted;
+          el.setSelectionRange(formatted.length, formatted.length);
+        }
+        return;
+      }
+
+      // Decimal mode: preserve decimal part after comma
+      var intDigits, decDigits;
+      if (hasComma) {
+        var parts = val.split(',');
+        intDigits = parts[0].replace(/[^\d]/g, '');
+        decDigits = parts[1] ? parts[1].replace(/[^\d]/g, '') : '';
+      } else {
+        intDigits = digitsOnly;
+        decDigits = '';
+      }
+      if (!intDigits) return;
+      var formatted = intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      if (decDigits || hasComma) {
+        formatted += ',' + decDigits;
+      }
       if (el.value !== formatted) {
         el.value = formatted;
-        el.setSelectionRange(el.value.length, el.value.length);
+        el.setSelectionRange(formatted.length, formatted.length);
       }
     }
 
