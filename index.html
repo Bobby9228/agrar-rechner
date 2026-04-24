@@ -717,7 +717,7 @@ state.reiter.forEach(function(r, i) {
       var hektar = parseFloat(hektarEl.value) || 0;
       var duenger = parseFloat(duengerEl.value) || 0;
       if (einheit <= 0 && duenger <= 0) return;
-      state.entries.push({ einheit: einheit, hektar: hektar, duenger: duenger });
+      state.entries.push({ einheit: einheit, hektar: hektar, duenger: duenger, time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) });
       einheitEl.value = '';
       hektarEl.value = '';
       duengerEl.value = '';
@@ -769,7 +769,7 @@ state.reiter.forEach(function(r, i) {
           var dl = ds ? ' + ' + ds + ' Dünger' : '';
           var hl = e.hektar > 0 ? ' @ ' + e.hektar.toFixed(1) + ' ha' : '';
           html += '<div class="drill-entry">' +
-            '<span class="entry-text"><span>#' + (i+1) + '</span> - ' + formatEinheit(e.einheit) + hl + dl + '</span>' +
+            '<span class="entry-text"><span>#' + (i+1) + '</span> ' + (e.time ? e.time + ' – ' : '') + formatEinheit(e.einheit) + hl + dl + '</span>' +
             '<button class="btn-danger" onclick="drillRemove(' + i + ')">✕</button></div>';
         });
         container.innerHTML = html;
