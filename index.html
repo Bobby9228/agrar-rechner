@@ -769,7 +769,7 @@ state.reiter.forEach(function(r, i) {
           var dl = ds ? ' + ' + ds + ' Dünger' : '';
           var hl = e.hektar > 0 ? ' @ ' + e.hektar.toFixed(1) + ' ha' : '';
           html += '<div class="drill-entry">' +
-            '<span class="entry-text"><span>#' + (i+1) + '</span> ' + (e.time ? e.time + ' – ' : '') + formatEinheit(e.einheit) + hl + dl + '</span>' +
+            '<span class="entry-text">' + (e.time ? e.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(e.einheit) + dl + ' <span>#' + (i+1) + '</span></span>' +
             '<button class="btn-danger" onclick="drillRemove(' + i + ')">✕</button></div>';
         });
         container.innerHTML = html;
