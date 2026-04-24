@@ -305,7 +305,7 @@
 <body>
   <div class="container">
     <h1>🌾 Mais-Rechner</h1>
-    <p class="subtitle">Säcke & Dünger für Aussaat</p>
+    <p class="subtitle">Einheiten & Dünger für Aussaat</p>
 
     <div class="card">
       <h2>📐 Fläche & Dichte</h2>
@@ -358,15 +358,15 @@
           <span class="value" id="r_korner">—</span>
         </div>
         <div class="result-row">
-          <span class="label">Säcke Maissaat (50.000)</span>
-          <span class="value" id="r_sacke">—</span>
+          <span class="label">Einheiten Maissaat (50.000)</span>
+          <span class="value" id="r_einheiten">—</span>
         </div>
         <div class="result-row">
           <span class="label">Dünger gesamt</span>
           <span class="value" id="r_duenger">—</span>
         </div>
         <div class="result-row">
-          <span class="label">Benötigte Säcke</span>
+          <span class="label">Benötigte Einheiten</span>
           <span class="value small" id="r_info">—</span>
         </div>
       </div>
@@ -404,11 +404,11 @@
 
         <div class="inline-row">
           <div class="field">
-            <label for="drill_sack">Einheiten eingefüllt</label>
-            <input type="number" inputmode="numeric" id="drill_sack" placeholder="z.B. 1.5" min="0">
+            <label for="drill_einheit">Einheiten eingefüllt</label>
+            <input type="number" inputmode="numeric" id="drill_einheit" placeholder="z.B. 1.5" min="0">
           </div>
           <div class="field">
-            <label for="drill_hektar">Hektar-Zähler (ha)</label>
+            <label for="drill_hektar">Hektar-Zähler</label>
             <input type="number" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5.2" min="0">
           </div>
           <div class="field">
@@ -502,9 +502,9 @@
       state.hektar = h;
       state.koerner = k;
       state.duenger = (isNaN(d) || d < 0) ? 0 : d;
-      var usedSack = state.entries.reduce(function(s, e) { return s + e.sack; }, 0);
+      var usedEinheit = state.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = state.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-      if (usedSack > getTotalSaecke() || usedDuenger > getTotalDuenger()) {
+      if (usedEinheit > getTotalEinheiten() || usedDuenger > getTotalDuenger()) {
         state.entries = [];
       }
       sv();
@@ -521,7 +521,7 @@
       return k;
     }
 
-    function getTotalSaecke() {
+    function getTotalEinheiten() {
       if (!state.hektar || !state.koerner) return 0;
       return Math.ceil(getKornerGesamt() / 50000);
     }
@@ -531,21 +531,21 @@
       return state.hektar * state.duenger;
     }
 
-    function formatSack(n) {
+    function formatEinheit(n) {
       return n.toFixed(1) + (n === 1.0 ? ' Einheit' : ' Einheiten');
     }
 
     function drillAdd() {
       if (!state.hektar || !state.koerner) return;
-      var sackEl = document.getElementById('drill_sack');
+      var einheitEl = document.getElementById('drill_einheit');
       var hektarEl = document.getElementById('drill_hektar');
       var duengerEl = document.getElementById('drill_duenger');
-      var sack = parseFloat(sackEl.value) || 0;
+      var einheit = parseFloat(einheitEl.value) || 0;
       var hektar = parseFloat(hektarEl.value) || 0;
       var duenger = parseFloat(duengerEl.value) || 0;
-      if (sack <= 0 && duenger <= 0) return;
-      state.entries.push({ sack: sack, hektar: hektar, duenger: duenger });
-      sackEl.value = '';
+      if (einheit <= 0 && duenger <= 0) return;
+      state.entries.push({ einheit: einheit, hektar: hektar, duenger: duenger });
+      einheitEl.value = '';
       hektarEl.value = '';
       duengerEl.value = '';
       sv();
@@ -560,27 +560,28 @@
 
     function renderResults() {
       var kornerGesamt = getKornerGesamt();
-      var sacke = getTotalSaecke();
+      var einheiten = getTotalEinheiten();
       var duengerTotal = getTotalDuenger();
       document.getElementById('r_korner').textContent = Math.round(kornerGesamt).toLocaleString('de-DE');
-      document.getElementById('r_sacke').textContent = formatSack(sacke);
+      document.getElementById('r_einheiten').textContent = formatEinheit(einheiten);
       document.getElementById('r_duenger').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
+      var sLabel = einheiten === 1.0 ? 'Einheit' : 'Einheiten';
       if (duengerTotal > 0) {
-        document.getElementById('r_info').textContent = duengerTotal.toLocaleString('de-DE') + ' kg Dünger, ' + formatSack(sacke) + ' Saat';
+        document.getElementById('r_info').textContent = duengerTotal.toLocaleString('de-DE') + ' kg Dünger, ' + formatEinheit(einheiten) + ' Saat';
       } else {
-        document.getElementById('r_info').textContent = formatSack(sacke) + ' Saat (ohne Dünger)';
+        document.getElementById('r_info').textContent = formatEinheit(einheiten) + ' Saat (ohne Dünger)';
       }
-      var usedSack = state.entries.reduce(function(s, e) { return s + e.sack; }, 0);
+      var usedEinheit = state.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = state.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       var totalHektar = state.entries.reduce(function(s, e) { return s + (e.hektar || 0); }, 0);
-      var remSack = Math.max(0, sacke - usedSack);
+      var remEinheit = Math.max(0, einheiten - usedEinheit);
       var remDuenger = Math.max(0, duengerTotal - usedDuenger);
-      var sUsedLabel = usedSack === 1.0 ? 'Einheit' : 'Einheiten';
-      var sRemLabel = remSack === 1.0 ? 'Einheit' : 'Einheiten';
+      var sUsedLabel = usedEinheit === 1.0 ? 'Einheit' : 'Einheiten';
+      var sRemLabel = remEinheit === 1.0 ? 'Einheit' : 'Einheiten';
       var hlUsed = totalHektar > 0 ? ' (' + totalHektar.toFixed(1) + ' ha)' : '';
-      document.getElementById('ds_saat_total').textContent = formatSack(sacke);
-      document.getElementById('ds_saat_used').textContent = formatSack(usedSack) + hlUsed;
-      document.getElementById('ds_saat_remaining').textContent = formatSack(remSack);
+      document.getElementById('ds_saat_total').textContent = formatEinheit(einheiten);
+      document.getElementById('ds_saat_used').textContent = formatEinheit(usedEinheit) + hlUsed;
+      document.getElementById('ds_saat_remaining').textContent = formatEinheit(remEinheit);
       document.getElementById('ds_duenger_total').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
       document.getElementById('ds_duenger_used').textContent = usedDuenger > 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' : '0 kg';
       document.getElementById('ds_duenger_remaining').textContent = duengerTotal > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' : '—';
@@ -594,7 +595,7 @@
           var dl = ds ? ' + ' + ds + ' Dünger' : '';
           var hl = e.hektar > 0 ? ' @ ' + e.hektar.toFixed(1) + ' ha' : '';
           html += '<div class="drill-entry">' +
-            '<span class="entry-text"><span>#' + (i+1) + '</span> - ' + formatSack(e.sack) + hl + dl + '</span>' +
+            '<span class="entry-text"><span>#' + (i+1) + '</span> - ' + formatEinheit(e.einheit) + hl + dl + '</span>' +
             '<button class="btn-danger" onclick="drillRemove(' + i + ')">✕</button></div>';
         });
         container.innerHTML = html;
