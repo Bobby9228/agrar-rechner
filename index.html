@@ -172,9 +172,8 @@
       gap: 6px;
       margin-bottom: 12px;
       flex-wrap: wrap;
-    }
-    .tab-bar.hidden {
-      display: none;
+      min-height: 36px;
+      align-items: center;
     }
     .tab-btn {
       display: flex;
@@ -547,20 +546,16 @@
     // --- Tab management ---
     function renderTabs() {
       var bar = document.getElementById('tab_bar');
-      if (state.reiter.length <= 1) {
-        bar.classList.add('hidden');
-        bar.innerHTML = '';
-        return;
-      }
-      bar.classList.remove('hidden');
       var html = '';
-      state.reiter.forEach(function(r, i) {
-        var isActive = i === state.activeReiter;
-        html += '<button class="tab-btn' + (isActive ? ' active' : '') + '" onclick="switchReiter(' + i + ')" aria-label="Reiter ' + (i+1) + '">' +
-          '<input class="tab-name-input" type="text" value="' + r.name + '" onclick="event.stopPropagation()" onchange="renameReiter(' + i + ', this.value)" aria-label="Reitername">' +
-          (state.reiter.length > 1 ? '<span class="tab-close" onclick="event.stopPropagation(); removeReiter(' + i + ')">✕</span>' : '') +
-          '</button>';
-      });
+      if (state.reiter.length > 1) {
+        state.reiter.forEach(function(r, i) {
+          var isActive = i === state.activeReiter;
+          html += '<button class="tab-btn' + (isActive ? ' active' : '') + '" onclick="switchReiter(' + i + ')" aria-label="Reiter ' + (i+1) + '">' +
+            '<input class="tab-name-input" type="text" value="' + r.name + '" onclick="event.stopPropagation()" onchange="renameReiter(' + i + ', this.value)" aria-label="Reitername">' +
+            '<span class="tab-close" onclick="event.stopPropagation(); removeReiter(' + i + ')">✕</span>' +
+            '</button>';
+        });
+      }
       html += '<button class="tab-add" onclick="addReiter()">+ Reiter</button>';
       bar.innerHTML = html;
     }
