@@ -550,10 +550,10 @@
       if (state.reiter.length > 1) {
         state.reiter.forEach(function(r, i) {
           var isActive = i === state.activeReiter;
-          html += '<button class="tab-btn' + (isActive ? ' active' : '') + '" onclick="switchReiter(' + i + ')" aria-label="Reiter ' + (i+1) + '">' +
-            '<input class="tab-name-input" type="text" value="' + r.name + '" onclick="event.stopPropagation()" onchange="renameReiter(' + i + ', this.value)" aria-label="Reitername">' +
-            '<span class="tab-close" onclick="event.stopPropagation(); removeReiter(' + i + ')">✕</span>' +
-            '</button>';
+html += '<button class="tab-btn' + (isActive ? ' active' : '') + '" onclick="switchReiter(' + i + ')" aria-label="Reiter ' + (i+1) + '">' +
+          '<input class="tab-name-input" type="text" value="' + r.name + '" onclick="event.stopPropagation(); this.focus(); this.select();" onchange="renameReiter(' + i + ', this.value)" onblur="renameReiter(' + i + ', this.value)" aria-label="Reitername">' +
+          '<span class="tab-close" onclick="event.stopPropagation(); removeReiter(' + i + ')">✕</span>' +
+          '</button>';
         });
       }
       html += '<button class="tab-add" onclick="addReiter()">+ Protokoll</button>';
