@@ -202,8 +202,13 @@
       font-size: 0.8rem;
       color: inherit;
       width: 70px;
+      max-width: 70px;
       padding: 0;
       outline: none;
+      pointer-events: none;
+    }
+    .tab-name-input:focus {
+      pointer-events: auto;
     }
     .tab-btn.active .tab-name-input {
       color: white;
@@ -234,6 +239,7 @@
       font-weight: 600;
       color: #4a7c23;
       cursor: pointer;
+      flex-shrink: 0;
     }
     .tab-add:active {
       background: #d0e8b8;
@@ -548,12 +554,12 @@
       var bar = document.getElementById('tab_bar');
       var html = '';
       if (state.reiter.length > 1) {
-        state.reiter.forEach(function(r, i) {
+state.reiter.forEach(function(r, i) {
           var isActive = i === state.activeReiter;
-html += '<button class="tab-btn' + (isActive ? ' active' : '') + '" onclick="switchReiter(' + i + ')" aria-label="Reiter ' + (i+1) + '">' +
-          '<input class="tab-name-input" type="text" value="' + r.name + '" onclick="event.stopPropagation(); this.focus(); this.select();" onchange="renameReiter(' + i + ', this.value)" onblur="renameReiter(' + i + ', this.value)" aria-label="Reitername">' +
-          '<span class="tab-close" onclick="event.stopPropagation(); removeReiter(' + i + ')">✕</span>' +
-          '</button>';
+          html += '<button class="tab-btn' + (isActive ? ' active' : '') + '" onclick="switchReiter(' + i + ')" aria-label="Reiter ' + (i+1) + '">' +
+            '<input class="tab-name-input" type="text" value="' + r.name + '" onfocus="this.select()" onchange="renameReiter(' + i + ', this.value)" onblur="renameReiter(' + i + ', this.value)" onkeydown="if(event.key===\'Enter\'){this.blur();}else{event.stopPropagation();}" aria-label="Reitername">' +
+            '<span class="tab-close" onclick="event.stopPropagation(); removeReiter(' + i + ')">✕</span>' +
+            '</button>';
         });
       }
       html += '<button class="tab-add" onclick="addReiter()">+ Protokoll</button>';
