@@ -387,12 +387,12 @@
       <h2>📐 Fläche & Aussaatstärke</h2>
       <div class="field">
         <label for="hektar">Hektar</label>
-        <input type="number" inputmode="decimal" id="hektar" placeholder="z.B. 12.5" step="0.1" min="0" onblur="formatInput(this)" onfocus="unformatInput(this)">
+        <input type="text" inputmode="decimal" id="hektar" placeholder="z.B. 12.5" inputmode="decimal" oninput="onInputFormat(this, 'decimal')">
         <div class="error-msg" id="err_hektar"></div>
       </div>
       <div class="field">
         <label for="koerner">Körner pro Hektar</label>
-        <input type="number" inputmode="numeric" id="koerner" placeholder="z.B. 90000" min="0" onblur="formatInput(this)" onfocus="unformatInput(this)">
+        <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" inputmode="numeric" oninput="onInputFormat(this, 'integer')">
         <div class="unit">üblich: 80.000 – 100.000</div>
         <div class="error-msg" id="err_koerner"></div>
       </div>
@@ -402,7 +402,7 @@
       <h2>🧪 Dünger</h2>
       <div class="field">
         <label for="duenger">Dünger (kg/ha)</label>
-        <input type="number" inputmode="decimal" id="duenger" placeholder="z.B. 150" min="0" onblur="formatInput(this)" onfocus="unformatInput(this)">
+        <input type="text" inputmode="decimal" id="duenger" placeholder="z.B. 150" inputmode="decimal" oninput="onInputFormat(this, 'decimal')">
       </div>
 
       <div class="fahrgassen-toggle">
@@ -412,7 +412,7 @@
       <div class="fahrgassen-settings" id="fahrgassen_settings">
         <div class="field" style="margin-bottom:8px">
           <label for="fahrgassen_breite">Fahrgassenbreite (m)</label>
-          <input type="number" inputmode="decimal" id="fahrgassen_breite" placeholder="z.B. 24" min="0" oninput="fahrgassenUpdate()" onblur="formatInput(this)" onfocus="unformatInput(this)">
+          <input type="text" inputmode="decimal" id="fahrgassen_breite" placeholder="z.B. 24" inputmode="decimal" oninput="onInputFormat(this, 'decimal')">
         </div>
         <div class="fahrgassen-saved" id="fahrgassen_saved"></div>
         <div class="fahrgassen-info">Die Körnerzahl wird um ca. 1/Fahrgassenbreite × 100 % reduziert.</div>
@@ -448,12 +448,12 @@
         </div>
         <div class="field">
           <label for="drill_hektar">Hektar-Zähler</label>
-          <input type="number" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5.2" min="0" onblur="formatInput(this)" onfocus="unformatInput(this)">
+          <input type="text" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5.2" inputmode="decimal" oninput="onInputFormat(this, 'decimal')">
         </div>
       </div>
       <div class="field">
         <label for="drill_duenger">Dünger (kg)</label>
-        <input type="number" inputmode="decimal" id="drill_duenger" placeholder="z.B. 500" min="0" onblur="formatInput(this)" onfocus="unformatInput(this)">
+        <input type="text" inputmode="decimal" id="drill_duenger" placeholder="z.B. 500" inputmode="decimal" oninput="onInputFormat(this, 'decimal')">
       </div>
       <button class="btn-add" onclick="drillAdd()">+ Einfüllen</button>
 
@@ -686,17 +686,20 @@
       return n.toFixed(1) + (n === 1.0 ? ' Einheit' : ' Einheiten');
     }
 
-    function formatInput(el) {
-      var v = parseFloat(el.value.replace(/\s/g, '').replace(',', '.'));
-      if (!isNaN(v) && el.type === 'number') {
-        el.value = v.toLocaleString('de-DE', { maximumFractionDigits: 10 });
-      }
-    }
-
-    function unformatInput(el) {
-      var v = parseFloat(el.value.replace(/\s/g, '').replace(',', '.'));
-      if (!isNaN(v)) {
-        el.value = v;
+    // Formats number with thousand separators while typing, keeps cursor in place
+    function onInputFormat(el, type) {
+      var raw = el.value.replace(/[^\d,.-]/g, '').replace(',', '.');
+      var num = parseFloat(raw);
+      if (isNaN(num)) return;
+      var parts = raw.split('.');
+      var intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      var formatted = parts.length > 1 ? intPart + ',' + parts[1] : intPart;
+      if (el.value !== formatted) {
+        var selStart = el.selectionStart;
+        var selEnd = el.selectionEnd;
+        el.value = formatted;
+        var diff = el.value.length - raw.replace('.', '').length;
+        el.setSelectionRange(selStart + diff, selEnd + diff);
       }
     }
 
