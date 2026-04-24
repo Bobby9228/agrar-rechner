@@ -2,6 +2,7 @@
 
 ## Hohe Priorität
 
+- [ ] **Mehrere Kunden** — Kunden anlegen und separat speichern (z.B. für Pausen beim Kunden A, Wechsel zu Kunde B, Rückkehr zu A)
 - [ ] **PDF-Export des Protokolls** — Drill-Protokoll als druckbares PDF exportieren (per Browser-Print oder jsPDF)
 - [ ] **Daten exportieren/importieren** — JSON-Datei mit allen Protokollen und Reitern exportieren und wieder importieren
 - [ ] **Mehrere Druckerprofile speichern** — Eigene Sorte/Dichte-Kombinationen als Vorlage abspeichern
