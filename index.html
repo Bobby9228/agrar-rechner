@@ -631,8 +631,8 @@ state.reiter.forEach(function(r, i) {
       sv();
     }
 
-    function fahrgassenUpdate() {
-      var breite = parseFloat(document.getElementById('fahrgassen_breite').value) || 0;
+function fahrgassenUpdate() {
+      var breite = parseDE(document.getElementById('fahrgassen_breite').value);
       state.fahrgassenBreite = breite;
       if (breite > 0) {
         document.getElementById('fahrgassen_saved').textContent = breite + ' m -> ~' + (1 / breite * 100).toFixed(1) + '% weniger Körner';
@@ -648,9 +648,9 @@ state.reiter.forEach(function(r, i) {
       document.getElementById('err_koerner').textContent = '';
       document.getElementById('hektar').style.borderColor = '';
       document.getElementById('koerner').style.borderColor = '';
-      var h = parseFloat(document.getElementById('hektar').value);
-      var k = parseFloat(document.getElementById('koerner').value);
-      var d = parseFloat(document.getElementById('duenger').value);
+      var h = parseDE(document.getElementById('hektar').value);
+      var k = parseDE(document.getElementById('koerner').value);
+      var d = parseDE(document.getElementById('duenger').value);
       if (isNaN(h) || h <= 0) {
         document.getElementById('err_hektar').textContent = 'Bitte Hektar eingeben';
         document.getElementById('hektar').style.borderColor = '#d32f2f';
@@ -702,6 +702,21 @@ state.reiter.forEach(function(r, i) {
       return n.toFixed(1) + (n === 1.0 ? ' Einheit' : ' Einheiten');
     }
 
+    // Parse a DE-formatted number string ( thousand dot separator, comma decimal )
+    function parseDE(val) {
+      if (typeof val === 'number') return val;
+      if (!val) return 0;
+      var s = val.toString().trim();
+      // Remove thousand dots, replace comma decimal with dot
+      var parts = s.split(',');
+      if (parts.length > 1) {
+        // Has comma decimal: remove all dots, then replace comma with dot
+        return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+      }
+      // No comma: just remove dots (thousand separators)
+      return parseFloat(s.replace(/\./g, '')) || 0;
+    }
+
     // Formats number with thousand separators while typing, places cursor at end
     function onInputFormat(el) {
       var raw = el.value.replace(/[^\d,.-]/g, '').replace(',', '.');
@@ -723,9 +738,9 @@ state.reiter.forEach(function(r, i) {
       var einheitEl = document.getElementById('drill_einheit');
       var hektarEl = document.getElementById('drill_hektar');
       var duengerEl = document.getElementById('drill_duenger');
-      var einheit = parseFloat(einheitEl.value) || 0;
-      var hektar = parseFloat(hektarEl.value) || 0;
-      var duenger = parseFloat(duengerEl.value) || 0;
+      var einheit = parseDE(einheitEl.value) || 0;
+      var hektar = parseDE(hektarEl.value) || 0;
+      var duenger = parseDE(duengerEl.value) || 0;
       if (einheit <= 0 && duenger <= 0) return;
       state.entries.push({ einheit: einheit, hektar: hektar, duenger: duenger, time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) });
       einheitEl.value = '';
