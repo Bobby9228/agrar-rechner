@@ -88,7 +88,7 @@
       color: #888;
       margin-top: 4px;
     }
-    .btn, .btn-add, .btn-danger, .toggle-btn {
+    .btn, .btn-add, .btn-danger, .toggle-btn, .tab-btn {
       touch-action: manipulation;
     }
     .btn {
@@ -164,6 +164,80 @@
       color: #888;
       text-align: center;
       margin-top: 8px;
+    }
+
+    /* Tabs */
+    .tab-bar {
+      display: none;
+      gap: 6px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .tab-bar.visible {
+      display: flex;
+    }
+    .tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #e8f0de;
+      border: 2px solid #c3dfa8;
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.15s;
+      max-width: 120px;
+    }
+    .tab-btn.active {
+      background: #4a7c23;
+      border-color: #4a7c23;
+      color: white;
+    }
+    .tab-btn:not(.active):hover {
+      background: #d0e8b8;
+    }
+    .tab-name-input {
+      background: transparent;
+      border: none;
+      font-size: 0.8rem;
+      color: inherit;
+      width: 70px;
+      padding: 0;
+      outline: none;
+    }
+    .tab-btn.active .tab-name-input {
+      color: white;
+    }
+    .tab-name-input:focus {
+      border-bottom: 1px solid currentColor;
+    }
+    .tab-close {
+      background: none;
+      border: none;
+      font-size: 0.9rem;
+      cursor: pointer;
+      color: inherit;
+      padding: 0;
+      line-height: 1;
+      opacity: 0.6;
+      flex-shrink: 0;
+    }
+    .tab-close:hover {
+      opacity: 1;
+    }
+    .tab-add {
+      background: #e8f0de;
+      border: 2px dashed #b8d4a0;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #4a7c23;
+      cursor: pointer;
+    }
+    .tab-add:active {
+      background: #d0e8b8;
     }
 
     /* Drill log */
@@ -307,6 +381,9 @@
     <h1>🌾 Mais-Rechner</h1>
     <p class="subtitle">Einheiten & Dünger für Aussaat</p>
 
+    <!-- Tabs -->
+    <div class="tab-bar" id="tab_bar"></div>
+
     <div class="card">
       <h2>📐 Fläche & Dichte</h2>
       <div class="field">
@@ -327,137 +404,209 @@
       <div class="field">
         <label for="duenger">Dünger (kg/ha)</label>
         <input type="number" inputmode="decimal" id="duenger" placeholder="z.B. 150" min="0">
-        <div class="unit">Kilogramm pro Hektar</div>
       </div>
-    </div>
 
-    <div class="card">
-      <h2>🛤️ Fahrgassen</h2>
       <div class="fahrgassen-toggle">
-        <label for="fahrgassen_toggle">Fahrgassen aktiviert</label>
-        <button class="toggle-btn" id="fahrgassen_toggle" onclick="fahrgassenToggle()"></button>
+        <label for="fahrgassen_toggle">Fahrgassen berücksichtigen</label>
+        <button class="toggle-btn" id="fahrgassen_toggle" onclick="fahrgassenToggle()" aria-label="Fahrgassen"></button>
       </div>
       <div class="fahrgassen-settings" id="fahrgassen_settings">
-        <div class="field" style="margin-bottom:8px;">
-          <label for="fahrgassen_breite">Breite der Fahrgasse (m)</label>
+        <div class="field" style="margin-bottom:8px">
+          <label for="fahrgassen_breite">Fahrgassenbreite (m)</label>
           <input type="number" inputmode="decimal" id="fahrgassen_breite" placeholder="z.B. 24" min="0" oninput="fahrgassenUpdate()">
-          <div class="fahrgassen-info">1 Reihe = 50 cm. Fahrgassen reduzieren nur die Körner, Dünger läuft voll durch.</div>
         </div>
         <div class="fahrgassen-saved" id="fahrgassen_saved"></div>
+        <div class="fahrgassen-info">Die Körnerzahl wird um ca. 1/Fahrgassenbreite × 100 % reduziert.</div>
       </div>
     </div>
 
     <button class="btn" onclick="berechne()">Berechnen</button>
     <button class="btn btn-secondary" onclick="resetAll()">Zurücksetzen</button>
 
-    <div id="results" style="display:none; margin-top:16px;">
-      <div class="card result">
-        <h2>📦 Gesamtbedarf</h2>
-        <div class="result-row">
-          <span class="label">Benötigte Körner</span>
-          <span class="value" id="r_korner">—</span>
-        </div>
-        <div class="result-row">
-          <span class="label">Einheiten Maissaat (50.000)</span>
-          <span class="value" id="r_einheiten">—</span>
-        </div>
-        <div class="result-row">
-          <span class="label">Dünger gesamt</span>
-          <span class="value" id="r_duenger">—</span>
-        </div>
-        <div class="result-row">
-          <span class="label">Benötigte Einheiten</span>
-          <span class="value small" id="r_info">—</span>
-        </div>
+    <div class="card result" id="results" style="display:none">
+      <h2>📊 Ergebnis</h2>
+      <div class="result-row">
+        <span class="label">Körner gesamt</span>
+        <span class="value" id="r_korner">—</span>
       </div>
-
-      <!-- Drill Log -->
-      <div class="card" style="margin-top:16px;">
-        <h2>🚜 Drill-Protokoll</h2>
-
-        <div class="drill-summary" id="drill_summary">
-          <div class="drill-summary-row">
-            <span>Gesamt Saat</span>
-            <span id="ds_saat_total">—</span>
-          </div>
-          <div class="drill-summary-row">
-            <span>Bereits eingefüllt</span>
-            <span id="ds_saat_used">—</span>
-          </div>
-          <div class="drill-summary-row remaining">
-            <span>Noch zu drillen</span>
-            <span id="ds_saat_remaining">—</span>
-          </div>
-          <div class="drill-summary-row" style="margin-top:8px; padding-top:8px; border-top: 1px solid #d0deb8;">
-            <span>Gesamt Dünger</span>
-            <span id="ds_duenger_total">—</span>
-          </div>
-          <div class="drill-summary-row">
-            <span>Bereits eingefüllt</span>
-            <span id="ds_duenger_used">—</span>
-          </div>
-          <div class="drill-summary-row remaining">
-            <span>Noch zu drillen</span>
-            <span id="ds_duenger_remaining">—</span>
-          </div>
-        </div>
-
-        <div class="inline-row">
-          <div class="field">
-            <label for="drill_einheit">Einheiten eingefüllt</label>
-            <input type="number" inputmode="numeric" id="drill_einheit" placeholder="z.B. 1.5" min="0">
-          </div>
-          <div class="field">
-            <label for="drill_hektar">Hektar-Zähler</label>
-            <input type="number" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5.2" min="0">
-          </div>
-          <div class="field">
-            <label for="drill_duenger">Dünger (kg)</label>
-            <input type="number" inputmode="decimal" id="drill_duenger" placeholder="z.B. 500" min="0">
-          </div>
-        </div>
-        <button class="btn-add" onclick="drillAdd()">+ Einfüllen</button>
-
-        <div id="drill_entries" style="margin-top:12px;">
-          <div class="drill-empty" id="drill_empty">Noch nichts eingefüllt</div>
-        </div>
+      <div class="result-row">
+        <span class="label">Einheiten</span>
+        <span class="value small" id="r_einheiten">—</span>
       </div>
+      <div class="result-row">
+        <span class="label">Dünger</span>
+        <span class="value small" id="r_duenger">—</span>
+      </div>
+      <div class="info" id="r_info"></div>
     </div>
 
-    <p class="info">Daten werden nur lokal gespeichert – keine Internetverbindung nötig</p>
+    <div class="card" id="drill_section" style="display:none">
+      <h2>🔧 Drill-Protokoll</h2>
+      <div class="inline-row">
+        <div class="field">
+          <label for="drill_einheit">Einheiten eingefüllt</label>
+          <input type="number" inputmode="numeric" id="drill_einheit" placeholder="z.B. 1.5" min="0">
+        </div>
+        <div class="field">
+          <label for="drill_hektar">Hektar-Zähler</label>
+          <input type="number" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5.2" min="0">
+        </div>
+      </div>
+      <div class="field">
+        <label for="drill_duenger">Dünger (kg)</label>
+        <input type="number" inputmode="decimal" id="drill_duenger" placeholder="z.B. 500" min="0">
+      </div>
+      <button class="btn-add" onclick="drillAdd()">+ Einfüllen</button>
+
+      <div class="drill-summary" id="drill_summary" style="display:none">
+        <div class="drill-summary-row">
+          <span>Gesamt</span>
+          <span id="ds_saat_total">—</span>
+        </div>
+        <div class="drill-summary-row">
+          <span>Verwendet</span>
+          <span id="ds_saat_used">—</span>
+        </div>
+        <div class="drill-summary-row remaining">
+          <span>Verbleibend</span>
+          <span id="ds_saat_remaining">—</span>
+        </div>
+        <div class="drill-summary-row">
+          <span>Dünger gesamt</span>
+          <span id="ds_duenger_total">—</span>
+        </div>
+        <div class="drill-summary-row">
+          <span>Dünger verwendet</span>
+          <span id="ds_duenger_used">—</span>
+        </div>
+        <div class="drill-summary-row remaining">
+          <span>Dünger verbleibend</span>
+          <span id="ds_duenger_remaining">—</span>
+        </div>
+      </div>
+      <div id="drill_entries"></div>
+    </div>
   </div>
 
-  <script>// --- State ---
+  <script>
+    // --- State ---
     var state = {
-      hektar: 0,
-      koerner: 0,
-      duenger: 0,
+      reiter: [{ name: 'Reiter 1', hektar: 0, koerner: 0, duenger: 0 }],
+      activeReiter: 0,
       entries: [],
       fahrgassenEnabled: false,
       fahrgassenBreite: 0
     };
 
-    // --- Safe localStorage wrapper ---
-    var LS_KEY = 'mais_rechner_v1';
+    // --- Storage ---
     function sv() {
-      try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e) {}
+      try { localStorage.setItem('mais_rechner', JSON.stringify(state)); } catch(e) {}
     }
     function lv() {
       try {
-        var raw = localStorage.getItem(LS_KEY);
+        var raw = localStorage.getItem('mais_rechner');
         if (raw) {
-          var d = JSON.parse(raw);
-          if (d.hektar) state.hektar = d.hektar;
-          if (d.koerner) state.koerner = d.koerner;
-          if (d.duenger) state.duenger = d.duenger;
-          if (d.entries) state.entries = d.entries;
-          if (d.fahrgassenEnabled !== undefined) state.fahrgassenEnabled = d.fahrgassenEnabled;
-          if (d.fahrgassenBreite) state.fahrgassenBreite = d.fahrgassenBreite;
+          var parsed = JSON.parse(raw);
+          // Migrate old flat state to tabbed state
+          if (parsed.reiter === undefined && parsed.koerner !== undefined) {
+            parsed.reiter = [{
+              name: 'Reiter 1',
+              hektar: parsed.hektar || 0,
+              koerner: parsed.koerner || 0,
+              duenger: parsed.duenger || 0
+            }];
+            delete parsed.hektar;
+            delete parsed.koerner;
+            delete parsed.duenger;
+            parsed.activeReiter = 0;
+          }
+          state = parsed;
         }
       } catch(e) {}
     }
 
-    // --- Functions ---
+    // --- Helpers ---
+    function getActiveReiter() {
+      return state.reiter[state.activeReiter];
+    }
+
+    function syncStateFromInputs() {
+      var r = getActiveReiter();
+      r.hektar = parseFloat(document.getElementById('hektar').value) || 0;
+      r.koerner = parseFloat(document.getElementById('koerner').value) || 0;
+      r.duenger = parseFloat(document.getElementById('duenger').value) || 0;
+    }
+
+    function syncInputsFromState() {
+      var r = getActiveReiter();
+      document.getElementById('hektar').value = r.hektar > 0 ? r.hektar : '';
+      document.getElementById('koerner').value = r.koerner > 0 ? r.koerner : '';
+      document.getElementById('duenger').value = r.duenger > 0 ? r.duenger : '';
+    }
+
+    // --- Tab management ---
+    function renderTabs() {
+      var bar = document.getElementById('tab_bar');
+      if (state.reiter.length <= 1) {
+        bar.classList.remove('visible');
+        return;
+      }
+      bar.classList.add('visible');
+      var html = '';
+      state.reiter.forEach(function(r, i) {
+        var isActive = i === state.activeReiter;
+        html += '<button class="tab-btn' + (isActive ? ' active' : '') + '" onclick="switchReiter(' + i + ')" aria-label="Reiter ' + (i+1) + '">' +
+          '<input class="tab-name-input" type="text" value="' + r.name + '" onclick="event.stopPropagation()" onchange="renameReiter(' + i + ', this.value)" aria-label="Reitername">' +
+          (state.reiter.length > 1 ? '<span class="tab-close" onclick="event.stopPropagation(); removeReiter(' + i + ')">✕</span>' : '') +
+          '</button>';
+      });
+      html += '<button class="tab-add" onclick="addReiter()">+ Reiter</button>';
+      bar.innerHTML = html;
+    }
+
+    function addReiter() {
+      var idx = state.reiter.length + 1;
+      state.reiter.push({ name: 'Reiter ' + idx, hektar: 0, koerner: 0, duenger: 0 });
+      state.activeReiter = state.reiter.length - 1;
+      syncInputsFromState();
+      renderTabs();
+      sv();
+      document.getElementById('hektar').focus();
+    }
+
+    function removeReiter(idx) {
+      if (state.reiter.length <= 1) return;
+      state.reiter.splice(idx, 1);
+      if (state.activeReiter >= state.reiter.length) {
+        state.activeReiter = state.reiter.length - 1;
+      }
+      // Sync active tab values back before switching
+      syncStateFromInputs();
+      syncInputsFromState();
+      renderTabs();
+      sv();
+      renderResults();
+    }
+
+    function switchReiter(idx) {
+      if (idx === state.activeReiter) return;
+      syncStateFromInputs();
+      state.activeReiter = idx;
+      syncInputsFromState();
+      renderTabs();
+      sv();
+      if (state.hektar > 0 && state.koerner > 0) {
+        renderResults();
+      }
+    }
+
+    function renameReiter(idx, name) {
+      state.reiter[idx].name = name.substring(0, 20);
+      sv();
+      renderTabs();
+    }
+
+    // --- Fahrgassen ---
     function fahrgassenToggle() {
       var btn = document.getElementById('fahrgassen_toggle');
       var settings = document.getElementById('fahrgassen_settings');
@@ -481,6 +630,7 @@
       sv();
     }
 
+    // --- Core calculation ---
     function berechne() {
       document.getElementById('err_hektar').textContent = '';
       document.getElementById('err_koerner').textContent = '';
@@ -499,22 +649,25 @@
         document.getElementById('koerner').style.borderColor = '#d32f2f';
         return;
       }
-      state.hektar = h;
-      state.koerner = k;
-      state.duenger = (isNaN(d) || d < 0) ? 0 : d;
+      var r = getActiveReiter();
+      r.hektar = h;
+      r.koerner = k;
+      r.duenger = (isNaN(d) || d < 0) ? 0 : d;
       var usedEinheit = state.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = state.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       if (usedEinheit > getTotalEinheiten() || usedDuenger > getTotalDuenger()) {
         state.entries = [];
       }
       sv();
+      renderTabs();
       renderResults();
       document.getElementById('results').style.display = 'block';
     }
 
     function getKornerGesamt() {
-      if (!state.hektar || !state.koerner) return 0;
-      var k = state.hektar * state.koerner;
+      var r = getActiveReiter();
+      if (!r.hektar || !r.koerner) return 0;
+      var k = r.hektar * r.koerner;
       if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
         k = k * ((state.fahrgassenBreite - 1) / state.fahrgassenBreite);
       }
@@ -522,21 +675,25 @@
     }
 
     function getTotalEinheiten() {
-      if (!state.hektar || !state.koerner) return 0;
+      var r = getActiveReiter();
+      if (!r.hektar || !r.koerner) return 0;
       return Math.ceil(getKornerGesamt() / 50000);
     }
 
     function getTotalDuenger() {
-      if (!state.hektar) return 0;
-      return state.hektar * state.duenger;
+      var r = getActiveReiter();
+      if (!r.hektar) return 0;
+      return r.hektar * r.duenger;
     }
 
     function formatEinheit(n) {
       return n.toFixed(1) + (n === 1.0 ? ' Einheit' : ' Einheiten');
     }
 
+    // --- Drill log ---
     function drillAdd() {
-      if (!state.hektar || !state.koerner) return;
+      var r = getActiveReiter();
+      if (!r.hektar || !r.koerner) return;
       var einheitEl = document.getElementById('drill_einheit');
       var hektarEl = document.getElementById('drill_hektar');
       var duengerEl = document.getElementById('drill_duenger');
@@ -563,10 +720,8 @@
       var einheiten = getTotalEinheiten();
       var duengerTotal = getTotalDuenger();
       document.getElementById('r_korner').textContent = Math.round(kornerGesamt).toLocaleString('de-DE');
-=======
       document.getElementById('r_einheiten').textContent = formatEinheit(einheiten);
       document.getElementById('r_duenger').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
-      var sLabel = einheiten === 1.0 ? 'Einheit' : 'Einheiten';
       if (duengerTotal > 0) {
         document.getElementById('r_info').textContent = duengerTotal.toLocaleString('de-DE') + ' kg Dünger, ' + formatEinheit(einheiten) + ' Saat';
       } else {
@@ -587,6 +742,8 @@
       document.getElementById('ds_duenger_used').textContent = usedDuenger > 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' : '0 kg';
       document.getElementById('ds_duenger_remaining').textContent = duengerTotal > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' : '—';
       var container = document.getElementById('drill_entries');
+      document.getElementById('drill_summary').style.display = (einheiten > 0 || duengerTotal > 0) ? 'block' : 'none';
+      document.getElementById('drill_section').style.display = 'block';
       if (state.entries.length === 0) {
         container.innerHTML = '<div class="drill-empty">Noch nichts eingefüllt</div>';
       } else {
@@ -604,7 +761,13 @@
     }
 
     function resetAll() {
-      state = { hektar: 0, koerner: 0, duenger: 0, entries: [], fahrgassenEnabled: false, fahrgassenBreite: 0 };
+      state = {
+        reiter: [{ name: 'Reiter 1', hektar: 0, koerner: 0, duenger: 0 }],
+        activeReiter: 0,
+        entries: [],
+        fahrgassenEnabled: false,
+        fahrgassenBreite: 0
+      };
       document.getElementById('hektar').value = '';
       document.getElementById('koerner').value = '';
       document.getElementById('duenger').value = '';
@@ -613,19 +776,20 @@
       document.getElementById('hektar').style.borderColor = '';
       document.getElementById('koerner').style.borderColor = '';
       document.getElementById('results').style.display = 'none';
+      document.getElementById('drill_section').style.display = 'none';
       document.getElementById('fahrgassen_toggle').classList.remove('active');
       document.getElementById('fahrgassen_settings').classList.remove('open');
       document.getElementById('fahrgassen_breite').value = '';
       document.getElementById('fahrgassen_saved').textContent = '';
+      renderTabs();
       sv();
     }
 
     // --- Init after DOM is ready ---
     function initUI() {
       lv();
-      if (state.hektar > 0) document.getElementById('hektar').value = state.hektar;
-      if (state.koerner > 0) document.getElementById('koerner').value = state.koerner;
-      if (state.duenger > 0) document.getElementById('duenger').value = state.duenger;
+      syncInputsFromState();
+      renderTabs();
       if (state.fahrgassenEnabled) {
         document.getElementById('fahrgassen_toggle').classList.add('active');
         document.getElementById('fahrgassen_settings').classList.add('open');
@@ -634,7 +798,8 @@
           document.getElementById('fahrgassen_saved').textContent = state.fahrgassenBreite + ' m -> ~' + (1 / state.fahrgassenBreite * 100).toFixed(1) + '% weniger Körner';
         }
       }
-      if (state.hektar > 0 && state.koerner > 0) {
+      var r = getActiveReiter();
+      if (r.hektar > 0 && r.koerner > 0) {
         renderResults();
         document.getElementById('results').style.display = 'block';
       }
