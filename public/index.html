@@ -578,8 +578,6 @@
     // --- Tab management ---
     function renderTabs() {
       var bar = document.getElementById('tab_bar');
-      // Remove old tab buttons (keep the add button)
-      var addBtn = bar.querySelector('.tab-add');
       bar.innerHTML = '';
       if (state.reiter.length > 1) {
         state.reiter.forEach(function(r, i) {
@@ -609,9 +607,13 @@
 
           btn.appendChild(input);
           btn.appendChild(close);
-          bar.insertBefore(btn, addBtn);
+          bar.appendChild(btn);
         });
       }
+      var addBtn = document.createElement('button');
+      addBtn.className = 'tab-add';
+      addBtn.textContent = '+ Tab';
+      addBtn.onclick = function() { addReiter(); };
       bar.appendChild(addBtn);
     }
 

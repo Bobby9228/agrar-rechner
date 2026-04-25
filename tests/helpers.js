@@ -84,16 +84,8 @@ export function createDom() {
   dom.window.document.getElementById('tab_bar').appendChild(tabAddBtn);
 
   // Load the app JS (without DOMContentLoaded auto-init)
-  // Patch renderTabs to survive bar.innerHTML clearing the addBtn reference:
-  // The original code does bar.innerHTML = '' which destroys the addBtn node,
-  // then tries bar.insertBefore(btn, addBtn) which throws NotFoundError in jsdom.
-  // Fix: re-append addBtn after innerHTML clear so insertBefore works.
   const script = scriptMatch[1]
-    .replace("document.addEventListener('DOMContentLoaded', initUI);", "")
-    .replace(
-      'bar.innerHTML = \'\';',
-      'bar.innerHTML = \'\'; bar.appendChild(addBtn);'
-    );
+    .replace("document.addEventListener('DOMContentLoaded', initUI);", "");
   dom.window.eval(script);
 
   return { dom, window: dom.window, store };
