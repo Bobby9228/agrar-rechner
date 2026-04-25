@@ -782,7 +782,8 @@ function fahrgassenUpdate() {
     }
 
     function formatEinheit(n) {
-      return n.toFixed(1) + (n === 1.0 ? ' Einheit' : ' Einheiten');
+      var rounded = Math.round(n * 10) / 10;  // DE Rundung: ab .5 aufrunden
+      return rounded.toFixed(1).replace('.', ',') + (rounded === 1.0 ? ' Einheit' : ' Einheiten');
     }
 
     // Parse a DE-formatted number string ( thousand dot separator, comma decimal )
@@ -869,7 +870,7 @@ function fahrgassenUpdate() {
       var remDuenger = Math.max(0, duengerTotal - usedDuenger);
       var sUsedLabel = usedEinheit === 1.0 ? 'Einheit' : 'Einheiten';
       var sRemLabel = remEinheit === 1.0 ? 'Einheit' : 'Einheiten';
-      var hlUsed = totalHektar > 0 ? ' (' + totalHektar.toFixed(1) + ' ha)' : '';
+      var hlUsed = totalHektar > 0 ? ' (' + (Math.round(totalHektar * 10) / 10).toFixed(1).replace('.', ',') + ' ha)' : '';
       document.getElementById('ds_saat_total').textContent = formatEinheit(einheiten);
       document.getElementById('ds_saat_used').textContent = formatEinheit(usedEinheit) + hlUsed;
       document.getElementById('ds_saat_remaining').textContent = formatEinheit(remEinheit);
@@ -880,7 +881,7 @@ function fahrgassenUpdate() {
       var totalHektarDrill = r.entries.reduce(function(s, e) { return s + (e.hektar || 0); }, 0);
       var totalDuengerDrill = r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
       var parts = [];
-      if (totalHektarDrill > 0) parts.push(totalHektarDrill.toFixed(1) + ' ha');
+      if (totalHektarDrill > 0) parts.push((Math.round(totalHektarDrill * 10) / 10).toFixed(1).replace('.', ',') + ' ha');
       parts.push(formatEinheit(totalEinheit));
       if (totalDuengerDrill > 0) parts.push(totalDuengerDrill.toLocaleString('de-DE') + ' kg Dünger');
       document.getElementById('ds_total_summary').textContent = r.entries.length > 0 ? parts.join(', ') + ' eingefüllt' : '—';
@@ -898,18 +899,19 @@ function fahrgassenUpdate() {
         r.entries.forEach(function(e, i) {
           var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
           var dl = ds ? ' + ' + ds + ' Dünger' : '';
-          var hl = e.hektar > 0 ? ' @ ' + e.hektar.toFixed(1) + ' ha' : '';
+          var hl = e.hektar > 0 ? ' @ ' + (Math.round(e.hektar * 10) / 10).toFixed(1).replace('.', ',') + ' ha' : '';
 
           var entry = document.createElement('div');
           entry.className = 'drill-entry';
 
           var span = document.createElement('span');
           span.className = 'entry-text';
-          var txt = (e.time ? e.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(e.einheit) + dl + ' ';
           var hash = document.createElement('span');
           hash.textContent = '#' + (i+1);
-          span.appendChild(document.createTextNode(txt));
+          var txt = (e.time ? e.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(e.einheit) + dl;
+          var txtNode = document.createTextNode(txt + ' ');
           span.appendChild(hash);
+          span.appendChild(txtNode);
 
           var btn = document.createElement('button');
           btn.className = 'btn-danger';
