@@ -1,4 +1,4 @@
-const CACHE = 'mais-rechner-v1';
+const CACHE = 'mais-rechner-v2';
 const FILES = ['/', '/index.html', '/icon.svg', '/manifest.json'];
 
 self.addEventListener('install', e => {
