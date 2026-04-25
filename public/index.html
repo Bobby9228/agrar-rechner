@@ -459,7 +459,7 @@
       <div class="inline-row">
         <div class="field">
           <label for="drill_einheit">Einheiten eingefüllt</label>
-          <input type="number" inputmode="numeric" id="drill_einheit" placeholder="z.B. 1.5" min="0">
+          <input type="text" inputmode="decimal" id="drill_einheit" placeholder="z.B. 1,5" oninput="onInputFormat(this, 'decimal')">
         </div>
         <div class="field">
           <label for="drill_hektar">Hektar-Zähler</label>
@@ -506,9 +506,8 @@
   <script>
     // --- State ---
     var state = {
-      reiter: [{ name: 'Reiter 1', hektar: 0, koerner: 0, duenger: 0 }],
+      reiter: [{ name: 'Reiter 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
       activeReiter: 0,
-      entries: [],
       fahrgassenEnabled: false,
       fahrgassenBreite: 0
     };
@@ -528,12 +527,21 @@
               name: 'Reiter 1',
               hektar: parsed.hektar || 0,
               koerner: parsed.koerner || 0,
-              duenger: parsed.duenger || 0
+              duenger: parsed.duenger || 0,
+              entries: parsed.entries || []
             }];
             delete parsed.hektar;
             delete parsed.koerner;
             delete parsed.duenger;
+            delete parsed.entries;
             parsed.activeReiter = 0;
+          }
+          // Migrate: entries used to be global; move to first tab if missing
+          if (parsed.entries !== undefined) {
+            if (parsed.reiter && parsed.reiter[0] && parsed.reiter[0].entries === undefined) {
+              parsed.reiter[0].entries = parsed.entries;
+            }
+            delete parsed.entries;
           }
           state = parsed;
         }
@@ -562,23 +570,46 @@
     // --- Tab management ---
     function renderTabs() {
       var bar = document.getElementById('tab_bar');
-      var html = '';
+      // Remove old tab buttons (keep the add button)
+      var addBtn = bar.querySelector('.tab-add');
+      bar.innerHTML = '';
       if (state.reiter.length > 1) {
-state.reiter.forEach(function(r, i) {
+        state.reiter.forEach(function(r, i) {
           var isActive = i === state.activeReiter;
-          html += '<button class="tab-btn' + (isActive ? ' active' : '') + '" onclick="switchReiter(' + i + ')" aria-label="Reiter ' + (i+1) + '">' +
-            '<input class="tab-name-input" type="text" value="' + r.name + '" onfocus="this.select()" onchange="renameReiter(' + i + ', this.value)" onblur="renameReiter(' + i + ', this.value)" onkeydown="if(event.key===\'Enter\'){this.blur();}else{event.stopPropagation();}" aria-label="Reitername">' +
-            '<span class="tab-close" onclick="event.stopPropagation(); removeReiter(' + i + ')">✕</span>' +
-            '</button>';
+          var btn = document.createElement('button');
+          btn.className = 'tab-btn' + (isActive ? ' active' : '');
+          btn.setAttribute('aria-label', 'Reiter ' + (i+1));
+          btn.onclick = function() { switchReiter(i); };
+
+          var input = document.createElement('input');
+          input.className = 'tab-name-input';
+          input.type = 'text';
+          input.value = r.name;
+          input.setAttribute('aria-label', 'Reitername');
+          input.onfocus = function() { this.select(); };
+          input.onchange = function() { renameReiter(i, input.value); };
+          input.onblur = function() { renameReiter(i, input.value); };
+          input.onkeydown = function(evt) {
+            if (evt.key === 'Enter') { input.blur(); }
+            else { evt.stopPropagation(); }
+          };
+
+          var close = document.createElement('span');
+          close.className = 'tab-close';
+          close.setAttribute('onclick', 'event.stopPropagation(); removeReiter(' + i + ')');
+          close.textContent = '✕';
+
+          btn.appendChild(input);
+          btn.appendChild(close);
+          bar.insertBefore(btn, addBtn);
         });
       }
-      html += '<button class="tab-add" onclick="addReiter()">+ Protokoll</button>';
-      bar.innerHTML = html;
+      bar.appendChild(addBtn);
     }
 
     function addReiter() {
       var idx = state.reiter.length + 1;
-      state.reiter.push({ name: 'Reiter ' + idx, hektar: 0, koerner: 0, duenger: 0 });
+      state.reiter.push({ name: 'Reiter ' + idx, hektar: 0, koerner: 0, duenger: 0, entries: [] });
       state.activeReiter = state.reiter.length - 1;
       syncInputsFromState();
       renderTabs();
@@ -588,12 +619,11 @@ state.reiter.forEach(function(r, i) {
 
     function removeReiter(idx) {
       if (state.reiter.length <= 1) return;
+      syncStateFromInputs();  // Erst aktuellen Tab sichern
       state.reiter.splice(idx, 1);
       if (state.activeReiter >= state.reiter.length) {
         state.activeReiter = state.reiter.length - 1;
       }
-      // Sync active tab values back before switching
-      syncStateFromInputs();
       syncInputsFromState();
       renderTabs();
       sv();
@@ -607,8 +637,13 @@ state.reiter.forEach(function(r, i) {
       syncInputsFromState();
       renderTabs();
       sv();
-      if (state.hektar > 0 && state.koerner > 0) {
+      var r = getActiveReiter();
+      if (r.hektar > 0 && r.koerner > 0) {
         renderResults();
+        document.getElementById('results').style.display = 'block';
+      } else {
+        document.getElementById('results').style.display = 'none';
+        document.getElementById('drill_section').style.display = 'none';
       }
     }
 
@@ -665,10 +700,14 @@ function fahrgassenUpdate() {
       r.hektar = h;
       r.koerner = k;
       r.duenger = (isNaN(d) || d < 0) ? 0 : d;
-      var usedEinheit = state.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-      var usedDuenger = state.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+      var entries = r.entries;
+      var usedEinheit = entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+      var usedDuenger = entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       if (usedEinheit > getTotalEinheiten() || usedDuenger > getTotalDuenger()) {
-        state.entries = [];
+        if (!confirm('Die neuen Werte weichen von den eingetragenen Einheiten ab. Drill-Protokoll zurücksetzen?')) {
+          return;
+        }
+        entries.length = 0;
       }
       sv();
       renderTabs();
@@ -689,7 +728,7 @@ function fahrgassenUpdate() {
     function getTotalEinheiten() {
       var r = getActiveReiter();
       if (!r.hektar || !r.koerner) return 0;
-      return Math.ceil(getKornerGesamt() / 50000);
+      return getKornerGesamt() / 50000;
     }
 
     function getTotalDuenger() {
@@ -751,7 +790,7 @@ function fahrgassenUpdate() {
       var hektar = parseDE(hektarEl.value) || 0;
       var duenger = parseDE(duengerEl.value) || 0;
       if (einheit <= 0 && duenger <= 0) return;
-      state.entries.push({ einheit: einheit, hektar: hektar, duenger: duenger, time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) });
+      r.entries.push({ einheit: einheit, hektar: hektar, duenger: duenger, time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) });
       einheitEl.value = '';
       hektarEl.value = '';
       duengerEl.value = '';
@@ -760,12 +799,14 @@ function fahrgassenUpdate() {
     }
 
     function drillRemove(idx) {
-      state.entries.splice(idx, 1);
+      var r = getActiveReiter();
+      r.entries.splice(idx, 1);
       sv();
       renderResults();
     }
 
     function renderResults() {
+      var r = getActiveReiter();
       var kornerGesamt = getKornerGesamt();
       var einheiten = getTotalEinheiten();
       var duengerTotal = getTotalDuenger();
@@ -777,9 +818,9 @@ function fahrgassenUpdate() {
       } else {
         document.getElementById('r_info').textContent = formatEinheit(einheiten) + ' Saat (ohne Dünger)';
       }
-      var usedEinheit = state.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-      var usedDuenger = state.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-      var totalHektar = state.entries.reduce(function(s, e) { return s + (e.hektar || 0); }, 0);
+      var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+      var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+      var totalHektar = r.entries.reduce(function(s, e) { return s + (e.hektar || 0); }, 0);
       var remEinheit = Math.max(0, einheiten - usedEinheit);
       var remDuenger = Math.max(0, duengerTotal - usedDuenger);
       var sUsedLabel = usedEinheit === 1.0 ? 'Einheit' : 'Einheiten';
@@ -791,38 +832,57 @@ function fahrgassenUpdate() {
       document.getElementById('ds_duenger_total').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
       document.getElementById('ds_duenger_used').textContent = usedDuenger > 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' : '0 kg';
       document.getElementById('ds_duenger_remaining').textContent = duengerTotal > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' : '—';
-      var totalEinheit = state.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-      var totalHektarDrill = state.entries.reduce(function(s, e) { return s + (e.hektar || 0); }, 0);
-      var totalDuengerDrill = state.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
+      var totalEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+      var totalHektarDrill = r.entries.reduce(function(s, e) { return s + (e.hektar || 0); }, 0);
+      var totalDuengerDrill = r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
       var parts = [];
       if (totalHektarDrill > 0) parts.push(totalHektarDrill.toFixed(1) + ' ha');
       parts.push(formatEinheit(totalEinheit));
       if (totalDuengerDrill > 0) parts.push(totalDuengerDrill.toLocaleString('de-DE') + ' kg Dünger');
-      document.getElementById('ds_total_summary').textContent = state.entries.length > 0 ? parts.join(', ') + ' eingefüllt' : '—';
+      document.getElementById('ds_total_summary').textContent = r.entries.length > 0 ? parts.join(', ') + ' eingefüllt' : '—';
       var container = document.getElementById('drill_entries');
-      document.getElementById('drill_summary').style.display = (einheiten > 0 || duengerTotal > 0 || state.entries.length > 0) ? 'block' : 'none';
+      document.getElementById('drill_summary').style.display = (einheiten > 0 || duengerTotal > 0 || r.entries.length > 0) ? 'block' : 'none';
       document.getElementById('drill_section').style.display = 'block';
-      if (state.entries.length === 0) {
-        container.innerHTML = '<div class="drill-empty">Noch nichts eingefüllt</div>';
+      if (r.entries.length === 0) {
+        container.innerHTML = '';
+        var empty = document.createElement('div');
+        empty.className = 'drill-empty';
+        empty.textContent = 'Noch nichts eingefüllt';
+        container.appendChild(empty);
       } else {
-        var html = '';
-        state.entries.forEach(function(e, i) {
+        container.innerHTML = '';
+        r.entries.forEach(function(e, i) {
           var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
           var dl = ds ? ' + ' + ds + ' Dünger' : '';
           var hl = e.hektar > 0 ? ' @ ' + e.hektar.toFixed(1) + ' ha' : '';
-          html += '<div class="drill-entry">' +
-            '<span class="entry-text">' + (e.time ? e.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(e.einheit) + dl + ' <span>#' + (i+1) + '</span></span>' +
-            '<button class="btn-danger" onclick="drillRemove(' + i + ')">✕</button></div>';
+
+          var entry = document.createElement('div');
+          entry.className = 'drill-entry';
+
+          var span = document.createElement('span');
+          span.className = 'entry-text';
+          var txt = (e.time ? e.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(e.einheit) + dl + ' ';
+          var hash = document.createElement('span');
+          hash.textContent = '#' + (i+1);
+          span.appendChild(document.createTextNode(txt));
+          span.appendChild(hash);
+
+          var btn = document.createElement('button');
+          btn.className = 'btn-danger';
+          btn.textContent = '✕';
+          btn.onclick = function() { drillRemove(i); };
+
+          entry.appendChild(span);
+          entry.appendChild(btn);
+          container.appendChild(entry);
         });
-        container.innerHTML = html;
       }
     }
 
     function resetAll() {
       state = {
-        reiter: [{ name: 'Reiter 1', hektar: 0, koerner: 0, duenger: 0 }],
+        reiter: [{ name: 'Reiter 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
         activeReiter: 0,
-        entries: [],
         fahrgassenEnabled: false,
         fahrgassenBreite: 0
       };
