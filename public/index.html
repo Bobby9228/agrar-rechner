@@ -543,6 +543,12 @@
             }
             delete parsed.entries;
           }
+          // Ensure every reiter has an entries array
+          if (parsed.reiter) {
+            parsed.reiter.forEach(function(reiter) {
+              if (!reiter.entries) reiter.entries = [];
+            });
+          }
           state = parsed;
         }
       } catch(e) {}
@@ -550,7 +556,9 @@
 
     // --- Helpers ---
     function getActiveReiter() {
-      return state.reiter[state.activeReiter];
+      var r = state.reiter[state.activeReiter];
+      if (r && !r.entries) r.entries = [];
+      return r;
     }
 
     function syncStateFromInputs() {
