@@ -506,7 +506,7 @@
   <script>
     // --- State ---
     var state = {
-      reiter: [{ name: 'Reiter 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
+      reiter: [{ name: 'Tab 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
       activeReiter: 0,
       fahrgassenEnabled: false,
       fahrgassenBreite: 0
@@ -524,7 +524,7 @@
           // Migrate old flat state to tabbed state
           if (parsed.reiter === undefined && parsed.koerner !== undefined) {
             parsed.reiter = [{
-              name: 'Reiter 1',
+              name: 'Tab 1',
               hektar: parsed.hektar || 0,
               koerner: parsed.koerner || 0,
               duenger: parsed.duenger || 0,
@@ -588,14 +588,14 @@
           var isActive = i === state.activeReiter;
           var btn = document.createElement('button');
           btn.className = 'tab-btn' + (isActive ? ' active' : '');
-          btn.setAttribute('aria-label', 'Reiter ' + (i+1));
+          btn.setAttribute('aria-label', 'Tab ' + (i+1));
           btn.onclick = function() { switchReiter(i); };
 
           var input = document.createElement('input');
           input.className = 'tab-name-input';
           input.type = 'text';
           input.value = r.name;
-          input.setAttribute('aria-label', 'Reitername');
+          input.setAttribute('aria-label', 'Tab-Name');
           input.onfocus = function() { this.select(); };
           input.onchange = function() { renameReiter(i, input.value); };
           input.onblur = function() { renameReiter(i, input.value); };
@@ -623,7 +623,7 @@
 
     function addReiter() {
       var idx = state.reiter.length + 1;
-      state.reiter.push({ name: 'Reiter ' + idx, hektar: 0, koerner: 0, duenger: 0, entries: [] });
+      state.reiter.push({ name: 'Tab ' + idx, hektar: 0, koerner: 0, duenger: 0, entries: [] });
       state.activeReiter = state.reiter.length - 1;
       syncInputsFromState();
       renderTabs();
@@ -895,7 +895,7 @@ function fahrgassenUpdate() {
 
     function resetAll() {
       state = {
-        reiter: [{ name: 'Reiter 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
+        reiter: [{ name: 'Tab 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
         activeReiter: 0,
         fahrgassenEnabled: false,
         fahrgassenBreite: 0
