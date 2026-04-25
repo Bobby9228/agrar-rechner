@@ -82,7 +82,7 @@ describe('berechne()', () => {
     // Körner gesamt = 900000
     expect(doc.getElementById('r_korner').textContent).toBe('900.000');
     // Einheiten = 18
-    expect(doc.getElementById('r_einheiten').textContent).toBe('18.0 Einheiten');
+    expect(doc.getElementById('r_einheiten').textContent).toBe('18,0 Einheiten');
     // Dünger = 1500 kg
     expect(doc.getElementById('r_duenger').textContent).toContain('1.500');
     expect(doc.getElementById('r_duenger').textContent).toContain('kg');

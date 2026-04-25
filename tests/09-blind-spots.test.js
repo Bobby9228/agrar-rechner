@@ -24,12 +24,13 @@ describe('Blind spots — renderTabs callbacks', () => {
   });
 
   it('tab-close onclick calls removeReiter(i)', () => {
-    // The close button uses setAttribute('onclick', '...removeReiter(i)')
-    // which is an inline handler expecting an event object with stopPropagation
+    // The close button uses setAttribute('onclick', '...confirmRemoveReiter(i)')
+    // which calls confirm() first — mock confirm to return true
     expect(w.state.reiter.length).toBe(2);
     const closes = doc.querySelectorAll('.tab-close');
     // Create a fake event with stopPropagation
     const fakeEvent = { stopPropagation: () => {} };
+    w.confirm = () => true;
     closes[1].onclick(fakeEvent);
     expect(w.state.reiter.length).toBe(1);
   });
@@ -209,8 +210,8 @@ describe('Blind spots — renderResults edge cases', () => {
 
     const spans = doc.querySelectorAll('.entry-text');
     expect(spans[0].textContent).toContain('14:30 – ');
-    expect(spans[0].textContent).toContain('@ 3.5 ha');
-    expect(spans[0].textContent).toContain('2.0 Einheiten');
+    expect(spans[0].textContent).toContain('@ 3,5 ha');
+    expect(spans[0].textContent).toContain('2,0 Einheiten');
     expect(spans[0].textContent).toContain('200 kg Dünger');
   });
 
@@ -253,7 +254,7 @@ describe('Blind spots — renderResults edge cases', () => {
     w.renderResults();
 
     const summary = doc.getElementById('ds_total_summary').textContent;
-    expect(summary).toContain('3.0 Einheiten');
+    expect(summary).toContain('3,0 Einheiten');
     expect(summary).not.toContain('ha');
     expect(summary).not.toContain('Dünger');
   });
@@ -321,7 +322,7 @@ describe('Blind spots — renderResults with duenger-only entry (einheit=0)', ()
     w.renderResults();
 
     const summary = doc.getElementById('ds_total_summary').textContent;
-    expect(summary).toContain('0.0 Einheiten');
+    expect(summary).toContain('0,0 Einheiten');
     expect(summary).toContain('500 kg Dünger');
     expect(summary).not.toContain('ha');
   });

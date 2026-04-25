@@ -19,7 +19,7 @@ describe('Tab management', () => {
       w.addReiter();
       expect(w.state.reiter.length).toBe(2);
       expect(w.state.activeReiter).toBe(1);
-      expect(w.state.reiter[1].name).toBe('Reiter 2');
+      expect(w.state.reiter[1].name).toBe('Tab 2');
     });
 
     it('new tab has default values', () => {
@@ -36,9 +36,9 @@ describe('Tab management', () => {
       w.addReiter();
       w.addReiter();
       expect(w.state.reiter.length).toBe(4);
-      expect(w.state.reiter[1].name).toBe('Reiter 2');
-      expect(w.state.reiter[2].name).toBe('Reiter 3');
-      expect(w.state.reiter[3].name).toBe('Reiter 4');
+      expect(w.state.reiter[1].name).toBe('Tab 2');
+      expect(w.state.reiter[2].name).toBe('Tab 3');
+      expect(w.state.reiter[3].name).toBe('Tab 4');
     });
 
     it('preserves first tab data when adding new tab', () => {

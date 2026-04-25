@@ -162,12 +162,12 @@ describe('Drill-Protokoll', () => {
 
       // Check drill summary
       // Total einheiten = 18 (10ha * 90000 / 50000)
-      expect(doc.getElementById('ds_saat_total').textContent).toBe('18.0 Einheiten');
+      expect(doc.getElementById('ds_saat_total').textContent).toBe('18,0 Einheiten');
       // Used einheit = 5
-      expect(doc.getElementById('ds_saat_used').textContent).toContain('5.0 Einheiten');
-      expect(doc.getElementById('ds_saat_used').textContent).toContain('3.5 ha');
+      expect(doc.getElementById('ds_saat_used').textContent).toContain('5,0 Einheiten');
+      expect(doc.getElementById('ds_saat_used').textContent).toContain('3,5 ha');
       // Remaining = 18 - 5 = 13
-      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('13.0 Einheiten');
+      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('13,0 Einheiten');
       // Duenger total = 1500
       expect(doc.getElementById('ds_duenger_total').textContent).toContain('1.500');
       // Duenger used = 500
@@ -201,8 +201,8 @@ describe('Drill-Protokoll', () => {
       w.drillAdd();
 
       const summary = doc.getElementById('ds_total_summary').textContent;
-      expect(summary).toContain('3.5 ha');
-      expect(summary).toContain('5.0 Einheiten');
+      expect(summary).toContain('3,5 ha');
+      expect(summary).toContain('5,0 Einheiten');
       expect(summary).toContain('500');
       expect(summary).toContain('Dünger');
       expect(summary).toContain('eingefüllt');
@@ -230,7 +230,7 @@ describe('Drill-Protokoll', () => {
 
       const rem = doc.getElementById('ds_saat_remaining').textContent;
       // Math.max(0, 18 - 20) = 0
-      expect(rem).toBe('0.0 Einheiten');
+      expect(rem).toBe('0,0 Einheiten');
     });
   });
 });
