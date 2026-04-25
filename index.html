@@ -607,8 +607,13 @@ state.reiter.forEach(function(r, i) {
       syncInputsFromState();
       renderTabs();
       sv();
-      if (state.hektar > 0 && state.koerner > 0) {
+      var r = getActiveReiter();
+      if (r.hektar > 0 && r.koerner > 0) {
         renderResults();
+        document.getElementById('results').style.display = 'block';
+      } else {
+        document.getElementById('results').style.display = 'none';
+        document.getElementById('drill_section').style.display = 'none';
       }
     }
 
