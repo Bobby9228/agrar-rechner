@@ -696,6 +696,9 @@ function fahrgassenUpdate() {
       var usedEinheit = state.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = state.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       if (usedEinheit > getTotalEinheiten() || usedDuenger > getTotalDuenger()) {
+        if (!confirm('Die neuen Werte weichen von den eingetragenen Einheiten ab. Drill-Protokoll zurücksetzen?')) {
+          return;
+        }
         state.entries = [];
       }
       sv();
