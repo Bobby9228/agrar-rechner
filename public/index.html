@@ -619,12 +619,11 @@
 
     function removeReiter(idx) {
       if (state.reiter.length <= 1) return;
+      syncStateFromInputs();  // Erst aktuellen Tab sichern
       state.reiter.splice(idx, 1);
       if (state.activeReiter >= state.reiter.length) {
         state.activeReiter = state.reiter.length - 1;
       }
-      // Sync active tab values back before switching
-      syncStateFromInputs();
       syncInputsFromState();
       renderTabs();
       sv();
