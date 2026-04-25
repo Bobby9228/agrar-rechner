@@ -694,7 +694,7 @@ function fahrgassenUpdate() {
     function getTotalEinheiten() {
       var r = getActiveReiter();
       if (!r.hektar || !r.koerner) return 0;
-      return Math.ceil(getKornerGesamt() / 50000);
+      return getKornerGesamt() / 50000;
     }
 
     function getTotalDuenger() {
