@@ -552,19 +552,11 @@
       r.duenger = parseDE(document.getElementById('duenger').value) || 0;
     }
 
-    function formatDEInput(num) {
-      if (!num || num === 0) return '';
-      var s = num.toString();
-      var parts = s.split('.');
-      var intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-      return parts.length > 1 ? intPart + ',' + parts[1] : intPart;
-    }
-
     function syncInputsFromState() {
       var r = getActiveReiter();
-      document.getElementById('hektar').value = formatDEInput(r.hektar);
-      document.getElementById('koerner').value = formatDEInput(r.koerner);
-      document.getElementById('duenger').value = formatDEInput(r.duenger);
+      document.getElementById('hektar').value = r.hektar > 0 ? r.hektar : '';
+      document.getElementById('koerner').value = r.koerner > 0 ? r.koerner : '';
+      document.getElementById('duenger').value = r.duenger > 0 ? r.duenger : '';
     }
 
     // --- Tab management ---
@@ -725,48 +717,26 @@ function fahrgassenUpdate() {
       return parseFloat(s.replace(/\./g, '')) || 0;
     }
 
-    // Formats number with DE thousand separators while typing.
-    // mode: 'integer' (koerner) or 'decimal' (hektar, duenger, etc.)
-    // Key fix: strip ALL existing formatting dots before re-formatting,
-    // otherwise dots from a previous format step get misinterpreted as decimal.
+    // Strips invalid characters while typing. No thousand separators.
+    // mode: 'integer' (digits only) or 'decimal' (digits + one comma)
     function onInputFormat(el, mode) {
       var val = el.value;
       if (!val) return;
-
-      var hasComma = val.indexOf(',') !== -1;
-      var digitsOnly = val.replace(/[^\d]/g, '');
-      if (!digitsOnly) return;
-
+      var cleaned;
       if (mode === 'integer') {
-        // Pure integer: strip everything, format with DE thousand dots
-        var n = parseInt(digitsOnly, 10);
-        if (isNaN(n)) return;
-        var formatted = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        if (el.value !== formatted) {
-          el.value = formatted;
-          el.setSelectionRange(formatted.length, formatted.length);
-        }
-        return;
-      }
-
-      // Decimal mode: preserve decimal part after comma
-      var intDigits, decDigits;
-      if (hasComma) {
-        var parts = val.split(',');
-        intDigits = parts[0].replace(/[^\d]/g, '');
-        decDigits = parts[1] ? parts[1].replace(/[^\d]/g, '') : '';
+        cleaned = val.replace(/[^\d]/g, '');
       } else {
-        intDigits = digitsOnly;
-        decDigits = '';
+        // Allow digits and at most one comma (decimal separator)
+        var hasComma = val.indexOf(',') !== -1;
+        cleaned = val.replace(/[^\d,]/g, '');
+        if (hasComma) {
+          var parts = cleaned.split(',');
+          cleaned = parts[0] + ',' + (parts[1] || '');
+        }
       }
-      if (!intDigits) return;
-      var formatted = intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-      if (decDigits || hasComma) {
-        formatted += ',' + decDigits;
-      }
-      if (el.value !== formatted) {
-        el.value = formatted;
-        el.setSelectionRange(formatted.length, formatted.length);
+      if (el.value !== cleaned) {
+        el.value = cleaned;
+        el.setSelectionRange(cleaned.length, cleaned.length);
       }
     }
 
@@ -882,7 +852,7 @@ function fahrgassenUpdate() {
         document.getElementById('fahrgassen_toggle').classList.add('active');
         document.getElementById('fahrgassen_settings').classList.add('open');
         if (state.fahrgassenBreite > 0) {
-          document.getElementById('fahrgassen_breite').value = formatDEInput(state.fahrgassenBreite);
+          document.getElementById('fahrgassen_breite').value = state.fahrgassenBreite > 0 ? state.fahrgassenBreite : '';
           document.getElementById('fahrgassen_saved').textContent = state.fahrgassenBreite + ' m -> ~' + (1 / state.fahrgassenBreite * 100).toFixed(1) + '% weniger Körner';
         }
       }
