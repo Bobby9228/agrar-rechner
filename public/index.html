@@ -568,11 +568,15 @@
       r.duenger = parseDE(document.getElementById('duenger').value) || 0;
     }
 
+    function formatDE(n) {
+      return String(n).replace('.', ',');
+    }
+
     function syncInputsFromState() {
       var r = getActiveReiter();
-      document.getElementById('hektar').value = r.hektar > 0 ? r.hektar : '';
-      document.getElementById('koerner').value = r.koerner > 0 ? r.koerner : '';
-      document.getElementById('duenger').value = r.duenger > 0 ? r.duenger : '';
+      document.getElementById('hektar').value = r.hektar > 0 ? formatDE(r.hektar) : '';
+      document.getElementById('koerner').value = r.koerner > 0 ? formatDE(r.koerner) : '';
+      document.getElementById('duenger').value = r.duenger > 0 ? formatDE(r.duenger) : '';
     }
 
     // --- Tab management ---
@@ -922,7 +926,7 @@ function fahrgassenUpdate() {
         document.getElementById('fahrgassen_toggle').classList.add('active');
         document.getElementById('fahrgassen_settings').classList.add('open');
         if (state.fahrgassenBreite > 0) {
-          document.getElementById('fahrgassen_breite').value = state.fahrgassenBreite > 0 ? state.fahrgassenBreite : '';
+          document.getElementById('fahrgassen_breite').value = formatDE(state.fahrgassenBreite);
           document.getElementById('fahrgassen_saved').textContent = state.fahrgassenBreite + ' m -> ~' + (1 / state.fahrgassenBreite * 100).toFixed(1) + '% weniger Körner';
         }
       }

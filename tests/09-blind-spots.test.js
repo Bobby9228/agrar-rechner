@@ -342,9 +342,9 @@ describe('Blind spots — syncInputsFromState with decimal values', () => {
     w.state.reiter[0].duenger = 150.5;
     w.syncInputsFromState();
 
-    expect(doc.getElementById('hektar').value).toBe('12.5');
+    expect(doc.getElementById('hektar').value).toBe('12,5');
     expect(doc.getElementById('koerner').value).toBe('80000');
-    expect(doc.getElementById('duenger').value).toBe('150.5');
+    expect(doc.getElementById('duenger').value).toBe('150,5');
   });
 });
 
