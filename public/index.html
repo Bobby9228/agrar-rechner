@@ -230,6 +230,20 @@
     .tab-close:hover {
       opacity: 1;
     }
+    .tab-edit {
+      background: none;
+      border: none;
+      font-size: 0.75rem;
+      cursor: pointer;
+      color: inherit;
+      padding: 0;
+      line-height: 1;
+      opacity: 0.5;
+      flex-shrink: 0;
+    }
+    .tab-edit:hover {
+      opacity: 1;
+    }
     .tab-add {
       background: #e8f0de;
       border: 2px dashed #b8d4a0;
@@ -435,7 +449,7 @@
     </div>
 
     <button class="btn" onclick="berechne()">Berechnen</button>
-    <button class="btn btn-secondary" onclick="resetAll()">Zurücksetzen</button>
+    <button class="btn btn-secondary" onclick="confirmResetAll()">Zurücksetzen</button>
 
     <div class="card result" id="results" style="display:none">
       <h2>📊 Ergebnis</h2>
@@ -604,12 +618,23 @@
             else { evt.stopPropagation(); }
           };
 
+          var edit = document.createElement('span');
+          edit.className = 'tab-edit';
+          edit.textContent = '✏️';
+          edit.setAttribute('aria-label', 'Umbenennen');
+          edit.onclick = function(evt) {
+            evt.stopPropagation();
+            input.focus();
+            input.select();
+          };
+
           var close = document.createElement('span');
           close.className = 'tab-close';
-          close.setAttribute('onclick', 'event.stopPropagation(); removeReiter(' + i + ')');
+          close.setAttribute('onclick', 'event.stopPropagation(); confirmRemoveReiter(' + i + ')');
           close.textContent = '✕';
 
           btn.appendChild(input);
+          btn.appendChild(edit);
           btn.appendChild(close);
           bar.appendChild(btn);
         });
@@ -629,6 +654,11 @@
       renderTabs();
       sv();
       document.getElementById('hektar').focus();
+    }
+
+    function confirmRemoveReiter(idx) {
+      if (!confirm('Tab wirklich löschen?')) return;
+      removeReiter(idx);
     }
 
     function removeReiter(idx) {
@@ -891,6 +921,11 @@ function fahrgassenUpdate() {
           container.appendChild(entry);
         });
       }
+    }
+
+    function confirmResetAll() {
+      if (!confirm('Wirklich alles zurücksetzen?')) return;
+      resetAll();
     }
 
     function resetAll() {
