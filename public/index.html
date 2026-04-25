@@ -459,7 +459,7 @@
       <div class="inline-row">
         <div class="field">
           <label for="drill_einheit">Einheiten eingefüllt</label>
-          <input type="number" inputmode="numeric" id="drill_einheit" placeholder="z.B. 1.5" min="0">
+          <input type="text" inputmode="decimal" id="drill_einheit" placeholder="z.B. 1,5" oninput="onInputFormat(this, 'decimal')">
         </div>
         <div class="field">
           <label for="drill_hektar">Hektar-Zähler</label>
