@@ -562,18 +562,41 @@
     // --- Tab management ---
     function renderTabs() {
       var bar = document.getElementById('tab_bar');
-      var html = '';
+      // Remove old tab buttons (keep the add button)
+      var addBtn = bar.querySelector('.tab-add');
+      bar.innerHTML = '';
       if (state.reiter.length > 1) {
-state.reiter.forEach(function(r, i) {
+        state.reiter.forEach(function(r, i) {
           var isActive = i === state.activeReiter;
-          html += '<button class="tab-btn' + (isActive ? ' active' : '') + '" onclick="switchReiter(' + i + ')" aria-label="Reiter ' + (i+1) + '">' +
-            '<input class="tab-name-input" type="text" value="' + r.name + '" onfocus="this.select()" onchange="renameReiter(' + i + ', this.value)" onblur="renameReiter(' + i + ', this.value)" onkeydown="if(event.key===\'Enter\'){this.blur();}else{event.stopPropagation();}" aria-label="Reitername">' +
-            '<span class="tab-close" onclick="event.stopPropagation(); removeReiter(' + i + ')">✕</span>' +
-            '</button>';
+          var btn = document.createElement('button');
+          btn.className = 'tab-btn' + (isActive ? ' active' : '');
+          btn.setAttribute('aria-label', 'Reiter ' + (i+1));
+          btn.onclick = function() { switchReiter(i); };
+
+          var input = document.createElement('input');
+          input.className = 'tab-name-input';
+          input.type = 'text';
+          input.value = r.name;
+          input.setAttribute('aria-label', 'Reitername');
+          input.onfocus = function() { this.select(); };
+          input.onchange = function() { renameReiter(i, input.value); };
+          input.onblur = function() { renameReiter(i, input.value); };
+          input.onkeydown = function(evt) {
+            if (evt.key === 'Enter') { input.blur(); }
+            else { evt.stopPropagation(); }
+          };
+
+          var close = document.createElement('span');
+          close.className = 'tab-close';
+          close.setAttribute('onclick', 'event.stopPropagation(); removeReiter(' + i + ')');
+          close.textContent = '✕';
+
+          btn.appendChild(input);
+          btn.appendChild(close);
+          bar.insertBefore(btn, addBtn);
         });
       }
-      html += '<button class="tab-add" onclick="addReiter()">+ Protokoll</button>';
-      bar.innerHTML = html;
+      bar.appendChild(addBtn);
     }
 
     function addReiter() {
@@ -808,18 +831,38 @@ function fahrgassenUpdate() {
       document.getElementById('drill_summary').style.display = (einheiten > 0 || duengerTotal > 0 || state.entries.length > 0) ? 'block' : 'none';
       document.getElementById('drill_section').style.display = 'block';
       if (state.entries.length === 0) {
-        container.innerHTML = '<div class="drill-empty">Noch nichts eingefüllt</div>';
+        container.innerHTML = '';
+        var empty = document.createElement('div');
+        empty.className = 'drill-empty';
+        empty.textContent = 'Noch nichts eingefüllt';
+        container.appendChild(empty);
       } else {
-        var html = '';
+        container.innerHTML = '';
         state.entries.forEach(function(e, i) {
           var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
           var dl = ds ? ' + ' + ds + ' Dünger' : '';
           var hl = e.hektar > 0 ? ' @ ' + e.hektar.toFixed(1) + ' ha' : '';
-          html += '<div class="drill-entry">' +
-            '<span class="entry-text">' + (e.time ? e.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(e.einheit) + dl + ' <span>#' + (i+1) + '</span></span>' +
-            '<button class="btn-danger" onclick="drillRemove(' + i + ')">✕</button></div>';
+
+          var entry = document.createElement('div');
+          entry.className = 'drill-entry';
+
+          var span = document.createElement('span');
+          span.className = 'entry-text';
+          var txt = (e.time ? e.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(e.einheit) + dl + ' ';
+          var hash = document.createElement('span');
+          hash.textContent = '#' + (i+1);
+          span.appendChild(document.createTextNode(txt));
+          span.appendChild(hash);
+
+          var btn = document.createElement('button');
+          btn.className = 'btn-danger';
+          btn.textContent = '✕';
+          btn.onclick = function() { drillRemove(i); };
+
+          entry.appendChild(span);
+          entry.appendChild(btn);
+          container.appendChild(entry);
         });
-        container.innerHTML = html;
       }
     }
 
