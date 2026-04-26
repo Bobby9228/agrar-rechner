@@ -865,7 +865,6 @@ function fahrgassenUpdate() {
       }
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-      var totalHektar = r.entries.reduce(function(s, e) { return s + (e.hektar || 0); }, 0);
       var remEinheit = Math.max(0, einheiten - usedEinheit);
       var remDuenger = Math.max(0, duengerTotal - usedDuenger);
       var sUsedLabel = usedEinheit === 1.0 ? 'Einheit' : 'Einheiten';
@@ -879,10 +878,8 @@ function fahrgassenUpdate() {
       document.getElementById('ds_duenger_used').textContent = usedDuenger > 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' : '0 kg';
       document.getElementById('ds_duenger_remaining').textContent = duengerTotal > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' : '—';
       var totalEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-      var totalHektarDrill = r.entries.reduce(function(s, e) { return s + (e.hektar || 0); }, 0);
-      var totalDuengerDrill = r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
+      var totalDuengerDrill = r.entries.reduce(function(s, e) { return s + e.duenger || 0; }, 0);
       var parts = [];
-      if (totalHektarDrill > 0) parts.push((Math.round(totalHektarDrill * 10) / 10).toFixed(1).replace('.', ',') + ' ha');
       parts.push(formatEinheit(totalEinheit));
       if (totalDuengerDrill > 0) parts.push(totalDuengerDrill.toLocaleString('de-DE') + ' kg Dünger');
       document.getElementById('ds_total_summary').textContent = r.entries.length > 0 ? parts.join(', ') + ' eingefüllt' : '—';
