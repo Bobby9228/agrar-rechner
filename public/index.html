@@ -780,6 +780,12 @@ function fahrgassenUpdate() {
       return r.hektar * r.duenger;
     }
 
+    function fmt(n) {
+      // German decimal format, no suffix. Always one decimal place.
+      var rounded = Math.round(n * 10) / 10;
+      return rounded.toFixed(1).replace('.', ',');
+    }
+
     function formatEinheit(n) {
       var rounded = Math.round(n * 10) / 10;  // DE Rundung: ab .5 aufrunden
       return rounded.toFixed(1).replace('.', ',') + (rounded === 1.0 ? ' Einheit' : ' Einheiten');
@@ -866,15 +872,15 @@ function fahrgassenUpdate() {
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       var remEinheit = Math.max(0, einheiten - usedEinheit);
       var remDuenger = Math.max(0, duengerTotal - usedDuenger);
-      var haMöglich = r.koerner > 0 ? (Math.round(remEinheit * 50000 / r.koerner * 10) / 10).toFixed(1).replace('.', ',') : '—';
-      var haVerwendet = r.koerner > 0 ? (Math.round(usedEinheit * 50000 / r.koerner * 10) / 10).toFixed(1).replace('.', ',') : '—';
-      var haDuengerVerwendet = duengerTotal > 0 ? (Math.round(usedDuenger * r.hektar / duengerTotal * 10) / 10).toFixed(1).replace('.', ',') : '—';
+      var haMöglich = r.koerner > 0 ? fmt(remEinheit * 50000 / r.koerner) : '—';
+      var haVerwendet = r.koerner > 0 ? fmt(usedEinheit * 50000 / r.koerner) : '—';
+      var haDuengerVerwendet = duengerTotal > 0 ? fmt(usedDuenger * r.hektar / duengerTotal) : '—';
       var haText = haMöglich !== '—' ? ' (' + haMöglich + ' ha)' : '';
       var haUsedText = haVerwendet !== '—' ? ' (' + haVerwendet + ' ha)' : '';
       var haDuengerUsedText = haDuengerVerwendet !== '—' ? ' (' + haDuengerVerwendet + ' ha)' : '';
-      document.getElementById('ds_saat_total').textContent = formatEinheit(einheiten);
-      document.getElementById('ds_saat_used').textContent = formatEinheit(usedEinheit) + haUsedText;
-      document.getElementById('ds_saat_remaining').textContent = formatEinheit(remEinheit) + haText;
+      document.getElementById('ds_saat_total').textContent = fmt(einheiten);
+      document.getElementById('ds_saat_used').textContent = fmt(usedEinheit) + haUsedText;
+      document.getElementById('ds_saat_remaining').textContent = fmt(remEinheit) + haText;
       document.getElementById('ds_duenger_total').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
       document.getElementById('ds_duenger_used').textContent = usedDuenger >= 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' + haDuengerUsedText : '—';
       document.getElementById('ds_duenger_remaining').textContent = duengerTotal > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' : '—';
