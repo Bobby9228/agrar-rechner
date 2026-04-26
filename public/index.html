@@ -870,10 +870,11 @@ function fahrgassenUpdate() {
       var remDuenger = Math.max(0, duengerTotal - usedDuenger);
       var sUsedLabel = usedEinheit === 1.0 ? 'Einheit' : 'Einheiten';
       var sRemLabel = remEinheit === 1.0 ? 'Einheit' : 'Einheiten';
-      var hlUsed = totalHektar > 0 ? ' (' + (Math.round(totalHektar * 10) / 10).toFixed(1).replace('.', ',') + ' ha)' : '';
+      var haMöglich = r.koerner > 0 ? (Math.round(remEinheit * 50000 / r.koerner * 10) / 10).toFixed(1).replace('.', ',') : '—';
+      var haText = haMöglich !== '—' ? ' (' + haMöglich + ' ha)' : '';
       document.getElementById('ds_saat_total').textContent = formatEinheit(einheiten);
-      document.getElementById('ds_saat_used').textContent = formatEinheit(usedEinheit) + hlUsed;
-      document.getElementById('ds_saat_remaining').textContent = formatEinheit(remEinheit);
+      document.getElementById('ds_saat_used').textContent = formatEinheit(usedEinheit);
+      document.getElementById('ds_saat_remaining').textContent = formatEinheit(remEinheit) + haText;
       document.getElementById('ds_duenger_total').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
       document.getElementById('ds_duenger_used').textContent = usedDuenger > 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' : '0 kg';
       document.getElementById('ds_duenger_remaining').textContent = duengerTotal > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' : '—';
