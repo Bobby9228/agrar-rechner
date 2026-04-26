@@ -488,15 +488,15 @@
 
       <div class="drill-summary" id="drill_summary" style="display:none">
         <div class="drill-summary-row">
-          <span>Gesamt</span>
+          <span>Einheiten gesamt</span>
           <span id="ds_saat_total">—</span>
         </div>
         <div class="drill-summary-row">
-          <span>Verwendet</span>
+          <span>Einheiten verwendet</span>
           <span id="ds_saat_used">—</span>
         </div>
         <div class="drill-summary-row remaining">
-          <span>Verbleibend</span>
+          <span>Einheiten verbleibend</span>
           <span id="ds_saat_remaining">—</span>
         </div>
         <div class="drill-summary-row">
@@ -511,7 +511,6 @@
           <span>Dünger verbleibend</span>
           <span id="ds_duenger_remaining">—</span>
         </div>
-        <div class="drill-summary-total" id="ds_total_summary">—</div>
       </div>
       <div id="drill_entries"></div>
     </div>
@@ -867,22 +866,18 @@ function fahrgassenUpdate() {
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       var remEinheit = Math.max(0, einheiten - usedEinheit);
       var remDuenger = Math.max(0, duengerTotal - usedDuenger);
-      var sUsedLabel = usedEinheit === 1.0 ? 'Einheit' : 'Einheiten';
-      var sRemLabel = remEinheit === 1.0 ? 'Einheit' : 'Einheiten';
       var haMöglich = r.koerner > 0 ? (Math.round(remEinheit * 50000 / r.koerner * 10) / 10).toFixed(1).replace('.', ',') : '—';
+      var haVerwendet = r.koerner > 0 ? (Math.round(usedEinheit * 50000 / r.koerner * 10) / 10).toFixed(1).replace('.', ',') : '—';
+      var haDuengerVerwendet = duengerTotal > 0 ? (Math.round(usedDuenger * r.hektar / duengerTotal * 10) / 10).toFixed(1).replace('.', ',') : '—';
       var haText = haMöglich !== '—' ? ' (' + haMöglich + ' ha)' : '';
+      var haUsedText = haVerwendet !== '—' ? ' (' + haVerwendet + ' ha)' : '';
+      var haDuengerUsedText = haDuengerVerwendet !== '—' ? ' (' + haDuengerVerwendet + ' ha)' : '';
       document.getElementById('ds_saat_total').textContent = formatEinheit(einheiten);
-      document.getElementById('ds_saat_used').textContent = formatEinheit(usedEinheit);
+      document.getElementById('ds_saat_used').textContent = formatEinheit(usedEinheit) + haUsedText;
       document.getElementById('ds_saat_remaining').textContent = formatEinheit(remEinheit) + haText;
       document.getElementById('ds_duenger_total').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
-      document.getElementById('ds_duenger_used').textContent = usedDuenger > 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' : '0 kg';
+      document.getElementById('ds_duenger_used').textContent = usedDuenger >= 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' + haDuengerUsedText : '—';
       document.getElementById('ds_duenger_remaining').textContent = duengerTotal > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' : '—';
-      var totalEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-      var totalDuengerDrill = r.entries.reduce(function(s, e) { return s + e.duenger || 0; }, 0);
-      var parts = [];
-      parts.push(formatEinheit(totalEinheit));
-      if (totalDuengerDrill > 0) parts.push(totalDuengerDrill.toLocaleString('de-DE') + ' kg Dünger');
-      document.getElementById('ds_total_summary').textContent = r.entries.length > 0 ? parts.join(', ') + ' eingefüllt' : '—';
       var container = document.getElementById('drill_entries');
       document.getElementById('drill_summary').style.display = (einheiten > 0 || duengerTotal > 0 || r.entries.length > 0) ? 'block' : 'none';
       document.getElementById('drill_section').style.display = 'block';
