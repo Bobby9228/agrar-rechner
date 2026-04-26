@@ -2,13 +2,17 @@
 
 ## Hohe Priorität
 
-- [ ] **Mehrere Kunden** — Kunden anlegen und separat speichern (z.B. für Pausen beim Kunden A, Wechsel zu Kunde B, Rückkehr zu A)
+- [ ] **Kundenverwaltung mit Feldbuch** — Tabs für Kunden statt für Felder. Jeder Kunde hat mehrere Felder mit Status (offen/läuft/fertig). Gesamtübersicht: Hektar offen/fertig/fehlend auf einen Blick
 - [ ] **PDF-Export des Protokolls** — Drill-Protokoll als druckbares PDF exportieren (per Browser-Print oder jsPDF)
+- [ ] **WhatsApp-Protokoll-Export** — Ein Button generiert formatierten Text und teilt via `navigator.share()` direkt in WhatsApp (kein PDF, kein Backend)
+- [ ] **Restmengen-Countdown mit Flächen-Prognose** — Live-Prognose: "Noch X Einheiten → reicht für Y ha" vs. aktuell verbraucht/gedrillte Fläche
+- [ ] **Tagesabschluss-Report** — Ein Button generiert strukturierte Tageszusammenfassung aller Felder: Hektar gesamt, Einheiten, Dünger, Laufzeit. Arbeitsbericht, Abrechnungsgrundlage und Dokumentation in einem.
 - [ ] **Daten exportieren/importieren** — JSON-Datei mit allen Protokollen und Reitern exportieren und wieder importieren
 - [ ] **Mehrere Druckerprofile speichern** — Eigene Sorte/Dichte-Kombinationen als Vorlage abspeichern
 
 ## Mittlere Priorität
 
+- [ ] **Variable Einheiten Größe** — Einheiten-Größe (aktuell fix 50.000) als Eingabefeld konfigurierbar machen
 - [ ] **Dark Mode** — Dunkles Farbschema für Abend-/Nachteinsatz
 - [ ] **Dünger pro Reiter individualisieren** — Statt kg/ha eine absolute Düngermenge eingeben
 - [ ] **Sprachauswahl DE/EN** — bilinguale Oberfläche
