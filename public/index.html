@@ -432,6 +432,19 @@
         <div class="unit">üblich: 80.000 – 100.000</div>
         <div class="error-msg" id="err_koerner"></div>
       </div>
+
+      <div class="fahrgassen-toggle">
+        <label for="einheit_groesse_toggle">Einheiten-Größe anpassen</label>
+        <button class="toggle-btn" id="einheit_groesse_toggle" onclick="einheitGroesseToggle()" aria-label="Einheiten-Größe"></button>
+      </div>
+      <div class="fahrgassen-settings" id="einheit_groesse_settings">
+        <div class="field" style="margin-bottom:8px">
+          <label for="koerner_pro_einheit">Körner pro Einheit</label>
+          <input type="text" inputmode="numeric" id="koerner_pro_einheit" placeholder="z.B. 50000" oninput="onInputFormat(this, 'integer')" onchange="einheitGroesseUpdate()" onblur="einheitGroesseUpdate()">
+        </div>
+        <div class="fahrgassen-saved" id="einheit_groesse_saved"></div>
+        <div class="fahrgassen-info">Wie viele Körner eine "Einheit" Saatgut entsprechen (üblich: 50.000).</div>
+      </div>
     </div>
 
     <div class="card">
@@ -529,7 +542,9 @@
       reiter: [{ name: 'Tab 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
       activeReiter: 0,
       fahrgassenEnabled: false,
-      fahrgassenBreite: 0
+      fahrgassenBreite: 0,
+      einheitGroesseEnabled: false,
+      koernerProEinheit: 50000
     };
 
     // --- Storage ---
@@ -716,7 +731,35 @@
       sv();
     }
 
-function fahrgassenUpdate() {
+    // --- Einheiten-Größe ---
+    function einheitGroesseToggle() {
+      var btn = document.getElementById('einheit_groesse_toggle');
+      var settings = document.getElementById('einheit_groesse_settings');
+      state.einheitGroesseEnabled = !state.einheitGroesseEnabled;
+      btn.classList.toggle('active', state.einheitGroesseEnabled);
+      settings.classList.toggle('open', state.einheitGroesseEnabled);
+      if (!state.einheitGroesseEnabled) {
+        document.getElementById('einheit_groesse_saved').textContent = '';
+      }
+      sv();
+    }
+
+    function einheitGroesseUpdate() {
+      var val = parseDE(document.getElementById('koerner_pro_einheit').value);
+      state.koernerProEinheit = (isNaN(val) || val <= 0) ? 50000 : val;
+      var info = '';
+      if (state.koernerProEinheit !== 50000) {
+        info = state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit';
+      }
+      document.getElementById('einheit_groesse_saved').textContent = info;
+      sv();
+      var r = getActiveReiter();
+      if (r.hektar > 0 && r.koerner > 0) {
+        renderResults();
+      }
+    }
+
+    function fahrgassenUpdate() {
       var breite = parseDE(document.getElementById('fahrgassen_breite').value);
       state.fahrgassenBreite = breite;
       if (breite > 0) {
@@ -778,7 +821,7 @@ function fahrgassenUpdate() {
     function getTotalEinheiten() {
       var r = getActiveReiter();
       if (!r.hektar || !r.koerner) return 0;
-      return getKornerGesamt() / 50000;
+      return getKornerGesamt() / state.koernerProEinheit;
     }
 
     function getTotalDuenger() {
@@ -879,8 +922,8 @@ function fahrgassenUpdate() {
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       var remEinheit = Math.max(0, einheiten - usedEinheit);
       var remDuenger = Math.max(0, duengerTotal - usedDuenger);
-      var haMöglich = r.koerner > 0 ? fmt(remEinheit * 50000 / r.koerner) : '—';
-      var haVerwendet = r.koerner > 0 ? fmt(usedEinheit * 50000 / r.koerner) : '—';
+      var haMöglich = r.koerner > 0 ? fmt(remEinheit * state.koernerProEinheit / r.koerner) : '—';
+      var haVerwendet = r.koerner > 0 ? fmt(usedEinheit * state.koernerProEinheit / r.koerner) : '—';
       var haDuengerGesamt = duengerTotal > 0 ? fmt(r.hektar) : '—';
       var haDuengerVerwendet = duengerTotal > 0 ? fmt(usedDuenger * r.hektar / duengerTotal) : '—';
       var haDuengerVerbleibend = duengerTotal > 0 ? fmt(remDuenger * r.hektar / duengerTotal) : '—';
@@ -889,7 +932,7 @@ function fahrgassenUpdate() {
       var haUsedText = haVerwendet !== '—' ? ' (' + haVerwendet + ' ha)' : '';
       var haDuengerUsedText = haDuengerVerwendet !== '—' ? ' (' + haDuengerVerwendet + ' ha)' : '';
       var haDuengerRemText = haDuengerVerbleibend !== '—' ? ' (' + haDuengerVerbleibend + ' ha)' : '';
-      document.getElementById('ds_saat_total').textContent = fmt(einheiten) + ' (' + fmt(einheiten * 50000 / r.koerner) + ' ha)';
+      document.getElementById('ds_saat_total').textContent = fmt(einheiten) + ' (' + fmt(einheiten * state.koernerProEinheit / r.koerner) + ' ha)';
       document.getElementById('ds_saat_used').textContent = fmt(usedEinheit) + haUsedText;
       document.getElementById('ds_saat_remaining').textContent = fmt(remEinheit) + haText;
       document.getElementById('ds_duenger_total').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' + haGesamtText : '—';
@@ -945,7 +988,9 @@ function fahrgassenUpdate() {
         reiter: [{ name: 'Tab 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
         activeReiter: 0,
         fahrgassenEnabled: false,
-        fahrgassenBreite: 0
+        fahrgassenBreite: 0,
+        einheitGroesseEnabled: false,
+        koernerProEinheit: 50000
       };
       document.getElementById('hektar').value = '';
       document.getElementById('koerner').value = '';
@@ -960,6 +1005,10 @@ function fahrgassenUpdate() {
       document.getElementById('fahrgassen_settings').classList.remove('open');
       document.getElementById('fahrgassen_breite').value = '';
       document.getElementById('fahrgassen_saved').textContent = '';
+      document.getElementById('einheit_groesse_toggle').classList.remove('active');
+      document.getElementById('einheit_groesse_settings').classList.remove('open');
+      document.getElementById('koerner_pro_einheit').value = '';
+      document.getElementById('einheit_groesse_saved').textContent = '';
       renderTabs();
       sv();
     }
@@ -975,6 +1024,16 @@ function fahrgassenUpdate() {
         if (state.fahrgassenBreite > 0) {
           document.getElementById('fahrgassen_breite').value = formatDE(state.fahrgassenBreite);
           document.getElementById('fahrgassen_saved').textContent = state.fahrgassenBreite + ' m -> ~' + (1 / state.fahrgassenBreite * 100).toFixed(1) + '% weniger Körner';
+        }
+      }
+      if (state.einheitGroesseEnabled) {
+        document.getElementById('einheit_groesse_toggle').classList.add('active');
+        document.getElementById('einheit_groesse_settings').classList.add('open');
+        if (state.koernerProEinheit > 0) {
+          document.getElementById('koerner_pro_einheit').value = formatDE(state.koernerProEinheit);
+          if (state.koernerProEinheit !== 50000) {
+            document.getElementById('einheit_groesse_saved').textContent = state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit';
+          }
         }
       }
       var r = getActiveReiter();

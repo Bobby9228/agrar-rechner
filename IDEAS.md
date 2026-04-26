@@ -5,7 +5,7 @@
 - [ ] **Kundenverwaltung mit Feldbuch** — Tabs für Kunden statt für Felder. Jeder Kunde hat mehrere Felder mit Status (offen/läuft/fertig). Gesamtübersicht: Hektar offen/fertig/fehlend auf einen Blick
 - [ ] **PDF-Export des Protokolls** — Drill-Protokoll als druckbares PDF exportieren (per Browser-Print oder jsPDF)
 - [ ] **WhatsApp-Protokoll-Export** — Ein Button generiert formatierten Text und teilt via `navigator.share()` direkt in WhatsApp (kein PDF, kein Backend)
-- [ ] **Restmengen-Countdown mit Flächen-Prognose** — Live-Prognose: "Noch X Einheiten → reicht für Y ha" vs. aktuell verbraucht/gedrillte Fläche
+- [x] ~~Restmengen-Countdown mit Flächen-Prognose~~ — Implementiert (drill-summary zeigt verbleibende Einheiten + Hektar-Prognose)
 - [ ] **Tagesabschluss-Report** — Ein Button generiert strukturierte Tageszusammenfassung aller Felder: Hektar gesamt, Einheiten, Dünger, Laufzeit. Arbeitsbericht, Abrechnungsgrundlage und Dokumentation in einem.
 - [ ] **Daten exportieren/importieren** — JSON-Datei mit allen Protokollen und Reitern exportieren und wieder importieren
 - [ ] **Mehrere Druckerprofile speichern** — Eigene Sorte/Dichte-Kombinationen als Vorlage abspeichern
