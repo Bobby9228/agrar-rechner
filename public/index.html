@@ -36,6 +36,22 @@
       font-size: 0.85rem;
       margin-bottom: 24px;
     }
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .header-titles {
+      flex: 1;
+    }
+    .header-titles h1 {
+      margin-bottom: 2px;
+    }
+    .header-titles .subtitle {
+      text-align: left;
+      margin-bottom: 0;
+    }
     .card {
       background: white;
       border-radius: 16px;
@@ -409,12 +425,161 @@
       margin-top: 24px;
       padding-bottom: 8px;
     }
+
+    /* Dashboard */
+    .dashboard-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+    }
+    .dashboard-overlay.open {
+      display: block;
+    }
+    .dashboard-sheet {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-radius: 20px 20px 0 0;
+      max-height: 80vh;
+      overflow-y: auto;
+      z-index: 101;
+      padding: 0 0 max(20px, env(safe-area-inset-bottom));
+    }
+    .dashboard-sheet.open {
+      display: block;
+    }
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 20px 16px;
+      border-bottom: 2px solid #e8f0de;
+      position: sticky;
+      top: 0;
+      background: white;
+      border-radius: 20px 20px 0 0;
+    }
+    .dashboard-header h2 {
+      margin: 0;
+      padding: 0;
+      border: none;
+      font-size: 1.1rem;
+      color: #2d5016;
+    }
+    .dashboard-close {
+      background: #e8f0de;
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: #4a7c23;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .dashboard-close:active {
+      background: #d0e8b8;
+    }
+    .dashboard-open-btn {
+      background: #2d5016;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+    .dashboard-open-btn:active {
+      background: #1e3410;
+    }
+    .dashboard-tabs-header {
+      display: flex;
+      align-items: center;
+      padding: 12px 20px 0;
+    }
+    .dashboard-empty {
+      text-align: center;
+      color: #888;
+      font-size: 0.9rem;
+      padding: 32px 20px;
+    }
+    .dashboard-reiter-card {
+      margin: 12px 20px;
+      background: #fafef5;
+      border: 2px solid #e8f0de;
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .dashboard-reiter-name {
+      font-weight: 700;
+      color: #2d5016;
+      font-size: 0.95rem;
+      margin-bottom: 10px;
+    }
+    .dashboard-reiter-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .dashboard-stat {
+      background: white;
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .dashboard-stat-label {
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 2px;
+    }
+    .dashboard-stat-value {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+    .dashboard-stat-value.remaining {
+      color: #d32f2f;
+    }
+    .dashboard-stat-value.done {
+      color: #4a7c23;
+    }
+    .dashboard-stat-value.na {
+      color: #aaa;
+    }
+    .dashboard-progress-bar {
+      grid-column: 1 / -1;
+      height: 6px;
+      background: #e8f0de;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .dashboard-progress-fill {
+      height: 100%;
+      background: #4a7c23;
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>🌾 Mais-Rechner</h1>
-    <p class="subtitle">Einheiten & Dünger für Aussaat</p>
+    <div class="header-row">
+      <div class="header-titles">
+        <h1>🌾 Mais-Rechner</h1>
+        <p class="subtitle">Einheiten & Dünger für Aussaat</p>
+      </div>
+      <button class="dashboard-open-btn" onclick="openDashboard()">📊 Dashboard</button>
+    </div>
 
     <!-- Tabs -->
     <div class="tab-bar" id="tab_bar"><button class="tab-add" onclick="addReiter()">+ Tab</button></div>
@@ -1048,7 +1213,143 @@
     }
 
     document.addEventListener('DOMContentLoaded', initUI);
+
+    // --- Dashboard ---
+    function openDashboard() {
+      renderDashboard();
+      document.getElementById('dashboard_overlay').classList.add('open');
+      document.getElementById('dashboard_sheet').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeDashboard() {
+      document.getElementById('dashboard_overlay').classList.remove('open');
+      document.getElementById('dashboard_sheet').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function renderDashboard() {
+      var container = document.getElementById('dashboard_content');
+      var reiter = state.reiter;
+      if (reiter.length === 0) {
+        container.innerHTML = '<div class="dashboard-empty">Keine Reiter vorhanden</div>';
+        return;
+      }
+      container.innerHTML = '';
+      reiter.forEach(function(r, idx) {
+        var card = document.createElement('div');
+        card.className = 'dashboard-reiter-card';
+
+        var nameEl = document.createElement('div');
+        nameEl.className = 'dashboard-reiter-name';
+        nameEl.textContent = r.name || ('Reiter ' + (idx + 1));
+        if (idx === state.activeReiter) {
+          nameEl.textContent += ' (aktiv)';
+        }
+        card.appendChild(nameEl);
+
+        var stats = document.createElement('div');
+        stats.className = 'dashboard-reiter-stats';
+
+        // Hektar
+        var haDiv = document.createElement('div');
+        haDiv.className = 'dashboard-stat';
+        var haDivLabel = document.createElement('div');
+        haDivLabel.className = 'dashboard-stat-label';
+        haDivLabel.textContent = 'Hektar';
+        var haDivVal = document.createElement('div');
+        haDivVal.className = 'dashboard-stat-value';
+        haDivVal.textContent = r.hektar > 0 ? fmt(r.hektar) + ' ha' : '—';
+        haDiv.appendChild(haDivLabel);
+        haDiv.appendChild(haDivVal);
+        stats.appendChild(haDiv);
+
+        // Körner/ha
+        var kDiv = document.createElement('div');
+        kDiv.className = 'dashboard-stat';
+        var kDivLabel = document.createElement('div');
+        kDivLabel.className = 'dashboard-stat-label';
+        kDivLabel.textContent = 'Körner/ha';
+        var kDivVal = document.createElement('div');
+        kDivVal.className = 'dashboard-stat-value';
+        kDivVal.textContent = r.koerner > 0 ? r.koerner.toLocaleString('de-DE') : '—';
+        kDiv.appendChild(kDivLabel);
+        kDiv.appendChild(kDivVal);
+        stats.appendChild(kDiv);
+
+        // Calculate progress
+        var einheiten = 0;
+        var usedEinheit = 0;
+        var duengerTotal = 0;
+        var usedDuenger = 0;
+        var pct = 0;
+        var statusClass = 'na';
+        if (r.hektar > 0 && r.koerner > 0) {
+          einheiten = r.hektar * r.koerner / state.koernerProEinheit;
+          usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+          duengerTotal = r.hektar * r.duenger;
+          usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+          var maxUsed = Math.max(
+            einheiten > 0 ? usedEinheit / einheiten : 0,
+            duengerTotal > 0 ? usedDuenger / duengerTotal : 0
+          );
+          pct = Math.min(100, Math.round(maxUsed * 100));
+          if (pct >= 100) statusClass = 'done';
+          else if (pct > 0) statusClass = 'remaining';
+        }
+
+        // Einheiten verbleibend
+        var einheitRem = Math.max(0, einheiten - usedEinheit);
+        var eStat = document.createElement('div');
+        eStat.className = 'dashboard-stat';
+        var eStatLabel = document.createElement('div');
+        eStatLabel.className = 'dashboard-stat-label';
+        eStatLabel.textContent = 'Einheiten verbl.';
+        var eStatVal = document.createElement('div');
+        eStatVal.className = 'dashboard-stat-value ' + statusClass;
+        eStatVal.textContent = r.hektar > 0 && r.koerner > 0 ? fmt(einheitRem) : '—';
+        eStat.appendChild(eStatLabel);
+        eStat.appendChild(eStatVal);
+        stats.appendChild(eStat);
+
+        // Dünger verbleibend
+        var duengerRem = Math.max(0, duengerTotal - usedDuenger);
+        var dStat = document.createElement('div');
+        dStat.className = 'dashboard-stat';
+        var dStatLabel = document.createElement('div');
+        dStatLabel.className = 'dashboard-stat-label';
+        dStatLabel.textContent = 'Dünger verbl.';
+        var dStatVal = document.createElement('div');
+        dStatVal.className = 'dashboard-stat-value ' + statusClass;
+        dStatVal.textContent = duengerTotal > 0 ? duengerRem.toLocaleString('de-DE') + ' kg' : '—';
+        dStat.appendChild(dStatLabel);
+        dStat.appendChild(dStatVal);
+        stats.appendChild(dStat);
+
+        // Progress bar
+        var progressWrap = document.createElement('div');
+        progressWrap.className = 'dashboard-progress-bar';
+        var progressFill = document.createElement('div');
+        progressFill.className = 'dashboard-progress-fill';
+        progressFill.style.width = (r.hektar > 0 && r.koerner > 0) ? pct + '%' : '0%';
+        progressWrap.appendChild(progressFill);
+        stats.appendChild(progressWrap);
+
+        card.appendChild(stats);
+        container.appendChild(card);
+      });
+    }
   </script>
   <div class="version-footer">v0.0.1</div>
+
+  <!-- Dashboard overlay + sheet -->
+  <div class="dashboard-overlay" id="dashboard_overlay" onclick="closeDashboard()"></div>
+  <div class="dashboard-sheet" id="dashboard_sheet">
+    <div class="dashboard-header">
+      <h2>📊 Alle Reiter</h2>
+      <button class="dashboard-close" onclick="closeDashboard()" aria-label="Schließen">✕</button>
+    </div>
+    <div class="dashboard-content" id="dashboard_content"></div>
+  </div>
 </body>
 </html>

@@ -40,6 +40,18 @@ const DOM_TEMPLATE = `<!DOCTYPE html><html><body>
   <div id="fahrgassen_settings"></div>
   <input id="fahrgassen_breite" value="">
   <div id="fahrgassen_saved"></div>
+  <div id="einheit_groesse_toggle"></div>
+  <div id="einheit_groesse_settings"></div>
+  <input id="koerner_pro_einheit" value="">
+  <div id="einheit_groesse_saved"></div>
+  <div class="dashboard-overlay" id="dashboard_overlay"></div>
+  <div class="dashboard-sheet" id="dashboard_sheet">
+    <div class="dashboard-header">
+      <h2>📊 Alle Reiter</h2>
+      <button class="dashboard-close" onclick="closeDashboard()">✕</button>
+    </div>
+    <div class="dashboard-content" id="dashboard_content"></div>
+  </div>
 </body></html>`;
 
 /**
