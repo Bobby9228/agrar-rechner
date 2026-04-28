@@ -188,7 +188,6 @@
       gap: 6px;
       margin-bottom: 12px;
       flex-wrap: wrap;
-      min-height: 36px;
       align-items: center;
     }
     .tab-btn {
@@ -198,98 +197,89 @@
       background: #e8f0de;
       border: 2px solid #c3dfa8;
       border-radius: 8px;
-      padding: 6px 8px;
+      padding: 0;
       font-size: 0.8rem;
       cursor: pointer;
-      transition: background 0.15s;
-      max-width: 120px;
+      transition: background 0.15s, border-color 0.15s;
+      max-width: 130px;
+      min-height: 48px;
+      /* Ensure tap area covers entire button */
+      position: relative;
     }
     .tab-btn.field-tab.active {
       background: #4a7c23;
-      border-color: #4a7c23;
+      border: 3px solid #2d5016;
+      box-shadow: 0 0 0 1px #4a7c23 inset;
       color: white;
     }
     .tab-btn.field-tab:not(.active):hover {
       background: #d0e8b8;
     }
-    .protokoll-tab {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      background: #fff3cd;
-      border: 2px solid #f0c929;
-      border-radius: 8px;
-      padding: 6px 8px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .protokoll-tab.active {
-      background: #e67700;
-      border-color: #e67700;
-      color: white;
-    }
-    .protokoll-tab:hover:not(.active) {
-      background: #ffe066;
-    }
     .tab-name-input {
       background: transparent;
       border: none;
       font-size: 0.8rem;
+      font-weight: 600;
       color: inherit;
-      width: 70px;
-      max-width: 70px;
-      padding: 0;
+      width: 52px;
+      max-width: 52px;
+      padding: 14px 4px 14px 10px;
       outline: none;
-      pointer-events: none;
+      pointer-events: auto;
+      cursor: pointer;
+      min-height: 48px;
     }
     .tab-name-input:focus {
-      pointer-events: auto;
+      cursor: text;
+      background: rgba(255,255,255,0.15);
+    }
+    .tab-btn:not(.active) .tab-name-input:focus {
+      background: #f0f4e8;
     }
     .tab-btn.active .tab-name-input {
       color: white;
     }
-    .tab-name-input:focus {
-      border-bottom: 1px solid currentColor;
-    }
+    /* Remove the separate .tab-edit stift icon — tap input directly to edit */
     .tab-close {
       background: none;
       border: none;
-      font-size: 0.9rem;
       cursor: pointer;
       color: inherit;
-      padding: 0;
-      line-height: 1;
       opacity: 0.6;
       flex-shrink: 0;
+      /* Ensure min 44x44px touch target */
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: opacity 0.15s, background 0.15s;
+      margin: 2px;
     }
     .tab-close:hover {
       opacity: 1;
     }
-    .tab-edit {
-      background: none;
-      border: none;
-      font-size: 0.75rem;
-      cursor: pointer;
-      color: inherit;
-      padding: 0;
-      line-height: 1;
-      opacity: 0.5;
-      flex-shrink: 0;
-    }
-    .tab-edit:hover {
+    .tab-close:active {
+      background: rgba(0,0,0,0.1);
       opacity: 1;
     }
     .tab-add {
       background: #e8f0de;
       border: 2px dashed #b8d4a0;
       border-radius: 8px;
-      padding: 6px 12px;
+      padding: 0 12px;
       font-size: 0.8rem;
       font-weight: 600;
       color: #4a7c23;
       cursor: pointer;
       flex-shrink: 0;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .tab-add:active {
       background: #d0e8b8;
@@ -298,7 +288,6 @@
       display: flex;
       gap: 6px;
       flex-wrap: wrap;
-      min-height: 36px;
       align-items: center;
       flex: 1;
     }
@@ -975,23 +964,12 @@
             else { evt.stopPropagation(); }
           };
 
-          var edit = document.createElement('span');
-          edit.className = 'tab-edit';
-          edit.textContent = '✏️';
-          edit.setAttribute('aria-label', 'Umbenennen');
-          edit.onclick = function(evt) {
-            evt.stopPropagation();
-            input.focus();
-            input.select();
-          };
-
           var close = document.createElement('span');
           close.className = 'tab-close';
           close.setAttribute('onclick', 'event.stopPropagation(); confirmRemoveReiter(' + i + ')');
           close.textContent = '✕';
 
           btn.appendChild(input);
-          btn.appendChild(edit);
           btn.appendChild(close);
           bar.appendChild(btn);
         });
