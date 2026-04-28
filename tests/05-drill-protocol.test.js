@@ -122,28 +122,26 @@ describe('Drill-Protokoll', () => {
   });
 
   describe('drillRemove()', () => {
-    it('removes an entry by index', () => {
-      doc.getElementById('drill_einheit').value = '2';
-      doc.getElementById('drill_duenger').value = '100';
+    it('removes an entry by tab+index', () => {
+      doc.getElementById('drill_einheit').value = '1';
+      doc.getElementById('drill_duenger').value = '0';
       w.drillAdd();
-
-      doc.getElementById('drill_einheit').value = '3';
-      doc.getElementById('drill_duenger').value = '200';
+      doc.getElementById('drill_einheit').value = '2';
       w.drillAdd();
 
       expect(w.getActiveReiter().entries.length).toBe(2);
 
-      w.drillRemove(0);
+      // Remove first entry: tabIdx=0, entryIdx=0
+      w.drillRemove(0, 0);
       expect(w.getActiveReiter().entries.length).toBe(1);
-      expect(w.getActiveReiter().entries[0].einheit).toBe(3);
+      expect(w.getActiveReiter().entries[0].einheit).toBe(2);
     });
 
     it('removes the last entry', () => {
-      doc.getElementById('drill_einheit').value = '2';
-      doc.getElementById('drill_duenger').value = '100';
+      doc.getElementById('drill_einheit').value = '1';
       w.drillAdd();
 
-      w.drillRemove(0);
+      w.drillRemove(0, 0);
       expect(w.getActiveReiter().entries.length).toBe(0);
     });
   });
@@ -189,7 +187,6 @@ describe('Drill-Protokoll', () => {
 
     it('shows total summary in drill_entries after adding entry', () => {
       doc.getElementById('drill_einheit').value = '5';
-      doc.getElementById('drill_hektar').value = '3,5';
       doc.getElementById('drill_duenger').value = '500';
       w.drillAdd();
 

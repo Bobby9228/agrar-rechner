@@ -332,6 +332,16 @@
       justify-content: space-between;
       align-items: center;
       padding: 10px 0;
+    }
+    .drill-entry-tab-header {
+      font-size: 13px;
+      font-weight: bold;
+      color: #666;
+      padding: 8px 0 4px 0;
+      border-bottom: 1px solid #eee;
+      margin-bottom: 4px;
+    }
+    .drill-entry {
       border-bottom: 1px solid #e8f0de;
       font-size: 0.9rem;
     }
@@ -1446,9 +1456,8 @@
       renderResults();
     }
 
-    function drillRemove(idx) {
-      var r = getActiveReiter();
-      r.entries.splice(idx, 1);
+    function drillRemove(tabIdx, entryIdx) {
+      state.reiter[tabIdx].entries.splice(entryIdx, 1);
       sv();
       renderResults();
     }
@@ -1502,7 +1511,9 @@
       document.getElementById('ds_duenger_used').textContent = usedDuenger >= 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' + haDuengerUsedText : '—';
       document.getElementById('ds_duenger_remaining').textContent = duengerTotal > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' + haDuengerRemText : '—';
       var container = document.getElementById('drill_entries');
-      document.getElementById('drill_summary').style.display = (einheiten > 0 || duengerTotal > 0 || r.entries.length > 0) ? 'block' : 'none';
+      // Check if any tab has entries
+      var hasAnyEntries = state.reiter.some(function(r) { return r.entries.length > 0; });
+      document.getElementById('drill_summary').style.display = (einheiten > 0 || duengerTotal > 0 || hasAnyEntries) ? 'block' : 'none';
       // Build total summary text
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
@@ -1511,7 +1522,7 @@
       if (usedDuenger > 0) summaryParts.push(usedDuenger.toLocaleString('de-DE') + ' kg Dünger');
       document.getElementById('ds_total_summary').textContent = summaryParts.join(' + ');
       // NOTE: drill_section visibility is controlled by renderView() — do NOT set here
-      if (r.entries.length === 0) {
+      if (!hasAnyEntries) {
         container.innerHTML = '';
         var empty = document.createElement('div');
         empty.className = 'drill-empty';
@@ -1519,31 +1530,41 @@
         container.appendChild(empty);
       } else {
         container.innerHTML = '';
-        r.entries.forEach(function(e, i) {
-          var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
-          var dl = ds ? ' + ' + ds + ' Dünger' : '';
-          var hl = e.hektar > 0 ? ' @ ' + (Math.round(e.hektar * 10) / 10).toFixed(1).replace('.', ',') + ' ha' : '';
+        state.reiter.forEach(function(r, tabIdx) {
+          if (r.entries.length === 0) return;
 
-          var entry = document.createElement('div');
-          entry.className = 'drill-entry';
+          // Tab header
+          var tabHeader = document.createElement('div');
+          tabHeader.className = 'drill-entry-tab-header';
+          tabHeader.textContent = r.name || ('Tab ' + (tabIdx + 1));
+          container.appendChild(tabHeader);
 
-          var span = document.createElement('span');
-          span.className = 'entry-text';
-          var hash = document.createElement('span');
-          hash.textContent = '#' + (i+1);
-          var txt = (e.time ? e.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(e.einheit) + dl;
-          var txtNode = document.createTextNode(txt + ' ');
-          span.appendChild(hash);
-          span.appendChild(txtNode);
+          r.entries.forEach(function(e, entryIdx) {
+            var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
+            var dl = ds ? ' + ' + ds + ' Dünger' : '';
+            var hl = e.hektar > 0 ? ' @ ' + (Math.round(e.hektar * 10) / 10).toFixed(1).replace('.', ',') + ' ha' : '';
 
-          var btn = document.createElement('button');
-          btn.className = 'btn-danger';
-          btn.textContent = '✕';
-          btn.onclick = function() { drillRemove(i); };
+            var entry = document.createElement('div');
+            entry.className = 'drill-entry';
 
-          entry.appendChild(span);
-          entry.appendChild(btn);
-          container.appendChild(entry);
+            var span = document.createElement('span');
+            span.className = 'entry-text';
+            var hash = document.createElement('span');
+            hash.textContent = '#' + (entryIdx + 1);
+            var txt = (e.time ? e.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(e.einheit) + dl;
+            var txtNode = document.createTextNode(txt + ' ');
+            span.appendChild(hash);
+            span.appendChild(txtNode);
+
+            var btn = document.createElement('button');
+            btn.className = 'btn-danger';
+            btn.textContent = '✕';
+            btn.onclick = (function(ti, ei) { return function() { drillRemove(ti, ei); }; })(tabIdx, entryIdx);
+
+            entry.appendChild(span);
+            entry.appendChild(btn);
+            container.appendChild(entry);
+          });
         });
       }
     }
