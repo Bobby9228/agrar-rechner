@@ -430,16 +430,40 @@
     .drill-tab-row:hover {
       background: rgba(0,0,0,0.03);
     }
-    .drill-tab-row input[type="checkbox"] {
-      width: 20px;
-      height: 20px;
+    .drill-prio-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid #c3dfa8;
+      background: #f0f4e8;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #888;
       cursor: pointer;
-      accent-color: #4a7c23;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      touch-action: manipulation;
+    }
+    .drill-prio-btn.active {
+      background: #4a7c23;
+      border-color: #2d5016;
+      color: white;
+    }
+    .drill-prio-btn:active {
+      transform: scale(0.92);
     }
     .drill-tab-row .drill-tab-name {
       flex: 1;
       font-size: 0.9rem;
       font-weight: 500;
+    }
+    .drill-tab-row .drill-tab-need {
+      font-size: 0.75rem;
+      color: #999;
+      margin-top: 1px;
     }
     .drill-tab-row .drill-tab-values {
       display: flex;
@@ -879,7 +903,7 @@
           </div>
         </div>
         <div class="drill-tabs-section">
-          <div class="drill-tabs-header">Aufteilen auf (nach Hektar):</div>
+          <div class="drill-tabs-header">Aufteilen auf (Klick = Prio: 1 → 2 → 3 → aus):</div>
           <div id="drill_tab_list"></div>
         </div>
         <button class="btn-add" onclick="drillAdd()">+ Einfüllen</button>
@@ -1245,7 +1269,20 @@
     }
 
     function getKornerGesamt() {
+      return getTabKornerGesamt(getActiveReiter());
+    }
+
+    function getTotalEinheiten() {
       var r = getActiveReiter();
+      return getTabTotalEinheiten(r);
+    }
+
+    function getTabTotalEinheiten(r) {
+      if (!r.hektar || !r.koerner) return 0;
+      return getTabKornerGesamt(r) / state.koernerProEinheit;
+    }
+
+    function getTabKornerGesamt(r) {
       if (!r.hektar || !r.koerner) return 0;
       var k = r.hektar * r.koerner;
       if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
@@ -1254,14 +1291,12 @@
       return k;
     }
 
-    function getTotalEinheiten() {
-      var r = getActiveReiter();
-      if (!r.hektar || !r.koerner) return 0;
-      return getKornerGesamt() / state.koernerProEinheit;
-    }
-
     function getTotalDuenger() {
       var r = getActiveReiter();
+      return getTabTotalDuenger(r);
+    }
+
+    function getTabTotalDuenger(r) {
       if (!r.hektar) return 0;
       return r.hektar * r.duenger;
     }
@@ -1316,24 +1351,54 @@
     }
 
     // --- Drill log ---
+    // Priority state for drill tab list
+    var drillPriorities = {};
+
     function renderDrillTabList() {
       var container = document.getElementById('drill_tab_list');
       if (!container) return;
       container.innerHTML = '';
+      drillPriorities = {};
       state.reiter.forEach(function(r, i) {
         var row = document.createElement('div');
         row.className = 'drill-tab-row';
 
-        var cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.id = 'dtl_cb_' + i;
-        cb.checked = (i === state.activeReiter); // Default: only active tab
-        cb.onchange = function() { drillCalcAll(); };
+        // Priority button: click cycles — (off) → 1 → 2 → … → — (off)
+        var prioBtn = document.createElement('button');
+        prioBtn.className = 'drill-prio-btn';
+        prioBtn.id = 'dtl_prio_' + i;
+        prioBtn.textContent = '—';
+        prioBtn.setAttribute('data-prio', '0');
+        prioBtn.onclick = function() {
+          var current = parseInt(prioBtn.getAttribute('data-prio')) || 0;
+          var maxPrio = state.reiter.length;
+          var next = current >= maxPrio ? 0 : current + 1;
+          prioBtn.setAttribute('data-prio', String(next));
+          prioBtn.textContent = next === 0 ? '—' : String(next);
+          prioBtn.classList.toggle('active', next > 0);
+          drillPriorities[i] = next;
+          drillCalcAll();
+        };
 
-        var label = document.createElement('label');
-        label.htmlFor = 'dtl_cb_' + i;
+        // Tab name + remaining need
+        var nameWrap = document.createElement('div');
+        nameWrap.style.flex = '1';
+        nameWrap.style.minWidth = '0';
+        var label = document.createElement('div');
         label.className = 'drill-tab-name';
         label.textContent = r.name || ('Tab ' + (i + 1));
+        nameWrap.appendChild(label);
+        // Show remaining need
+        if (r.hektar > 0 && r.koerner > 0) {
+          var totalE = getTabTotalEinheiten(r);
+          var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+          var remE = Math.max(0, totalE - usedE);
+          var needDiv = document.createElement('div');
+          needDiv.className = 'drill-tab-need';
+          needDiv.id = 'dtl_need_' + i;
+          needDiv.textContent = 'braucht ' + fmt(remE) + ' Einheiten';
+          nameWrap.appendChild(needDiv);
+        }
 
         var values = document.createElement('div');
         values.className = 'drill-tab-values';
@@ -1355,8 +1420,8 @@
         values.appendChild(eInput);
         values.appendChild(dInput);
 
-        row.appendChild(cb);
-        row.appendChild(label);
+        row.appendChild(prioBtn);
+        row.appendChild(nameWrap);
         row.appendChild(values);
         container.appendChild(row);
       });
@@ -1366,28 +1431,45 @@
       var gesamtEinheit = parseDE(document.getElementById('drill_einheit').value) || 0;
       var gesamtDuenger = parseDE(document.getElementById('drill_duenger').value) || 0;
 
-      // Calculate total hectares of selected tabs
-      var selectedTotalHa = 0;
-      var selectedIndices = [];
+      // Collect tabs with priority > 0, sort by priority descending
+      var prioritized = [];
       state.reiter.forEach(function(r, i) {
-        var cb = document.getElementById('dtl_cb_' + i);
-        if (cb && cb.checked) {
-          selectedTotalHa += r.hektar || 0;
-          selectedIndices.push(i);
+        var prio = drillPriorities[i] || 0;
+        if (prio > 0) {
+          prioritized.push({ idx: i, prio: prio, reiter: r });
         }
       });
+      prioritized.sort(function(a, b) { return b.prio - a.prio; });
 
-      // Distribute by hectare ratio
+      // Distribute: highest priority first, give what they need, remainder to next
+      var remEinheit = gesamtEinheit;
+      var remDuenger = gesamtDuenger;
+      var distribution = {};
+      prioritized.forEach(function(item) {
+        var r = item.reiter;
+        var totalE = getTabTotalEinheiten(r);
+        var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+        var needE = Math.max(0, totalE - usedE);
+
+        var totalD = getTabTotalDuenger(r);
+        var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+        var needD = Math.max(0, totalD - usedD);
+
+        var giveE = Math.min(needE, remEinheit);
+        var giveD = Math.min(needD, remDuenger);
+        distribution[item.idx] = { einheit: giveE, duenger: giveD };
+        remEinheit -= giveE;
+        remDuenger -= giveD;
+      });
+
+      // Write values to inputs
       state.reiter.forEach(function(r, i) {
         var eInput = document.getElementById('dtl_e_' + i);
         var dInput = document.getElementById('dtl_d_' + i);
         if (!eInput || !dInput) return;
-
-        var cb = document.getElementById('dtl_cb_' + i);
-        if (cb && cb.checked && selectedTotalHa > 0 && r.hektar > 0) {
-          var ratio = r.hektar / selectedTotalHa;
-          eInput.value = fmt(gesamtEinheit * ratio);
-          dInput.value = fmt(gesamtDuenger * ratio);
+        if (distribution[i]) {
+          eInput.value = distribution[i].einheit > 0 ? fmt(distribution[i].einheit) : '';
+          dInput.value = distribution[i].duenger > 0 ? fmt(distribution[i].duenger) : '';
         } else {
           eInput.value = '';
           dInput.value = '';
@@ -1400,7 +1482,7 @@
       var gesamtDuenger = parseDE(document.getElementById('drill_duenger').value) || 0;
 
       // If no tab list rendered (e.g. in tests), fall back to single-tab mode
-      var hasTabList = document.getElementById('dtl_cb_0') !== null;
+      var hasTabList = document.getElementById('dtl_prio_0') !== null;
 
       if (!hasTabList) {
         // Single-tab fallback: add entry directly to active tab
@@ -1422,8 +1504,8 @@
 
       var addedAny = false;
       state.reiter.forEach(function(r, i) {
-        var cb = document.getElementById('dtl_cb_' + i);
-        if (!cb || !cb.checked) return;
+        var prio = drillPriorities[i] || 0;
+        if (prio <= 0) return;
 
         var eInput = document.getElementById('dtl_e_' + i);
         var dInput = document.getElementById('dtl_d_' + i);
@@ -1452,6 +1534,10 @@
         if (eInput) eInput.value = '';
         if (dInput) dInput.value = '';
       });
+
+      // Reset priorities after fill
+      drillPriorities = {};
+      renderDrillTabList();
 
       sv();
       renderResults();
