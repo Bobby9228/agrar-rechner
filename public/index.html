@@ -1577,36 +1577,36 @@
           miniResult.classList.add('mini-result-empty');
         }
       }
-      var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-      var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-      var remEinheit = Math.max(0, einheiten - usedEinheit);
-      var remDuenger = Math.max(0, duengerTotal - usedDuenger);
-      var haMöglich = r.koerner > 0 ? fmt(remEinheit * state.koernerProEinheit / r.koerner) : '—';
-      var haVerwendet = r.koerner > 0 ? fmt(usedEinheit * state.koernerProEinheit / r.koerner) : '—';
-      var haDuengerGesamt = duengerTotal > 0 ? fmt(r.hektar) : '—';
-      var haDuengerVerwendet = duengerTotal > 0 ? fmt(usedDuenger * r.hektar / duengerTotal) : '—';
-      var haDuengerVerbleibend = duengerTotal > 0 ? fmt(remDuenger * r.hektar / duengerTotal) : '—';
-      var haText = haMöglich !== '—' ? ' (' + haMöglich + ' ha)' : '';
-      var haGesamtText = haDuengerGesamt !== '—' ? ' (' + haDuengerGesamt + ' ha)' : '';
-      var haUsedText = haVerwendet !== '—' ? ' (' + haVerwendet + ' ha)' : '';
-      var haDuengerUsedText = haDuengerVerwendet !== '—' ? ' (' + haDuengerVerwendet + ' ha)' : '';
-      var haDuengerRemText = haDuengerVerbleibend !== '—' ? ' (' + haDuengerVerbleibend + ' ha)' : '';
-      document.getElementById('ds_saat_total').textContent = fmt(einheiten) + ' (' + fmt(einheiten * state.koernerProEinheit / r.koerner) + ' ha)';
-      document.getElementById('ds_saat_used').textContent = fmt(usedEinheit) + haUsedText;
-      document.getElementById('ds_saat_remaining').textContent = fmt(remEinheit) + haText;
-      document.getElementById('ds_duenger_total').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' + haGesamtText : '—';
-      document.getElementById('ds_duenger_used').textContent = usedDuenger >= 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' + haDuengerUsedText : '—';
-      document.getElementById('ds_duenger_remaining').textContent = duengerTotal > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' + haDuengerRemText : '—';
+      // --- Drill summary: aggregate across ALL tabs ---
+      var allEinheitenTotal = 0, allEinheitenUsed = 0;
+      var allDuengerTotal = 0, allDuengerUsed = 0;
+      state.reiter.forEach(function(tab) {
+        var tabE = getTabTotalEinheiten(tab);
+        var tabD = getTabTotalDuenger(tab);
+        var tabUsedE = tab.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+        var tabUsedD = tab.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+        allEinheitenTotal += tabE;
+        allEinheitenUsed += tabUsedE;
+        allDuengerTotal += tabD;
+        allDuengerUsed += tabUsedD;
+      });
+      var allEinheitenRem = Math.max(0, allEinheitenTotal - allEinheitenUsed);
+      var allDuengerRem = Math.max(0, allDuengerTotal - allDuengerUsed);
+      document.getElementById('ds_saat_total').textContent = fmt(allEinheitenTotal) + ' Einheiten';
+      document.getElementById('ds_saat_used').textContent = fmt(allEinheitenUsed) + ' Einheiten';
+      document.getElementById('ds_saat_remaining').textContent = fmt(allEinheitenRem) + ' Einheiten';
+      document.getElementById('ds_duenger_total').textContent = allDuengerTotal > 0 ? allDuengerTotal.toLocaleString('de-DE') + ' kg' : '—';
+      document.getElementById('ds_duenger_used').textContent = allDuengerUsed > 0 ? allDuengerUsed.toLocaleString('de-DE') + ' kg' : '—';
+      document.getElementById('ds_duenger_remaining').textContent = allDuengerTotal > 0 ? allDuengerRem.toLocaleString('de-DE') + ' kg' : '—';
       var container = document.getElementById('drill_entries');
       // Check if any tab has entries
       var hasAnyEntries = state.reiter.some(function(r) { return r.entries.length > 0; });
-      document.getElementById('drill_summary').style.display = (einheiten > 0 || duengerTotal > 0 || hasAnyEntries) ? 'block' : 'none';
+      var hasAnyData = allEinheitenTotal > 0 || allDuengerTotal > 0;
+      document.getElementById('drill_summary').style.display = (hasAnyData || hasAnyEntries) ? 'block' : 'none';
       // Build total summary text
-      var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-      var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       var summaryParts = [];
-      if (usedEinheit > 0) summaryParts.push(formatEinheit(usedEinheit) + ' Einheiten');
-      if (usedDuenger > 0) summaryParts.push(usedDuenger.toLocaleString('de-DE') + ' kg Dünger');
+      if (allEinheitenUsed > 0) summaryParts.push(formatEinheit(allEinheitenUsed) + ' Einheiten');
+      if (allDuengerUsed > 0) summaryParts.push(allDuengerUsed.toLocaleString('de-DE') + ' kg Dünger');
       document.getElementById('ds_total_summary').textContent = summaryParts.join(' + ');
       // NOTE: drill_section visibility is controlled by renderView() — do NOT set here
       if (!hasAnyEntries) {

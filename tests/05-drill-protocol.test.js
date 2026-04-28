@@ -152,13 +152,13 @@ describe('Drill-Protokoll', () => {
       doc.getElementById('drill_duenger').value = '500';
       w.drillAdd();
 
-      // Check drill summary
-      // Total einheiten = 18 (10ha * 90000 / 50000) — ha shown in brackets
-      expect(doc.getElementById('ds_saat_total').textContent).toBe('18,0 (10,0 ha)');
+      // Check drill summary (aggregated across all tabs)
+      // Total einheiten = 18 (10ha * 90000 / 50000)
+      expect(doc.getElementById('ds_saat_total').textContent).toBe('18,0 Einheiten');
       // Used einheit = 5
       expect(doc.getElementById('ds_saat_used').textContent).toContain('5,0');
-      // Remaining = 18 - 5 = 13, ha in brackets
-      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('13,0 (7,2 ha)');
+      // Remaining = 18 - 5 = 13
+      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('13,0 Einheiten');
       // Duenger total = 1500
       expect(doc.getElementById('ds_duenger_total').textContent).toContain('1.500');
       // Duenger used = 500
@@ -209,7 +209,7 @@ describe('Drill-Protokoll', () => {
 
       const rem = doc.getElementById('ds_saat_remaining').textContent;
       // Math.max(0, 18 - 20) = 0
-      expect(rem).toBe('0,0 (0,0 ha)');
+      expect(rem).toBe('0,0 Einheiten');
     });
 
     it('remaining duenger is clamped to 0 (no negative)', () => {
