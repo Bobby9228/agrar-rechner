@@ -480,11 +480,60 @@
       margin-top: 8px;
       text-align: center;
     }
+    /* Sticky footer */
+    .app-layout {
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - max(20px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom)));
+    }
+    .scrollable-content {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .sticky-footer {
+      position: sticky;
+      top: 100%;
+      background: white;
+      border-top: 2px solid #e8f0de;
+      padding: 12px 0 max(12px, env(safe-area-inset-bottom));
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+      z-index: 10;
+    }
+    .mini-result {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+      color: #2d5016;
+      font-weight: 600;
+      padding: 0 4px 8px;
+      min-height: 28px;
+    }
+    .mini-result-empty {
+      color: #aaa;
+      font-weight: 400;
+    }
+    .mini-result .mr-einheiten { color: #2d5016; }
+    .mini-result .mr-duenger { color: #4a7c23; font-size: 0.85rem; }
+    .footer-btn-row {
+      display: flex;
+      gap: 8px;
+    }
+    .footer-btn-row .btn {
+      flex: 1;
+    }
+    .footer-btn-row .btn-secondary {
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 110px;
+    }
+
     .version-footer {
       text-align: center;
       color: #888;
       font-size: 0.75rem;
-      margin-top: 24px;
+      margin-top: 16px;
       padding-bottom: 8px;
     }
 
@@ -665,6 +714,8 @@
   </style>
 </head>
 <body>
+  <div class="app-layout">
+    <div class="scrollable-content">
   <div class="container">
     <div class="header-row">
       <div class="header-titles">
@@ -728,10 +779,7 @@
         <div class="fahrgassen-saved" id="fahrgassen_saved"></div>
         <div class="fahrgassen-info">Die Körnerzahl wird um ca. 1/Fahrgassenbreite × 100 % reduziert.</div>
       </div>
-    </div>
-
-    <button class="btn" onclick="berechne()" id="berechnen_btn">Berechnen</button>
-    <button class="btn btn-secondary" onclick="confirmResetAll()" id="reset_btn">Zurücksetzen</button>
+    </div><!-- Dünger card -->
 
     <div class="card result" id="results" style="display:none">
       <h2>📊 Ergebnis</h2>
@@ -798,7 +846,23 @@
       </div>
       <div id="drill_entries"></div>
     </div>
-  </div>
+    </div><!-- end .container -->
+
+    <!-- Sticky footer -->
+    <div class="sticky-footer" id="sticky_footer">
+      <div class="container">
+        <div id="mini_result" class="mini-result mini-result-empty">
+          Bitte Hektar und Körner eingeben
+        </div>
+        <div class="footer-btn-row">
+          <button class="btn" onclick="berechne()" id="berechnen_btn">Berechnen</button>
+          <button class="btn btn-secondary" onclick="confirmResetAll()" id="reset_btn">Zurücksetzen</button>
+        </div>
+      </div>
+    </div>
+
+    </div><!-- end .scrollable-content -->
+  </div><!-- end .app-layout -->
 
   <script>
     // --- State ---
@@ -1010,6 +1074,9 @@
       if (berechnenBtn) berechnenBtn.style.display = isProtokoll ? 'none' : '';
       var resetBtn = document.getElementById('reset_btn');
       if (resetBtn) resetBtn.style.display = isProtokoll ? 'none' : '';
+
+      var stickyFooter = document.getElementById('sticky_footer');
+      if (stickyFooter) stickyFooter.style.display = isProtokoll ? 'none' : '';
     }
 
     function renameReiter(idx, name) {
@@ -1217,6 +1284,21 @@
         document.getElementById('r_info').textContent = duengerTotal.toLocaleString('de-DE') + ' kg Dünger, ' + formatEinheit(einheiten) + ' Saat';
       } else {
         document.getElementById('r_info').textContent = formatEinheit(einheiten) + ' Saat (ohne Dünger)';
+      }
+
+      // Update mini-result in sticky footer
+      var miniResult = document.getElementById('mini_result');
+      if (miniResult) {
+        if (r.hektar > 0 && r.koerner > 0) {
+          var parts = [formatEinheit(einheiten)];
+          if (duengerTotal > 0) parts.push(duengerTotal.toLocaleString('de-DE') + ' kg');
+          miniResult.innerHTML = '<span class="mr-einheiten">' + parts[0] + '</span>' +
+            (parts[1] ? ' <span class="mr-duenger">| ' + parts[1] + '</span>' : '');
+          miniResult.classList.remove('mini-result-empty');
+        } else {
+          miniResult.textContent = 'Bitte Hektar und Körner eingeben';
+          miniResult.classList.add('mini-result-empty');
+        }
       }
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
