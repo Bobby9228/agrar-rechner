@@ -322,8 +322,8 @@ describe('Blind spots — renderResults with duenger-only entry (einheit=0)', ()
     w.renderResults();
 
     const summary = doc.getElementById('ds_total_summary').textContent;
-    expect(summary).toContain('0,0 Einheiten');
     expect(summary).toContain('500 kg Dünger');
+    expect(summary).not.toContain('Einheiten');
     expect(summary).not.toContain('ha');
   });
 });

@@ -388,6 +388,67 @@
       flex: 1;
       margin-bottom: 8px;
     }
+    .drill-machine-row {
+      display: flex;
+      gap: 8px;
+    }
+    .drill-machine-row .field {
+      flex: 1;
+      margin-bottom: 8px;
+    }
+    .drill-tabs-section {
+      margin: 12px 0;
+      border: 1px solid #c3dfa8;
+      border-radius: 8px;
+      padding: 8px;
+      background: #f8faf4;
+    }
+    .drill-tabs-header {
+      font-size: 0.85rem;
+      color: #555;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .drill-tab-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      padding: 4px;
+      border-radius: 6px;
+    }
+    .drill-tab-row:hover {
+      background: rgba(0,0,0,0.03);
+    }
+    .drill-tab-row input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      accent-color: #4a7c23;
+    }
+    .drill-tab-row .drill-tab-name {
+      flex: 1;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .drill-tab-row .drill-tab-values {
+      display: flex;
+      gap: 6px;
+      font-size: 0.85rem;
+      color: #666;
+    }
+    .drill-tab-row .drill-tab-values input {
+      width: 55px;
+      padding: 4px 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      text-align: right;
+    }
+    .drill-tab-row .drill-tab-values input:focus {
+      border-color: #4a7c23;
+      outline: none;
+    }
     .btn-add {
       width: 100%;
       padding: 12px;
@@ -797,23 +858,24 @@
     <div class="card" id="drill_section" style="display:none">
       <h2>🔧 Drill-Protokoll</h2>
       <div id="drill_mask">
-        <div class="inline-row">
+        <div class="drill-machine-row">
           <div class="field">
-            <label for="drill_einheit">Einheiten eingefüllt</label>
-            <input type="text" inputmode="decimal" id="drill_einheit" placeholder="z.B. 1,5" oninput="onInputFormat(this, 'decimal')">
+            <label for="drill_einheit">Maschine eingefüllt (Einheiten)</label>
+            <input type="text" inputmode="decimal" id="drill_einheit" placeholder="z.B. 4" oninput="drillCalcAll(); onInputFormat(this, 'decimal')">
           </div>
           <div class="field">
-            <label for="drill_hektar">Hektar-Zähler</label>
-            <input type="text" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal')">
+            <label for="drill_duenger">Maschine eingefüllt (Dünger kg)</label>
+            <input type="text" inputmode="decimal" id="drill_duenger" placeholder="z.B. 200" oninput="drillCalcAll(); onInputFormat(this, 'decimal')">
           </div>
         </div>
-        <div class="field">
-          <label for="drill_duenger">Dünger (kg)</label>
-          <input type="text" inputmode="decimal" id="drill_duenger" placeholder="z.B. 500" oninput="onInputFormat(this, 'decimal')">
+        <div class="drill-tabs-section">
+          <div class="drill-tabs-header">Aufteilen auf (nach Hektar):</div>
+          <div id="drill_tab_list"></div>
         </div>
         <button class="btn-add" onclick="drillAdd()">+ Einfüllen</button>
       </div>
       <div id="drill_summary" class="drill-summary" style="display:none">
+        <div id="ds_total_summary" class="drill-total-summary" style="margin-bottom:8px;font-weight:bold;"></div>
         <div class="drill-summary-row">
           <span>Einheiten gesamt</span>
           <span id="ds_saat_total">—</span>
@@ -1039,6 +1101,7 @@
       } else {
         syncStateFromInputs();
         state.activeView = 'protokoll';
+        renderDrillTabList();
       }
       renderTabs();
       sv();
@@ -1242,25 +1305,145 @@
     }
 
     // --- Drill log ---
+    function renderDrillTabList() {
+      var container = document.getElementById('drill_tab_list');
+      if (!container) return;
+      container.innerHTML = '';
+      state.reiter.forEach(function(r, i) {
+        var row = document.createElement('div');
+        row.className = 'drill-tab-row';
+
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.id = 'dtl_cb_' + i;
+        cb.checked = (i === state.activeReiter); // Default: only active tab
+        cb.onchange = function() { drillCalcAll(); };
+
+        var label = document.createElement('label');
+        label.htmlFor = 'dtl_cb_' + i;
+        label.className = 'drill-tab-name';
+        label.textContent = r.name || ('Tab ' + (i + 1));
+
+        var values = document.createElement('div');
+        values.className = 'drill-tab-values';
+
+        var eInput = document.createElement('input');
+        eInput.type = 'text';
+        eInput.id = 'dtl_e_' + i;
+        eInput.placeholder = 'Einheiten';
+        eInput.inputMode = 'decimal';
+        eInput.oninput = function() { onInputFormat(eInput, 'decimal'); };
+
+        var dInput = document.createElement('input');
+        dInput.type = 'text';
+        dInput.id = 'dtl_d_' + i;
+        dInput.placeholder = 'kg Dünger';
+        dInput.inputMode = 'decimal';
+        dInput.oninput = function() { onInputFormat(dInput, 'decimal'); };
+
+        values.appendChild(eInput);
+        values.appendChild(dInput);
+
+        row.appendChild(cb);
+        row.appendChild(label);
+        row.appendChild(values);
+        container.appendChild(row);
+      });
+    }
+
+    function drillCalcAll() {
+      var gesamtEinheit = parseDE(document.getElementById('drill_einheit').value) || 0;
+      var gesamtDuenger = parseDE(document.getElementById('drill_duenger').value) || 0;
+
+      // Calculate total hectares of selected tabs
+      var selectedTotalHa = 0;
+      var selectedIndices = [];
+      state.reiter.forEach(function(r, i) {
+        var cb = document.getElementById('dtl_cb_' + i);
+        if (cb && cb.checked) {
+          selectedTotalHa += r.hektar || 0;
+          selectedIndices.push(i);
+        }
+      });
+
+      // Distribute by hectare ratio
+      state.reiter.forEach(function(r, i) {
+        var eInput = document.getElementById('dtl_e_' + i);
+        var dInput = document.getElementById('dtl_d_' + i);
+        if (!eInput || !dInput) return;
+
+        var cb = document.getElementById('dtl_cb_' + i);
+        if (cb && cb.checked && selectedTotalHa > 0 && r.hektar > 0) {
+          var ratio = r.hektar / selectedTotalHa;
+          eInput.value = fmt(gesamtEinheit * ratio);
+          dInput.value = fmt(gesamtDuenger * ratio);
+        } else {
+          eInput.value = '';
+          dInput.value = '';
+        }
+      });
+    }
+
     function drillAdd() {
-      var r = getActiveReiter();
-      if (!r.hektar || !r.koerner) return;
-      var einheitEl = document.getElementById('drill_einheit');
-      var hektarEl = document.getElementById('drill_hektar');
-      var duengerEl = document.getElementById('drill_duenger');
-      var einheit = parseDE(einheitEl.value) || 0;
-      var hektar = parseDE(hektarEl.value) || 0;
-      var duenger = parseDE(duengerEl.value) || 0;
-      if (einheit <= 0 && duenger <= 0) return;
-      r.entries.push({ einheit: einheit, hektar: hektar, duenger: duenger, time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) });
-      einheitEl.value = '';
-      hektarEl.value = '';
-      duengerEl.value = '';
+      var gesamtEinheit = parseDE(document.getElementById('drill_einheit').value) || 0;
+      var gesamtDuenger = parseDE(document.getElementById('drill_duenger').value) || 0;
+
+      // If no tab list rendered (e.g. in tests), fall back to single-tab mode
+      var hasTabList = document.getElementById('dtl_cb_0') !== null;
+
+      if (!hasTabList) {
+        // Single-tab fallback: add entry directly to active tab
+        var r = getActiveReiter();
+        if (!r.hektar || !r.koerner) return;
+        if (gesamtEinheit <= 0 && gesamtDuenger <= 0) return;
+        r.entries.push({
+          einheit: gesamtEinheit,
+          hektar: 0,
+          duenger: gesamtDuenger,
+          time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+        });
+        document.getElementById('drill_einheit').value = '';
+        document.getElementById('drill_duenger').value = '';
+        sv();
+        renderResults();
+        return;
+      }
+
+      var addedAny = false;
+      state.reiter.forEach(function(r, i) {
+        var cb = document.getElementById('dtl_cb_' + i);
+        if (!cb || !cb.checked) return;
+
+        var eInput = document.getElementById('dtl_e_' + i);
+        var dInput = document.getElementById('dtl_d_' + i);
+        var einheit = parseDE(eInput ? eInput.value : '') || 0;
+        var duenger = parseDE(dInput ? dInput.value : '') || 0;
+
+        if (einheit > 0 || duenger > 0) {
+          r.entries.push({
+            einheit: einheit,
+            hektar: 0,
+            duenger: duenger,
+            time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+          });
+          addedAny = true;
+        }
+      });
+
+      if (!addedAny) return;
+
+      // Clear inputs
+      document.getElementById('drill_einheit').value = '';
+      document.getElementById('drill_duenger').value = '';
+      state.reiter.forEach(function(r, i) {
+        var eInput = document.getElementById('dtl_e_' + i);
+        var dInput = document.getElementById('dtl_d_' + i);
+        if (eInput) eInput.value = '';
+        if (dInput) dInput.value = '';
+      });
+
       sv();
       renderResults();
-      // Ensure drill_section is visible when there are entries
-      var drillSection = document.getElementById('drill_section');
-      if (drillSection) drillSection.style.display = 'block';
     }
 
     function drillRemove(idx) {
@@ -1320,6 +1503,13 @@
       document.getElementById('ds_duenger_remaining').textContent = duengerTotal > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' + haDuengerRemText : '—';
       var container = document.getElementById('drill_entries');
       document.getElementById('drill_summary').style.display = (einheiten > 0 || duengerTotal > 0 || r.entries.length > 0) ? 'block' : 'none';
+      // Build total summary text
+      var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+      var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+      var summaryParts = [];
+      if (usedEinheit > 0) summaryParts.push(formatEinheit(usedEinheit) + ' Einheiten');
+      if (usedDuenger > 0) summaryParts.push(usedDuenger.toLocaleString('de-DE') + ' kg Dünger');
+      document.getElementById('ds_total_summary').textContent = summaryParts.join(' + ');
       // NOTE: drill_section visibility is controlled by renderView() — do NOT set here
       if (r.entries.length === 0) {
         container.innerHTML = '';
