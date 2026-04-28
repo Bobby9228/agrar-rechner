@@ -1249,6 +1249,9 @@
       duengerEl.value = '';
       sv();
       renderResults();
+      // Ensure drill_section is visible when there are entries
+      var drillSection = document.getElementById('drill_section');
+      if (drillSection) drillSection.style.display = 'block';
     }
 
     function drillRemove(idx) {
