@@ -231,6 +231,17 @@ describe('Tab management', () => {
       expect(closes.length).toBe(2);
     });
 
+    it('tab name input is visible and editable with only 1 tab', () => {
+      w.renderTabs();
+      const inputs = doc.querySelectorAll('.tab-name-input');
+      expect(inputs.length).toBe(1);
+      expect(inputs[0].value).toBe('Tab 1');
+      // Simulate renaming
+      inputs[0].value = 'Mein Feld';
+      inputs[0].onblur();
+      expect(w.state.reiter[0].name).toBe('Mein Feld');
+    });
+
     it('tab name input shows correct name', () => {
       w.addReiter();
       w.renameReiter(1, 'Test');
