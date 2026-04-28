@@ -648,9 +648,12 @@
       <div class="tab-bar-left" id="tab_bar_left"><button class="tab-add" onclick="addReiter()">+ Tab</button></div>
       <div class="tab-separator"></div>
       <button class="protokoll-tab" id="protokoll_tab_btn" onclick="switchToProtokoll()">🔧 Protokoll</button>
+      <div class="tab-separator"></div>
+      <button class="btn" onclick="berechne()" id="berechnen_btn">Berechnen</button>
+      <button class="btn btn-secondary" onclick="confirmResetAll()" id="reset_btn">Zurücksetzen</button>
     </div>
 
-    <div class="card">
+    <div class="card card-input" id="card_input">
       <h2>📐 Fläche & Aussaatstärke</h2>
       <div class="field">
         <label for="hektar">Hektar</label>
@@ -699,9 +702,6 @@
       </div>
     </div>
 
-    <button class="btn" onclick="berechne()">Berechnen</button>
-    <button class="btn btn-secondary" onclick="confirmResetAll()">Zurücksetzen</button>
-
     <div class="card result" id="results" style="display:none">
       <h2>📊 Ergebnis</h2>
       <div class="result-row">
@@ -721,21 +721,23 @@
 
     <div class="card" id="drill_section" style="display:none">
       <h2>🔧 Drill-Protokoll</h2>
-      <div class="inline-row">
-        <div class="field">
-          <label for="drill_einheit">Einheiten eingefüllt</label>
-          <input type="text" inputmode="decimal" id="drill_einheit" placeholder="z.B. 1,5" oninput="onInputFormat(this, 'decimal')">
+      <div id="drill_mask">
+        <div class="inline-row">
+          <div class="field">
+            <label for="drill_einheit">Einheiten eingefüllt</label>
+            <input type="text" inputmode="decimal" id="drill_einheit" placeholder="z.B. 1,5" oninput="onInputFormat(this, 'decimal')">
+          </div>
+          <div class="field">
+            <label for="drill_hektar">Hektar-Zähler</label>
+            <input type="text" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal')">
+          </div>
         </div>
         <div class="field">
-          <label for="drill_hektar">Hektar-Zähler</label>
-          <input type="text" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal')">
+          <label for="drill_duenger">Dünger (kg)</label>
+          <input type="text" inputmode="decimal" id="drill_duenger" placeholder="z.B. 500" oninput="onInputFormat(this, 'decimal')">
         </div>
+        <button class="btn-add" onclick="drillAdd()">+ Einfüllen</button>
       </div>
-      <div class="field">
-        <label for="drill_duenger">Dünger (kg)</label>
-        <input type="text" inputmode="decimal" id="drill_duenger" placeholder="z.B. 500" oninput="onInputFormat(this, 'decimal')">
-      </div>
-      <button class="btn-add" onclick="drillAdd()">+ Einfüllen</button>
 
       <div class="drill-summary" id="drill_summary" style="display:none">
         <div class="drill-summary-row">
@@ -969,6 +971,14 @@
 
       var drillSection = document.getElementById('drill_section');
       if (drillSection) drillSection.style.display = (hasData && !isProtokoll) ? 'block' : 'none';
+
+      var drillMask = document.getElementById('drill_mask');
+      if (drillMask) drillMask.style.display = isProtokoll ? '' : 'none';
+
+      var berechnenBtn = document.getElementById('berechnen_btn');
+      if (berechnenBtn) berechnenBtn.style.display = isProtokoll ? 'none' : '';
+      var resetBtn = document.getElementById('reset_btn');
+      if (resetBtn) resetBtn.style.display = isProtokoll ? 'none' : '';
     }
 
     function renameReiter(idx, name) {
@@ -1278,6 +1288,7 @@
       lv();
       syncInputsFromState();
       renderTabs();
+      renderView();
       if (state.fahrgassenEnabled) {
         document.getElementById('fahrgassen_toggle').classList.add('active');
         document.getElementById('fahrgassen_settings').classList.add('open');
