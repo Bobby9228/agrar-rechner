@@ -943,37 +943,38 @@
     function renderTabs() {
       var bar = document.getElementById('tab_bar_left');
       bar.innerHTML = '';
-      if (state.reiter.length > 1) {
-        state.reiter.forEach(function(r, i) {
-          var isActive = i === state.activeReiter && state.activeView !== 'protokoll';
-          var btn = document.createElement('button');
-          btn.className = 'tab-btn field-tab' + (isActive ? ' active' : '');
-          btn.setAttribute('aria-label', 'Tab ' + (i+1));
-          btn.onclick = function() { switchReiter(i); };
+      state.reiter.forEach(function(r, i) {
+        var isActive = i === state.activeReiter && state.activeView !== 'protokoll';
+        var btn = document.createElement('button');
+        btn.className = 'tab-btn field-tab' + (isActive ? ' active' : '');
+        btn.setAttribute('aria-label', 'Tab ' + (i+1));
+        btn.onclick = function() { switchReiter(i); };
 
-          var input = document.createElement('input');
-          input.className = 'tab-name-input';
-          input.type = 'text';
-          input.value = r.name;
-          input.setAttribute('aria-label', 'Tab-Name');
-          input.onfocus = function() { this.select(); };
-          input.onchange = function() { renameReiter(i, input.value); };
-          input.onblur = function() { renameReiter(i, input.value); };
-          input.onkeydown = function(evt) {
-            if (evt.key === 'Enter') { input.blur(); }
-            else { evt.stopPropagation(); }
-          };
+        var input = document.createElement('input');
+        input.className = 'tab-name-input';
+        input.type = 'text';
+        input.value = r.name;
+        input.setAttribute('aria-label', 'Tab-Name');
+        input.onfocus = function() { this.select(); };
+        input.onchange = function() { renameReiter(i, input.value); };
+        input.onblur = function() { renameReiter(i, input.value); };
+        input.onkeydown = function(evt) {
+          if (evt.key === 'Enter') { input.blur(); }
+          else { evt.stopPropagation(); }
+        };
 
+        // Only show close button if more than 1 tab
+        if (state.reiter.length > 1) {
           var close = document.createElement('span');
           close.className = 'tab-close';
           close.setAttribute('onclick', 'event.stopPropagation(); confirmRemoveReiter(' + i + ')');
           close.textContent = '✕';
-
-          btn.appendChild(input);
           btn.appendChild(close);
-          bar.appendChild(btn);
-        });
-      }
+        }
+
+        btn.appendChild(input);
+        bar.appendChild(btn);
+      });
       var addBtn = document.createElement('button');
       addBtn.className = 'tab-add';
       addBtn.textContent = '+ Tab';
@@ -982,6 +983,11 @@
 
       // Protokoll tab button
       var protokollBtn = document.getElementById('protokoll_tab_btn');
+      if (state.activeView === 'protokoll') {
+        protokollBtn.textContent = '← Zurück';
+      } else {
+        protokollBtn.textContent = '🔧 Protokoll';
+      }
       protokollBtn.classList.toggle('active', state.activeView === 'protokoll');
     }
 

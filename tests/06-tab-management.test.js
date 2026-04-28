@@ -189,16 +189,28 @@ describe('Tab management', () => {
   });
 
   describe('renderTabs()', () => {
-    it('shows no tab buttons when only 1 reiter', () => {
+    it('shows single tab button when only 1 reiter (for rename)', () => {
       w.renderTabs();
-    const btns = doc.querySelectorAll('.field-tab');
-    expect(btns.length).toBe(0);
+      const btns = doc.querySelectorAll('.field-tab');
+      expect(btns.length).toBe(1);
     });
 
     it('shows tab buttons when 2+ reiter', () => {
       w.addReiter();
-    const btns = doc.querySelectorAll('.field-tab');
-    expect(btns.length).toBe(2);
+      const btns = doc.querySelectorAll('.field-tab');
+      expect(btns.length).toBe(2);
+    });
+
+    it('hides close button when only 1 tab', () => {
+      w.renderTabs();
+      const closes = doc.querySelectorAll('.tab-close');
+      expect(closes.length).toBe(0);
+    });
+
+    it('shows close buttons when 2+ tabs', () => {
+      w.addReiter();
+      const closes = doc.querySelectorAll('.tab-close');
+      expect(closes.length).toBe(2);
     });
 
     it('marks active tab with "active" class', () => {
