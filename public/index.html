@@ -983,11 +983,6 @@
 
       // Protokoll tab button
       var protokollBtn = document.getElementById('protokoll_tab_btn');
-      if (state.activeView === 'protokoll') {
-        protokollBtn.textContent = '← Zurück';
-      } else {
-        protokollBtn.textContent = '🔧 Protokoll';
-      }
       protokollBtn.classList.toggle('active', state.activeView === 'protokoll');
     }
 
