@@ -575,6 +575,37 @@
       font-size: 0.9rem;
       padding: 32px 20px;
     }
+    .dashboard-summary {
+      margin: 0 20px 16px;
+      background: linear-gradient(135deg, #4a7c23, #6aa336);
+      border-radius: 14px;
+      padding: 16px 18px;
+      color: white;
+    }
+    .dashboard-summary-title {
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 12px;
+    }
+    .dashboard-summary-stats {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 12px;
+    }
+    .dashboard-summary-stat {
+      flex: 1;
+    }
+    .dashboard-summary-label {
+      font-size: 0.7rem;
+      opacity: 0.85;
+      margin-bottom: 2px;
+    }
+    .dashboard-summary-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .dashboard-summary-value.done { color: #ffe066; }
+    .dashboard-summary-value.remaining { color: #ffd700; }
     .dashboard-reiter-card {
       margin: 12px 20px;
       background: #fafef5;
@@ -1343,7 +1374,56 @@
         container.innerHTML = '<div class="dashboard-empty">Keine Reiter vorhanden</div>';
         return;
       }
-      container.innerHTML = '';
+
+      // --- Summary across all tabs ---
+      var totalHa = 0, totalEinheiten = 0, totalUsedEinheit = 0;
+      var totalDuenger = 0, totalUsedDuenger = 0;
+      reiter.forEach(function(r) {
+        if (r.hektar > 0 && r.koerner > 0) {
+          totalHa += r.hektar;
+          totalEinheiten += r.hektar * r.koerner / state.koernerProEinheit;
+          totalDuenger += r.hektar * r.duenger;
+          totalUsedEinheit += r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+          totalUsedDuenger += r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+        }
+      });
+      var totalEinheitRem = Math.max(0, totalEinheiten - totalUsedEinheit);
+      var totalDuengerRem = Math.max(0, totalDuenger - totalUsedDuenger);
+      var totalPct = totalEinheiten > 0 || totalDuenger > 0
+        ? Math.min(100, Math.round(Math.max(
+            totalEinheiten > 0 ? totalUsedEinheit / totalEinheiten : 0,
+            totalDuenger > 0 ? totalUsedDuenger / totalDuenger : 0
+          ) * 100))
+        : 0;
+
+      var summaryCard = document.createElement('div');
+      summaryCard.className = 'dashboard-summary';
+      summaryCard.innerHTML =
+        '<div class="dashboard-summary-title">📊 Zusammenfassung</div>' +
+        '<div class="dashboard-summary-stats">' +
+          '<div class="dashboard-summary-stat">' +
+            '<div class="dashboard-summary-label">Fläche</div>' +
+            '<div class="dashboard-summary-value">' + (totalHa > 0 ? fmt(totalHa) + ' ha' : '—') + '</div>' +
+          '</div>' +
+          '<div class="dashboard-summary-stat">' +
+            '<div class="dashboard-summary-label">Einheiten verbl.</div>' +
+            '<div class="dashboard-summary-value ' + (totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '') + '">' +
+              (totalEinheiten > 0 ? fmt(totalEinheitRem) : '—') +
+            '</div>' +
+          '</div>' +
+          '<div class="dashboard-summary-stat">' +
+            '<div class="dashboard-summary-label">Dünger verbl.</div>' +
+            '<div class="dashboard-summary-value ' + (totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '') + '">' +
+              (totalDuenger > 0 ? totalDuengerRem.toLocaleString('de-DE') + ' kg' : '—') +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="dashboard-progress-bar">' +
+          '<div class="dashboard-progress-fill" style="width:' + totalPct + '%"></div>' +
+        '</div>';
+      container.appendChild(summaryCard);
+
+      // --- Per-tab cards ---
       reiter.forEach(function(r, idx) {
         var card = document.createElement('div');
         card.className = 'dashboard-reiter-card';
