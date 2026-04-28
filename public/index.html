@@ -970,7 +970,7 @@
       if (results) results.style.display = (hasData && !isProtokoll) ? 'block' : 'none';
 
       var drillSection = document.getElementById('drill_section');
-      if (drillSection) drillSection.style.display = (hasData && !isProtokoll) ? 'block' : 'none';
+      if (drillSection) drillSection.style.display = isProtokoll ? 'block' : 'none';
 
       var drillMask = document.getElementById('drill_mask');
       if (drillMask) drillMask.style.display = isProtokoll ? '' : 'none';
