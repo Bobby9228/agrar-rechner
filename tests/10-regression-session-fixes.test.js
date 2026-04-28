@@ -136,7 +136,7 @@ describe('Regression: renderTabs creates tab-add button fresh', () => {
   it('renderTabs survives adding and removing tabs repeatedly', () => {
     w.addReiter(); // 2 tabs
     w.addReiter(); // 3 tabs
-    expect(doc.querySelectorAll('.tab-btn').length).toBe(3);
+    expect(doc.querySelectorAll('.field-tab').length).toBe(3);
     expect(doc.querySelector('.tab-add')).not.toBeNull();
 
     w.removeReiter(2);

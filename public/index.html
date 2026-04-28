@@ -204,13 +204,33 @@
       transition: background 0.15s;
       max-width: 120px;
     }
-    .tab-btn.active {
+    .tab-btn.field-tab.active {
       background: #4a7c23;
       border-color: #4a7c23;
       color: white;
     }
-    .tab-btn:not(.active):hover {
+    .tab-btn.field-tab:not(.active):hover {
       background: #d0e8b8;
+    }
+    .protokoll-tab {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #fff3cd;
+      border: 2px solid #f0c929;
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .protokoll-tab.active {
+      background: #e67700;
+      border-color: #e67700;
+      color: white;
+    }
+    .protokoll-tab:hover:not(.active) {
+      background: #ffe066;
     }
     .tab-name-input {
       background: transparent;
@@ -273,6 +293,48 @@
     }
     .tab-add:active {
       background: #d0e8b8;
+    }
+    .tab-bar-left {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      min-height: 36px;
+      align-items: center;
+      flex: 1;
+    }
+    .tab-separator {
+      width: 1px;
+      height: 24px;
+      background: #c3dfa8;
+      margin: 0 4px;
+      flex-shrink: 0;
+    }
+    .tab-btn.protokoll-tab {
+      background: #e8f4dc;
+      border: 2px solid #4a7c23;
+      color: #2d5016;
+      flex-shrink: 0;
+    }
+    .tab-btn.protokoll-tab.active {
+      background: #4a7c23;
+      border-color: #4a7c23;
+      color: white;
+    }
+    .tab-btn.protokoll-tab:not(.active):hover {
+      background: #d0e8b8;
+    }
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+    .tab-bar > .tab-bar-left {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      min-height: 36px;
+      align-items: center;
     }
 
     /* Drill log */
@@ -582,7 +644,11 @@
     </div>
 
     <!-- Tabs -->
-    <div class="tab-bar" id="tab_bar"><button class="tab-add" onclick="addReiter()">+ Tab</button></div>
+    <div class="tab-bar" id="tab_bar">
+      <div class="tab-bar-left" id="tab_bar_left"><button class="tab-add" onclick="addReiter()">+ Tab</button></div>
+      <div class="tab-separator"></div>
+      <button class="protokoll-tab" id="protokoll_tab_btn" onclick="switchToProtokoll()">🔧 Protokoll</button>
+    </div>
 
     <div class="card">
       <h2>📐 Fläche & Aussaatstärke</h2>
@@ -706,6 +772,7 @@
     var state = {
       reiter: [{ name: 'Tab 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
       activeReiter: 0,
+      activeView: null, // null='field', 'protokoll'
       fahrgassenEnabled: false,
       fahrgassenBreite: 0,
       einheitGroesseEnabled: false,
@@ -781,13 +848,13 @@
 
     // --- Tab management ---
     function renderTabs() {
-      var bar = document.getElementById('tab_bar');
+      var bar = document.getElementById('tab_bar_left');
       bar.innerHTML = '';
       if (state.reiter.length > 1) {
         state.reiter.forEach(function(r, i) {
-          var isActive = i === state.activeReiter;
+          var isActive = i === state.activeReiter && state.activeView !== 'protokoll';
           var btn = document.createElement('button');
-          btn.className = 'tab-btn' + (isActive ? ' active' : '');
+          btn.className = 'tab-btn field-tab' + (isActive ? ' active' : '');
           btn.setAttribute('aria-label', 'Tab ' + (i+1));
           btn.onclick = function() { switchReiter(i); };
 
@@ -830,6 +897,10 @@
       addBtn.textContent = '+ Tab';
       addBtn.onclick = function() { addReiter(); };
       bar.appendChild(addBtn);
+
+      // Protokoll tab button
+      var protokollBtn = document.getElementById('protokoll_tab_btn');
+      protokollBtn.classList.toggle('active', state.activeView === 'protokoll');
     }
 
     function addReiter() {
@@ -861,20 +932,43 @@
     }
 
     function switchReiter(idx) {
-      if (idx === state.activeReiter) return;
+      if (idx === state.activeReiter && state.activeView !== 'protokoll') return;
       syncStateFromInputs();
       state.activeReiter = idx;
+      state.activeView = null;
       syncInputsFromState();
       renderTabs();
       sv();
-      var r = getActiveReiter();
-      if (r.hektar > 0 && r.koerner > 0) {
-        renderResults();
-        document.getElementById('results').style.display = 'block';
+      renderView();
+    }
+
+    function switchToProtokoll() {
+      if (state.activeView === 'protokoll') {
+        state.activeView = null;
       } else {
-        document.getElementById('results').style.display = 'none';
-        document.getElementById('drill_section').style.display = 'none';
+        syncStateFromInputs();
+        state.activeView = 'protokoll';
       }
+      renderTabs();
+      sv();
+      renderView();
+    }
+
+    function renderView() {
+      var r = getActiveReiter();
+      var hasData = r.hektar > 0 && r.koerner > 0;
+      var isProtokoll = state.activeView === 'protokoll';
+
+      var cards = document.querySelectorAll('.card');
+      cards.forEach(function(c) {
+        c.style.display = isProtokoll ? 'none' : '';
+      });
+
+      var results = document.getElementById('results');
+      if (results) results.style.display = (hasData && !isProtokoll) ? 'block' : 'none';
+
+      var drillSection = document.getElementById('drill_section');
+      if (drillSection) drillSection.style.display = (hasData && !isProtokoll) ? 'block' : 'none';
     }
 
     function renameReiter(idx, name) {
@@ -1152,6 +1246,7 @@
       state = {
         reiter: [{ name: 'Tab 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
         activeReiter: 0,
+        activeView: null,
         fahrgassenEnabled: false,
         fahrgassenBreite: 0,
         einheitGroesseEnabled: false,
@@ -1204,7 +1299,9 @@
       var r = getActiveReiter();
       if (r.hektar > 0 && r.koerner > 0) {
         renderResults();
-        document.getElementById('results').style.display = 'block';
+        if (state.activeView !== 'protokoll') {
+          document.getElementById('results').style.display = 'block';
+        }
       }
     }
 

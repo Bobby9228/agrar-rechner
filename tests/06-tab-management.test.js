@@ -191,14 +191,14 @@ describe('Tab management', () => {
   describe('renderTabs()', () => {
     it('shows no tab buttons when only 1 reiter', () => {
       w.renderTabs();
-      const btns = doc.querySelectorAll('.tab-btn');
-      expect(btns.length).toBe(0);
+    const btns = doc.querySelectorAll('.field-tab');
+    expect(btns.length).toBe(0);
     });
 
     it('shows tab buttons when 2+ reiter', () => {
       w.addReiter();
-      const btns = doc.querySelectorAll('.tab-btn');
-      expect(btns.length).toBe(2);
+    const btns = doc.querySelectorAll('.field-tab');
+    expect(btns.length).toBe(2);
     });
 
     it('marks active tab with "active" class', () => {

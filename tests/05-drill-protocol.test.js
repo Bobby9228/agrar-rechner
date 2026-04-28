@@ -194,22 +194,22 @@ describe('Drill-Protokoll', () => {
       expect(entries.length).toBe(1);
     });
 
-    it('shows total summary line', () => {
+    it('shows total summary in drill_entries after adding entry', () => {
       doc.getElementById('drill_einheit').value = '5';
       doc.getElementById('drill_hektar').value = '3,5';
       doc.getElementById('drill_duenger').value = '500';
       w.drillAdd();
 
-      const summary = doc.getElementById('ds_total_summary').textContent;
-      expect(summary).toContain('3,5 ha');
-      expect(summary).toContain('5,0 Einheiten');
-      expect(summary).toContain('500');
-      expect(summary).toContain('Dünger');
-      expect(summary).toContain('eingefüllt');
+      const entries = doc.getElementById('drill_entries').querySelectorAll('.drill-entry');
+      expect(entries.length).toBe(1);
+      expect(entries[0].textContent).toContain('5,0 Einheiten');
+      expect(entries[0].textContent).toContain('500 kg');
     });
 
-    it('shows "—" total summary when no entries', () => {
-      expect(doc.getElementById('ds_total_summary').textContent).toBe('—');
+    it('shows empty state when no entries', () => {
+      const empty = doc.getElementById('drill_entries').querySelector('.drill-empty');
+      expect(empty).not.toBeNull();
+      expect(empty.textContent).toBe('Noch nichts eingefüllt');
     });
 
     it('remaining duenger is clamped to 0 (no negative)', () => {

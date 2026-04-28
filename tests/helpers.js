@@ -11,7 +11,11 @@ const htmlPath = resolve(__dirname, '../public/index.html');
 const htmlContent = readFileSync(htmlPath, 'utf-8');
 
 const DOM_TEMPLATE = `<!DOCTYPE html><html><body>
-  <div id="tab_bar"></div>
+  <div id="tab_bar">
+    <div id="tab_bar_left"></div>
+    <div class="tab-separator"></div>
+    <button class="protokoll-tab" id="protokoll_tab_btn" onclick="switchToProtokoll()">🔧 Protokoll</button>
+  </div>
   <input id="hektar" value="">
   <input id="koerner" value="">
   <input id="duenger" value="">

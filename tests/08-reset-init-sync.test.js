@@ -168,7 +168,7 @@ describe('initUI()', () => {
     });
     w.initUI();
     // Tab buttons should appear (2 tabs)
-    const btns = doc.querySelectorAll('.tab-btn');
+    const btns = doc.querySelectorAll('.field-tab');
     expect(btns.length).toBe(2);
     // Active should be tab 1
     expect(w.state.activeReiter).toBe(1);

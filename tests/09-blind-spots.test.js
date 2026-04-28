@@ -18,7 +18,7 @@ describe('Blind spots — renderTabs callbacks', () => {
     // Tab 0 button should switch to reiter 0
     expect(w.state.activeReiter).toBe(1); // currently on tab 1
 
-    const btns = doc.querySelectorAll('.tab-btn');
+    const btns = doc.querySelectorAll('.field-tab');
     btns[0].onclick(); // click tab 0
     expect(w.state.activeReiter).toBe(0);
   });
