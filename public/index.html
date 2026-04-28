@@ -996,7 +996,15 @@
     }
 
     function confirmRemoveReiter(idx) {
-      if (!confirm('Tab wirklich löschen?')) return;
+      var tab = state.reiter[idx];
+      var hasData = tab.hektar > 0 || tab.koerner > 0 || tab.duenger > 0 || tab.entries.length > 0;
+      var msg = 'Tab "' + tab.name + '" schließen?\n\n';
+      if (hasData) {
+        msg += 'Achtung: Es sind Daten vorhanden, die gelöscht werden.';
+      } else {
+        msg += 'Alle Eingaben gehen verloren.';
+      }
+      if (!confirm(msg)) return;
       removeReiter(idx);
     }
 
@@ -1350,7 +1358,8 @@
     }
 
     function confirmResetAll() {
-      if (!confirm('Wirklich alles zurücksetzen?')) return;
+      var tabName = state.reiter[state.activeReiter].name;
+      if (!confirm('Wirklich zurücksetzen?\n\nAlle Eingaben für "' + tabName + '" werden gelöscht.')) return;
       resetAll();
     }
 
