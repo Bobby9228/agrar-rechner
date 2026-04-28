@@ -125,7 +125,8 @@ describe('berechne()', () => {
     doc.getElementById('hektar').value = '10';
     doc.getElementById('koerner').value = '90000';
     w.berechne();
-    expect(doc.getElementById('drill_section').style.display).toBe('block');
+    // drill_section is shown ONLY in protokoll mode, not after berechne()
+    expect(doc.getElementById('drill_section').style.display).toBe('none');
   });
 
   it('negative duenger is treated as 0', () => {

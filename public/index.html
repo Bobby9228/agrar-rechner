@@ -792,7 +792,7 @@
         <span class="value small" id="r_duenger">—</span>
       </div>
       <div class="info" id="r_info"></div>
-    </div>
+    </div><!-- end results card -->
 
     <div class="card" id="drill_section" style="display:none">
       <h2>🔧 Drill-Protokoll</h2>
@@ -813,8 +813,7 @@
         </div>
         <button class="btn-add" onclick="drillAdd()">+ Einfüllen</button>
       </div>
-
-      <div class="drill-summary" id="drill_summary" style="display:none">
+      <div id="drill_summary" class="drill-summary" style="display:none">
         <div class="drill-summary-row">
           <span>Einheiten gesamt</span>
           <span id="ds_saat_total">—</span>
@@ -842,6 +841,7 @@
       </div>
       <div id="drill_entries"></div>
     </div>
+
     </div><!-- end .container -->
 
     <!-- Sticky footer -->
@@ -1157,6 +1157,7 @@
       sv();
       renderTabs();
       renderResults();
+      renderView();
       document.getElementById('results').style.display = 'block';
     }
 
@@ -1307,7 +1308,7 @@
       document.getElementById('ds_duenger_remaining').textContent = duengerTotal > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' + haDuengerRemText : '—';
       var container = document.getElementById('drill_entries');
       document.getElementById('drill_summary').style.display = (einheiten > 0 || duengerTotal > 0 || r.entries.length > 0) ? 'block' : 'none';
-      document.getElementById('drill_section').style.display = 'block';
+      // NOTE: drill_section visibility is controlled by renderView() — do NOT set here
       if (r.entries.length === 0) {
         container.innerHTML = '';
         var empty = document.createElement('div');

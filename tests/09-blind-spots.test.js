@@ -363,7 +363,8 @@ describe('Blind spots — switchReiter hides drill_section when no data', () => 
     doc.getElementById('hektar').value = '10';
     doc.getElementById('koerner').value = '90000';
     w.berechne();
-    expect(doc.getElementById('drill_section').style.display).toBe('block');
+    // drill_section should NOT show after berechne() in normal view (only in protokoll mode)
+    expect(doc.getElementById('drill_section').style.display).toBe('none');
 
     // Add empty tab 1 and switch to it
     w.addReiter();
