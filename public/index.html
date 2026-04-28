@@ -648,9 +648,6 @@
       <div class="tab-bar-left" id="tab_bar_left"><button class="tab-add" onclick="addReiter()">+ Tab</button></div>
       <div class="tab-separator"></div>
       <button class="protokoll-tab" id="protokoll_tab_btn" onclick="switchToProtokoll()">🔧 Protokoll</button>
-      <div class="tab-separator"></div>
-      <button class="btn" onclick="berechne()" id="berechnen_btn">Berechnen</button>
-      <button class="btn btn-secondary" onclick="confirmResetAll()" id="reset_btn">Zurücksetzen</button>
     </div>
 
     <div class="card card-input" id="card_input">
@@ -701,6 +698,9 @@
         <div class="fahrgassen-info">Die Körnerzahl wird um ca. 1/Fahrgassenbreite × 100 % reduziert.</div>
       </div>
     </div>
+
+    <button class="btn" onclick="berechne()" id="berechnen_btn">Berechnen</button>
+    <button class="btn btn-secondary" onclick="confirmResetAll()" id="reset_btn">Zurücksetzen</button>
 
     <div class="card result" id="results" style="display:none">
       <h2>📊 Ergebnis</h2>
