@@ -1717,7 +1717,7 @@
               var span = document.createElement('span');
               span.className = 'entry-text';
               var hash = document.createElement('span');
-              hash.textContent = '#' + (entryIdx + 1);
+              hash.textContent = '#' + (entryIdx + 1) + ' ';
               var txt = (e.time ? e.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(e.einheit) + dl;
               var txtNode = document.createTextNode(txt + ' ');
               span.appendChild(hash);
@@ -1780,7 +1780,7 @@
           var span = document.createElement('span');
           span.className = 'entry-text';
           var hash = document.createElement('span');
-          hash.textContent = '#' + (mi + 1);
+          hash.textContent = '#' + (mi + 1) + ' ';
           var txt = (m.time ? m.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(m.einheit) + dl;
           var txtNode = document.createTextNode(txt + ' ');
           span.appendChild(hash);
@@ -1822,7 +1822,7 @@
             var span = document.createElement('span');
             span.className = 'entry-text';
             var hash = document.createElement('span');
-            hash.textContent = '#' + (entryIdx + 1);
+            hash.textContent = '#' + (entryIdx + 1) + ' ';
             var txt = (e.time ? e.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(e.einheit) + dl;
             var txtNode = document.createTextNode(txt + ' ');
             span.appendChild(hash);

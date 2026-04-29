@@ -270,8 +270,8 @@ describe('Blind spots — renderResults edge cases', () => {
     w.renderResults();
 
     const hashes = doc.querySelectorAll('.entry-text span');
-    expect(hashes[0].textContent).toBe('#1');
-    expect(hashes[1].textContent).toBe('#2');
+    expect(hashes[0].textContent).toBe('#1 ');
+    expect(hashes[1].textContent).toBe('#2 ');
   });
 
   it('drill entry delete button has btn-danger class and calls drillRemove', () => {
