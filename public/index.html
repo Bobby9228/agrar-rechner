@@ -1993,6 +1993,16 @@
         mlTitle.className = 'drill-entry-tab-header';
         mlTitle.textContent = 'Maschinen-Protokoll';
         mlContainer.appendChild(mlTitle);
+        // Verbrauchsraten einmal berechnen
+        var fgFactor = 1;
+        if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
+          fgFactor = (state.fahrgassenBreite - 1) / state.fahrgassenBreite;
+        }
+        var unitsPerHa = r.koerner * fgFactor / state.koernerProEinheit;
+        var duengerPerHa = r.duenger || 0;
+        // Kumulativ: Restmenge im Tank + neu eingefuellt
+        var cumEinheit = 0, cumDuenger = 0;
+
         state.machineLog.forEach(function(m, mi) {
           var ds = m.duenger > 0 ? m.duenger.toLocaleString('de-DE') + ' kg' : '';
           var dl = ds ? ' + ' + ds + ' Dünger' : '';
@@ -2015,22 +2025,24 @@
           row.appendChild(btn);
           mlContainer.appendChild(row);
 
-          // Prognose: bei welchem ha-Zaehlerstand ist Saat/Duenger leer?
-          if (r.koerner > 0 && (m.einheit > 0 || m.duenger > 0)) {
-            var fgFactor = 1;
-            if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
-              fgFactor = (state.fahrgassenBreite - 1) / state.fahrgassenBreite;
+          // Prognose: Rest aus vorheriger Befuellung + neu eingefuellt
+          if (r.koerner > 0 && (m.einheit > 0 || m.duenger > 0 || cumEinheit > 0 || cumDuenger > 0)) {
+            if (mi === 0) {
+              cumEinheit = m.einheit;
+              cumDuenger = m.duenger;
+            } else {
+              var prevM = state.machineLog[mi - 1];
+              var haDriven = Math.max(0, (m.hektar || 0) - (prevM.hektar || 0));
+              cumEinheit = Math.max(0, cumEinheit - haDriven * unitsPerHa) + m.einheit;
+              cumDuenger = Math.max(0, cumDuenger - haDriven * duengerPerHa) + m.duenger;
             }
-            var unitsPerHa = r.koerner * fgFactor / state.koernerProEinheit;
             var prognoseParts = [];
-            if (m.einheit > 0 && unitsPerHa > 0) {
-              var haSaat = m.einheit / unitsPerHa;
-              var prognoseSaat = (m.hektar || 0) + haSaat;
+            if (cumEinheit > 0 && unitsPerHa > 0) {
+              var prognoseSaat = (m.hektar || 0) + cumEinheit / unitsPerHa;
               prognoseParts.push('<span><span class="prog-label">Saat leer bei</span> <span class="prog-val">~' + fmt(prognoseSaat) + ' ha</span></span>');
             }
-            if (m.duenger > 0 && r.duenger > 0) {
-              var haDuenger = m.duenger / r.duenger;
-              var prognoseDuenger = (m.hektar || 0) + haDuenger;
+            if (cumDuenger > 0 && duengerPerHa > 0) {
+              var prognoseDuenger = (m.hektar || 0) + cumDuenger / duengerPerHa;
               prognoseParts.push('<span><span class="prog-label">Dünger leer bei</span> <span class="prog-val">~' + fmt(prognoseDuenger) + ' ha</span></span>');
             }
             if (prognoseParts.length > 0) {
