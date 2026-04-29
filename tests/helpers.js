@@ -32,13 +32,6 @@ const DOM_TEMPLATE = `<!DOCTYPE html><html><body>
       <div class="result-row" id="r_drill_d_used_row" style="display:none"><span class="label">Dünger eingefüllt</span><span class="value small" id="r_drill_d_used">—</span></div>
       <div class="result-row" id="r_drill_d_rem_row" style="display:none"><span class="label">Dünger verbleibend</span><span class="value small" id="r_drill_d_rem">—</span></div>
       <div id="r_drill_entries"></div>
-      <div class="quick-entry" id="quick_entry">
-        <div class="inline-row">
-          <div class="field"><input type="text" inputmode="decimal" id="r_qe_einheit" placeholder="Einheiten"></div>
-          <div class="field"><input type="text" inputmode="decimal" id="r_qe_duenger" placeholder="kg Dünger"></div>
-        </div>
-        <button class="btn-add" onclick="drillQuickAdd()">+ Einfüllen</button>
-      </div>
     </div>
     <div id="r_info"></div>
   </div>

@@ -187,17 +187,6 @@
       background: #c3dfa8;
       margin: 8px 0;
     }
-    .quick-entry {
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid #c3dfa8;
-    }
-    .quick-entry .inline-row .field {
-      margin-bottom: 8px;
-    }
-    .quick-entry .btn-add {
-      margin-top: 4px;
-    }
     .drill-entry-inline {
       display: flex;
       justify-content: space-between;
@@ -944,17 +933,6 @@
           <span class="value small" id="r_drill_d_rem">—</span>
         </div>
         <div id="r_drill_entries"></div>
-        <div class="quick-entry" id="quick_entry">
-          <div class="inline-row">
-            <div class="field">
-              <input type="text" inputmode="decimal" id="r_qe_einheit" placeholder="Einheiten" oninput="onInputFormat(this, 'decimal')">
-            </div>
-            <div class="field">
-              <input type="text" inputmode="decimal" id="r_qe_duenger" placeholder="kg Dünger" oninput="onInputFormat(this, 'decimal')">
-            </div>
-          </div>
-          <button class="btn-add" onclick="drillQuickAdd()">+ Einfüllen</button>
-        </div>
       </div>
 
       <div class="info" id="r_info"></div>
@@ -1628,29 +1606,6 @@
 
     function drillRemove(tabIdx, entryIdx) {
       state.reiter[tabIdx].entries.splice(entryIdx, 1);
-      sv();
-      renderResults();
-    }
-
-    function drillQuickAdd() {
-      var r = getActiveReiter();
-      if (!r.hektar || !r.koerner) return;
-
-      var einheit = parseDE(document.getElementById('r_qe_einheit').value) || 0;
-      var duenger = parseDE(document.getElementById('r_qe_duenger').value) || 0;
-
-      if (einheit <= 0 && duenger <= 0) return;
-
-      r.entries.push({
-        einheit: einheit,
-        hektar: 0,
-        duenger: duenger,
-        time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-      });
-
-      document.getElementById('r_qe_einheit').value = '';
-      document.getElementById('r_qe_duenger').value = '';
-
       sv();
       renderResults();
     }
