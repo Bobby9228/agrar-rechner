@@ -182,6 +182,40 @@
       margin-top: 8px;
     }
 
+    .drill-separator {
+      height: 1px;
+      background: #c3dfa8;
+      margin: 8px 0;
+    }
+    .quick-entry {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #c3dfa8;
+    }
+    .quick-entry .inline-row .field {
+      margin-bottom: 8px;
+    }
+    .quick-entry .btn-add {
+      margin-top: 4px;
+    }
+    .drill-entry-inline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid #c3dfa8;
+      font-size: 0.85rem;
+    }
+    .drill-entry-inline:last-of-type {
+      border-bottom: none;
+    }
+    .drill-entry-inline .entry-text {
+      color: #444;
+    }
+    .drill-entry-inline .entry-text span {
+      font-weight: 600;
+      color: #2d5016;
+    }
     /* Tabs */
     .tab-bar {
       display: flex;
@@ -890,6 +924,39 @@
         <span class="label">Dünger</span>
         <span class="value small" id="r_duenger">—</span>
       </div>
+
+      <div id="r_drill_section" style="display:none">
+        <div class="drill-separator"></div>
+        <div class="result-row">
+          <span class="label">🔧 Eingefüllt</span>
+          <span class="value small" id="r_drill_e_used">—</span>
+        </div>
+        <div class="result-row" id="r_drill_e_rem_row">
+          <span class="label">Verbleibend</span>
+          <span class="value small" id="r_drill_e_rem">—</span>
+        </div>
+        <div class="result-row" id="r_drill_d_used_row" style="display:none">
+          <span class="label">Dünger eingefüllt</span>
+          <span class="value small" id="r_drill_d_used">—</span>
+        </div>
+        <div class="result-row" id="r_drill_d_rem_row" style="display:none">
+          <span class="label">Dünger verbleibend</span>
+          <span class="value small" id="r_drill_d_rem">—</span>
+        </div>
+        <div id="r_drill_entries"></div>
+        <div class="quick-entry" id="quick_entry">
+          <div class="inline-row">
+            <div class="field">
+              <input type="text" inputmode="decimal" id="r_qe_einheit" placeholder="Einheiten" oninput="onInputFormat(this, 'decimal')">
+            </div>
+            <div class="field">
+              <input type="text" inputmode="decimal" id="r_qe_duenger" placeholder="kg Dünger" oninput="onInputFormat(this, 'decimal')">
+            </div>
+          </div>
+          <button class="btn-add" onclick="drillQuickAdd()">+ Einfüllen</button>
+        </div>
+      </div>
+
       <div class="info" id="r_info"></div>
     </div><!-- end results card -->
 
@@ -1565,6 +1632,29 @@
       renderResults();
     }
 
+    function drillQuickAdd() {
+      var r = getActiveReiter();
+      if (!r.hektar || !r.koerner) return;
+
+      var einheit = parseDE(document.getElementById('r_qe_einheit').value) || 0;
+      var duenger = parseDE(document.getElementById('r_qe_duenger').value) || 0;
+
+      if (einheit <= 0 && duenger <= 0) return;
+
+      r.entries.push({
+        einheit: einheit,
+        hektar: 0,
+        duenger: duenger,
+        time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+      });
+
+      document.getElementById('r_qe_einheit').value = '';
+      document.getElementById('r_qe_duenger').value = '';
+
+      sv();
+      renderResults();
+    }
+
     function renderResults() {
       var r = getActiveReiter();
       var kornerGesamt = getKornerGesamt();
@@ -1593,7 +1683,67 @@
           miniResult.classList.add('mini-result-empty');
         }
       }
-      // --- Drill summary: aggregate across ALL tabs ---
+
+      // --- Per-tab drill info in result card ---
+      var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+      var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+      var remEinheit = Math.max(0, einheiten - usedEinheit);
+      var remDuenger = Math.max(0, duengerTotal - usedDuenger);
+      var drillSection = document.getElementById('r_drill_section');
+      if (drillSection) {
+        var showDrill = einheiten > 0;
+        drillSection.style.display = showDrill ? 'block' : 'none';
+        if (showDrill) {
+          document.getElementById('r_drill_e_used').textContent = formatEinheit(usedEinheit);
+          var eRemRow = document.getElementById('r_drill_e_rem_row');
+          var eRemVal = document.getElementById('r_drill_e_rem');
+          eRemVal.textContent = formatEinheit(remEinheit);
+          eRemRow.className = 'result-row ' + (remEinheit <= 0.05 ? 'done' : 'remaining');
+
+          var dUsedRow = document.getElementById('r_drill_d_used_row');
+          var dRemRow = document.getElementById('r_drill_d_rem_row');
+          if (duengerTotal > 0) {
+            dUsedRow.style.display = '';
+            dRemRow.style.display = '';
+            document.getElementById('r_drill_d_used').textContent = fmt(usedDuenger) + ' kg';
+            document.getElementById('r_drill_d_rem').textContent = fmt(remDuenger) + ' kg';
+            dRemRow.className = 'result-row ' + (remDuenger <= 0.05 ? 'done' : 'remaining');
+          } else {
+            dUsedRow.style.display = 'none';
+            dRemRow.style.display = 'none';
+          }
+
+          // Per-tab entries in result card
+          var rEntriesContainer = document.getElementById('r_drill_entries');
+          if (rEntriesContainer) {
+            rEntriesContainer.innerHTML = '';
+            r.entries.forEach(function(e, entryIdx) {
+              var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
+              var dl = ds ? ' + ' + ds + ' Dünger' : '';
+              var hl = e.hektar > 0 ? ' @ ' + (Math.round(e.hektar * 10) / 10).toFixed(1).replace('.', ',') + ' ha' : '';
+              var entry = document.createElement('div');
+              entry.className = 'drill-entry-inline';
+              var span = document.createElement('span');
+              span.className = 'entry-text';
+              var hash = document.createElement('span');
+              hash.textContent = '#' + (entryIdx + 1);
+              var txt = (e.time ? e.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(e.einheit) + dl;
+              var txtNode = document.createTextNode(txt + ' ');
+              span.appendChild(hash);
+              span.appendChild(txtNode);
+              var btn = document.createElement('button');
+              btn.className = 'btn-danger';
+              btn.textContent = '✕';
+              btn.onclick = (function(ti, ei) { return function() { drillRemove(ti, ei); }; })(state.activeReiter, entryIdx);
+              entry.appendChild(span);
+              entry.appendChild(btn);
+              rEntriesContainer.appendChild(entry);
+            });
+          }
+        }
+      }
+
+      // --- Drill summary: aggregate across ALL tabs (Protokoll view) ---
       var allEinheitenTotal = 0, allEinheitenUsed = 0;
       var allDuengerTotal = 0, allDuengerUsed = 0;
       state.reiter.forEach(function(tab) {
@@ -1614,8 +1764,6 @@
       document.getElementById('ds_duenger_total').textContent = allDuengerTotal > 0 ? allDuengerTotal.toLocaleString('de-DE') + ' kg' : '—';
       document.getElementById('ds_duenger_used').textContent = allDuengerUsed > 0 ? allDuengerUsed.toLocaleString('de-DE') + ' kg' : '—';
       document.getElementById('ds_duenger_remaining').textContent = allDuengerTotal > 0 ? allDuengerRem.toLocaleString('de-DE') + ' kg' : '—';
-      var container = document.getElementById('drill_entries');
-      // Check if any tab has entries
       var hasAnyEntries = state.reiter.some(function(r) { return r.entries.length > 0; });
       var hasAnyData = allEinheitenTotal > 0 || allDuengerTotal > 0;
       document.getElementById('drill_summary').style.display = (hasAnyData || hasAnyEntries) ? 'block' : 'none';
@@ -1624,19 +1772,18 @@
       if (allEinheitenUsed > 0) summaryParts.push(formatEinheit(allEinheitenUsed) + ' Einheiten');
       if (allDuengerUsed > 0) summaryParts.push(allDuengerUsed.toLocaleString('de-DE') + ' kg Dünger');
       document.getElementById('ds_total_summary').textContent = summaryParts.join(' + ');
-      // NOTE: drill_section visibility is controlled by renderView() — do NOT set here
+      // Per-tab entries in Protokoll view (global log)
+      var container = document.getElementById('drill_entries');
+      container.innerHTML = '';
       if (!hasAnyEntries) {
-        container.innerHTML = '';
         var empty = document.createElement('div');
         empty.className = 'drill-empty';
         empty.textContent = 'Noch nichts eingefüllt';
         container.appendChild(empty);
       } else {
-        container.innerHTML = '';
         state.reiter.forEach(function(r, tabIdx) {
           if (r.entries.length === 0) return;
 
-          // Tab header
           var tabHeader = document.createElement('div');
           tabHeader.className = 'drill-entry-tab-header';
           tabHeader.textContent = r.name || ('Tab ' + (tabIdx + 1));

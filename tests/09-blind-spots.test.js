@@ -283,11 +283,13 @@ describe('Blind spots — renderResults edge cases', () => {
     r.entries.push({ einheit: 2, hektar: 0, duenger: 0, time: '10:00' });
     w.renderResults();
 
+    // Two btn-danger buttons: one in result card inline entries, one in Protokoll view
     const btns = doc.querySelectorAll('.btn-danger');
-    expect(btns.length).toBe(1);
+    expect(btns.length).toBe(2);
     expect(btns[0].textContent).toBe('✕');
+    expect(btns[1].textContent).toBe('✕');
 
-    // Click delete
+    // Click delete on the first one (result card inline entry)
     btns[0].onclick();
     expect(r.entries.length).toBe(0);
   });

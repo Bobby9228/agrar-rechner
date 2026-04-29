@@ -21,11 +21,27 @@ const DOM_TEMPLATE = `<!DOCTYPE html><html><body>
   <input id="duenger" value="">
   <div id="err_hektar"></div>
   <div id="err_koerner"></div>
-  <div id="results" style="display:none"></div>
-  <div id="r_korner"></div>
-  <div id="r_einheiten"></div>
-  <div id="r_duenger"></div>
-  <div id="r_info"></div>
+  <div id="results" style="display:none">
+    <div id="r_korner"></div>
+    <div id="r_einheiten"></div>
+    <div id="r_duenger"></div>
+    <div id="r_drill_section" style="display:none">
+      <div class="drill-separator"></div>
+      <div class="result-row"><span class="label">🔧 Eingefüllt</span><span class="value small" id="r_drill_e_used">—</span></div>
+      <div class="result-row" id="r_drill_e_rem_row"><span class="label">Verbleibend</span><span class="value small" id="r_drill_e_rem">—</span></div>
+      <div class="result-row" id="r_drill_d_used_row" style="display:none"><span class="label">Dünger eingefüllt</span><span class="value small" id="r_drill_d_used">—</span></div>
+      <div class="result-row" id="r_drill_d_rem_row" style="display:none"><span class="label">Dünger verbleibend</span><span class="value small" id="r_drill_d_rem">—</span></div>
+      <div id="r_drill_entries"></div>
+      <div class="quick-entry" id="quick_entry">
+        <div class="inline-row">
+          <div class="field"><input type="text" inputmode="decimal" id="r_qe_einheit" placeholder="Einheiten"></div>
+          <div class="field"><input type="text" inputmode="decimal" id="r_qe_duenger" placeholder="kg Dünger"></div>
+        </div>
+        <button class="btn-add" onclick="drillQuickAdd()">+ Einfüllen</button>
+      </div>
+    </div>
+    <div id="r_info"></div>
+  </div>
   <div id="drill_section" style="display:none"></div>
   <input id="drill_einheit" value="">
   <input id="drill_hektar" value="">
