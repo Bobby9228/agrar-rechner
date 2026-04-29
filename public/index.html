@@ -834,6 +834,204 @@
       border-radius: 3px;
       transition: width 0.3s;
     }
+
+    /* Dark mode toggle */
+    .theme-toggle {
+      background: #e8f0de;
+      border: 2px solid #c3dfa8;
+      border-radius: 8px;
+      width: 40px;
+      height: 40px;
+      font-size: 1.15rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.2s, border-color 0.2s;
+      touch-action: manipulation;
+    }
+    .theme-toggle:active {
+      transform: scale(0.92);
+    }
+
+    /* ===== Dark mode ===== */
+    html.dark body {
+      background: #1a1f16;
+      color: #e0e8d6;
+    }
+    html.dark h1 { color: #8bc34a; }
+    html.dark .subtitle { color: #9aa88a; }
+    html.dark .card {
+      background: #252b20;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    html.dark .card h2 {
+      color: #8bc34a;
+      border-bottom-color: #3a4030;
+    }
+    html.dark label { color: #c8d0b8; }
+    html.dark input {
+      background: #1e241a;
+      border-color: #3a4030;
+      color: #e0e8d6;
+    }
+    html.dark input:focus { border-color: #6aa336; }
+    html.dark input::placeholder { color: #5a6050; }
+    html.dark .error-msg { color: #ef5350; }
+    html.dark .unit { color: #7a8470; }
+
+    html.dark .btn { background: #5a9a2a; }
+    html.dark .btn:active { background: #4a7c23; }
+    html.dark .btn-secondary { background: #4a7c23; }
+    html.dark .btn-danger { background: #c62828; }
+    html.dark .btn-danger:active { background: #b71c1c; }
+
+    html.dark .result {
+      background: #2a3320;
+      border-color: #4a7c23;
+    }
+    html.dark .result h2 { border-bottom-color: #3a4030; }
+    html.dark .result-row { border-bottom-color: #3a4030; }
+    html.dark .result-row .label { color: #9aa88a; }
+    html.dark .result-row .value { color: #8bc34a; }
+    html.dark .result-row.remaining .value { color: #ef5350; }
+    html.dark .result-row.done .value { color: #66bb6a; }
+    html.dark .info { color: #7a8470; }
+
+    html.dark .drill-separator { background: #3a4030; }
+    html.dark .drill-entry-inline { border-bottom-color: #3a4030; }
+    html.dark .drill-entry-inline .entry-text { color: #9aa88a; }
+    html.dark .drill-entry-inline .entry-text span { color: #8bc34a; }
+
+    /* Tabs dark */
+    html.dark .tab-btn {
+      background: #2a3320;
+      border-color: #3a4030;
+    }
+    html.dark .tab-btn.field-tab.active {
+      background: #4a7c23;
+      border-color: #5a9a2a;
+      color: white;
+    }
+    html.dark .tab-btn.field-tab:not(.active):hover { background: #333d28; }
+    html.dark .tab-btn:not(.active) .tab-name-input:focus { background: #333d28; }
+    html.dark .tab-add {
+      background: #2a3320;
+      border-color: #3a4030;
+      color: #8bc34a;
+    }
+    html.dark .tab-add:active { background: #333d28; }
+    html.dark .tab-separator { background: #3a4030; }
+    html.dark .tab-btn.protokoll-tab {
+      background: #2a3320;
+      border-color: #4a7c23;
+      color: #8bc34a;
+    }
+    html.dark .tab-btn.protokoll-tab.active {
+      background: #4a7c23;
+      border-color: #4a7c23;
+      color: white;
+    }
+
+    /* Toggle dark */
+    html.dark .toggle-btn { background: #3a4030; }
+    html.dark .toggle-btn.active { background: #4a7c23; }
+    html.dark .fahrgassen-settings { background: #1e241a; }
+    html.dark .fahrgassen-saved { color: #66bb6a; }
+    html.dark .fahrgassen-info { color: #7a8470; }
+
+    /* Sticky footer dark */
+    html.dark .sticky-footer {
+      background: #252b20;
+      border-top-color: #3a4030;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.3);
+    }
+    html.dark .mini-result { color: #8bc34a; }
+    html.dark .mini-result-empty { color: #5a6050; }
+    html.dark .mini-result .mr-einheiten { color: #8bc34a; }
+    html.dark .mini-result .mr-duenger { color: #66bb6a; }
+
+    /* Dashboard dark */
+    html.dark .dashboard-overlay { background: rgba(0,0,0,0.6); }
+    html.dark .dashboard-sheet { background: #252b20; }
+    html.dark .dashboard-header {
+      background: #252b20;
+      border-bottom-color: #3a4030;
+    }
+    html.dark .dashboard-header h2 { color: #8bc34a; }
+    html.dark .dashboard-close {
+      background: #2a3320;
+      color: #8bc34a;
+    }
+    html.dark .dashboard-close:active { background: #333d28; }
+    html.dark .dashboard-open-btn {
+      background: #4a7c23;
+      color: white;
+    }
+    html.dark .dashboard-open-btn:active { background: #3a6318; }
+    html.dark .dashboard-empty { color: #7a8470; }
+    html.dark .dashboard-reiter-card {
+      background: #1e241a;
+      border-color: #3a4030;
+    }
+    html.dark .dashboard-reiter-name { color: #8bc34a; }
+    html.dark .dashboard-stat {
+      background: #252b20;
+    }
+    html.dark .dashboard-stat-label { color: #7a8470; }
+    html.dark .dashboard-stat-value { color: #e0e8d6; }
+    html.dark .dashboard-stat-value.remaining { color: #ef5350; }
+    html.dark .dashboard-stat-value.done { color: #66bb6a; }
+    html.dark .dashboard-stat-value.na { color: #5a6050; }
+    html.dark .dashboard-progress-bar { background: #3a4030; }
+    html.dark .dashboard-progress-fill { background: #4a7c23; }
+
+    /* Drill section dark */
+    html.dark .drill-tabs-section {
+      border-color: #3a4030;
+      background: #1e241a;
+    }
+    html.dark .drill-tabs-header { color: #9aa88a; }
+    html.dark .drill-prio-btn {
+      background: #2a3320;
+      border-color: #3a4030;
+      color: #7a8470;
+    }
+    html.dark .drill-prio-btn.active {
+      background: #4a7c23;
+      border-color: #5a9a2a;
+      color: white;
+    }
+    html.dark .drill-tab-row:hover { background: rgba(255,255,255,0.03); }
+    html.dark .drill-tab-row .drill-tab-name { color: #c8d0b8; }
+    html.dark .drill-tab-row .drill-tab-need { color: #7a8470; }
+    html.dark .drill-tab-row .drill-tab-need.done { color: #66bb6a; }
+    html.dark .drill-tab-row .drill-tab-values input {
+      background: #1e241a;
+      border-color: #3a4030;
+      color: #e0e8d6;
+    }
+    html.dark .drill-tab-row .drill-tab-values input:focus { border-color: #6aa336; }
+
+    html.dark .drill-summary { background: #1e241a; }
+    html.dark .drill-summary-row { color: #c8d0b8; }
+    html.dark .drill-summary-row.remaining { color: #ef5350; }
+    html.dark .drill-summary-total { color: #8bc34a; border-top-color: #4a7c23; }
+    html.dark #drill_machine_log { border-bottom-color: #3a4030; }
+    html.dark .drill-entry-tab-header { color: #9aa88a; border-bottom-color: #3a4030; }
+    html.dark .drill-entry { border-bottom-color: #3a4030; }
+    html.dark .drill-entry .entry-text { color: #9aa88a; }
+    html.dark .drill-entry .entry-text span { color: #8bc34a; }
+    html.dark .drill-empty { color: #7a8470; }
+
+    html.dark .version-footer { color: #5a6050; }
+
+    /* Dark mode toggle button dark state */
+    html.dark .theme-toggle {
+      background: #2a3320;
+      border-color: #3a4030;
+    }
   </style>
 </head>
 <body>
@@ -845,7 +1043,10 @@
         <h1>🌾 Mais-Rechner</h1>
         <p class="subtitle">Einheiten & Dünger für Aussaat</p>
       </div>
-      <button class="dashboard-open-btn" onclick="openDashboard()">📊 Dashboard</button>
+      <div style="display:flex;gap:8px;align-items:flex-start;">
+        <button class="theme-toggle" onclick="toggleTheme()" id="theme_toggle" aria-label="Dark Mode umschalten">🌙</button>
+        <button class="dashboard-open-btn" onclick="openDashboard()">📊 Dashboard</button>
+      </div>
     </div>
 
     <!-- Tabs -->
@@ -1912,10 +2113,40 @@
       }
     }
 
+    // --- Dark Mode ---
+    function getStoredTheme() {
+      try { return localStorage.getItem('mais_rechner_theme'); } catch(e) { return null; }
+    }
+    function setStoredTheme(theme) {
+      try { localStorage.setItem('mais_rechner_theme', theme); } catch(e) {}
+    }
+    function applyTheme(dark) {
+      document.documentElement.classList.toggle('dark', dark);
+      var btn = document.getElementById('theme_toggle');
+      if (btn) btn.textContent = dark ? '☀️' : '🌙';
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', dark ? '#1a1f16' : '#2d5016');
+    }
+    function toggleTheme() {
+      var isDark = document.documentElement.classList.contains('dark');
+      var next = !isDark;
+      setStoredTheme(next ? 'dark' : 'light');
+      applyTheme(next);
+    }
+    function initTheme() {
+      var stored = getStoredTheme();
+      if (stored === 'dark') { applyTheme(true); return; }
+      if (stored === 'light') { applyTheme(false); return; }
+      // No stored preference: follow system
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(prefersDark);
+    }
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js');
     }
 
+    initTheme();
     document.addEventListener('DOMContentLoaded', initUI);
 
     // --- Dashboard ---
