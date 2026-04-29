@@ -356,6 +356,11 @@
       align-items: center;
       padding: 10px 0;
     }
+    #drill_machine_log {
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #c8dcc0;
+    }
     .drill-entry-tab-header {
       font-size: 13px;
       font-weight: bold;
@@ -988,6 +993,7 @@
           <span id="ds_duenger_remaining">—</span>
         </div>
       </div>
+      <div id="drill_machine_log"></div>
       <div id="drill_entries"></div>
     </div>
 
@@ -1018,7 +1024,8 @@
       fahrgassenEnabled: false,
       fahrgassenBreite: 0,
       einheitGroesseEnabled: false,
-      koernerProEinheit: 50000
+      koernerProEinheit: 50000,
+      machineLog: []
     };
 
     // --- Storage ---
@@ -1058,6 +1065,8 @@
               if (!reiter.entries) reiter.entries = [];
             });
           }
+          // Ensure machineLog exists (migration from older state)
+          if (!parsed.machineLog) parsed.machineLog = [];
           state = parsed;
         }
       } catch(e) {}
@@ -1555,6 +1564,13 @@
         var r = getActiveReiter();
         if (!r.hektar || !r.koerner) return;
         if (gesamtEinheit <= 0 && gesamtDuenger <= 0) return;
+        // Log machine fill
+        state.machineLog.push({
+          einheit: gesamtEinheit,
+          hektar: hektarStand,
+          duenger: gesamtDuenger,
+          time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+        });
         r.entries.push({
           einheit: gesamtEinheit,
           hektar: hektarStand,
@@ -1569,6 +1585,13 @@
       }
 
       var addedAny = false;
+      // Log machine fill first
+      state.machineLog.push({
+        einheit: gesamtEinheit,
+        hektar: hektarStand,
+        duenger: gesamtDuenger,
+        time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+      });
       state.reiter.forEach(function(r, i) {
         var prio = drillPriorities[i] || 0;
         if (prio <= 0) return;
@@ -1733,6 +1756,32 @@
       if (allEinheitenUsed > 0) summaryParts.push(formatEinheit(allEinheitenUsed) + ' Einheiten');
       if (allDuengerUsed > 0) summaryParts.push(allDuengerUsed.toLocaleString('de-DE') + ' kg Dünger');
       document.getElementById('ds_total_summary').textContent = summaryParts.join(' + ');
+      // Machine log (raw fills into machine, independent of tab distribution)
+      var mlContainer = document.getElementById('drill_machine_log');
+      mlContainer.innerHTML = '';
+      if (state.machineLog && state.machineLog.length > 0) {
+        var mlTitle = document.createElement('div');
+        mlTitle.className = 'drill-entry-tab-header';
+        mlTitle.textContent = 'Maschinen-Protokoll';
+        mlContainer.appendChild(mlTitle);
+        state.machineLog.forEach(function(m, mi) {
+          var ds = m.duenger > 0 ? m.duenger.toLocaleString('de-DE') + ' kg' : '';
+          var dl = ds ? ' + ' + ds + ' Dünger' : '';
+          var hl = m.hektar > 0 ? ' @ ' + (Math.round(m.hektar * 10) / 10).toFixed(1).replace('.', ',') + ' ha' : '';
+          var row = document.createElement('div');
+          row.className = 'drill-entry';
+          var span = document.createElement('span');
+          span.className = 'entry-text';
+          var hash = document.createElement('span');
+          hash.textContent = '#' + (mi + 1);
+          var txt = (m.time ? m.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(m.einheit) + dl;
+          var txtNode = document.createTextNode(txt + ' ');
+          span.appendChild(hash);
+          span.appendChild(txtNode);
+          row.appendChild(span);
+          mlContainer.appendChild(row);
+        });
+      }
       // Per-tab entries in Protokoll view (global log)
       var container = document.getElementById('drill_entries');
       container.innerHTML = '';
@@ -1794,7 +1843,8 @@
         fahrgassenEnabled: false,
         fahrgassenBreite: 0,
         einheitGroesseEnabled: false,
-        koernerProEinheit: 50000
+        koernerProEinheit: 50000,
+        machineLog: []
       };
       document.getElementById('hektar').value = '';
       document.getElementById('koerner').value = '';

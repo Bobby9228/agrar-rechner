@@ -48,6 +48,7 @@ const DOM_TEMPLATE = `<!DOCTYPE html><html><body>
   <div id="ds_duenger_used"></div>
   <div id="ds_duenger_remaining"></div>
   <div id="ds_total_summary"></div>
+  <div id="drill_machine_log"></div>
   <div id="drill_entries"></div>
   <button id="fahrgassen_toggle"></button>
   <div id="fahrgassen_settings"></div>
