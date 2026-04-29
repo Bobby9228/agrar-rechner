@@ -1982,7 +1982,7 @@
       document.getElementById('drill_summary').style.display = (hasAnyData || hasAnyEntries) ? 'block' : 'none';
       // Build total summary text
       var summaryParts = [];
-      if (allEinheitenUsed > 0) summaryParts.push(formatEinheit(allEinheitenUsed) + ' Einheiten');
+      if (allEinheitenUsed > 0) summaryParts.push(formatEinheit(allEinheitenUsed));
       if (allDuengerUsed > 0) summaryParts.push(allDuengerUsed.toLocaleString('de-DE') + ' kg Dünger');
       document.getElementById('ds_total_summary').textContent = summaryParts.join(' + ');
       // Machine log (raw fills into machine, independent of tab distribution)
