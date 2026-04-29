@@ -1633,6 +1633,13 @@
       renderResults();
     }
 
+    function drillMachineRemove(idx) {
+      if (!state.machineLog || idx < 0 || idx >= state.machineLog.length) return;
+      state.machineLog.splice(idx, 1);
+      sv();
+      renderResults();
+    }
+
     function drillRemove(tabIdx, entryIdx) {
       state.reiter[tabIdx].entries.splice(entryIdx, 1);
       sv();
@@ -1779,6 +1786,11 @@
           span.appendChild(hash);
           span.appendChild(txtNode);
           row.appendChild(span);
+          var btn = document.createElement('button');
+          btn.className = 'btn-danger';
+          btn.textContent = '✕';
+          btn.onclick = (function(idx) { return function() { drillMachineRemove(idx); }; })(mi);
+          row.appendChild(btn);
           mlContainer.appendChild(row);
         });
       }
