@@ -383,6 +383,23 @@
       font-weight: 600;
       color: #2d5016;
     }
+    .drill-prognose {
+      font-size: 0.78rem;
+      color: #666;
+      padding: 2px 0 6px 4px;
+    }
+    .drill-prognose span {
+      display: inline-block;
+      margin-right: 10px;
+    }
+    .drill-prognose .prog-label {
+      font-weight: 600;
+      color: #555;
+    }
+    .drill-prognose .prog-val {
+      color: #2d5016;
+      font-weight: 700;
+    }
     .drill-empty {
       text-align: center;
       color: #888;
@@ -1024,6 +1041,10 @@
     html.dark .drill-entry .entry-text { color: #9aa88a; }
     html.dark .drill-entry .entry-text span { color: #8bc34a; }
     html.dark .drill-empty { color: #7a8470; }
+
+    html.dark .drill-prognose { color: #7a8470; }
+    html.dark .drill-prognose .prog-label { color: #9aa88a; }
+    html.dark .drill-prognose .prog-val { color: #8bc34a; }
 
     html.dark .version-footer { color: #5a6050; }
 
@@ -1993,6 +2014,32 @@
           btn.onclick = (function(idx) { return function() { drillMachineRemove(idx); }; })(mi);
           row.appendChild(btn);
           mlContainer.appendChild(row);
+
+          // Prognose: bei welchem ha-Zaehlerstand ist Saat/Duenger leer?
+          if (r.koerner > 0 && (m.einheit > 0 || m.duenger > 0)) {
+            var fgFactor = 1;
+            if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
+              fgFactor = (state.fahrgassenBreite - 1) / state.fahrgassenBreite;
+            }
+            var unitsPerHa = r.koerner * fgFactor / state.koernerProEinheit;
+            var prognoseParts = [];
+            if (m.einheit > 0 && unitsPerHa > 0) {
+              var haSaat = m.einheit / unitsPerHa;
+              var prognoseSaat = (m.hektar || 0) + haSaat;
+              prognoseParts.push('<span><span class="prog-label">Saat leer bei</span> <span class="prog-val">~' + fmt(prognoseSaat) + ' ha</span></span>');
+            }
+            if (m.duenger > 0 && r.duenger > 0) {
+              var haDuenger = m.duenger / r.duenger;
+              var prognoseDuenger = (m.hektar || 0) + haDuenger;
+              prognoseParts.push('<span><span class="prog-label">Dünger leer bei</span> <span class="prog-val">~' + fmt(prognoseDuenger) + ' ha</span></span>');
+            }
+            if (prognoseParts.length > 0) {
+              var progRow = document.createElement('div');
+              progRow.className = 'drill-prognose';
+              progRow.innerHTML = prognoseParts.join(' ');
+              mlContainer.appendChild(progRow);
+            }
+          }
         });
       }
       // Per-tab entries in Protokoll view (global log)
