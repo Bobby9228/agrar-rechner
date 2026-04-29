@@ -951,6 +951,10 @@
             <input type="text" inputmode="decimal" id="drill_duenger" placeholder="z.B. 200" oninput="drillCalcAll(); onInputFormat(this, 'decimal')">
           </div>
         </div>
+        <div class="field">
+          <label for="drill_hektar">Hektar-Zählerstand</label>
+          <input type="text" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal')">
+        </div>
         <div class="drill-tabs-section">
           <div class="drill-tabs-header">Aufteilen auf (Klick = Prio: 1 → 2 → 3 → aus):</div>
           <div id="drill_tab_list"></div>
@@ -1541,6 +1545,7 @@
     function drillAdd() {
       var gesamtEinheit = parseDE(document.getElementById('drill_einheit').value) || 0;
       var gesamtDuenger = parseDE(document.getElementById('drill_duenger').value) || 0;
+      var hektarStand = parseDE(document.getElementById('drill_hektar').value) || 0;
 
       // If no tab list rendered (e.g. in tests), fall back to single-tab mode
       var hasTabList = document.getElementById('dtl_prio_0') !== null;
@@ -1552,7 +1557,7 @@
         if (gesamtEinheit <= 0 && gesamtDuenger <= 0) return;
         r.entries.push({
           einheit: gesamtEinheit,
-          hektar: 0,
+          hektar: hektarStand,
           duenger: gesamtDuenger,
           time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
         });
@@ -1576,7 +1581,7 @@
         if (einheit > 0 || duenger > 0) {
           r.entries.push({
             einheit: einheit,
-            hektar: 0,
+            hektar: hektarStand,
             duenger: duenger,
             time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
           });
@@ -1589,6 +1594,7 @@
       // Clear inputs
       document.getElementById('drill_einheit').value = '';
       document.getElementById('drill_duenger').value = '';
+      document.getElementById('drill_hektar').value = '';
       state.reiter.forEach(function(r, i) {
         var eInput = document.getElementById('dtl_e_' + i);
         var dInput = document.getElementById('dtl_d_' + i);
