@@ -465,6 +465,10 @@
       color: #999;
       margin-top: 1px;
     }
+    .drill-tab-row .drill-tab-need.done {
+      color: #4a7c23;
+      font-weight: 600;
+    }
     .drill-tab-row .drill-tab-values {
       display: flex;
       gap: 6px;
@@ -1388,15 +1392,27 @@
         label.className = 'drill-tab-name';
         label.textContent = r.name || ('Tab ' + (i + 1));
         nameWrap.appendChild(label);
-        // Show remaining need
+        // Show remaining need or done status
         if (r.hektar > 0 && r.koerner > 0) {
           var totalE = getTabTotalEinheiten(r);
           var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
           var remE = Math.max(0, totalE - usedE);
+          var totalD = getTabTotalDuenger(r);
+          var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+          var remD = Math.max(0, totalD - usedD);
           var needDiv = document.createElement('div');
           needDiv.className = 'drill-tab-need';
           needDiv.id = 'dtl_need_' + i;
-          needDiv.textContent = 'braucht ' + fmt(remE) + ' Einheiten';
+          var saatDone = remE <= 0.05;
+          var duengerDone = totalD <= 0 || remD <= 0.05;
+          if (saatDone && duengerDone) {
+            needDiv.classList.add('done');
+            needDiv.textContent = '✓ fertig';
+          } else {
+            var text = 'braucht ' + fmt(remE) + ' Einheiten';
+            if (totalD > 0 && remD > 0.05) text += ', ' + fmt(remD) + ' kg Dünger';
+            needDiv.textContent = text;
+          }
           nameWrap.appendChild(needDiv);
         }
 
