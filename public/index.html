@@ -2104,9 +2104,34 @@
     function confirmResetAll() {
       var tabName = state.reiter[state.activeReiter].name;
       if (!confirm('Wirklich zurücksetzen?\n\nAlle Eingaben für "' + tabName + '" werden gelöscht.')) return;
-      resetAll();
+      resetActiveTab();
     }
 
+    // Reset only the active tab's data (preserves other tabs, global settings, machineLog)
+    function resetActiveTab() {
+      var active = state.activeReiter;
+      state.reiter[active] = {
+        name: state.reiter[active].name,
+        hektar: 0,
+        koerner: 0,
+        duenger: 0,
+        entries: []
+      };
+      document.getElementById('hektar').value = '';
+      document.getElementById('koerner').value = '';
+      document.getElementById('duenger').value = '';
+      document.getElementById('err_hektar').textContent = '';
+      document.getElementById('err_koerner').textContent = '';
+      document.getElementById('hektar').style.borderColor = '';
+      document.getElementById('koerner').style.borderColor = '';
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('drill_section').style.display = 'none';
+      syncInputsFromState();
+      renderTabs();
+      sv();
+    }
+
+    // Full reset - clears everything (used for extreme cases, not via UI button)
     function resetAll() {
       state = {
         reiter: [{ name: 'Tab 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
