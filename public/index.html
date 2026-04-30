@@ -2001,8 +2001,8 @@
         }
       }
 
-      // Show zaehler section if there are entries (zähler tracking is active)
-      var hasZaehler = state.reiter.some(function(t) { return t.entries.some(function(e) { return e.istHa !== undefined; }); });
+      // Show zaehler section if zähler tracking is active (entries with istHa or zaehlerstand set)
+      var hasZaehler = state.reiter.some(function(t) { return t.entries.some(function(e) { return e.istHa !== undefined; }); }) || state.zaehlerstand > 0;
       document.getElementById('zaehler_section').style.display = hasZaehler ? 'block' : 'none';
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
