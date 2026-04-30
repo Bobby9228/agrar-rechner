@@ -613,6 +613,29 @@
       margin-top: 8px;
       text-align: center;
     }
+    .zaehler-result {
+      background: #f0f4e8;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+    .zaehler-delta {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 1rem;
+    }
+    .zaehler-delta .delta-label { color: #555; }
+    .zaehler-delta .delta-value { font-weight: 700; color: #2d5016; }
+    .zaehler-delta .delta-value.negative { color: #d32f2f; }
+    .zaehler-delta .delta-value.positive { color: #4a7c23; }
+    html.dark .zaehler-delta .delta-value { color: #a5d6a7; }
+    html.dark .zaehler-delta .delta-value.negative { color: #ef5350; }
+    html.dark .zaehler-delta .delta-value.positive { color: #66bb6a; }
+    .entry-diff.positive { color: #4a7c23; font-weight: 600; }
+    .entry-diff.negative { color: #d32f2f; font-weight: 600; }
+    html.dark .entry-diff.positive { color: #66bb6a; }
+    html.dark .entry-diff.negative { color: #ef5350; }
     /* Sticky footer */
     .app-layout {
       display: flex;
@@ -1165,6 +1188,28 @@
       <div class="info" id="r_info"></div>
     </div><!-- end results card -->
 
+    <div class="card" id="zaehler_section" style="display:none">
+      <h2>📏 Hektarzähler</h2>
+      <div class="field">
+        <label for="zaehler_stand">Zählerstand nach Bearbeitung</label>
+        <div class="input-with-suffix">
+          <input type="text" inputmode="decimal" id="zaehler_stand" placeholder="z.B. 15,8" oninput="onInputFormat(this, 'decimal')" onfocus="selectAll(this)" onblur="zaehlerUpdate()" onkeydown="if(event.key==='Enter'){zaehlerUpdate()}">
+          <span class="suffix">ha</span>
+        </div>
+        <div class="info">Trage den aktuellen Stand des Hektarzählers ein</div>
+      </div>
+      <div class="zaehler-result" id="zaehler_result" style="display:none">
+        <div class="zaehler-delta">
+          <span class="delta-label">IST-Fläche seit letztem Eintrag:</span>
+          <span class="delta-value" id="z_ist">—</span>
+        </div>
+        <div class="zaehler-delta">
+          <span class="delta-label">Gesamt bearbeitete Fläche:</span>
+          <span class="delta-value" id="z_total">—</span>
+        </div>
+      </div>
+    </div>
+
     <div class="card" id="drill_section" style="display:none">
       <h2>🔧 Drill-Protokoll</h2>
       <div id="drill_mask">
@@ -1248,8 +1293,39 @@
       fahrgassenBreite: 0,
       einheitGroesseEnabled: false,
       koernerProEinheit: 50000,
-      machineLog: []
+      machineLog: [],
+      zaehlerstand: 0
     };
+
+    // --- Hektarzähler ---
+    function zaehlerUpdate() {
+      var z = parseDE(document.getElementById('zaehler_stand').value);
+      if (isNaN(z) || z < 0) {
+        document.getElementById('zaehler_result').style.display = 'none';
+        return;
+      }
+      var prev = state.zaehlerstand;
+      state.zaehlerstand = z;
+
+      var zaehlerResult = document.getElementById('zaehler_result');
+      zaehlerResult.style.display = 'block';
+
+      var istHa = z - prev;
+      var r = getActiveReiter();
+      var totalIst = z; // total from zähler
+
+      document.getElementById('z_ist').textContent = fmt(istHa) + ' ha';
+      var zIstEl = document.getElementById('z_ist');
+      if (istHa >= 0) {
+        zIstEl.className = 'delta-value positive';
+      } else {
+        zIstEl.className = 'delta-value negative';
+      }
+
+      document.getElementById('z_total').textContent = fmt(z) + ' ha';
+
+      sv();
+    }
 
     // --- Storage ---
     function sv() {
@@ -1260,7 +1336,9 @@
         var raw = localStorage.getItem('mais_rechner');
         if (raw) {
           var parsed = JSON.parse(raw);
-          // Migrate old flat state to tabbed state
+          // Ensure zaehlerstand exists
+          if (parsed.zaehlerstand === undefined) { parsed.zaehlerstand = 0; }
+          state = parsed;
           if (parsed.reiter === undefined && parsed.koerner !== undefined) {
             parsed.reiter = [{
               name: 'Tab 1',
@@ -1789,16 +1867,26 @@
         var r = getActiveReiter();
         if (!r.hektar || !r.koerner) return;
         if (gesamtEinheit <= 0 && gesamtDuenger <= 0) return;
+
+        // If zählerstand is set, use zähler difference as IST-Fläche
+        var istHa = hektarStand;
+        if (state.zaehlerstand > 0) {
+          var prevZaehler = r.entries.reduce(function(s, e) { return s + (e.istHa || e.hektar || 0); }, 0);
+          istHa = state.zaehlerstand - prevZaehler;
+        }
+
         // Log machine fill
         state.machineLog.push({
           einheit: gesamtEinheit,
-          hektar: hektarStand,
+          hektar: istHa,
+          istHa: istHa,
           duenger: gesamtDuenger,
           time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
         });
         r.entries.push({
           einheit: gesamtEinheit,
-          hektar: hektarStand,
+          hektar: istHa,
+          istHa: istHa,
           duenger: gesamtDuenger,
           time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
         });
@@ -1810,10 +1898,22 @@
       }
 
       var addedAny = false;
-      // Log machine fill first
+      // If zählerstand is set, calculate IST-Fläche from zähler difference
+      var istHa = hektarStand;
+      if (state.zaehlerstand > 0) {
+        var totalPrevIst = 0;
+        state.reiter.forEach(function(r) {
+          r.entries.forEach(function(e) {
+            totalPrevIst += e.istHa || e.hektar || 0;
+          });
+        });
+        istHa = state.zaehlerstand - totalPrevIst;
+      }
+      // Log machine fill
       state.machineLog.push({
         einheit: gesamtEinheit,
-        hektar: hektarStand,
+        hektar: istHa,
+        istHa: istHa,
         duenger: gesamtDuenger,
         time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
       });
@@ -1829,7 +1929,8 @@
         if (einheit > 0 || duenger > 0) {
           r.entries.push({
             einheit: einheit,
-            hektar: hektarStand,
+            hektar: istHa,
+            istHa: istHa,
             duenger: duenger,
             time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
           });
@@ -1900,7 +2001,9 @@
         }
       }
 
-      // --- Per-tab drill info in result card ---
+      // Show zaehler section if there are entries (zähler tracking is active)
+      var hasZaehler = state.reiter.some(function(t) { return t.entries.some(function(e) { return e.istHa !== undefined; }); });
+      document.getElementById('zaehler_section').style.display = hasZaehler ? 'block' : 'none';
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       var remEinheit = Math.max(0, einheiten - usedEinheit);
@@ -1936,7 +2039,18 @@
             r.entries.forEach(function(e, entryIdx) {
               var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
               var dl = ds ? ' + ' + ds + ' Dünger' : '';
-              var hl = e.hektar > 0 ? ' @ ' + (Math.round(e.hektar * 10) / 10).toFixed(1).replace('.', ',') + ' ha' : '';
+              var istHa = e.istHa !== undefined ? e.istHa : e.hektar;
+              var sollHa = r.hektar;
+              var hl = '';
+              if (istHa > 0) {
+                hl = ' @ ' + fmt(istHa) + ' ha';
+                var diff = istHa - sollHa;
+                if (diff >= 0) {
+                  hl += ' <span class="entry-diff positive">+' + fmt(diff) + '</span>';
+                } else {
+                  hl += ' <span class="entry-diff negative">' + fmt(diff) + '</span>';
+                }
+              }
               var entry = document.createElement('div');
               entry.className = 'drill-entry-inline';
               var span = document.createElement('span');
@@ -2009,7 +2123,18 @@
         state.machineLog.forEach(function(m, mi) {
           var ds = m.duenger > 0 ? m.duenger.toLocaleString('de-DE') + ' kg' : '';
           var dl = ds ? ' + ' + ds + ' Dünger' : '';
-          var hl = m.hektar > 0 ? ' @ ' + (Math.round(m.hektar * 10) / 10).toFixed(1).replace('.', ',') + ' ha' : '';
+          var istHa = m.istHa !== undefined ? m.istHa : m.hektar;
+          var sollHa = r.hektar;
+          var hl = '';
+          if (istHa > 0) {
+            hl = ' @ ' + fmt(istHa) + ' ha';
+            var diff = istHa - sollHa;
+            if (diff >= 0) {
+              hl += ' <span class="entry-diff positive">+' + fmt(diff) + '</span>';
+            } else {
+              hl += ' <span class="entry-diff negative">' + fmt(diff) + '</span>';
+            }
+          }
           var row = document.createElement('div');
           row.className = 'drill-entry';
           var span = document.createElement('span');
@@ -2077,7 +2202,18 @@
           r.entries.forEach(function(e, entryIdx) {
             var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
             var dl = ds ? ' + ' + ds + ' Dünger' : '';
-            var hl = e.hektar > 0 ? ' @ ' + (Math.round(e.hektar * 10) / 10).toFixed(1).replace('.', ',') + ' ha' : '';
+            var istHa = e.istHa !== undefined ? e.istHa : e.hektar;
+            var sollHa = r.hektar;
+            var hl = '';
+            if (istHa > 0) {
+              hl = ' @ ' + fmt(istHa) + ' ha';
+              var diff = istHa - sollHa;
+              if (diff >= 0) {
+                hl += ' <span class="entry-diff positive">+' + fmt(diff) + '</span>';
+              } else {
+                hl += ' <span class="entry-diff negative">' + fmt(diff) + '</span>';
+              }
+            }
 
             var entry = document.createElement('div');
             entry.className = 'drill-entry';
@@ -2149,7 +2285,8 @@
         fahrgassenBreite: 0,
         einheitGroesseEnabled: false,
         koernerProEinheit: 50000,
-        machineLog: []
+        machineLog: [],
+        zaehlerstand: 0
       };
       document.getElementById('hektar').value = '';
       document.getElementById('koerner').value = '';
@@ -2160,6 +2297,8 @@
       document.getElementById('koerner').style.borderColor = '';
       document.getElementById('results').style.display = 'none';
       document.getElementById('drill_section').style.display = 'none';
+      document.getElementById('zaehler_section').style.display = 'none';
+      document.getElementById('zaehler_stand').value = '';
       document.getElementById('fahrgassen_toggle').classList.remove('active');
       document.getElementById('fahrgassen_settings').classList.remove('open');
       document.getElementById('fahrgassen_breite').value = '';
