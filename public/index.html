@@ -88,6 +88,23 @@
       color: #888;
       margin-top: 4px;
     }
+    .input-with-suffix {
+      position: relative;
+      display: block;
+    }
+    .input-with-suffix input {
+      padding-right: 50px;
+    }
+    .input-with-suffix .suffix {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1.0rem;
+      color: #888;
+      pointer-events: none;
+      line-height: 1;
+    }
     .btn, .btn-add, .btn-danger, .toggle-btn, .tab-btn {
       touch-action: manipulation;
     }
@@ -416,12 +433,18 @@
       <h2>📐 Fläche & Aussaatstärke</h2>
       <div class="field">
         <label for="hektar">Hektar</label>
-        <input type="text" inputmode="decimal" id="hektar" placeholder="z.B. 12,5" oninput="onInputFormat(this, 'decimal')">
+        <div class="input-with-suffix">
+          <input type="text" inputmode="decimal" id="hektar" placeholder="z.B. 12,5" oninput="onInputFormat(this, 'decimal')" onfocus="selectAll(this)">
+          <span class="suffix">ha</span>
+        </div>
         <div class="error-msg" id="err_hektar"></div>
       </div>
       <div class="field">
         <label for="koerner">Körner pro Hektar</label>
-        <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" oninput="onInputFormat(this, 'integer')">
+        <div class="input-with-suffix">
+          <input type="text" inputmode="decimal" id="koerner" placeholder="z.B. 90000" oninput="onInputFormat(this, 'integer')" onfocus="selectAll(this)">
+          <span class="suffix">K/ha</span>
+        </div>
         <div class="unit">üblich: 80.000 – 100.000</div>
         <div class="error-msg" id="err_koerner"></div>
       </div>
@@ -431,7 +454,10 @@
       <h2>🧪 Dünger</h2>
       <div class="field">
         <label for="duenger">Dünger (kg/ha)</label>
-        <input type="text" inputmode="decimal" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal')">
+        <div class="input-with-suffix">
+          <input type="text" inputmode="decimal" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal')" onfocus="selectAll(this)">
+          <span class="suffix">kg/ha</span>
+        </div>
       </div>
 
       <div class="fahrgassen-toggle">
@@ -441,7 +467,10 @@
       <div class="fahrgassen-settings" id="fahrgassen_settings">
         <div class="field" style="margin-bottom:8px">
           <label for="fahrgassen_breite">Fahrgassenbreite (m)</label>
-          <input type="text" inputmode="decimal" id="fahrgassen_breite" placeholder="z.B. 24" oninput="onInputFormat(this, 'decimal')" onchange="fahrgassenUpdate()" onblur="fahrgassenUpdate()">
+          <div class="input-with-suffix">
+            <input type="text" inputmode="decimal" id="fahrgassen_breite" placeholder="z.B. 24" oninput="onInputFormat(this, 'decimal')" onfocus="selectAll(this)" onchange="fahrgassenUpdate()" onblur="fahrgassenUpdate()">
+            <span class="suffix">m</span>
+          </div>
         </div>
         <div class="fahrgassen-saved" id="fahrgassen_saved"></div>
         <div class="fahrgassen-info">Die Körnerzahl wird um ca. 1/Fahrgassenbreite × 100 % reduziert.</div>
@@ -473,16 +502,25 @@
       <div class="inline-row">
         <div class="field">
           <label for="drill_einheit">Einheiten eingefüllt</label>
-          <input type="text" inputmode="decimal" id="drill_einheit" placeholder="z.B. 1,5" oninput="onInputFormat(this, 'decimal')">
+          <div class="input-with-suffix">
+            <input type="text" inputmode="decimal" id="drill_einheit" placeholder="z.B. 1,5" oninput="onInputFormat(this, 'decimal')" onfocus="selectAll(this)">
+            <span class="suffix">Einh.</span>
+          </div>
         </div>
         <div class="field">
           <label for="drill_hektar">Hektar-Zähler</label>
-          <input type="text" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal')">
+          <div class="input-with-suffix">
+            <input type="text" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal')" onfocus="selectAll(this)">
+            <span class="suffix">ha</span>
+          </div>
         </div>
       </div>
       <div class="field">
         <label for="drill_duenger">Dünger (kg)</label>
-        <input type="text" inputmode="decimal" id="drill_duenger" placeholder="z.B. 500" oninput="onInputFormat(this, 'decimal')">
+        <div class="input-with-suffix">
+          <input type="text" inputmode="decimal" id="drill_duenger" placeholder="z.B. 500" oninput="onInputFormat(this, 'decimal')" onfocus="selectAll(this)">
+          <span class="suffix">kg</span>
+        </div>
       </div>
       <button class="btn-add" onclick="drillAdd()">+ Einfüllen</button>
 
@@ -826,6 +864,14 @@ function fahrgassenUpdate() {
       if (el.value !== cleaned) {
         el.value = cleaned;
         el.setSelectionRange(cleaned.length, cleaned.length);
+      }
+    }
+
+    // Select all text on focus for numeric inputs
+    function selectAll(el) {
+      var val = el.value;
+      if (val) {
+        el.setSelectionRange(0, val.length);
       }
     }
 
