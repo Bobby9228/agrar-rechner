@@ -1230,6 +1230,7 @@
         <div class="footer-btn-row">
           <button class="btn" onclick="berechne()" id="berechnen_btn">Berechnen</button>
           <button class="btn btn-secondary" onclick="confirmResetAll()" id="reset_btn">Zurücksetzen</button>
+          <button class="btn btn-danger" onclick="confirmResetAll(true)" id="reset_all_btn">Reset All</button>
         </div>
       </div>
     </div>
@@ -1450,6 +1451,8 @@
       if (berechnenBtn) berechnenBtn.style.display = isProtokoll ? 'none' : '';
       var resetBtn = document.getElementById('reset_btn');
       if (resetBtn) resetBtn.style.display = isProtokoll ? 'none' : '';
+      var resetAllBtn = document.getElementById('reset_all_btn');
+      if (resetAllBtn) resetAllBtn.style.display = isProtokoll ? 'none' : '';
 
       var stickyFooter = document.getElementById('sticky_footer');
       if (stickyFooter) stickyFooter.style.display = isProtokoll ? 'none' : '';
@@ -2101,10 +2104,15 @@
       }
     }
 
-    function confirmResetAll() {
+    function confirmResetAll(fullReset) {
       var tabName = state.reiter[state.activeReiter].name;
-      if (!confirm('Wirklich zurücksetzen?\n\nAlle Eingaben für "' + tabName + '" werden gelöscht.')) return;
-      resetActiveTab();
+      if (fullReset) {
+        if (!confirm('Wirklich ALLE Daten zurücksetzen?\n\nAlle Tabs, Einträge und Einstellungen werden gelöscht.')) return;
+        resetAll();
+      } else {
+        if (!confirm('Wirklich zurücksetzen?\n\nAlle Eingaben für "' + tabName + '" werden gelöscht.')) return;
+        resetActiveTab();
+      }
     }
 
     // Reset only the active tab's data (preserves other tabs, global settings, machineLog)

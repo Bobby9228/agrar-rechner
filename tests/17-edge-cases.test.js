@@ -175,7 +175,7 @@ describe('confirmResetAll', () => {
   let w;
   beforeEach(() => { w = createDom().window; });
 
-  it('calls resetActiveTab when confirmed', () => {
+  it('calls resetActiveTab when confirmed (partial reset)', () => {
     // Mock confirm to return true
     var originalConfirm = w.confirm;
     w.confirm = () => true;
@@ -185,6 +185,22 @@ describe('confirmResetAll', () => {
 
     expect(w.state.reiter[0].hektar).toBe(0);
     expect(w.state.reiter[0].koerner).toBe(0);
+
+    w.confirm = originalConfirm;
+  });
+
+  it('calls resetAll when fullReset=true', () => {
+    var originalConfirm = w.confirm;
+    w.confirm = () => true;
+
+    w.addReiter();
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 5, koerner: 45000 };
+    w.state.machineLog = [{ einheit: 5, hektar: 3, duenger: 100, time: '10:00' }];
+    w.confirmResetAll(true);  // full reset
+
+    expect(w.state.reiter.length).toBe(1);  // all tabs cleared
+    expect(w.state.machineLog).toEqual([]);   // machineLog cleared
 
     w.confirm = originalConfirm;
   });
