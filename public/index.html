@@ -1808,7 +1808,7 @@
       var gesamtEinheit = parseDE(document.getElementById('drill_einheit').value) || 0;
       var gesamtDuenger = parseDE(document.getElementById('drill_duenger').value) || 0;
 
-      // Collect tabs with priority > 0, sort by priority descending
+      // Collect tabs with priority > 0, sort by priority ascending (1 = highest = first)
       var prioritized = [];
       state.reiter.forEach(function(r, i) {
         var prio = drillPriorities[i] || 0;
@@ -1816,7 +1816,7 @@
           prioritized.push({ idx: i, prio: prio, reiter: r });
         }
       });
-      prioritized.sort(function(a, b) { return b.prio - a.prio; });
+      prioritized.sort(function(a, b) { return a.prio - b.prio; });
 
       // Distribute: highest priority first, give what they need, remainder to next
       var remEinheit = gesamtEinheit;
