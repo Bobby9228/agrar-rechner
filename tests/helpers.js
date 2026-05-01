@@ -33,12 +33,45 @@ const DOM_TEMPLATE = `<!DOCTYPE html><html><body>
       <div class="result-row" id="r_drill_d_rem_row" style="display:none"><span class="label">Dünger verbleibend</span><span class="value small" id="r_drill_d_rem">—</span></div>
       <div id="r_drill_entries"></div>
     </div>
+    <div id="r_soll_ist_section" style="display:none">
+      <div class="result-row"><span class="label">SOLL-Fläche</span><span class="value small" id="r_soll_ha">—</span></div>
+      <div class="result-row"><span class="label">IST-Fläche</span><span class="value small" id="r_ist_ha">—</span></div>
+      <div class="result-row"><span class="label">Abweichung</span><span class="value small" id="r_diff_ha">—</span></div>
+    </div>
     <div id="r_info"></div>
   </div>
   <div id="drill_section" style="display:none"></div>
+  <div id="zaehler_section" style="display:none">
+    <div class="zaehler-result" id="zaehler_result" style="display:none">
+      <div class="zaehler-delta">
+        <span class="delta-label">IST-Fläche seit letztem Eintrag:</span>
+        <span class="delta-value" id="z_ist">—</span>
+      </div>
+      <div class="zaehler-delta">
+        <span class="delta-label">Gesamt bearbeitete Fläche:</span>
+        <span class="delta-value" id="z_total">—</span>
+      </div>
+      <div class="zaehler-soll-ist" id="zaehler_soll_ist" style="display:none">
+        <div class="drill-separator"></div>
+        <div class="result-row">
+          <span class="label">SOLL-Fläche:</span>
+          <span class="value small" id="z_soll">—</span>
+        </div>
+        <div class="result-row">
+          <span class="label">IST-Fläche (kumuliert):</span>
+          <span class="value small" id="z_ist_sum">—</span>
+        </div>
+        <div class="result-row" id="z_diff_row">
+          <span class="label">Abweichung:</span>
+          <span class="value small" id="z_diff">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
   <input id="drill_einheit" value="">
   <input id="drill_hektar" value="">
   <input id="drill_duenger" value="">
+  <input id="zaehler_stand" value="">
   <button id="drill_add_btn"></button>
   <div id="drill_summary" style="display:none"></div>
   <div id="ds_saat_total"></div>

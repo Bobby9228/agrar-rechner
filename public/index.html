@@ -1164,6 +1164,22 @@
         <span class="value small" id="r_duenger">—</span>
       </div>
 
+      <div id="r_soll_ist_section" style="display:none">
+        <div class="drill-separator"></div>
+        <div class="result-row">
+          <span class="label">SOLL-Fläche</span>
+          <span class="value small" id="r_soll_ha">—</span>
+        </div>
+        <div class="result-row">
+          <span class="label">IST-Fläche</span>
+          <span class="value small" id="r_ist_ha">—</span>
+        </div>
+        <div class="result-row">
+          <span class="label">Abweichung</span>
+          <span class="value small" id="r_diff_ha">—</span>
+        </div>
+      </div>
+
       <div id="r_drill_section" style="display:none">
         <div class="drill-separator"></div>
         <div class="result-row">
@@ -1206,6 +1222,21 @@
         <div class="zaehler-delta">
           <span class="delta-label">Gesamt bearbeitete Fläche:</span>
           <span class="delta-value" id="z_total">—</span>
+        </div>
+        <div class="zaehler-soll-ist" id="zaehler_soll_ist" style="display:none">
+          <div class="drill-separator"></div>
+          <div class="result-row">
+            <span class="label">SOLL-Fläche:</span>
+            <span class="value small" id="z_soll">—</span>
+          </div>
+          <div class="result-row">
+            <span class="label">IST-Fläche (kumuliert):</span>
+            <span class="value small" id="z_ist_sum">—</span>
+          </div>
+          <div class="result-row" id="z_diff_row">
+            <span class="label">Abweichung:</span>
+            <span class="value small" id="z_diff">—</span>
+          </div>
         </div>
       </div>
     </div>
@@ -1323,6 +1354,45 @@
       }
 
       document.getElementById('z_total').textContent = fmt(z) + ' ha';
+
+      // Auto-save IST-Fläche as entry in active tab (only if positive and zähler was reset or increased)
+      if (istHa > 0 && r) {
+        var timeStr = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+        r.entries.push({
+          einheit: 0,
+          hektar: istHa,
+          istHa: istHa,
+          duenger: 0,
+          time: timeStr
+        });
+        renderResults();
+      }
+
+      // Update SOLL/IST/DIFF display
+      var sollHa = r ? r.hektar : 0;
+      var istHaSum = 0;
+      if (r) {
+        r.entries.forEach(function(e) {
+          istHaSum += e.istHa !== undefined ? e.istHa : (e.hektar || 0);
+        });
+      }
+      var diff = istHaSum - sollHa;
+
+      document.getElementById('z_soll').textContent = fmt(sollHa) + ' ha';
+      document.getElementById('z_ist_sum').textContent = fmt(istHaSum) + ' ha';
+      var zDiffEl = document.getElementById('z_diff');
+      if (sollHa > 0) {
+        if (diff >= 0) {
+          zDiffEl.textContent = '+' + fmt(diff) + ' ha';
+          zDiffEl.className = 'value small positive';
+        } else {
+          zDiffEl.textContent = fmt(diff) + ' ha';
+          zDiffEl.className = 'value small negative';
+        }
+        document.getElementById('zaehler_soll_ist').style.display = 'block';
+      } else {
+        document.getElementById('zaehler_soll_ist').style.display = 'none';
+      }
 
       sv();
     }
@@ -2004,6 +2074,49 @@
       // Show zaehler section if zähler tracking is active (entries with istHa or zaehlerstand set)
       var hasZaehler = state.reiter.some(function(t) { return t.entries.some(function(e) { return e.istHa !== undefined; }); }) || state.zaehlerstand > 0;
       document.getElementById('zaehler_section').style.display = hasZaehler ? 'block' : 'none';
+
+      // Update SOLL/IST/DIFF in zaehler section
+      var sollHa = r.hektar;
+      var istHaSum = 0;
+      r.entries.forEach(function(e) {
+        istHaSum += e.istHa !== undefined ? e.istHa : (e.hektar || 0);
+      });
+      var diff = istHaSum - sollHa;
+
+      // Update SOLL/IST/DIFF in result card
+      var sollIstSection = document.getElementById('r_soll_ist_section');
+      if (sollHa > 0) {
+        document.getElementById('r_soll_ha').textContent = fmt(sollHa) + ' ha';
+        document.getElementById('r_ist_ha').textContent = fmt(istHaSum) + ' ha';
+        var rDiffEl = document.getElementById('r_diff_ha');
+        if (diff >= 0) {
+          rDiffEl.textContent = '+' + fmt(diff) + ' ha';
+          rDiffEl.className = 'value small positive';
+        } else {
+          rDiffEl.textContent = fmt(diff) + ' ha';
+          rDiffEl.className = 'value small negative';
+        }
+        sollIstSection.style.display = 'block';
+      } else {
+        sollIstSection.style.display = 'none';
+      }
+
+      document.getElementById('z_soll').textContent = fmt(sollHa) + ' ha';
+      document.getElementById('z_ist_sum').textContent = fmt(istHaSum) + ' ha';
+      var zDiffEl = document.getElementById('z_diff');
+      if (sollHa > 0) {
+        if (diff >= 0) {
+          zDiffEl.textContent = '+' + fmt(diff) + ' ha';
+          zDiffEl.className = 'value small positive';
+        } else {
+          zDiffEl.textContent = fmt(diff) + ' ha';
+          zDiffEl.className = 'value small negative';
+        }
+        document.getElementById('zaehler_soll_ist').style.display = 'block';
+      } else {
+        document.getElementById('zaehler_soll_ist').style.display = 'none';
+      }
+
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       var remEinheit = Math.max(0, einheiten - usedEinheit);
