@@ -426,6 +426,33 @@
       margin-top: 4px;
       border-top: 1px solid #d0deb8;
     }
+    .drill-summary-savings {
+      background: #e8f5e9;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: #2e7d32;
+      font-weight: 600;
+    }
+    .drill-savings {
+      font-size: 0.85rem;
+      color: #2e7d32;
+      font-weight: 600;
+      padding: 2px 0;
+    }
+    .drill-savings .entry-text::before {
+      content: '↘ ';
+    }
+    .drill-carryover {
+      font-size: 0.85rem;
+      color: #1565c0;
+      font-weight: 600;
+      padding: 2px 0;
+    }
+    .drill-carryover .entry-text::before {
+      content: '↗ ';
+    }
     .drill-summary-total {
       margin-top: 10px;
       padding-top: 10px;
@@ -1058,6 +1085,9 @@
     html.dark .drill-summary-row { color: #c8d0b8; }
     html.dark .drill-summary-row.remaining { color: #ef5350; }
     html.dark .drill-summary-total { color: #8bc34a; border-top-color: #4a7c23; }
+    html.dark .drill-summary-savings { background: #1a2e1a; color: #66bb6a; }
+    html.dark .drill-savings { color: #66bb6a; }
+    html.dark .drill-carryover { color: #42a5f5; }
     html.dark #drill_machine_log { border-bottom-color: #3a4030; }
     html.dark .drill-entry-tab-header { color: #9aa88a; border-bottom-color: #3a4030; }
     html.dark .drill-entry { border-bottom-color: #3a4030; }
@@ -1255,7 +1285,7 @@
           </div>
         </div>
         <div class="field">
-          <label for="drill_hektar">Hektar-Zählerstand</label>
+          <label for="drill_hektar">IST-Wert (ha)</label>
           <input type="text" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal')">
         </div>
         <div class="drill-tabs-section">
@@ -1290,6 +1320,7 @@
           <span>Dünger verbleibend</span>
           <span id="ds_duenger_remaining">—</span>
         </div>
+        <div class="drill-summary-savings" id="ds_savings" style="display:none"></div>
       </div>
       <div id="drill_machine_log"></div>
       <div id="drill_entries"></div>
@@ -1744,6 +1775,57 @@
       return r.hektar * r.duenger;
     }
 
+    // Get sum of IST-Werte (istHa) for a tab's entries
+    function getTabIstSum(r) {
+      var sum = 0;
+      if (r.entries) {
+        r.entries.forEach(function(e) {
+          sum += e.istHa !== undefined ? e.istHa : (e.hektar || 0);
+        });
+      }
+      return sum;
+    }
+
+    // IST-based Einheiten needed for a tab (uses IST-Wert if available, else SOLL)
+    function getTabIstEinheiten(r) {
+      var istHa = getTabIstSum(r);
+      var ha = istHa > 0 ? istHa : r.hektar;
+      if (!ha || !r.koerner) return 0;
+      var k = ha * r.koerner;
+      if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
+        k = k * ((state.fahrgassenBreite - 1) / state.fahrgassenBreite);
+      }
+      return k / state.koernerProEinheit;
+    }
+
+    // IST-based Duenger needed for a tab (uses IST-Wert if available, else SOLL)
+    function getTabIstDuenger(r) {
+      var istHa = getTabIstSum(r);
+      var ha = istHa > 0 ? istHa : r.hektar;
+      if (!ha) return 0;
+      return ha * r.duenger;
+    }
+
+    // Calculate carryover: Saat/Duenger saved from previous tabs (IST < SOLL)
+    // Returns { savedEinheit, savedDuenger } cumulative up to (but not including) the given tab index
+    function getCarryover(tabIndex) {
+      var savedE = 0, savedD = 0;
+      for (var i = 0; i < tabIndex && i < state.reiter.length; i++) {
+        var t = state.reiter[i];
+        var istHa = getTabIstSum(t);
+        if (istHa > 0 && t.hektar > 0) {
+          // SOLL bedarf - IST bedarf = Ersparnis
+          var sollE = getTabTotalEinheiten(t);
+          var istE = getTabIstEinheiten(t);
+          var sollD = getTabTotalDuenger(t);
+          var istD = getTabIstDuenger(t);
+          savedE += (sollE - istE);
+          savedD += (sollD - istD);
+        }
+      }
+      return { savedEinheit: savedE, savedDuenger: savedD };
+    }
+
     function fmt(n) {
       // German decimal format, no suffix. Always one decimal place.
       var rounded = Math.round(n * 10) / 10;
@@ -1831,12 +1913,13 @@
         label.className = 'drill-tab-name';
         label.textContent = r.name || ('Tab ' + (i + 1));
         nameWrap.appendChild(label);
-        // Show remaining need or done status
+        // Show remaining need or done status (based on IST if available, else SOLL)
         if (r.hektar > 0 && r.koerner > 0) {
-          var totalE = getTabTotalEinheiten(r);
+          var istSum = getTabIstSum(r);
+          var totalE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
           var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
           var remE = Math.max(0, totalE - usedE);
-          var totalD = getTabTotalDuenger(r);
+          var totalD = istSum > 0 ? getTabIstDuenger(r) : getTabTotalDuenger(r);
           var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
           var remD = Math.max(0, totalD - usedD);
           var needDiv = document.createElement('div');
@@ -1902,11 +1985,12 @@
       var distribution = {};
       prioritized.forEach(function(item) {
         var r = item.reiter;
-        var totalE = getTabTotalEinheiten(r);
+        var istSum = getTabIstSum(r);
+        var totalE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
         var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
         var needE = Math.max(0, totalE - usedE);
 
-        var totalD = getTabTotalDuenger(r);
+        var totalD = istSum > 0 ? getTabIstDuenger(r) : getTabTotalDuenger(r);
         var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
         var needD = Math.max(0, totalD - usedD);
 
@@ -1946,12 +2030,8 @@
         if (!r.hektar || !r.koerner) return;
         if (gesamtEinheit <= 0 && gesamtDuenger <= 0) return;
 
-        // If zählerstand is set, use zähler difference as IST-Fläche
+        // IST-Wert: user enters the actual ha value directly
         var istHa = hektarStand;
-        if (state.zaehlerstand > 0) {
-          var prevZaehler = r.entries.reduce(function(s, e) { return s + (e.istHa || e.hektar || 0); }, 0);
-          istHa = state.zaehlerstand - prevZaehler;
-        }
 
         // Log machine fill
         state.machineLog.push({
@@ -1976,17 +2056,8 @@
       }
 
       var addedAny = false;
-      // If zählerstand is set, calculate IST-Fläche from zähler difference
+      // IST-Wert: user enters the actual ha value directly
       var istHa = hektarStand;
-      if (state.zaehlerstand > 0) {
-        var totalPrevIst = 0;
-        state.reiter.forEach(function(r) {
-          r.entries.forEach(function(e) {
-            totalPrevIst += e.istHa || e.hektar || 0;
-          });
-        });
-        istHa = state.zaehlerstand - totalPrevIst;
-      }
       // Log machine fill
       state.machineLog.push({
         einheit: gesamtEinheit,
@@ -2136,8 +2207,12 @@
 
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-      var remEinheit = Math.max(0, einheiten - usedEinheit);
-      var remDuenger = Math.max(0, duengerTotal - usedDuenger);
+      // Use IST-based need if available (IST < SOLL means less needed)
+      var istSum = getTabIstSum(r);
+      var istEinheiten = istSum > 0 ? getTabIstEinheiten(r) : einheiten;
+      var istDuenger = istSum > 0 ? getTabIstDuenger(r) : duengerTotal;
+      var remEinheit = Math.max(0, istEinheiten - usedEinheit);
+      var remDuenger = Math.max(0, istDuenger - usedDuenger);
       var drillSection = document.getElementById('r_drill_section');
       if (drillSection) {
         var showDrill = einheiten > 0;
@@ -2204,28 +2279,49 @@
       }
 
       // --- Drill summary: aggregate across ALL tabs (Protokoll view) ---
-      var allEinheitenTotal = 0, allEinheitenUsed = 0;
-      var allDuengerTotal = 0, allDuengerUsed = 0;
+      // SOLL-based totals (what was planned) and IST-based (what was actually needed)
+      var allEinheitenSoll = 0, allEinheitenIst = 0, allEinheitenUsed = 0;
+      var allDuengerSoll = 0, allDuengerIst = 0, allDuengerUsed = 0;
       state.reiter.forEach(function(tab) {
-        var tabE = getTabTotalEinheiten(tab);
-        var tabD = getTabTotalDuenger(tab);
-        var tabUsedE = tab.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-        var tabUsedD = tab.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-        allEinheitenTotal += tabE;
-        allEinheitenUsed += tabUsedE;
-        allDuengerTotal += tabD;
-        allDuengerUsed += tabUsedD;
+        var tabSollE = getTabTotalEinheiten(tab);
+        var tabSollD = getTabTotalDuenger(tab);
+        allEinheitenSoll += tabSollE;
+        allDuengerSoll += tabSollD;
+        // IST-based: use actual area if IST values exist, otherwise SOLL
+        if (getTabIstSum(tab) > 0) {
+          allEinheitenIst += getTabIstEinheiten(tab);
+          allDuengerIst += getTabIstDuenger(tab);
+        } else {
+          allEinheitenIst += tabSollE;
+          allDuengerIst += tabSollD;
+        }
+        allEinheitenUsed += tab.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+        allDuengerUsed += tab.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       });
-      var allEinheitenRem = Math.max(0, allEinheitenTotal - allEinheitenUsed);
-      var allDuengerRem = Math.max(0, allDuengerTotal - allDuengerUsed);
-      document.getElementById('ds_saat_total').textContent = fmt(allEinheitenTotal) + ' Einheiten';
+      // Remaining = what still needs to be filled = IST-needed - used
+      var allEinheitenRem = Math.max(0, allEinheitenIst - allEinheitenUsed);
+      var allDuengerRem = Math.max(0, allDuengerIst - allDuengerUsed);
+      document.getElementById('ds_saat_total').textContent = fmt(allEinheitenIst) + ' Einheiten';
       document.getElementById('ds_saat_used').textContent = fmt(allEinheitenUsed) + ' Einheiten';
       document.getElementById('ds_saat_remaining').textContent = fmt(allEinheitenRem) + ' Einheiten';
-      document.getElementById('ds_duenger_total').textContent = allDuengerTotal > 0 ? allDuengerTotal.toLocaleString('de-DE') + ' kg' : '—';
+      document.getElementById('ds_duenger_total').textContent = allDuengerIst > 0 ? allDuengerIst.toLocaleString('de-DE') + ' kg' : '—';
       document.getElementById('ds_duenger_used').textContent = allDuengerUsed > 0 ? allDuengerUsed.toLocaleString('de-DE') + ' kg' : '—';
-      document.getElementById('ds_duenger_remaining').textContent = allDuengerTotal > 0 ? allDuengerRem.toLocaleString('de-DE') + ' kg' : '—';
+      document.getElementById('ds_duenger_remaining').textContent = allDuengerIst > 0 ? allDuengerRem.toLocaleString('de-DE') + ' kg' : '—';
+      // Savings: SOLL - IST across all tabs (shows how much less seed/fertilizer needed due to smaller actual area)
+      var einheitenSavings = allEinheitenSoll - allEinheitenIst;
+      var duengerSavings = allDuengerSoll - allDuengerIst;
+      var savingsEl = document.getElementById('ds_savings');
+      if (savingsEl && (einheitenSavings > 0.05 || duengerSavings > 0.05)) {
+        var savingsParts = [];
+        if (einheitenSavings > 0.05) savingsParts.push(fmt(einheitenSavings) + ' Einheiten Saatgut');
+        if (duengerSavings > 0.05) savingsParts.push(fmt(duengerSavings) + ' kg Dünger');
+        savingsEl.textContent = '↓ Ersparnis durch geringere IST-Fläche: ' + savingsParts.join(' + ');
+        savingsEl.style.display = '';
+      } else if (savingsEl) {
+        savingsEl.style.display = 'none';
+      }
       var hasAnyEntries = state.reiter.some(function(r) { return r.entries.length > 0; });
-      var hasAnyData = allEinheitenTotal > 0 || allDuengerTotal > 0;
+      var hasAnyData = allEinheitenSoll > 0 || allDuengerSoll > 0;
       document.getElementById('drill_summary').style.display = (hasAnyData || hasAnyEntries) ? 'block' : 'none';
       // Build total summary text
       var summaryParts = [];
@@ -2328,6 +2424,59 @@
           tabHeader.className = 'drill-entry-tab-header';
           tabHeader.textContent = r.name || ('Tab ' + (tabIdx + 1));
           container.appendChild(tabHeader);
+
+          // Show SOLL/IST summary per tab
+          var tabIstSum = 0;
+          r.entries.forEach(function(e) { tabIstSum += e.istHa !== undefined ? e.istHa : (e.hektar || 0); });
+          if (tabIstSum > 0 && r.hektar > 0) {
+            var tabDiff = tabIstSum - r.hektar;
+            var summaryDiv = document.createElement('div');
+            summaryDiv.className = 'drill-entry';
+            summaryDiv.style.fontWeight = '600';
+            summaryDiv.style.fontSize = '0.85rem';
+            summaryDiv.style.color = '#555';
+            var diffClass = tabDiff >= 0 ? 'entry-diff positive' : 'entry-diff negative';
+            var diffSign = tabDiff >= 0 ? '+' : '';
+            summaryDiv.innerHTML = '<span class="entry-text">SOLL: ' + fmt(r.hektar) + ' ha | IST: ' + fmt(tabIstSum) + ' ha | Abw: <span class="' + diffClass + '">' + diffSign + fmt(tabDiff) + ' ha</span></span>';
+            container.appendChild(summaryDiv);
+
+            // Show savings in Saatgut/Dünger when IST < SOLL
+            var sollE = getTabTotalEinheiten(r);
+            var istE = getTabIstEinheiten(r);
+            var sollD = getTabTotalDuenger(r);
+            var istD = getTabIstDuenger(r);
+            var savedE = sollE - istE;
+            var savedD = sollD - istD;
+            if (savedE > 0.05 || savedD > 0.05) {
+              var savingsParts = [];
+              if (savedE > 0.05) savingsParts.push(fmt(savedE) + ' Einheiten Saatgut');
+              if (savedD > 0.05) savingsParts.push(fmt(savedD) + ' kg Dünger');
+              var savingsDiv = document.createElement('div');
+              savingsDiv.className = 'drill-savings';
+              var savingsSpan = document.createElement('span');
+              savingsSpan.className = 'entry-text';
+              savingsSpan.textContent = 'Ersparnis: ' + savingsParts.join(', ');
+              savingsDiv.appendChild(savingsSpan);
+              container.appendChild(savingsDiv);
+            }
+          }
+
+          // Show carryover from previous tabs (cumulative savings available for this tab)
+          if (tabIdx > 0) {
+            var carryover = getCarryover(tabIdx);
+            if (carryover.savedEinheit > 0.05 || carryover.savedDuenger > 0.05) {
+              var carryParts = [];
+              if (carryover.savedEinheit > 0.05) carryParts.push(fmt(carryover.savedEinheit) + ' Einheiten Saatgut');
+              if (carryover.savedDuenger > 0.05) carryParts.push(fmt(carryover.savedDuenger) + ' kg Dünger');
+              var carryDiv = document.createElement('div');
+              carryDiv.className = 'drill-carryover';
+              var carrySpan = document.createElement('span');
+              carrySpan.className = 'entry-text';
+              carrySpan.textContent = 'Übertrag von vorherigen Feldern: +' + carryParts.join(', ');
+              carryDiv.appendChild(carrySpan);
+              container.appendChild(carryDiv);
+            }
+          }
 
           r.entries.forEach(function(e, entryIdx) {
             var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
