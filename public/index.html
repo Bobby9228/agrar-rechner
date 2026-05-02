@@ -2077,10 +2077,19 @@
 
       // Update SOLL/IST/DIFF in zaehler section
       var sollHa = r.hektar;
-      var istHaSum = 0;
+      var istHaFromZaehler = 0;
       r.entries.forEach(function(e) {
-        istHaSum += e.istHa !== undefined ? e.istHa : (e.hektar || 0);
+        istHaFromZaehler += e.istHa !== undefined ? e.istHa : (e.hektar || 0);
       });
+      // Derive IST from Einheiten proportion when no zaehlerstand-based data
+      var istHaSum = istHaFromZaehler;
+      if (istHaSum <= 0 && r.entries.length > 0) {
+        var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+        var totalE = getTabTotalEinheiten(r);
+        if (totalE > 0 && usedE > 0) {
+          istHaSum = (usedE / totalE) * r.hektar;
+        }
+      }
       var diff = istHaSum - sollHa;
 
       // Update SOLL/IST/DIFF in result card
