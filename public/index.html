@@ -2208,6 +2208,33 @@
         sollIstSection.style.display = 'none';
       }
 
+      // Show carryover in result card for active tab
+      var carryoverHint = document.getElementById('r_carryover_hint');
+      if (!carryoverHint) {
+        carryoverHint = document.createElement('div');
+        carryoverHint.id = 'r_carryover_hint';
+        carryoverHint.style.cssText = 'font-size:0.85rem;padding:4px 0;';
+        sollIstSection.parentNode.insertBefore(carryoverHint, sollIstSection.nextSibling);
+      }
+      carryoverHint.innerHTML = '';
+      var activeIdx = state.activeReiter || 0;
+      var co = getCarryover(activeIdx);
+      var coHtml = '';
+      if (co.savedEinheit > 0.05 || co.savedDuenger > 0.05) {
+        var parts = [];
+        if (co.savedEinheit > 0.05) parts.push(fmt(co.savedEinheit) + ' Einheiten');
+        if (co.savedDuenger > 0.05) parts.push(fmt(co.savedDuenger) + ' kg Dünger');
+        coHtml += '<span style="color:#1565c0">↗ Übertrag aus ersparten Flächen: +' + parts.join(', ') + '</span>';
+      }
+      if (co.excessEinheit > 0.05 || co.excessDuenger > 0.05) {
+        var eparts = [];
+        if (co.excessEinheit > 0.05) eparts.push(fmt(co.excessEinheit) + ' Einheiten');
+        if (co.excessDuenger > 0.05) eparts.push(fmt(co.excessDuenger) + ' kg Dünger');
+        if (coHtml) coHtml += '<br>';
+        coHtml += '<span style="color:#c62828">↘ Mehrwert aus überschrittenen Flächen: -' + eparts.join(', ') + '</span>';
+      }
+      carryoverHint.innerHTML = coHtml;
+
       document.getElementById('z_soll').textContent = fmt(sollHa) + ' ha';
       document.getElementById('z_ist_sum').textContent = fmt(istHa) + ' ha';
       var zDiffEl = document.getElementById('z_diff');
