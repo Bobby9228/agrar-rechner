@@ -232,4 +232,50 @@ describe('IST/SOLL Savings & Carryover', () => {
     expect(co0.excessEinheit).toBe(0);
     expect(co0.excessDuenger).toBe(0);
   });
+
+  it('savings cascade across multiple not-done tabs', () => {
+    const { w } = setup();
+    w.addReiter();
+    w.addReiter();
+    // Tab 0: SOLL=8, IST=6 → savings = 2 Einheiten
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 6, koerner: 50000, duenger: 100 };
+    w.state.reiter[0].entries.push({ einheit: 6, zaehlerStand: 6, duenger: 600, time: '09:00' });
+    // Tab 1: SOLL=4, needs 4 Einheiten, only 1 remaining → gets min(4, totalSavings=2) carryover
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 4, koerner: 50000, duenger: 100 };
+    w.state.reiter[1].entries.push({ einheit: 3, zaehlerStand: 3, duenger: 300, time: '09:30' });
+    // Tab 2: SOLL=10, needs 10 Einheiten → gets rest of savings
+    w.state.reiter[2] = { ...w.state.reiter[2], hektar: 10, koerner: 50000, duenger: 100 };
+
+    // Savings: SOLL 8 - IST 6 = 2 Einheiten, SOLL 800 - IST 600 = 200 kg Dünger
+    // Tab 1 remaining: 4-3=1 Einheiten, gets min(2, 1)=1 Einheit carryover
+    // Tab 2 remaining: 10 Einheiten, gets min(1, 10)=1 Einheit carryover (rest)
+    var co1 = w.getCarryover(1);
+    expect(co1.savedEinheit).toBeCloseTo(1, 1);
+    expect(co1.savedDuenger).toBeCloseTo(100, 0);
+
+    var co2 = w.getCarryover(2);
+    expect(co2.savedEinheit).toBeCloseTo(1, 1);
+    expect(co2.savedDuenger).toBeCloseTo(100, 0);
+  });
+
+  it('excess cascades to second-to-last filled tab', () => {
+    const { w } = setup();
+    w.addReiter();
+    // Tab 0: SOLL=5, IST=8 → excess = 3 Einheiten
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 5, istHektar: 8, koerner: 50000, duenger: 100 };
+    // Tab 1: last filled, remaining = 2 Einheiten → absorbs min(3, 2) = 2 excess
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 4, koerner: 50000, duenger: 100 };
+    w.state.reiter[1].entries.push({ einheit: 2, zaehlerStand: 4, duenger: 200, time: '10:00' });
+    // Tab 0: second-to-last, remaining = 5 → absorbs rest 1 excess
+    w.state.reiter[0].entries.push({ einheit: 3, zaehlerStand: 3, duenger: 300, time: '09:00' });
+
+    // Excess: SOLL 5 - IST 8 = -3 → 3 Einheiten excess
+    // Tab 1 (last filled): remaining = 4-2 = 2, absorbs min(3, 2) = 2
+    // Tab 0 (prev filled): remaining = 8-3 = 5, absorbs min(1, 5) = 1
+    var co1 = w.getCarryover(1);
+    expect(co1.excessEinheit).toBeCloseTo(2, 1);
+
+    var co0 = w.getCarryover(0);
+    expect(co0.excessEinheit).toBeCloseTo(1, 1);
+  });
 });

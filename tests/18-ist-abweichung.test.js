@@ -82,13 +82,13 @@ describe('IST/SOLL Abweichung', () => {
     w.document.getElementById('duenger').value = '100';
     w.berechne();
 
-    // SOLL: 10 Einheiten, IST: 8 Einheiten
-    // Add 5 Einheiten → remaining = 8 - 5 = 3
+    // SOLL: 10 Einheiten, IST: 8 Einheiten → savings = 2
+    // Add 5 Einheiten → remaining = 8 - 5 = 3, minus carryover savings 2 → 1
     w.document.getElementById('drill_einheit').value = '5';
     w.drillAdd();
 
     const remText = w.document.getElementById('r_drill_e_rem').textContent;
-    expect(remText).toContain('3,0');
+    expect(remText).toContain('1,0');
   });
 
   it('IST-based Duenger used in remaining calculation', () => {
@@ -99,13 +99,14 @@ describe('IST/SOLL Abweichung', () => {
     w.document.getElementById('duenger').value = '100';
     w.berechne();
 
-    // SOLL: 1000 kg, IST: 800 kg
+    // SOLL: 1000 kg, IST: 800 kg → savings = 200 kg
     w.document.getElementById('drill_einheit').value = '5';
     w.document.getElementById('drill_duenger').value = '400';
     w.drillAdd();
 
+    // IST: 800 kg, used: 400 kg → remaining = 400, minus carryover savings 200 → 200
     const remD = w.document.getElementById('r_drill_d_rem').textContent;
-    expect(remD).toContain('400');
+    expect(remD).toContain('200');
   });
 
   it('syncs istHektar to state on tab switch', () => {

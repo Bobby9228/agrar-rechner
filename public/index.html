@@ -1789,16 +1789,18 @@
       return ha * r.duenger;
     }
 
-    // Check if a tab is "fertig" (all seed + fertilizer filled)
-    function isTabDone(r) {
+    // Check if a tab is "fertig" (all seed + fertilizer filled, including carryover)
+    function isTabDone(r, tabIdx) {
       if (!r.hektar || !r.koerner) return false;
       var istSum = getTabIstHektar(r);
       var totalE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
       var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-      var remE = Math.max(0, totalE - usedE);
       var totalD = istSum > 0 ? getTabIstDuenger(r) : getTabTotalDuenger(r);
       var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-      var remD = Math.max(0, totalD - usedD);
+      // Include carryover adjustment
+      var co = (tabIdx !== undefined) ? getCarryover(tabIdx) : { savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 };
+      var remE = Math.max(0, totalE - usedE - co.savedEinheit - co.excessEinheit);
+      var remD = Math.max(0, totalD - usedD - co.savedDuenger - co.excessDuenger);
       var saatDone = remE <= 0.05;
       var duengerDone = totalD <= 0 || remD <= 0.05;
       return saatDone && duengerDone;
@@ -1821,49 +1823,84 @@
       return lastIdx;
     }
 
-    // Calculate carryover for a tab:
-    //   positive (savings, IST < SOLL) → goes to first not-done tab
-    //   negative (excess, IST > SOLL) → subtracted from last-filled tab
-    // Returns { savedEinheit, savedDuenger, excessEinheit, excessDuenger }
-    function getCarryover(tabIndex) {
-      var savedE = 0, savedD = 0, excessE = 0, excessD = 0;
+    // Compute carryover distribution for ALL tabs (cascading)
+    // Savings cascade forward through not-done tabs, excess cascades backward through filled tabs
+    // Returns array of { savedEinheit, savedDuenger, excessEinheit, excessDuenger } per tab
+    function computeAllCarryovers() {
+      var result = [];
+      for (var i = 0; i < state.reiter.length; i++) {
+        result.push({ savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 });
+      }
+
+      // Calculate total savings and excess across all tabs
+      var totalSavedE = 0, totalSavedD = 0, totalExcessE = 0, totalExcessD = 0;
       for (var i = 0; i < state.reiter.length; i++) {
         var t = state.reiter[i];
         var istHa = getTabIstHektar(t);
         if (istHa > 0 && t.hektar > 0) {
-          var sollE = getTabTotalEinheiten(t);
-          var istE = getTabIstEinheiten(t);
-          var sollD = getTabTotalDuenger(t);
-          var istD = getTabIstDuenger(t);
-          var diffE = sollE - istE;
-          var diffD = sollD - istD;
-          if (diffE >= 0) { savedE += diffE; } else { excessE += Math.abs(diffE); }
-          if (diffD >= 0) { savedD += diffD; } else { excessD += Math.abs(diffD); }
+          var diffE = getTabTotalEinheiten(t) - getTabIstEinheiten(t);
+          var diffD = getTabTotalDuenger(t) - getTabIstDuenger(t);
+          if (diffE >= 0) totalSavedE += diffE; else totalExcessE += Math.abs(diffE);
+          if (diffD >= 0) totalSavedD += diffD; else totalExcessD += Math.abs(diffD);
         }
       }
 
-      // Positive savings → first not-done tab
-      var targetSavedEinheit = 0, targetSavedDuenger = 0;
-      if (savedE > 0.05 || savedD > 0.05) {
-        for (var j = 0; j < state.reiter.length; j++) {
-          if (!isTabDone(state.reiter[j]) && state.reiter[j].hektar > 0 && state.reiter[j].koerner > 0) {
-            if (j === tabIndex) { targetSavedEinheit = savedE; targetSavedDuenger = savedD; }
-            break;
-          }
-        }
+      // Distribute savings to not-done tabs (cascading forward)
+      var remSavedE = totalSavedE, remSavedD = totalSavedD;
+      for (var i = 0; i < state.reiter.length && (remSavedE > 0.05 || remSavedD > 0.05); i++) {
+        var t = state.reiter[i];
+        if (isTabDone(t) || !t.hektar || !t.koerner) continue;
+        var istSum = getTabIstHektar(t);
+        var totalE = istSum > 0 ? getTabIstEinheiten(t) : getTabTotalEinheiten(t);
+        var usedE = t.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+        var tabRemE = Math.max(0, totalE - usedE);
+        var totalD = istSum > 0 ? getTabIstDuenger(t) : getTabTotalDuenger(t);
+        var usedD = t.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+        var tabRemD = Math.max(0, totalD - usedD);
+
+        var giveE = Math.min(remSavedE, tabRemE);
+        var giveD = Math.min(remSavedD, tabRemD);
+        if (giveE > 0.05) { result[i].savedEinheit = giveE; remSavedE -= giveE; }
+        if (giveD > 0.05) { result[i].savedDuenger = giveD; remSavedD -= giveD; }
       }
 
-      // Negative excess → last-filled tab
-      var targetExcessEinheit = 0, targetExcessDuenger = 0;
-      if (excessE > 0.05 || excessD > 0.05) {
-        var lastFilled = getLastFilledTabIndex();
-        if (lastFilled === tabIndex) {
-          targetExcessEinheit = excessE;
-          targetExcessDuenger = excessD;
-        }
+      // Distribute excess to filled tabs (reverse chronological, cascading)
+      var remExcessE = totalExcessE, remExcessD = totalExcessD;
+      var filledTabs = [];
+      for (var i = 0; i < state.reiter.length; i++) {
+        if (state.reiter[i].entries.length > 0) filledTabs.push(i);
+      }
+      filledTabs.sort(function(a, b) {
+        var ea = state.reiter[a].entries, eb = state.reiter[b].entries;
+        var ta = ea[ea.length - 1].time || '', tb = eb[eb.length - 1].time || '';
+        return tb.localeCompare(ta);
+      });
+
+      for (var fi = 0; fi < filledTabs.length && (remExcessE > 0.05 || remExcessD > 0.05); fi++) {
+        var idx = filledTabs[fi];
+        var t = state.reiter[idx];
+        var istSum = getTabIstHektar(t);
+        var totalE = istSum > 0 ? getTabIstEinheiten(t) : getTabTotalEinheiten(t);
+        var usedE = t.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+        var tabRemE = Math.max(0, totalE - usedE);
+        var totalD = istSum > 0 ? getTabIstDuenger(t) : getTabTotalDuenger(t);
+        var usedD = t.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+        var tabRemD = Math.max(0, totalD - usedD);
+
+        var takeE = Math.min(remExcessE, tabRemE);
+        var takeD = Math.min(remExcessD, tabRemD);
+        if (takeE > 0.05) { result[idx].excessEinheit = takeE; remExcessE -= takeE; }
+        if (takeD > 0.05) { result[idx].excessDuenger = takeD; remExcessD -= takeD; }
       }
 
-      return { savedEinheit: targetSavedEinheit, savedDuenger: targetSavedDuenger, excessEinheit: targetExcessEinheit, excessDuenger: targetExcessDuenger };
+      return result;
+    }
+
+    // Get carryover for a specific tab (lookup from computeAllCarryovers)
+    function getCarryover(tabIndex) {
+      var all = computeAllCarryovers();
+      if (tabIndex >= 0 && tabIndex < all.length) return all[tabIndex];
+      return { savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 };
     }
 
     function fmt(n) {
@@ -1958,10 +1995,11 @@
           var istSum = getTabIstHektar(r);
           var totalE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
           var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-          var remE = Math.max(0, totalE - usedE);
           var totalD = istSum > 0 ? getTabIstDuenger(r) : getTabTotalDuenger(r);
           var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-          var remD = Math.max(0, totalD - usedD);
+          var tabCo = getCarryover(i);
+          var remE = Math.max(0, totalE - usedE - tabCo.savedEinheit - tabCo.excessEinheit);
+          var remD = Math.max(0, totalD - usedD - tabCo.savedDuenger - tabCo.excessDuenger);
           var needDiv = document.createElement('div');
           needDiv.className = 'drill-tab-need';
           needDiv.id = 'dtl_need_' + i;
@@ -2028,11 +2066,12 @@
         var istSum = getTabIstHektar(r);
         var totalE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
         var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-        var needE = Math.max(0, totalE - usedE);
+        var tabCo = getCarryover(item.idx);
+        var needE = Math.max(0, totalE - usedE - tabCo.savedEinheit - tabCo.excessEinheit);
 
         var totalD = istSum > 0 ? getTabIstDuenger(r) : getTabTotalDuenger(r);
         var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-        var needD = Math.max(0, totalD - usedD);
+        var needD = Math.max(0, totalD - usedD - tabCo.savedDuenger - tabCo.excessDuenger);
 
         var giveE = Math.min(needE, remEinheit);
         var giveD = Math.min(needD, remDuenger);
@@ -2257,8 +2296,8 @@
       var istSum = getTabIstHektar(r);
       var istEinheiten = istSum > 0 ? getTabIstEinheiten(r) : einheiten;
       var istDuenger = istSum > 0 ? getTabIstDuenger(r) : duengerTotal;
-      var remEinheit = Math.max(0, istEinheiten - usedEinheit);
-      var remDuenger = Math.max(0, istDuenger - usedDuenger);
+      var remEinheit = Math.max(0, istEinheiten - usedEinheit - co.savedEinheit - co.excessEinheit);
+      var remDuenger = Math.max(0, istDuenger - usedDuenger - co.savedDuenger - co.excessDuenger);
       var drillSection = document.getElementById('r_drill_section');
       if (drillSection) {
         var showDrill = einheiten > 0;
