@@ -453,6 +453,14 @@
     .drill-carryover .entry-text::before {
       content: '↗ ';
     }
+    .drill-excess {
+      font-size: 0.85rem;
+      color: #c62828;
+      padding: 2px 0;
+    }
+    .drill-excess .entry-text::before {
+      content: '↘ ';
+    }
     .drill-summary-total {
       margin-top: 10px;
       padding-top: 10px;
@@ -1088,6 +1096,7 @@
     html.dark .drill-summary-savings { background: #1a2e1a; color: #66bb6a; }
     html.dark .drill-savings { color: #66bb6a; }
     html.dark .drill-carryover { color: #42a5f5; }
+    html.dark .drill-excess { color: #ef5350; }
     html.dark #drill_machine_log { border-bottom-color: #3a4030; }
     html.dark .drill-entry-tab-header { color: #9aa88a; border-bottom-color: #3a4030; }
     html.dark .drill-entry { border-bottom-color: #3a4030; }
@@ -1795,11 +1804,29 @@
       return saatDone && duengerDone;
     }
 
-    // Calculate carryover: cumulative savings from all tabs (IST < SOLL)
-    // attributed to the first NOT-fertig tab (if this tab is that one)
-    // Returns { savedEinheit, savedDuenger } — non-zero only for the first not-done tab
+    // Find the index of the last-filled tab (most recent entry timestamp)
+    function getLastFilledTabIndex() {
+      var lastIdx = -1;
+      var lastTime = '';
+      for (var i = 0; i < state.reiter.length; i++) {
+        var entries = state.reiter[i].entries;
+        if (entries.length > 0) {
+          var latestEntry = entries[entries.length - 1];
+          if (latestEntry.time && latestEntry.time > lastTime) {
+            lastTime = latestEntry.time;
+            lastIdx = i;
+          }
+        }
+      }
+      return lastIdx;
+    }
+
+    // Calculate carryover for a tab:
+    //   positive (savings, IST < SOLL) → goes to first not-done tab
+    //   negative (excess, IST > SOLL) → subtracted from last-filled tab
+    // Returns { savedEinheit, savedDuenger, excessEinheit, excessDuenger }
     function getCarryover(tabIndex) {
-      var savedE = 0, savedD = 0;
+      var savedE = 0, savedD = 0, excessE = 0, excessD = 0;
       for (var i = 0; i < state.reiter.length; i++) {
         var t = state.reiter[i];
         var istHa = getTabIstHektar(t);
@@ -1808,20 +1835,35 @@
           var istE = getTabIstEinheiten(t);
           var sollD = getTabTotalDuenger(t);
           var istD = getTabIstDuenger(t);
-          savedE += (sollE - istE);
-          savedD += (sollD - istD);
+          var diffE = sollE - istE;
+          var diffD = sollD - istD;
+          if (diffE >= 0) { savedE += diffE; } else { excessE += Math.abs(diffE); }
+          if (diffD >= 0) { savedD += diffD; } else { excessD += Math.abs(diffD); }
         }
       }
-      // Only assign to the first not-done tab
-      for (var j = 0; j < state.reiter.length; j++) {
-        if (!isTabDone(state.reiter[j]) && state.reiter[j].hektar > 0 && state.reiter[j].koerner > 0) {
-          if (j === tabIndex) {
-            return { savedEinheit: savedE, savedDuenger: savedD };
+
+      // Positive savings → first not-done tab
+      var targetSavedEinheit = 0, targetSavedDuenger = 0;
+      if (savedE > 0.05 || savedD > 0.05) {
+        for (var j = 0; j < state.reiter.length; j++) {
+          if (!isTabDone(state.reiter[j]) && state.reiter[j].hektar > 0 && state.reiter[j].koerner > 0) {
+            if (j === tabIndex) { targetSavedEinheit = savedE; targetSavedDuenger = savedD; }
+            break;
           }
-          return { savedEinheit: 0, savedDuenger: 0 }; // another tab is the target
         }
       }
-      return { savedEinheit: 0, savedDuenger: 0 };
+
+      // Negative excess → last-filled tab
+      var targetExcessEinheit = 0, targetExcessDuenger = 0;
+      if (excessE > 0.05 || excessD > 0.05) {
+        var lastFilled = getLastFilledTabIndex();
+        if (lastFilled === tabIndex) {
+          targetExcessEinheit = excessE;
+          targetExcessDuenger = excessD;
+        }
+      }
+
+      return { savedEinheit: targetSavedEinheit, savedDuenger: targetSavedDuenger, excessEinheit: targetExcessEinheit, excessDuenger: targetExcessDuenger };
     }
 
     function fmt(n) {
@@ -2423,8 +2465,9 @@
             }
           }
 
-          // Show carryover for this tab if it's the first not-done tab receiving savings
+          // Show carryover for this tab
           var carryover = getCarryover(tabIdx);
+          // Positive carryover: savings (IST < SOLL) → goes to first not-done tab
           if (carryover.savedEinheit > 0.05 || carryover.savedDuenger > 0.05) {
               var carryParts = [];
               if (carryover.savedEinheit > 0.05) carryParts.push(fmt(carryover.savedEinheit) + ' Einheiten Saatgut');
@@ -2436,6 +2479,19 @@
               carrySpan.textContent = 'Übertrag aus ersparten Flächen: +' + carryParts.join(', ');
               carryDiv.appendChild(carrySpan);
               container.appendChild(carryDiv);
+            }
+          // Negative carryover: excess (IST > SOLL) → deducted from last-filled tab
+          if (carryover.excessEinheit > 0.05 || carryover.excessDuenger > 0.05) {
+              var excessParts = [];
+              if (carryover.excessEinheit > 0.05) excessParts.push(fmt(carryover.excessEinheit) + ' Einheiten Saatgut');
+              if (carryover.excessDuenger > 0.05) excessParts.push(fmt(carryover.excessDuenger) + ' kg Dünger');
+              var excessDiv = document.createElement('div');
+              excessDiv.className = 'drill-excess';
+              var excessSpan = document.createElement('span');
+              excessSpan.className = 'entry-text';
+              excessSpan.textContent = 'Mehrwert aus überschrittenen Flächen: -' + excessParts.join(', ');
+              excessDiv.appendChild(excessSpan);
+              container.appendChild(excessDiv);
             }
 
           r.entries.forEach(function(e, entryIdx) {

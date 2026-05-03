@@ -184,4 +184,52 @@ describe('IST/SOLL Savings & Carryover', () => {
     const savingsDiv = container.querySelector('.drill-savings');
     expect(savingsDiv).toBeNull();
   });
+
+  it('excess from IST > SOLL is deducted from last-filled tab', () => {
+    const { w } = setup();
+    w.addReiter();
+    // Tab 0: SOLL=8, IST=10 → excess of 2 Einheiten + 200 kg Dünger
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 10, koerner: 50000, duenger: 100 };
+    w.state.reiter[0].entries.push({ einheit: 8, zaehlerStand: 10, duenger: 800, time: '09:00' });
+    // Tab 1: SOLL=6, no IST → not done
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 6, koerner: 50000, duenger: 80 };
+    w.state.reiter[1].entries.push({ einheit: 3, zaehlerStand: 0, duenger: 240, time: '10:00' });
+
+    // Tab 1 has the latest entry → it's the last-filled tab → gets excess deducted
+    var co1 = w.getCarryover(1);
+    expect(co1.excessEinheit).toBeCloseTo(2, 1);  // 10 - 8 = 2 ha excess
+    expect(co1.excessDuenger).toBeCloseTo(200, 0);
+    // Tab 0 gets nothing
+    var co0 = w.getCarryover(0);
+    expect(co0.excessEinheit).toBe(0);
+    expect(co0.savedEinheit).toBe(0);
+  });
+
+  it('excess shown as drill-excess div in protocol', () => {
+    const { w } = setup();
+    w.addReiter();
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 10, koerner: 50000, duenger: 100 };
+    w.state.reiter[0].entries.push({ einheit: 8, zaehlerStand: 10, duenger: 800, time: '09:00' });
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 6, koerner: 50000, duenger: 80 };
+    w.state.reiter[1].entries.push({ einheit: 3, zaehlerStand: 0, duenger: 240, time: '10:00' });
+
+    w.renderResults();
+    const container = w.document.getElementById('drill_entries');
+    const excessDivs = container.querySelectorAll('.drill-excess');
+    expect(excessDivs.length).toBeGreaterThanOrEqual(1);
+    expect(excessDivs[0].textContent).toContain('Mehrwert aus überschrittenen Flächen');
+    expect(excessDivs[0].textContent).toContain('-');
+  });
+
+  it('no excess shown when IST = SOLL', () => {
+    const { w } = setup();
+    w.addReiter();
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 8, koerner: 50000, duenger: 100 };
+    w.state.reiter[0].entries.push({ einheit: 8, zaehlerStand: 8, duenger: 800, time: '09:00' });
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 6, koerner: 50000, duenger: 80 };
+
+    var co0 = w.getCarryover(0);
+    expect(co0.excessEinheit).toBe(0);
+    expect(co0.excessDuenger).toBe(0);
+  });
 });
