@@ -2352,32 +2352,6 @@
               entry.appendChild(btn);
               rEntriesContainer.appendChild(entry);
             });
-
-            // Show carryover/excess as entry-like lines after entries
-            if (co.savedEinheit > 0.05 || co.savedDuenger > 0.05) {
-              var carryEntry = document.createElement('div');
-              carryEntry.className = 'drill-carryover';
-              var carrySpan = document.createElement('span');
-              carrySpan.className = 'entry-text';
-              var carryParts = [];
-              if (co.savedEinheit > 0.05) carryParts.push(fmt(co.savedEinheit) + ' Einheiten');
-              if (co.savedDuenger > 0.05) carryParts.push(fmt(co.savedDuenger) + ' kg Dünger');
-              carrySpan.textContent = 'Übertrag aus ersparten Flächen: +' + carryParts.join(', ');
-              carryEntry.appendChild(carrySpan);
-              rEntriesContainer.appendChild(carryEntry);
-            }
-            if (co.excessEinheit > 0.05 || co.excessDuenger > 0.05) {
-              var excEntry = document.createElement('div');
-              excEntry.className = 'drill-excess';
-              var excSpan = document.createElement('span');
-              excSpan.className = 'entry-text';
-              var excParts = [];
-              if (co.excessEinheit > 0.05) excParts.push(fmt(co.excessEinheit) + ' Einheiten');
-              if (co.excessDuenger > 0.05) excParts.push(fmt(co.excessDuenger) + ' kg Dünger');
-              excSpan.textContent = 'Mehrwert aus überschrittenen Flächen: -' + excParts.join(', ');
-              excEntry.appendChild(excSpan);
-              rEntriesContainer.appendChild(excEntry);
-            }
           }
         }
       }
