@@ -1133,9 +1133,13 @@
     <div class="card card-input" id="card_input">
       <h2>📐 Fläche & Aussaatstärke</h2>
       <div class="field">
-        <label for="hektar">Hektar</label>
+        <label for="hektar">Hektar (SOLL)</label>
         <input type="text" inputmode="decimal" id="hektar" placeholder="z.B. 12,5" oninput="onInputFormat(this, 'decimal')">
         <div class="error-msg" id="err_hektar"></div>
+      </div>
+      <div class="field">
+        <label for="ist_hektar">IST-Fläche (ha)</label>
+        <input type="text" inputmode="decimal" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal')">
       </div>
       <div class="field">
         <label for="koerner">Körner pro Hektar</label>
@@ -1285,7 +1289,7 @@
           </div>
         </div>
         <div class="field">
-          <label for="drill_hektar">IST-Wert (ha)</label>
+          <label for="drill_hektar">Zählerstand (ha)</label>
           <input type="text" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal')">
         </div>
         <div class="drill-tabs-section">
@@ -1348,7 +1352,7 @@
   <script>
     // --- State ---
     var state = {
-      reiter: [{ name: 'Tab 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
+      reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] }],
       activeReiter: 0,
       activeView: null, // null='field', 'protokoll'
       fahrgassenEnabled: false,
@@ -1372,13 +1376,11 @@
       var zaehlerResult = document.getElementById('zaehler_result');
       zaehlerResult.style.display = 'block';
 
-      var istHa = z - prev;
-      var r = getActiveReiter();
-      var totalIst = z; // total from zähler
+      var delta = z - prev;
 
-      document.getElementById('z_ist').textContent = fmt(istHa) + ' ha';
+      document.getElementById('z_ist').textContent = fmt(delta) + ' ha';
       var zIstEl = document.getElementById('z_ist');
-      if (istHa >= 0) {
+      if (delta >= 0) {
         zIstEl.className = 'delta-value positive';
       } else {
         zIstEl.className = 'delta-value negative';
@@ -1386,39 +1388,14 @@
 
       document.getElementById('z_total').textContent = fmt(z) + ' ha';
 
-      // Auto-save IST-Fläche as entry in active tab (only if positive and zähler was reset or increased)
-      if (istHa > 0 && r) {
-        var timeStr = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-        r.entries.push({
-          einheit: 0,
-          hektar: istHa,
-          istHa: istHa,
-          duenger: 0,
-          time: timeStr
-        });
-        renderResults();
-      }
-
-      // Update SOLL/IST/DIFF display
+      // Update SOLL/IST/DIFF display (uses r.istHektar for IST)
+      var r = getActiveReiter();
       var sollHa = r ? r.hektar : 0;
-      var istHaSum = 0;
-      if (r) {
-        r.entries.forEach(function(e) {
-          istHaSum += e.istHa !== undefined ? e.istHa : (e.hektar || 0);
-        });
-        // Derive IST from Einheiten proportion when no zaehlerstand-based data
-        if (istHaSum <= 0 && r.entries.length > 0) {
-          var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-          var totalE = getTabTotalEinheiten(r);
-          if (totalE > 0 && usedE > 0) {
-            istHaSum = (usedE / totalE) * r.hektar;
-          }
-        }
-      }
-      var diff = istHaSum - sollHa;
+      var istHa = r ? getTabIstHektar(r) : 0;
+      var diff = istHa - sollHa;
 
       document.getElementById('z_soll').textContent = fmt(sollHa) + ' ha';
-      document.getElementById('z_ist_sum').textContent = fmt(istHaSum) + ' ha';
+      document.getElementById('z_ist_sum').textContent = fmt(istHa) + ' ha';
       var zDiffEl = document.getElementById('z_diff');
       if (sollHa > 0) {
         if (diff >= 0) {
@@ -1492,6 +1469,7 @@
     function syncStateFromInputs() {
       var r = getActiveReiter();
       r.hektar = parseDE(document.getElementById('hektar').value) || 0;
+      r.istHektar = parseDE(document.getElementById('ist_hektar').value) || 0;
       r.koerner = parseDE(document.getElementById('koerner').value) || 0;
       r.duenger = parseDE(document.getElementById('duenger').value) || 0;
     }
@@ -1503,6 +1481,7 @@
     function syncInputsFromState() {
       var r = getActiveReiter();
       document.getElementById('hektar').value = r.hektar > 0 ? formatDE(r.hektar) : '';
+      document.getElementById('ist_hektar').value = r.istHektar > 0 ? formatDE(r.istHektar) : '';
       document.getElementById('koerner').value = r.koerner > 0 ? formatDE(r.koerner) : '';
       document.getElementById('duenger').value = r.duenger > 0 ? formatDE(r.duenger) : '';
     }
@@ -1556,7 +1535,7 @@
 
     function addReiter() {
       var idx = state.reiter.length + 1;
-      state.reiter.push({ name: 'Tab ' + idx, hektar: 0, koerner: 0, duenger: 0, entries: [] });
+      state.reiter.push({ name: 'Tab ' + idx, hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] });
       state.activeReiter = state.reiter.length - 1;
       syncInputsFromState();
       renderTabs();
@@ -1724,6 +1703,7 @@
       }
       var r = getActiveReiter();
       r.hektar = h;
+      r.istHektar = parseDE(document.getElementById('ist_hektar').value) || 0;
       r.koerner = k;
       r.duenger = (isNaN(d) || d < 0) ? 0 : d;
       var entries = r.entries;
@@ -1775,20 +1755,14 @@
       return r.hektar * r.duenger;
     }
 
-    // Get sum of IST-Werte (istHa) for a tab's entries
-    function getTabIstSum(r) {
-      var sum = 0;
-      if (r.entries) {
-        r.entries.forEach(function(e) {
-          sum += e.istHa !== undefined ? e.istHa : (e.hektar || 0);
-        });
-      }
-      return sum;
+    // Get IST-Fläche for a tab (direct user input, not derived from entries)
+    function getTabIstHektar(r) {
+      return r.istHektar || 0;
     }
 
-    // IST-based Einheiten needed for a tab (uses IST-Wert if available, else SOLL)
+    // IST-based Einheiten needed for a tab (uses IST-Fläche if available, else SOLL)
     function getTabIstEinheiten(r) {
-      var istHa = getTabIstSum(r);
+      var istHa = getTabIstHektar(r);
       var ha = istHa > 0 ? istHa : r.hektar;
       if (!ha || !r.koerner) return 0;
       var k = ha * r.koerner;
@@ -1798,9 +1772,9 @@
       return k / state.koernerProEinheit;
     }
 
-    // IST-based Duenger needed for a tab (uses IST-Wert if available, else SOLL)
+    // IST-based Duenger needed for a tab (uses IST-Fläche if available, else SOLL)
     function getTabIstDuenger(r) {
-      var istHa = getTabIstSum(r);
+      var istHa = getTabIstHektar(r);
       var ha = istHa > 0 ? istHa : r.hektar;
       if (!ha) return 0;
       return ha * r.duenger;
@@ -1812,7 +1786,7 @@
       var savedE = 0, savedD = 0;
       for (var i = 0; i < tabIndex && i < state.reiter.length; i++) {
         var t = state.reiter[i];
-        var istHa = getTabIstSum(t);
+        var istHa = getTabIstHektar(t);
         if (istHa > 0 && t.hektar > 0) {
           // SOLL bedarf - IST bedarf = Ersparnis
           var sollE = getTabTotalEinheiten(t);
@@ -1915,7 +1889,7 @@
         nameWrap.appendChild(label);
         // Show remaining need or done status (based on IST if available, else SOLL)
         if (r.hektar > 0 && r.koerner > 0) {
-          var istSum = getTabIstSum(r);
+          var istSum = getTabIstHektar(r);
           var totalE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
           var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
           var remE = Math.max(0, totalE - usedE);
@@ -1985,7 +1959,7 @@
       var distribution = {};
       prioritized.forEach(function(item) {
         var r = item.reiter;
-        var istSum = getTabIstSum(r);
+        var istSum = getTabIstHektar(r);
         var totalE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
         var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
         var needE = Math.max(0, totalE - usedE);
@@ -2019,7 +1993,7 @@
     function drillAdd() {
       var gesamtEinheit = parseDE(document.getElementById('drill_einheit').value) || 0;
       var gesamtDuenger = parseDE(document.getElementById('drill_duenger').value) || 0;
-      var hektarStand = parseDE(document.getElementById('drill_hektar').value) || 0;
+      var zaehlerStand = parseDE(document.getElementById('drill_hektar').value) || 0;
 
       // If no tab list rendered (e.g. in tests), fall back to single-tab mode
       var hasTabList = document.getElementById('dtl_prio_0') !== null;
@@ -2030,21 +2004,16 @@
         if (!r.hektar || !r.koerner) return;
         if (gesamtEinheit <= 0 && gesamtDuenger <= 0) return;
 
-        // IST-Wert: user enters the actual ha value directly
-        var istHa = hektarStand;
-
         // Log machine fill
         state.machineLog.push({
           einheit: gesamtEinheit,
-          hektar: istHa,
-          istHa: istHa,
+          zaehlerStand: zaehlerStand,
           duenger: gesamtDuenger,
           time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
         });
         r.entries.push({
           einheit: gesamtEinheit,
-          hektar: istHa,
-          istHa: istHa,
+          zaehlerStand: zaehlerStand,
           duenger: gesamtDuenger,
           time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
         });
@@ -2056,13 +2025,10 @@
       }
 
       var addedAny = false;
-      // IST-Wert: user enters the actual ha value directly
-      var istHa = hektarStand;
       // Log machine fill
       state.machineLog.push({
         einheit: gesamtEinheit,
-        hektar: istHa,
-        istHa: istHa,
+        zaehlerStand: zaehlerStand,
         duenger: gesamtDuenger,
         time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
       });
@@ -2078,8 +2044,7 @@
         if (einheit > 0 || duenger > 0) {
           r.entries.push({
             einheit: einheit,
-            hektar: istHa,
-            istHa: istHa,
+            zaehlerStand: zaehlerStand,
             duenger: duenger,
             time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
           });
@@ -2150,32 +2115,20 @@
         }
       }
 
-      // Show zaehler section if zähler tracking is active (entries with istHa or zaehlerstand set)
-      var hasZaehler = state.reiter.some(function(t) { return t.entries.some(function(e) { return e.istHa !== undefined; }); }) || state.zaehlerstand > 0;
+      // Show zaehler section if zähler tracking is active
+      var hasZaehler = state.zaehlerstand > 0;
       document.getElementById('zaehler_section').style.display = hasZaehler ? 'block' : 'none';
 
-      // Update SOLL/IST/DIFF in zaehler section
+      // Update SOLL/IST/DIFF — uses r.istHektar for IST
       var sollHa = r.hektar;
-      var istHaFromZaehler = 0;
-      r.entries.forEach(function(e) {
-        istHaFromZaehler += e.istHa !== undefined ? e.istHa : (e.hektar || 0);
-      });
-      // Derive IST from Einheiten proportion when no zaehlerstand-based data
-      var istHaSum = istHaFromZaehler;
-      if (istHaSum <= 0 && r.entries.length > 0) {
-        var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-        var totalE = getTabTotalEinheiten(r);
-        if (totalE > 0 && usedE > 0) {
-          istHaSum = (usedE / totalE) * r.hektar;
-        }
-      }
-      var diff = istHaSum - sollHa;
+      var istHa = getTabIstHektar(r);
+      var diff = istHa - sollHa;
 
       // Update SOLL/IST/DIFF in result card
       var sollIstSection = document.getElementById('r_soll_ist_section');
-      if (sollHa > 0) {
+      if (sollHa > 0 && istHa > 0) {
         document.getElementById('r_soll_ha').textContent = fmt(sollHa) + ' ha';
-        document.getElementById('r_ist_ha').textContent = fmt(istHaSum) + ' ha';
+        document.getElementById('r_ist_ha').textContent = fmt(istHa) + ' ha';
         var rDiffEl = document.getElementById('r_diff_ha');
         if (diff >= 0) {
           rDiffEl.textContent = '+' + fmt(diff) + ' ha';
@@ -2190,7 +2143,7 @@
       }
 
       document.getElementById('z_soll').textContent = fmt(sollHa) + ' ha';
-      document.getElementById('z_ist_sum').textContent = fmt(istHaSum) + ' ha';
+      document.getElementById('z_ist_sum').textContent = fmt(istHa) + ' ha';
       var zDiffEl = document.getElementById('z_diff');
       if (sollHa > 0) {
         if (diff >= 0) {
@@ -2208,7 +2161,7 @@
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       // Use IST-based need if available (IST < SOLL means less needed)
-      var istSum = getTabIstSum(r);
+      var istSum = getTabIstHektar(r);
       var istEinheiten = istSum > 0 ? getTabIstEinheiten(r) : einheiten;
       var istDuenger = istSum > 0 ? getTabIstDuenger(r) : duengerTotal;
       var remEinheit = Math.max(0, istEinheiten - usedEinheit);
@@ -2244,17 +2197,10 @@
             r.entries.forEach(function(e, entryIdx) {
               var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
               var dl = ds ? ' + ' + ds + ' Dünger' : '';
-              var istHa = e.istHa !== undefined ? e.istHa : e.hektar;
-              var sollHa = r.hektar;
+              var zs = e.zaehlerStand || 0;
               var hl = '';
-              if (istHa > 0) {
-                hl = ' @ ' + fmt(istHa) + ' ha';
-                var diff = istHa - sollHa;
-                if (diff >= 0) {
-                  hl += ' <span class="entry-diff positive">+' + fmt(diff) + '</span>';
-                } else {
-                  hl += ' <span class="entry-diff negative">' + fmt(diff) + '</span>';
-                }
+              if (zs > 0) {
+                hl = ' @ ' + fmt(zs) + ' ha';
               }
               var entry = document.createElement('div');
               entry.className = 'drill-entry-inline';
@@ -2288,7 +2234,7 @@
         allEinheitenSoll += tabSollE;
         allDuengerSoll += tabSollD;
         // IST-based: use actual area if IST values exist, otherwise SOLL
-        if (getTabIstSum(tab) > 0) {
+        if (getTabIstHektar(tab) > 0) {
           allEinheitenIst += getTabIstEinheiten(tab);
           allDuengerIst += getTabIstDuenger(tab);
         } else {
@@ -2349,17 +2295,10 @@
         state.machineLog.forEach(function(m, mi) {
           var ds = m.duenger > 0 ? m.duenger.toLocaleString('de-DE') + ' kg' : '';
           var dl = ds ? ' + ' + ds + ' Dünger' : '';
-          var istHa = m.istHa !== undefined ? m.istHa : m.hektar;
-          var sollHa = r.hektar;
+          var zs = m.zaehlerStand || 0;
           var hl = '';
-          if (istHa > 0) {
-            hl = ' @ ' + fmt(istHa) + ' ha';
-            var diff = istHa - sollHa;
-            if (diff >= 0) {
-              hl += ' <span class="entry-diff positive">+' + fmt(diff) + '</span>';
-            } else {
-              hl += ' <span class="entry-diff negative">' + fmt(diff) + '</span>';
-            }
+          if (zs > 0) {
+            hl = ' @ ' + fmt(zs) + ' ha';
           }
           var row = document.createElement('div');
           row.className = 'drill-entry';
@@ -2386,17 +2325,17 @@
               cumDuenger = m.duenger;
             } else {
               var prevM = state.machineLog[mi - 1];
-              var haDriven = Math.max(0, (m.hektar || 0) - (prevM.hektar || 0));
+              var haDriven = Math.max(0, (m.zaehlerStand || 0) - (prevM.zaehlerStand || 0));
               cumEinheit = Math.max(0, cumEinheit - haDriven * unitsPerHa) + m.einheit;
               cumDuenger = Math.max(0, cumDuenger - haDriven * duengerPerHa) + m.duenger;
             }
             var prognoseParts = [];
             if (cumEinheit > 0 && unitsPerHa > 0) {
-              var prognoseSaat = (m.hektar || 0) + cumEinheit / unitsPerHa;
+              var prognoseSaat = (m.zaehlerStand || 0) + cumEinheit / unitsPerHa;
               prognoseParts.push('<span><span class="prog-label">Saat leer bei</span> <span class="prog-val">~' + fmt(prognoseSaat) + ' ha</span></span>');
             }
             if (cumDuenger > 0 && duengerPerHa > 0) {
-              var prognoseDuenger = (m.hektar || 0) + cumDuenger / duengerPerHa;
+              var prognoseDuenger = (m.zaehlerStand || 0) + cumDuenger / duengerPerHa;
               prognoseParts.push('<span><span class="prog-label">Dünger leer bei</span> <span class="prog-val">~' + fmt(prognoseDuenger) + ' ha</span></span>');
             }
             if (prognoseParts.length > 0) {
@@ -2425,11 +2364,10 @@
           tabHeader.textContent = r.name || ('Tab ' + (tabIdx + 1));
           container.appendChild(tabHeader);
 
-          // Show SOLL/IST summary per tab
-          var tabIstSum = 0;
-          r.entries.forEach(function(e) { tabIstSum += e.istHa !== undefined ? e.istHa : (e.hektar || 0); });
-          if (tabIstSum > 0 && r.hektar > 0) {
-            var tabDiff = tabIstSum - r.hektar;
+          // Show SOLL/IST summary per tab (uses r.istHektar)
+          var tabIstHektar = getTabIstHektar(r);
+          if (tabIstHektar > 0 && r.hektar > 0) {
+            var tabDiff = tabIstHektar - r.hektar;
             var summaryDiv = document.createElement('div');
             summaryDiv.className = 'drill-entry';
             summaryDiv.style.fontWeight = '600';
@@ -2437,7 +2375,7 @@
             summaryDiv.style.color = '#555';
             var diffClass = tabDiff >= 0 ? 'entry-diff positive' : 'entry-diff negative';
             var diffSign = tabDiff >= 0 ? '+' : '';
-            summaryDiv.innerHTML = '<span class="entry-text">SOLL: ' + fmt(r.hektar) + ' ha | IST: ' + fmt(tabIstSum) + ' ha | Abw: <span class="' + diffClass + '">' + diffSign + fmt(tabDiff) + ' ha</span></span>';
+            summaryDiv.innerHTML = '<span class="entry-text">SOLL: ' + fmt(r.hektar) + ' ha | IST: ' + fmt(tabIstHektar) + ' ha | Abw: <span class="' + diffClass + '">' + diffSign + fmt(tabDiff) + ' ha</span></span>';
             container.appendChild(summaryDiv);
 
             // Show savings in Saatgut/Dünger when IST < SOLL
@@ -2481,17 +2419,10 @@
           r.entries.forEach(function(e, entryIdx) {
             var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
             var dl = ds ? ' + ' + ds + ' Dünger' : '';
-            var istHa = e.istHa !== undefined ? e.istHa : e.hektar;
-            var sollHa = r.hektar;
+            var zs = e.zaehlerStand || 0;
             var hl = '';
-            if (istHa > 0) {
-              hl = ' @ ' + fmt(istHa) + ' ha';
-              var diff = istHa - sollHa;
-              if (diff >= 0) {
-                hl += ' <span class="entry-diff positive">+' + fmt(diff) + '</span>';
-              } else {
-                hl += ' <span class="entry-diff negative">' + fmt(diff) + '</span>';
-              }
+            if (zs > 0) {
+              hl = ' @ ' + fmt(zs) + ' ha';
             }
 
             var entry = document.createElement('div');
@@ -2536,11 +2467,13 @@
       state.reiter[active] = {
         name: state.reiter[active].name,
         hektar: 0,
+        istHektar: 0,
         koerner: 0,
         duenger: 0,
         entries: []
       };
       document.getElementById('hektar').value = '';
+      document.getElementById('ist_hektar').value = '';
       document.getElementById('koerner').value = '';
       document.getElementById('duenger').value = '';
       document.getElementById('err_hektar').textContent = '';
@@ -2557,7 +2490,7 @@
     // Full reset - clears everything (used for extreme cases, not via UI button)
     function resetAll() {
       state = {
-        reiter: [{ name: 'Tab 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
+        reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] }],
         activeReiter: 0,
         activeView: null,
         fahrgassenEnabled: false,

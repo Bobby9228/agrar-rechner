@@ -29,7 +29,7 @@ describe('Drill-Protokoll', () => {
       expect(entries.length).toBe(1);
       expect(entries[0].einheit).toBeCloseTo(1.5);
       expect(entries[0].duenger).toBe(200);
-      expect(entries[0].hektar).toBe(0); // Hektar not tracked per entry anymore
+      expect(entries[0].zaehlerStand).toBe(0); // Zählerstand not set
       expect(entries[0].time).toBeTruthy();
     });
 
@@ -43,7 +43,7 @@ describe('Drill-Protokoll', () => {
       expect(entries.length).toBe(1);
       expect(entries[0].einheit).toBe(2);
       expect(entries[0].duenger).toBe(0);
-      expect(entries[0].hektar).toBe(0);
+      expect(entries[0].zaehlerStand).toBe(0);
     });
 
     it('adds entry with duenger only (no einheit)', () => {

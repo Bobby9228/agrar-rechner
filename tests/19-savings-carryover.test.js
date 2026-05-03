@@ -1,7 +1,7 @@
 /**
  * Tests for IST/SOLL savings and carryover display in protocol.
- * When IST < SOLL, the savings (less seed/fertilizer) should be shown per tab,
- * and the cumulative carryover should be shown for subsequent tabs.
+ * IST is now a separate field per tab (r.istHektar), not derived from entries.
+ * Zählerstand on entries is just protocol info, unrelated to IST/SOLL.
  */
 import { describe, it, expect } from 'vitest';
 import { createDom } from './helpers.js';
@@ -12,31 +12,20 @@ function setup() {
   return { dom, w, store };
 }
 
-function setupMultiTab(w) {
-  // Add a second tab and configure both
-  w.addReiter();
-  // Tab 0: SOLL=8, koerner=50000, duenger=100
-  w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, koerner: 50000, duenger: 100 };
-  // Tab 1: SOLL=10, koerner=50000, duenger=120
-  w.state.reiter[1] = { ...w.state.reiter[1], hektar: 10, koerner: 50000, duenger: 120 };
-  // Set tab 0 as active for drill input
-  w.state.activeReiter = 0;
-}
-
 describe('IST/SOLL Savings & Carryover', () => {
-  it('shows savings in drill summary when IST < SOLL', () => {
+  it('shows savings in drill summary when istHektar < hektar', () => {
     const { w } = setup();
     w.document.getElementById('hektar').value = '8';
+    w.document.getElementById('ist_hektar').value = '7,9';
     w.document.getElementById('koerner').value = '50000';
     w.document.getElementById('duenger').value = '100';
     w.berechne();
 
-    // Add drill with IST = 7.9 ha (0.1 ha less than SOLL = 8)
+    // Add a drill entry (Zählerstand is protocol-only)
     w.document.getElementById('drill_einheit').value = '7,9';
     w.document.getElementById('drill_hektar').value = '7,9';
     w.drillAdd();
 
-    // renderResults should have been called by drillAdd
     const savingsEl = w.document.getElementById('ds_savings');
     expect(savingsEl).not.toBeNull();
     expect(savingsEl.style.display).not.toBe('none');
@@ -44,13 +33,13 @@ describe('IST/SOLL Savings & Carryover', () => {
     expect(savingsEl.textContent).toContain('Einheiten Saatgut');
   });
 
-  it('hides savings when IST = SOLL (no savings)', () => {
+  it('hides savings when istHektar = hektar (no savings)', () => {
     const { w } = setup();
     w.document.getElementById('hektar').value = '8';
+    w.document.getElementById('ist_hektar').value = '8';
     w.document.getElementById('koerner').value = '50000';
     w.berechne();
 
-    // Add drill with IST = 8.0 (exactly SOLL)
     w.document.getElementById('drill_einheit').value = '8';
     w.document.getElementById('drill_hektar').value = '8';
     w.drillAdd();
@@ -60,9 +49,10 @@ describe('IST/SOLL Savings & Carryover', () => {
     expect(savingsEl.style.display).toBe('none');
   });
 
-  it('shows savings per tab in protocol', () => {
+  it('shows savings per tab in protocol when istHektar < hektar', () => {
     const { w } = setup();
     w.document.getElementById('hektar').value = '8';
+    w.document.getElementById('ist_hektar').value = '7,9';
     w.document.getElementById('koerner').value = '50000';
     w.document.getElementById('duenger').value = '100';
     w.berechne();
@@ -77,17 +67,19 @@ describe('IST/SOLL Savings & Carryover', () => {
     expect(savingsDiv.textContent).toContain('Ersparnis');
   });
 
-  it('shows carryover for tab 2 when tab 1 has IST < SOLL', () => {
+  it('shows carryover for tab 2 when tab 1 has istHektar < hektar', () => {
     const { w } = setup();
-    setupMultiTab(w);
+    // Add second tab
+    w.addReiter();
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 7.9, koerner: 50000, duenger: 100 };
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 10, istHektar: 9.8, koerner: 50000, duenger: 120 };
 
-    // Tab 0: fill with IST = 7.9 (SOLL = 8) → saves 0.1 Einheiten
+    // Fill entries for both tabs
     w.state.activeReiter = 0;
     w.document.getElementById('drill_einheit').value = '7,9';
     w.document.getElementById('drill_hektar').value = '7,9';
     w.drillAdd();
 
-    // Tab 1: fill with IST = 9.8 (SOLL = 10) → saves 0.2 Einheiten
     w.state.activeReiter = 1;
     w.document.getElementById('drill_einheit').value = '9,8';
     w.document.getElementById('drill_hektar').value = '9,8';
@@ -103,9 +95,10 @@ describe('IST/SOLL Savings & Carryover', () => {
 
   it('no carryover shown for first tab', () => {
     const { w } = setup();
-    setupMultiTab(w);
+    w.addReiter();
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 7.9, koerner: 50000, duenger: 100 };
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 10, koerner: 50000, duenger: 120 };
 
-    // Only fill tab 0
     w.state.activeReiter = 0;
     w.document.getElementById('drill_einheit').value = '7,9';
     w.document.getElementById('drill_hektar').value = '7,9';
@@ -119,6 +112,7 @@ describe('IST/SOLL Savings & Carryover', () => {
   it('savings calculation is correct for seed and fertilizer', () => {
     const { w } = setup();
     w.document.getElementById('hektar').value = '10';
+    w.document.getElementById('ist_hektar').value = '9,5';
     w.document.getElementById('koerner').value = '50000';
     w.document.getElementById('duenger').value = '200';
     w.berechne();
@@ -141,11 +135,11 @@ describe('IST/SOLL Savings & Carryover', () => {
     w.addReiter();
 
     // Tab 0: SOLL=8, IST=7.9
-    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, koerner: 50000, duenger: 100 };
-    w.state.reiter[0].entries.push({ einheit: 7.9, istHa: 7.9, duenger: 0, time: '10:00' });
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 7.9, koerner: 50000, duenger: 100 };
+    w.state.reiter[0].entries.push({ einheit: 7.9, zaehlerStand: 7.9, duenger: 0, time: '10:00' });
     // Tab 1: SOLL=6, IST=5.8
-    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 6, koerner: 50000, duenger: 80 };
-    w.state.reiter[1].entries.push({ einheit: 5.8, istHa: 5.8, duenger: 0, time: '10:30' });
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 6, istHektar: 5.8, koerner: 50000, duenger: 80 };
+    w.state.reiter[1].entries.push({ einheit: 5.8, zaehlerStand: 5.8, duenger: 0, time: '10:30' });
 
     // Carryover for tab 1 (index=1): savings from tab 0 only
     var co1 = w.getCarryover(1);
@@ -158,14 +152,14 @@ describe('IST/SOLL Savings & Carryover', () => {
     expect(co2.savedDuenger).toBeCloseTo(26, 0);    // 10 + 16
   });
 
-  it('no savings shown when no IST entries exist', () => {
+  it('no savings shown when no istHektar set', () => {
     const { w } = setup();
     w.document.getElementById('hektar').value = '8';
     w.document.getElementById('koerner').value = '50000';
     w.document.getElementById('duenger').value = '100';
     w.berechne();
 
-    // No drill entries → no savings
+    // No istHektar → no savings
     const savingsEl = w.document.getElementById('ds_savings');
     expect(savingsEl).not.toBeNull();
     expect(savingsEl.style.display).toBe('none');

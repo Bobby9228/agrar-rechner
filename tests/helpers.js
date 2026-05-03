@@ -17,6 +17,7 @@ const DOM_TEMPLATE = `<!DOCTYPE html><html><body>
     <button class="protokoll-tab" id="protokoll_tab_btn" onclick="switchToProtokoll()">🔧 Protokoll</button>
   </div>
   <input id="hektar" value="">
+  <input id="ist_hektar" value="">
   <input id="koerner" value="">
   <input id="duenger" value="">
   <div id="err_hektar"></div>

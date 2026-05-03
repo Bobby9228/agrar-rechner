@@ -106,7 +106,7 @@ describe('Blind spots — berechne duenger-exceeds confirm', () => {
 
     // Add drill entry with excessive duenger
     const r = w.getActiveReiter();
-    r.entries.push({ einheit: 1, hektar: 0, duenger: 2000, time: '10:00' });
+    r.entries.push({ einheit: 1, zaehlerStand: 0, duenger: 2000, time: '10:00' });
     // usedDuenger(2000) > getTotalDuenger(1500), even though usedEinheit(1) < getTotalEinheiten(18)
 
     // User cancels
@@ -126,7 +126,7 @@ describe('Blind spots — berechne duenger-exceeds confirm', () => {
     w.berechne();
 
     const r = w.getActiveReiter();
-    r.entries.push({ einheit: 0, hektar: 0, duenger: 2000, time: '10:00' });
+    r.entries.push({ einheit: 0, zaehlerStand: 0, duenger: 2000, time: '10:00' });
 
     w.confirm = () => true;
     doc.getElementById('duenger').value = '100';
@@ -142,7 +142,7 @@ describe('Blind spots — berechne duenger-exceeds confirm', () => {
     w.berechne();
 
     const r = w.getActiveReiter();
-    r.entries.push({ einheit: 5, hektar: 3, duenger: 500, time: '10:00' });
+    r.entries.push({ einheit: 5, zaehlerStand: 3, duenger: 500, time: '10:00' });
     // usedEinheit(5) < 18, usedDuenger(500) < 1500 -> no confirm needed
 
     let confirmCalled = false;
@@ -205,12 +205,12 @@ describe('Blind spots — renderResults edge cases', () => {
     w.berechne();
 
     const r = w.getActiveReiter();
-    r.entries.push({ einheit: 2, hektar: 3.5, duenger: 200, time: '14:30' });
+    r.entries.push({ einheit: 2, zaehlerStand: 3.5, duenger: 200, time: '14:30' });
     w.renderResults();
 
     const spans = doc.querySelectorAll('.entry-text');
     expect(spans[0].textContent).toContain('14:30 – ');
-    expect(spans[0].textContent).toContain('@ 3,5 ha');
+    expect(spans[0].textContent).toContain('3,5 ha');
     expect(spans[0].textContent).toContain('2,0 Einheiten');
     expect(spans[0].textContent).toContain('200 kg Dünger');
   });
@@ -221,7 +221,7 @@ describe('Blind spots — renderResults edge cases', () => {
     w.berechne();
 
     const r = w.getActiveReiter();
-    r.entries.push({ einheit: 2, hektar: 0, duenger: 0, time: '10:00' });
+    r.entries.push({ einheit: 2, zaehlerStand: 0, duenger: 0, time: '10:00' });
     w.renderResults();
 
     const spans = doc.querySelectorAll('.entry-text');
@@ -235,7 +235,7 @@ describe('Blind spots — renderResults edge cases', () => {
     w.berechne();
 
     const r = w.getActiveReiter();
-    r.entries.push({ einheit: 2, hektar: 0, duenger: 100, time: '10:00' });
+    r.entries.push({ einheit: 2, zaehlerStand: 0, duenger: 100, time: '10:00' });
     w.renderResults();
 
     const spans = doc.querySelectorAll('.entry-text');
@@ -250,7 +250,7 @@ describe('Blind spots — renderResults edge cases', () => {
     w.berechne();
 
     const r = w.getActiveReiter();
-    r.entries.push({ einheit: 3, hektar: 0, duenger: 0, time: '10:00' });
+    r.entries.push({ einheit: 3, zaehlerStand: 0, duenger: 0, time: '10:00' });
     w.renderResults();
 
     const summary = doc.getElementById('ds_total_summary').textContent;
@@ -265,8 +265,8 @@ describe('Blind spots — renderResults edge cases', () => {
     w.berechne();
 
     const r = w.getActiveReiter();
-    r.entries.push({ einheit: 2, hektar: 0, duenger: 0, time: '10:00' });
-    r.entries.push({ einheit: 3, hektar: 0, duenger: 0, time: '10:05' });
+    r.entries.push({ einheit: 2, zaehlerStand: 0, duenger: 0, time: '10:00' });
+    r.entries.push({ einheit: 3, zaehlerStand: 0, duenger: 0, time: '10:05' });
     w.renderResults();
 
     const hashes = doc.querySelectorAll('.entry-text span');
@@ -280,7 +280,7 @@ describe('Blind spots — renderResults edge cases', () => {
     w.berechne();
 
     const r = w.getActiveReiter();
-    r.entries.push({ einheit: 2, hektar: 0, duenger: 0, time: '10:00' });
+    r.entries.push({ einheit: 2, zaehlerStand: 0, duenger: 0, time: '10:00' });
     w.renderResults();
 
     // Two btn-danger buttons: one in result card inline entries, one in Protokoll view
@@ -320,7 +320,7 @@ describe('Blind spots — renderResults with duenger-only entry (einheit=0)', ()
     w.berechne();
 
     const r = w.getActiveReiter();
-    r.entries.push({ einheit: 0, hektar: 0, duenger: 500, time: '10:00' });
+    r.entries.push({ einheit: 0, zaehlerStand: 0, duenger: 500, time: '10:00' });
     w.renderResults();
 
     const summary = doc.getElementById('ds_total_summary').textContent;
