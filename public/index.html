@@ -1780,15 +1780,30 @@
       return ha * r.duenger;
     }
 
-    // Calculate carryover: Saat/Duenger saved from previous tabs (IST < SOLL)
-    // Returns { savedEinheit, savedDuenger } cumulative up to (but not including) the given tab index
+    // Check if a tab is "fertig" (all seed + fertilizer filled)
+    function isTabDone(r) {
+      if (!r.hektar || !r.koerner) return false;
+      var istSum = getTabIstHektar(r);
+      var totalE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
+      var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+      var remE = Math.max(0, totalE - usedE);
+      var totalD = istSum > 0 ? getTabIstDuenger(r) : getTabTotalDuenger(r);
+      var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+      var remD = Math.max(0, totalD - usedD);
+      var saatDone = remE <= 0.05;
+      var duengerDone = totalD <= 0 || remD <= 0.05;
+      return saatDone && duengerDone;
+    }
+
+    // Calculate carryover: cumulative savings from all tabs (IST < SOLL)
+    // attributed to the first NOT-fertig tab (if this tab is that one)
+    // Returns { savedEinheit, savedDuenger } — non-zero only for the first not-done tab
     function getCarryover(tabIndex) {
       var savedE = 0, savedD = 0;
-      for (var i = 0; i < tabIndex && i < state.reiter.length; i++) {
+      for (var i = 0; i < state.reiter.length; i++) {
         var t = state.reiter[i];
         var istHa = getTabIstHektar(t);
         if (istHa > 0 && t.hektar > 0) {
-          // SOLL bedarf - IST bedarf = Ersparnis
           var sollE = getTabTotalEinheiten(t);
           var istE = getTabIstEinheiten(t);
           var sollD = getTabTotalDuenger(t);
@@ -1797,7 +1812,16 @@
           savedD += (sollD - istD);
         }
       }
-      return { savedEinheit: savedE, savedDuenger: savedD };
+      // Only assign to the first not-done tab
+      for (var j = 0; j < state.reiter.length; j++) {
+        if (!isTabDone(state.reiter[j]) && state.reiter[j].hektar > 0 && state.reiter[j].koerner > 0) {
+          if (j === tabIndex) {
+            return { savedEinheit: savedE, savedDuenger: savedD };
+          }
+          return { savedEinheit: 0, savedDuenger: 0 }; // another tab is the target
+        }
+      }
+      return { savedEinheit: 0, savedDuenger: 0 };
     }
 
     function fmt(n) {
@@ -2399,10 +2423,9 @@
             }
           }
 
-          // Show carryover from previous tabs (cumulative savings available for this tab)
-          if (tabIdx > 0) {
-            var carryover = getCarryover(tabIdx);
-            if (carryover.savedEinheit > 0.05 || carryover.savedDuenger > 0.05) {
+          // Show carryover for this tab if it's the first not-done tab receiving savings
+          var carryover = getCarryover(tabIdx);
+          if (carryover.savedEinheit > 0.05 || carryover.savedDuenger > 0.05) {
               var carryParts = [];
               if (carryover.savedEinheit > 0.05) carryParts.push(fmt(carryover.savedEinheit) + ' Einheiten Saatgut');
               if (carryover.savedDuenger > 0.05) carryParts.push(fmt(carryover.savedDuenger) + ' kg Dünger');
@@ -2410,11 +2433,10 @@
               carryDiv.className = 'drill-carryover';
               var carrySpan = document.createElement('span');
               carrySpan.className = 'entry-text';
-              carrySpan.textContent = 'Übertrag von vorherigen Feldern: +' + carryParts.join(', ');
+              carrySpan.textContent = 'Übertrag aus ersparten Flächen: +' + carryParts.join(', ');
               carryDiv.appendChild(carrySpan);
               container.appendChild(carryDiv);
             }
-          }
 
           r.entries.forEach(function(e, entryIdx) {
             var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';

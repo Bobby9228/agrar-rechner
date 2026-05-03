@@ -1,7 +1,7 @@
 /**
  * Tests for IST/SOLL savings and carryover display in protocol.
- * IST is now a separate field per tab (r.istHektar), not derived from entries.
- * Zählerstand on entries is just protocol info, unrelated to IST/SOLL.
+ * IST is now a separate field per tab (r.istHektar).
+ * Carryover goes to the first NOT-fertig tab, not distributed across all subsequent tabs.
  */
 import { describe, it, expect } from 'vitest';
 import { createDom } from './helpers.js';
@@ -21,7 +21,6 @@ describe('IST/SOLL Savings & Carryover', () => {
     w.document.getElementById('duenger').value = '100';
     w.berechne();
 
-    // Add a drill entry (Zählerstand is protocol-only)
     w.document.getElementById('drill_einheit').value = '7,9';
     w.document.getElementById('drill_hektar').value = '7,9';
     w.drillAdd();
@@ -67,46 +66,66 @@ describe('IST/SOLL Savings & Carryover', () => {
     expect(savingsDiv.textContent).toContain('Ersparnis');
   });
 
-  it('shows carryover for tab 2 when tab 1 has istHektar < hektar', () => {
+  it('carryover goes to first not-done tab, not distributed', () => {
     const { w } = setup();
-    // Add second tab
     w.addReiter();
+    // Tab 0: SOLL=8, IST=7.9 → fertig (7.9 Einheiten cover IST-bedarf of 7.9)
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 7.9, koerner: 50000, duenger: 100 };
-    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 10, istHektar: 9.8, koerner: 50000, duenger: 120 };
+    // Tab 1: SOLL=10, no IST, no entries → not done → gets carryover
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 10, koerner: 50000, duenger: 120 };
 
-    // Fill entries for both tabs
+    // Fill tab 0 completely (fertig)
     w.state.activeReiter = 0;
     w.document.getElementById('drill_einheit').value = '7,9';
     w.document.getElementById('drill_hektar').value = '7,9';
     w.drillAdd();
 
-    w.state.activeReiter = 1;
-    w.document.getElementById('drill_einheit').value = '9,8';
-    w.document.getElementById('drill_hektar').value = '9,8';
-    w.drillAdd();
-
     const container = w.document.getElementById('drill_entries');
     const carryDivs = container.querySelectorAll('.drill-carryover');
-    // Tab 1 should show carryover from tab 0
+    // Tab 1 should show carryover (it's the first not-done tab)
     expect(carryDivs.length).toBeGreaterThanOrEqual(1);
-    expect(carryDivs[0].textContent).toContain('Übertrag von vorherigen Feldern');
+    expect(carryDivs[0].textContent).toContain('Übertrag aus ersparten Flächen');
     expect(carryDivs[0].textContent).toContain('+');
   });
 
-  it('no carryover shown for first tab', () => {
+  it('no carryover when first tab is not done (it gets the savings)', () => {
     const { w } = setup();
     w.addReiter();
+    // Tab 0: SOLL=8, IST=7.9, only 5 Einheiten filled → NOT done
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 7.9, koerner: 50000, duenger: 100 };
+    // Tab 1: SOLL=10, no IST → not done either
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 10, koerner: 50000, duenger: 120 };
+
+    // Fill tab 0 partially (NOT fertig — only 5 of 7.9 needed)
+    w.state.activeReiter = 0;
+    w.document.getElementById('drill_einheit').value = '5';
+    w.document.getElementById('drill_hektar').value = '7,9';
+    w.drillAdd();
+
+    // Tab 0 is first not-done tab → it gets the carryover, not tab 1
+    var co0 = w.getCarryover(0);
+    expect(co0.savedEinheit).toBeCloseTo(0.1, 1);
+    var co1 = w.getCarryover(1);
+    expect(co1.savedEinheit).toBe(0);
+  });
+
+  it('no carryover shown for first tab when it is done', () => {
+    const { w } = setup();
+    w.addReiter();
+    // Tab 0: SOLL=8, IST=7.9 → will be fertig after filling 7.9 Einheiten + 790 kg Dünger
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 7.9, koerner: 50000, duenger: 100 };
     w.state.reiter[1] = { ...w.state.reiter[1], hektar: 10, koerner: 50000, duenger: 120 };
 
     w.state.activeReiter = 0;
     w.document.getElementById('drill_einheit').value = '7,9';
+    w.document.getElementById('drill_duenger').value = '790';
     w.document.getElementById('drill_hektar').value = '7,9';
     w.drillAdd();
 
-    const container = w.document.getElementById('drill_entries');
-    const carryDivs = container.querySelectorAll('.drill-carryover');
-    expect(carryDivs.length).toBe(0);
+    // Tab 0 is done → no carryover for it
+    var co0 = w.getCarryover(0);
+    expect(co0.savedEinheit).toBe(0);
+    expect(co0.savedDuenger).toBe(0);
   });
 
   it('savings calculation is correct for seed and fertilizer', () => {
@@ -129,27 +148,24 @@ describe('IST/SOLL Savings & Carryover', () => {
     expect(savingsEl.textContent).toContain('0,5 Einheiten Saatgut');
   });
 
-  it('getCarryover returns correct cumulative savings', () => {
+  it('getCarryover: all savings go to first not-done tab', () => {
     const { w } = setup();
     w.addReiter();
-    w.addReiter();
 
-    // Tab 0: SOLL=8, IST=7.9
+    // Tab 0: SOLL=8, IST=7.9, with entries covering full IST → fertig
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 7.9, koerner: 50000, duenger: 100 };
-    w.state.reiter[0].entries.push({ einheit: 7.9, zaehlerStand: 7.9, duenger: 0, time: '10:00' });
-    // Tab 1: SOLL=6, IST=5.8
-    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 6, istHektar: 5.8, koerner: 50000, duenger: 80 };
-    w.state.reiter[1].entries.push({ einheit: 5.8, zaehlerStand: 5.8, duenger: 0, time: '10:30' });
+    w.state.reiter[0].entries.push({ einheit: 7.9, zaehlerStand: 7.9, duenger: 790, time: '10:00' });
+    // Tab 1: SOLL=6, no IST, no entries → not done
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 6, koerner: 50000, duenger: 80 };
 
-    // Carryover for tab 1 (index=1): savings from tab 0 only
+    // Carryover for tab 1: it's the first not-done tab → gets ALL savings from tab 0
     var co1 = w.getCarryover(1);
     expect(co1.savedEinheit).toBeCloseTo(0.1, 1);
     expect(co1.savedDuenger).toBeCloseTo(10, 0);
 
-    // Carryover for tab 2 (index=2): savings from tab 0 + tab 1
-    var co2 = w.getCarryover(2);
-    expect(co2.savedEinheit).toBeCloseTo(0.3, 1);  // 0.1 + 0.2
-    expect(co2.savedDuenger).toBeCloseTo(26, 0);    // 10 + 16
+    // Carryover for tab 0: it's done → 0
+    var co0 = w.getCarryover(0);
+    expect(co0.savedEinheit).toBe(0);
   });
 
   it('no savings shown when no istHektar set', () => {
