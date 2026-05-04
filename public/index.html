@@ -1375,7 +1375,7 @@
     // --- Hektarzähler ---
     function zaehlerUpdate() {
       var z = parseDE(document.getElementById('zaehler_stand').value);
-      if (isNaN(z) || z < 0) {
+      if (z <= 0) {
         document.getElementById('zaehler_result').style.display = 'none';
         return;
       }
@@ -1718,7 +1718,9 @@
       var entries = r.entries;
       var usedEinheit = entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-      if (usedEinheit > getTotalEinheiten() || usedDuenger > getTotalDuenger()) {
+      var istE = r.istHektar > 0 ? getTabIstEinheiten(r) : getTotalEinheiten();
+      var istD = r.istHektar > 0 ? getTabIstDuenger(r) : getTotalDuenger();
+      if (usedEinheit > istE || usedDuenger > istD) {
         if (!confirm('Die neuen Werte weichen von den eingetragenen Einheiten ab. Drill-Protokoll zurücksetzen?')) {
           return;
         }
@@ -2186,6 +2188,7 @@
     }
 
     function drillRemove(tabIdx, entryIdx) {
+      if (!state.reiter[tabIdx] || entryIdx >= state.reiter[tabIdx].entries.length) return;
       state.reiter[tabIdx].entries.splice(entryIdx, 1);
       sv();
       renderResults();
@@ -2648,6 +2651,7 @@
         zaehlerstand: 0
       };
       document.getElementById('hektar').value = '';
+      document.getElementById('ist_hektar').value = '';
       document.getElementById('koerner').value = '';
       document.getElementById('duenger').value = '';
       document.getElementById('err_hektar').textContent = '';
