@@ -41,7 +41,10 @@ const DOM_TEMPLATE = `<!DOCTYPE html><html><body>
     </div>
     <div id="r_info"></div>
   </div>
-  <div id="drill_section" style="display:none"></div>
+  <div id="drill_section" style="display:none">
+    <div id="drill_mask" style="display:none"></div>
+    <div id="drill_tab_list"></div>
+  </div>
   <div id="zaehler_section" style="display:none">
     <div class="zaehler-result" id="zaehler_result" style="display:none">
       <div class="zaehler-delta">
@@ -101,6 +104,21 @@ const DOM_TEMPLATE = `<!DOCTYPE html><html><body>
     </div>
     <div class="dashboard-content" id="dashboard_content"></div>
   </div>
+  <div class="sticky-footer" id="sticky_footer">
+    <div class="container">
+      <div id="mini_result" class="mini-result mini-result-empty"></div>
+      <div class="footer-btn-row">
+        <button class="btn" id="berechnen_btn">Berechnen</button>
+        <button class="btn btn-secondary" id="reset_btn">Zurücksetzen</button>
+        <button class="btn btn-danger" id="reset_all_btn">Reset All</button>
+      </div>
+    </div>
+  </div>
+  <div class="card card-input" id="card_input"></div>
+  <div class="card" id="card_duenger"></div>
+  <div class="card" id="card_result" style="display:none"></div>
+  <button class="theme-toggle" id="theme_toggle">🌙</button>
+  <meta name="theme-color" content="#2d5016">
 </body></html>`;
 
 /**
