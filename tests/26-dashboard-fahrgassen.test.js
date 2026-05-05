@@ -109,6 +109,8 @@ describe('Dashboard + Fahrgassen', () => {
     w.state.fahrgassenEnabled = true;
     w.state.fahrgassenBreite = 4;
     // Tab 1: 5 ha, 80000 k — faktor=0.75 → 5*80000/50000*0.75 = 6.0
+    w.state.activeReiter = 0;
+    w.syncInputsFromState();
     w.state.reiter[0].hektar = 5;
     w.state.reiter[0].koerner = 80000;
     w.state.reiter[0].entries = [];

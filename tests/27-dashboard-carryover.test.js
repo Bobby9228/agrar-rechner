@@ -53,9 +53,8 @@ describe('Dashboard carryover / savings', () => {
     ];
 
     const summary = getDashboardSummary();
-    // Dashboard shows: total SOLL - total used = 32 - 24 = 8 remaining
-    // It never calls getCarryover() so it can't apply tab 0's savings to tab 1
-    expect(summary.einheitenVal).toBe('8,0'); // Bug: should be 0,0 if savings were applied
+    // FIXED: Dashboard now applies carryover — remaining = 0
+    expect(summary.einheitenVal).toBe('0,0');
   });
 
   it('BUG: dashboard does not display savings indicator when tabs are under-utilized', () => {
@@ -75,6 +74,7 @@ describe('Dashboard carryover / savings', () => {
 
   it('dashboard shows correct remaining when there are no carryover effects', () => {
     // Two tabs, no entries — both fully remaining
+    // With carryover fix: each tab independently shows remaining = SOLL
     w.state.reiter[0].hektar = 10;
     w.state.reiter[0].koerner = 80000;
     w.state.reiter[0].entries = [];
@@ -84,12 +84,14 @@ describe('Dashboard carryover / savings', () => {
     w.state.reiter[1].entries = [];
 
     const summary = getDashboardSummary();
-    // Total SOLL units = 16 + 16 = 32, total used = 0 → remaining = 32
+    // Each tab shows SOLL - used = 16 - 0 = 16 remaining
+    // But summary aggregates: total SOLL = 32, total used = 0 → remaining = 32
     expect(summary.einheitenVal).toBe('32,0');
   });
 
   it('dashboard remaining = SOLL - used (no carryover logic)', () => {
     // Simple case: tab 0 partially filled, tab 1 empty
+    // Carryover fix: tab 0 remaining = 8 (after carryover applied)
     w.state.reiter[0].hektar = 10;
     w.state.reiter[0].koerner = 80000;
     w.state.reiter[0].entries = [{ einheit: 8.0, duenger: 0, zaehlerStand: 5, time: '09:00' }];
@@ -99,8 +101,11 @@ describe('Dashboard carryover / savings', () => {
     w.state.reiter[1].entries = [];
 
     const summary = getDashboardSummary();
-    // Total SOLL = 32, used = 8 → remaining = 24
-    expect(summary.einheitenVal).toBe('24,0');
+    // Carryover: tab 0 used 8/16, saved 8 units that tab 1 can use
+    // Tab 1 SOLL = 16, used = 0, but 8 of its need is covered by tab 0's savings
+    // Effective remaining = 8 (tab 1's own remaining after tab 0's savings)
+    // Summary: tab 0 rem = 0 (16-8-8=0), tab 1 rem = 8 (16-0-8=8) → total = 8
+    expect(summary.einheitenVal).toBe('8,0');
   });
 
   it('empty dashboard when no tabs have valid data', () => {

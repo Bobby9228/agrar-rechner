@@ -177,7 +177,7 @@ describe('lv() migration edge cases', () => {
   });
 
   it('old migrated state may have undefined einheitGroesseEnabled', () => {
-    // einheitGroesseEnabled is NOT set by migration — stays from parsed state
+    // MIGRATION 4 sets einheitGroesseEnabled to false if undefined
     store['mais_rechner'] = JSON.stringify({
       hektar: 10,
       koerner: 80000
@@ -186,9 +186,8 @@ describe('lv() migration edge cases', () => {
 
     w.lv();
 
-    // einheitGroesseEnabled comes from the parsed state (undefined if not present)
-    // It is NOT explicitly set by the migration code
-    expect(w.state.einheitGroesseEnabled).toBeUndefined();
+    // Migration 4 sets default value false for einheitGroesseEnabled
+    expect(w.state.einheitGroesseEnabled).toBe(false);
   });
 
   it('old migrated state may have undefined koernerProEinheit', () => {
@@ -200,7 +199,7 @@ describe('lv() migration edge cases', () => {
 
     w.lv();
 
-    // koernerProEinheit is NOT set by migration
-    expect(w.state.koernerProEinheit).toBeUndefined();
+    // Migration 4 sets default value 50000 for koernerProEinheit
+    expect(w.state.koernerProEinheit).toBe(50000);
   });
 });

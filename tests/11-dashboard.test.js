@@ -175,6 +175,8 @@ describe('Dashboard', () => {
     });
 
     it('each card shows its respective values', () => {
+      w.state.activeReiter = 0;
+      w.syncInputsFromState();
       w.state.reiter[0].hektar = 10;
       w.state.reiter[0].koerner = 90000;
       w.addReiter();

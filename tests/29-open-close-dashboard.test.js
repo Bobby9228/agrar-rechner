@@ -106,6 +106,8 @@ describe('Dashboard open/close', () => {
   it('summary stats show correct flaeche for multiple tabs', () => {
     w.state.reiter[0].hektar = 7.5;
     w.state.reiter[0].koerner = 80000;
+    w.state.activeReiter = 0;
+    w.syncInputsFromState();
     w.addReiter();
     w.state.reiter[1].hektar = 12.3;
     w.state.reiter[1].koerner = 90000;

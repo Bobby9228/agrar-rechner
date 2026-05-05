@@ -1522,8 +1522,12 @@
         if (!parsed.machineLog) parsed.machineLog = [];
         // drillPriorities gab es in frühen Versionen nicht
         if (!parsed.drillPriorities) parsed.drillPriorities = {};
+        // MIGRATION 4: koernerProEinheit und einheitGroesseEnabled fehlten in alten Speicherständen
+        if (parsed.koernerProEinheit === undefined) parsed.koernerProEinheit = 50000;
+        if (parsed.einheitGroesseEnabled === undefined) parsed.einheitGroesseEnabled = false;
 
         state = parsed;
+        drillPriorities = state.drillPriorities;
       } catch(e) {
         // Bei Parse-Fehlern oder anderen Fehlern: Default-state behalten
       }
@@ -1642,6 +1646,7 @@
 
     // Erstellt einen neuen Tab, aktiviert ihn und fokussiert das Hektar-Feld.
     function addReiter() {
+      syncStateFromInputs();
       var maxIdx = 0;
       state.reiter.forEach(function(r) {
         var match = r.name.match(/^Tab (\d+)$/);
@@ -1683,6 +1688,19 @@
       if (state.reiter.length <= 1) return;  // Mindestens 1 Tab muss bleiben
       syncStateFromInputs();                   // Aktuellen Tab vorher speichern!
       state.reiter.splice(idx, 1);            // Tab entfernen
+      // drillPriorities: entfernten Index löschen und restliche neu indizieren
+      var newPriorities = {};
+      Object.keys(drillPriorities).forEach(function(key) {
+        var k = parseInt(key, 10);
+        if (k < idx) {
+          newPriorities[k] = drillPriorities[k];
+        } else if (k > idx) {
+          newPriorities[k - 1] = drillPriorities[k];
+        }
+        // k === idx: gelöscht, wird nicht übernommen
+      });
+      drillPriorities = newPriorities;
+      state.drillPriorities = drillPriorities;
       if (state.activeReiter >= state.reiter.length) {
         state.activeReiter = state.reiter.length - 1;  // Hinter letzten → auf letzten
       }
@@ -1801,7 +1819,7 @@
           'Fahrgassenbreite muss mindestens 2m betragen';
       } else if (breite > 1) {
         // Zeigt: "24 m -> ~4,2% weniger Körner"
-        var prozent = (1 / breite * 100).toFixed(1);
+        var prozent = ((breite - 1) / breite * 100).toFixed(1);
         document.getElementById('fahrgassen_saved').textContent =
           breite + ' m -> ~' + prozent + '% weniger Körner';
       } else {
@@ -2552,6 +2570,12 @@
     function drillMachineRemove(idx) {
       if (!state.machineLog || idx < 0 || idx >= state.machineLog.length) return;
       state.machineLog.splice(idx, 1);
+      // mlIdx-Referenzen aller Tab-Entries anpassen
+      state.reiter.forEach(function(r) {
+        r.entries.forEach(function(e) {
+          if (e.mlIdx > idx) e.mlIdx--;
+        });
+      });
       sv();
       renderResults();
     }
@@ -3043,6 +3067,8 @@
         duenger: 0,
         entries: []  // Drill-Einträge löschen
       };
+      // machineLog-Einträge für diesen Tab entfernen
+      state.machineLog = state.machineLog.filter(function(e) { return e.tabIndex !== active; });
       document.getElementById('err_hektar').textContent = '';
       document.getElementById('err_koerner').textContent = '';
       document.getElementById('hektar').style.borderColor = '';
@@ -3089,6 +3115,8 @@
       document.getElementById('einheit_groesse_settings').classList.remove('open');
       document.getElementById('koerner_pro_einheit').value = '';
       document.getElementById('einheit_groesse_saved').textContent = '';
+      drillPriorities = {};
+      state.drillPriorities = drillPriorities;
       renderTabs();
       sv();
     }
@@ -3309,7 +3337,7 @@
         kDiv.appendChild(kDivVal);
         stats.appendChild(kDiv);
 
-        // Calculate progress
+        // Calculate progress (mit Carryover)
         var einheiten = 0;
         var usedEinheit = 0;
         var duengerTotal = 0;
@@ -3321,6 +3349,9 @@
           usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
           duengerTotal = r.hektar * r.duenger;
           usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+          var tabCo = getCarryover(idx);
+          einheitRem = Math.max(0, einheiten - usedEinheit - tabCo.savedEinheit - tabCo.excessEinheit);
+          duengerRem = Math.max(0, duengerTotal - usedDuenger - tabCo.savedDuenger - tabCo.excessDuenger);
           var minFilled = Math.min(
             einheiten > 0 ? usedEinheit / einheiten : 1,
             duengerTotal > 0 ? usedDuenger / duengerTotal : 1
@@ -3331,7 +3362,6 @@
         }
 
         // Einheiten verbleibend
-        var einheitRem = Math.max(0, einheiten - usedEinheit);
         var eStat = document.createElement('div');
         eStat.className = 'dashboard-stat';
         var eStatLabel = document.createElement('div');
@@ -3345,7 +3375,6 @@
         stats.appendChild(eStat);
 
         // Dünger verbleibend
-        var duengerRem = Math.max(0, duengerTotal - usedDuenger);
         var dStat = document.createElement('div');
         dStat.className = 'dashboard-stat';
         var dStatLabel = document.createElement('div');
