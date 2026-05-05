@@ -2586,24 +2586,29 @@
         sollIstSection.style.display = 'none';
       }
 
-      // Show carryover in result card for active tab
+      // --- Carryover-Hint in der Ergebnis-Card ---
+      // Dynamisch erzeugtes DOM-Element (#r_carryover_hint) unter der SOLL/IST-Zeile.
+      // Zeigt Überträge aus Ersparnissen (blau, ↗) oder Mehrbedarfen (rot, ↘) für den aktiven Tab.
       var carryoverHint = document.getElementById('r_carryover_hint');
       if (!carryoverHint) {
         carryoverHint = document.createElement('div');
         carryoverHint.id = 'r_carryover_hint';
         carryoverHint.style.cssText = 'font-size:0.85rem;padding:4px 0;';
+        // Element wird direkt nach der SOLL/IST-Section eingefügt
         sollIstSection.parentNode.insertBefore(carryoverHint, sollIstSection.nextSibling);
       }
       carryoverHint.innerHTML = '';
       var activeIdx = state.activeReiter || 0;
       var co = getCarryover(activeIdx);
       var coHtml = '';
+      // Ersparnis: IST < SOLL → Überschuss wird auf andere Tabs verteilt (blau, ↗)
       if (co.savedEinheit > 0.05 || co.savedDuenger > 0.05) {
         var parts = [];
         if (co.savedEinheit > 0.05) parts.push(fmt(co.savedEinheit) + ' Einheiten');
         if (co.savedDuenger > 0.05) parts.push(fmt(co.savedDuenger) + ' kg Dünger');
         coHtml += '<span style="color:#1565c0">↗ Übertrag aus ersparten Flächen: +' + parts.join(', ') + '</span>';
       }
+      // Mehrbedarf: IST > SOLL → Fehlbetrag wird von anderen Tabs genommen (rot, ↘)
       if (co.excessEinheit > 0.05 || co.excessDuenger > 0.05) {
         var eparts = [];
         if (co.excessEinheit > 0.05) eparts.push(fmt(co.excessEinheit) + ' Einheiten');
@@ -3071,6 +3076,10 @@
     }
 
     // --- Dark Mode ---
+    // Key: 'mais_rechner_theme' in localStorage (Wert: 'dark' oder 'light')
+    // initTheme(): Stored Preference → System-Präferenz als Fallback
+    // applyTheme(dark): Setzt CSS-Klasse .dark auf <html>, Button-Icon, Meta-Theme-Color
+    // toggleTheme(): Liest aktuellen Zustand → toggled → speichert + anwendet
     function getStoredTheme() {
       try { return localStorage.getItem('mais_rechner_theme'); } catch(e) { return null; }
     }
@@ -3078,11 +3087,11 @@
       try { localStorage.setItem('mais_rechner_theme', theme); } catch(e) {}
     }
     function applyTheme(dark) {
-      document.documentElement.classList.toggle('dark', dark);
+      document.documentElement.classList.toggle('dark', dark);         // CSS .dark Klasse
       var btn = document.getElementById('theme_toggle');
-      if (btn) btn.textContent = dark ? '☀️' : '🌙';
+      if (btn) btn.textContent = dark ? '☀️' : '🌙';                   // Icon: Hell=Dunkel-Modus, Dunkel=Hell-Modus
       var meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', dark ? '#1a1f16' : '#2d5016');
+      if (meta) meta.setAttribute('content', dark ? '#1a1f16' : '#2d5016');  // Android Status Bar
     }
     function toggleTheme() {
       var isDark = document.documentElement.classList.contains('dark');
@@ -3094,7 +3103,7 @@
       var stored = getStoredTheme();
       if (stored === 'dark') { applyTheme(true); return; }
       if (stored === 'light') { applyTheme(false); return; }
-      // No stored preference: follow system
+      // Keine gespeicherte Präferenz → Systemeinstellung verwenden
       var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
       applyTheme(prefersDark);
     }
