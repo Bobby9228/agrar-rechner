@@ -1252,7 +1252,7 @@
       <div class="field">
         <label for="zaehler_stand">Zählerstand nach Bearbeitung</label>
         <div class="input-with-suffix">
-          <input type="text" inputmode="decimal" id="zaehler_stand" placeholder="z.B. 15,8" oninput="onInputFormat(this, 'decimal')" onfocus="selectAll(this)" onblur="zaehlerUpdate()" onkeydown="if(event.key==='Enter'){zaehlerUpdate()}">
+          <input type="text" inputmode="decimal" id="zaehler_stand" placeholder="z.B. 15,8" oninput="onInputFormat(this, 'decimal')" onfocus="this.select()" onblur="zaehlerUpdate()" onkeydown="if(event.key==='Enter'){zaehlerUpdate()}">
           <span class="suffix">ha</span>
         </div>
         <div class="info">Trage den aktuellen Stand des Hektarzählers ein</div>
