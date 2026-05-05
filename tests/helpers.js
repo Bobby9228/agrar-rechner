@@ -128,8 +128,11 @@ const DOM_TEMPLATE = `<!DOCTYPE html><html><body>
  * The DOMContentLoaded auto-init is removed so tests control init manually.
  */
 export function createDom() {
-  const scriptMatch = htmlContent.match(/<script>([\s\S]*?)<\/script>/);
-  if (!scriptMatch) throw new Error('No <script> block found in index.html');
+  // Robust: case-insensitive + letztes <script>-Element (ignoriert HTML-Parsing-Edge-Cases)
+  const scriptAll = htmlContent.match(/<script>[\s\S]*?<\/script>/gi) || [];
+  const scriptBlock = scriptAll[scriptAll.length - 1] || '';
+  const scriptContent = scriptBlock.replace(/<\/?script>/gi, '');
+  if (!scriptContent) throw new Error('No <script> block found in index.html');
 
   const dom = new JSDOM(DOM_TEMPLATE, {
     runScripts: 'dangerously',
@@ -163,7 +166,7 @@ export function createDom() {
   dom.window.document.getElementById('tab_bar').appendChild(tabAddBtn);
 
   // Load the app JS (without DOMContentLoaded auto-init)
-  const script = scriptMatch[1]
+  const script = scriptContent
     .replace("document.addEventListener('DOMContentLoaded', initUI);", "");
   dom.window.eval(script);
 
