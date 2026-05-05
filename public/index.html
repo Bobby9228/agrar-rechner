@@ -16,7 +16,7 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: #f0f4e8;
-      min-height: 100vh;
+      min-height: 100dvh;
       padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
       color: #1a1a1a;
     }
@@ -669,7 +669,7 @@
     .app-layout {
       display: flex;
       flex-direction: column;
-      min-height: calc(100vh - max(20px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom)));
+      min-height: calc(100dvh - max(20px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom)));
     }
     .scrollable-content {
       flex: 1;
@@ -1515,6 +1515,7 @@
         if (parsed.reiter) {
           parsed.reiter.forEach(function(reiter) {
             if (!reiter.entries) reiter.entries = [];  // Jeder Tab braucht entries-Array
+            if (reiter.istHektar === undefined) reiter.istHektar = 0;  // Alte Speicherstände
           });
         }
         // machineLog gab es in frühen Versionen nicht
@@ -1536,7 +1537,12 @@
     // Nil-Safe: Falls entries fehlen, wird ein leeres Array erzeugt.
     function getActiveReiter() {
       var r = state.reiter[state.activeReiter];
-      if (r && !r.entries) r.entries = [];
+      if (!r) {
+        console.warn('Invalid activeReiter index:', state.activeReiter);
+        state.activeReiter = 0;
+        r = state.reiter[0];
+      }
+      if (!r.entries) r.entries = [];
       return r;
     }
 

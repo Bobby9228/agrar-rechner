@@ -57,20 +57,23 @@ describe('lv() migration edge cases', () => {
   });
 
   it('old state istHektar is not preserved in migrated tabs (migration gap)', () => {
-    // istHektar at old top level is not explicitly migrated to tab level
+    // Migration 1 (tab-less → tab format) creates a fresh tab object.
+    // The old top-level istHektar: 3 is NOT migrated to the new tab object.
+    // This is a separate gap — #105 only covers undefined → 0 fallback.
     store['mais_rechner'] = JSON.stringify({
       hektar: 10,
       koerner: 80000,
       duenger: 200,
-      istHektar: 3, // old top-level field
+      istHektar: 3, // old top-level field — LOST during migration
       entries: []
     });
 
     w.lv();
 
-    // istHektar is not preserved by migration — this is a known gap
-    // The old istHektar value (3) is lost during lv() migration
-    expect(w.state.reiter[0].istHektar).toBeUndefined();
+    // #105 fix: tab-level istHektar is now 0 (not undefined) after migration
+    expect(w.state.reiter[0].istHektar).toBe(0);
+    // Old top-level istHektar is still there (not migrated — separate gap)
+    expect(w.state.istHektar).toBe(3);
   });
   it('does not crash when parsed state is null', () => {
     store['mais_rechner'] = 'null';
