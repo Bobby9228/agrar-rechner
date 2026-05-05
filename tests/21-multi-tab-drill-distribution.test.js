@@ -305,6 +305,142 @@ describe('drillAdd multi-tab mode', () => {
     expect(w.state.reiter[2].entries.length).toBe(1);
     expect(w.state.reiter[2].entries[0].einheit).toBe(2);
   });
+
+  // ── Ghost-entry bug: machineLog gets entry even when all prio=0 and no values ──
+
+  it('BUG: machineLog gets ghost entry when all tabs have prio 0 (ghost-entry bug #73)', () => {
+    const { window: w } = createDom();
+    setupMultiTab(w);
+    w.renderDrillTabList();
+
+    // All tabs stay at prio 0 (—), no per-tab values entered
+    w.document.getElementById('drill_einheit').value = '5';
+    w.document.getElementById('drill_duenger').value = '300';
+    w.document.getElementById('drill_hektar').value = '2';
+
+    w.drillAdd();
+
+    // BUG: machineLog has a ghost entry because push happens before the
+    // addedAny check — no tab actually got filled
+    expect(w.state.machineLog.length).toBe(1);
+    expect(w.state.machineLog[0].einheit).toBe(5);
+    // No tab entries were created
+    expect(w.state.reiter[0].entries.length).toBe(0);
+    expect(w.state.reiter[1].entries.length).toBe(0);
+    expect(w.state.reiter[2].entries.length).toBe(0);
+  });
+
+  it('BUG: ghost entry also appears when per-tab values are 0 even with prio set', () => {
+    const { window: w } = createDom();
+    setupMultiTab(w);
+    w.renderDrillTabList();
+
+    // Tab 0 gets prio 1 but no einheit/duenger values
+    w.document.getElementById('dtl_prio_0').click();
+    w.document.getElementById('drill_einheit').value = '5';
+    w.document.getElementById('drill_duenger').value = '0';
+    // Per-tab fields are empty
+    w.document.getElementById('dtl_e_0').value = '';
+    w.document.getElementById('dtl_d_0').value = '';
+
+    w.drillAdd();
+
+    // BUG: machineLog push happens before addedAny is checked,
+    // so a ghost entry is created even though no tab got values
+    expect(w.state.machineLog.length).toBe(1);
+    expect(w.state.machineLog[0].distributed).toBeUndefined(); // no distribution happened
+  });
+
+  // ── Carryover in multi-tab drillAdd ─────────────────────────────────────────
+
+  it('drillCalcAll uses carryover when distributing to prioritized tabs', () => {
+    const { window: w } = createDom();
+    setupMultiTab(w);
+    // Tab 0 used 5 units out of 18 SOLL → 13 remaining
+    w.state.reiter[0].entries.push({ einheit: 5, duenger: 0, zaehlerStand: 2.78, time: '09:00' });
+    // Tab 1 used 10 units out of 13.6 SOLL → 3.6 remaining
+    w.state.reiter[1].entries.push({ einheit: 10, duenger: 0, zaehlerStand: 5.88, time: '09:00' });
+
+    w.renderDrillTabList();
+
+    // Set priority: tab 0 = 1, tab 1 = 2
+    w.document.getElementById('dtl_prio_0').click();
+    w.document.getElementById('dtl_prio_1').click();
+    w.document.getElementById('dtl_prio_1').click();
+
+    // Fill 10 units (less than combined remaining)
+    w.document.getElementById('drill_einheit').value = '10';
+    w.document.getElementById('drill_duenger').value = '0';
+
+    w.drillCalcAll();
+
+    // Tab 0 needs 13 more → gets min(13, 10) = 10
+    expect(w.document.getElementById('dtl_e_0').value).toBe('10,0');
+    // Tab 1 would need 3.6 more but nothing left
+    expect(w.document.getElementById('dtl_e_1').value).toBe('');
+  });
+
+  // ── machineLog with multiple tabs ────────────────────────────────────────────
+
+  it('drillAdd creates one machineLog entry with correct raw values', () => {
+    const { window: w } = createDom();
+    setupMultiTab(w);
+    w.renderDrillTabList();
+
+    w.document.getElementById('dtl_prio_0').click();
+    w.document.getElementById('dtl_e_0').value = '4';
+    w.document.getElementById('dtl_d_0').value = '200';
+    w.document.getElementById('drill_einheit').value = '4';
+    w.document.getElementById('drill_duenger').value = '200';
+    w.document.getElementById('drill_hektar').value = '2';
+
+    w.drillAdd();
+
+    expect(w.state.machineLog.length).toBe(1);
+    expect(w.state.machineLog[0].einheit).toBe(4);
+    expect(w.state.machineLog[0].duenger).toBe(200);
+    expect(w.state.machineLog[0].zaehlerStand).toBe(2);
+    expect(w.state.machineLog[0].distributed).toBe(4);
+  });
+
+  it('drillAdd links tab entries to machineLog via mlIdx', () => {
+    const { window: w } = createDom();
+    setupMultiTab(w);
+    w.renderDrillTabList();
+
+    w.document.getElementById('dtl_prio_0').click();
+    w.document.getElementById('dtl_e_0').value = '3';
+    w.document.getElementById('drill_einheit').value = '3';
+    w.document.getElementById('drill_hektar').value = '1,5';
+
+    w.drillAdd();
+
+    // Entry should be linked to machineLog index 0
+    expect(w.state.reiter[0].entries[0].mlIdx).toBe(0);
+    expect(w.state.reiter[0].entries[0].zaehlerStand).toBe(1.5);
+  });
+
+  it('drillAdd distributes remaining units to machineLog when nothing entered', () => {
+    const { window: w } = createDom();
+    setupMultiTab(w);
+    w.renderDrillTabList();
+
+    // No prio, no values, but global inputs filled
+    w.document.getElementById('drill_einheit').value = '7';
+    w.document.getElementById('drill_duenger').value = '350';
+    w.document.getElementById('drill_hektar').value = '4';
+
+    w.drillAdd();
+
+    // BUG (ghost-entry): machineLog gets a raw entry even though
+    // no tab was actually filled
+    expect(w.state.machineLog.length).toBe(1);
+    expect(w.state.machineLog[0].distributed).toBeUndefined(); // nothing distributed
+    // All tabs should be empty
+    expect(w.state.reiter[0].entries.length).toBe(0);
+    expect(w.state.reiter[1].entries.length).toBe(0);
+    expect(w.state.reiter[2].entries.length).toBe(0);
+  });
 });
 
 describe('drillMachineRemove', () => {
