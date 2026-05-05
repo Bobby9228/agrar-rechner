@@ -1623,7 +1623,7 @@
         if (state.reiter.length > 1) {
           var close = document.createElement('span');
           close.className = 'tab-close';
-          close.setAttribute('onclick', 'event.stopPropagation(); confirmRemoveReiter(' + i + ')');
+          close.onclick = function(evt) { evt.stopPropagation(); confirmRemoveReiter(i); };
           close.textContent = '✕';
           btn.appendChild(close);
         }
@@ -1854,7 +1854,7 @@
     // Wird bei onchange und onblur aufgerufen. Default: 50.000.
     function einheitGroesseUpdate() {
       var val = parseDE(document.getElementById('koerner_pro_einheit').value);
-      state.koernerProEinheit = (isNaN(val) || val <= 0) ? 50000 : val;
+      state.koernerProEinheit = (val <= 0) ? 50000 : val;
       var info = '';
       if (state.koernerProEinheit !== 50000) {
         // Zeigt nur etwas an, wenn der Wert vom Standard abweicht
@@ -1892,12 +1892,12 @@
       var k = parseDE(document.getElementById('koerner').value);
       var d = parseDE(document.getElementById('duenger').value);
 
-      if (isNaN(h) || h <= 0) {
+      if (h <= 0) {
         document.getElementById('err_hektar').textContent = 'Bitte Hektar eingeben';
         document.getElementById('hektar').style.borderColor = '#d32f2f';
         return;
       }
-      if (isNaN(k) || k <= 0) {
+      if (k <= 0) {
         document.getElementById('err_koerner').textContent = 'Bitte Körner pro ha eingeben';
         document.getElementById('koerner').style.borderColor = '#d32f2f';
         return;
@@ -1908,7 +1908,7 @@
       r.hektar   = h;
       r.istHektar = parseDE(document.getElementById('ist_hektar').value) || 0;
       r.koerner  = k;
-      r.duenger  = (isNaN(d) || d < 0) ? 0 : d;
+      r.duenger  = (d < 0) ? 0 : d;
 
       var entries = r.entries;
       // Summe der bereits eingetragenen Verbräuche
