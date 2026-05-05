@@ -93,7 +93,7 @@ describe('renderDrillTabList', () => {
     expect(need2.classList.contains('done')).toBe(true);
   });
 
-  it('resets drillPriorities on each render', () => {
+  it('persists drillPriorities across renders (no reset on re-render)', () => {
     const { window: w } = createDom();
     setupMultiTab(w);
     w.renderDrillTabList();
@@ -102,9 +102,9 @@ describe('renderDrillTabList', () => {
     btn.click(); // set prio to 1
     expect(w.drillPriorities[0]).toBe(1);
 
-    // Re-render resets
+    // Re-render does NOT reset — priorities persist
     w.renderDrillTabList();
-    expect(w.drillPriorities[0]).toBeUndefined();
+    expect(w.drillPriorities[0]).toBe(1);
   });
 
   it('does nothing if drill_tab_list container is missing', () => {
@@ -236,7 +236,7 @@ describe('drillAdd multi-tab mode', () => {
     expect(w.state.machineLog.length).toBe(1);
   });
 
-  it('resets priorities and re-renders drill tab list after add', () => {
+  it('re-renders drill tab list after add without resetting priorities', () => {
     const { window: w } = createDom();
     setupMultiTab(w);
     w.renderDrillTabList();
@@ -247,9 +247,10 @@ describe('drillAdd multi-tab mode', () => {
 
     w.drillAdd();
 
-    // Priorities should be reset
-    expect(w.drillPriorities).toEqual({});
-    // Re-rendered tab list should have fresh buttons
+    // Priorities persist (not reset after drillAdd) — this is the new correct behavior
+    expect(w.drillPriorities[0]).toBe(1);
+    // drillAdd calls renderDrillTabList() which re-creates buttons with data-prio='0'
+    // (the prio attribute is only set on click, not on render)
     const btn = w.document.getElementById('dtl_prio_0');
     expect(btn.getAttribute('data-prio')).toBe('0');
   });
@@ -481,5 +482,56 @@ describe('drillMachineRemove', () => {
     w.state.machineLog = [];
     expect(() => w.drillMachineRemove(0)).not.toThrow();
     expect(w.state.machineLog.length).toBe(0);
+  });
+});
+
+describe('drillPriorities persistence', () => {
+  it('persists priorities to localStorage on change', () => {
+    const { window: w, store } = createDom();
+    setupMultiTab(w);
+    w.renderDrillTabList();
+
+    w.document.getElementById('dtl_prio_0').click();
+    expect(w.drillPriorities[0]).toBe(1);
+
+    // Saved to localStorage
+    const saved = JSON.parse(store['mais_rechner']);
+    expect(saved.drillPriorities[0]).toBe(1);
+  });
+
+  it('survives page reload (lv() restores drillPriorities from localStorage)', () => {
+    const { window: w, store } = createDom();
+    setupMultiTab(w);
+    w.renderDrillTabList();
+
+    // Set priorities
+    w.document.getElementById('dtl_prio_0').click(); // tab 0 = prio 1
+    w.document.getElementById('dtl_prio_1').click(); // tab 1 = prio 1
+    expect(w.drillPriorities[0]).toBe(1);
+    expect(w.drillPriorities[1]).toBe(1);
+
+    // Simulate page reload: lv() is called which rehydrates state
+    w.lv();
+
+    // Priorities restored from localStorage
+    expect(w.drillPriorities[0]).toBe(1);
+    expect(w.drillPriorities[1]).toBe(1);
+  });
+
+  it('lv() initializes drillPriorities to {} if missing in saved state', () => {
+    const { window: w, store } = createDom();
+    // Manually put a state without drillPriorities in localStorage
+    store['mais_rechner'] = JSON.stringify({
+      reiter: [{ name: 'Tab 1', hektar: 10, koerner: 90000, duenger: 0, entries: [] }],
+      activeReiter: 0,
+      machineLog: [],
+      zaehlerstand: 0
+    });
+
+    w.lv();
+
+    // Should default to {}
+    expect(w.drillPriorities).toEqual({});
+    expect(w.state.drillPriorities).toEqual({});
   });
 });

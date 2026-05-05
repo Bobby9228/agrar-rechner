@@ -1388,7 +1388,8 @@
       einheitGroesseEnabled: false, // Benutzerdefinierte Einheiten-Größe aktiviert
       koernerProEinheit:  50000, // Körner pro Saatgut-Einheit (Standard 50.000)
       machineLog:    [],        // Globales Maschinen-Protokoll (alle Befüllungen)
-      zaehlerstand:  0         // Manuell eingetragener Hektarzähler-Stand
+      zaehlerstand:  0,         // Manuell eingetragener Hektarzähler-Stand
+      drillPriorities: {}       // Tab-Prioritäten für Multi-Tab-Verteilung (persistiert)
     };
 
     // ==========================================================================
@@ -1524,6 +1525,8 @@
         }
         // machineLog gab es in frühen Versionen nicht
         if (!parsed.machineLog) parsed.machineLog = [];
+        // drillPriorities gab es in frühen Versionen nicht
+        if (!parsed.drillPriorities) parsed.drillPriorities = {};
 
         state = parsed;
       } catch(e) {
@@ -2227,7 +2230,8 @@
     // ==========================================================================
 
     // Speichert die Prioritäten der Tabs (Key: Tab-Index, Value: Priorität 0-N)
-    var drillPriorities = {};
+    // Wird aus state.drillPriorities initialisiert (oder aus localStorage nach lv())
+    var drillPriorities = state.drillPriorities || {};
 
     // Baut die Drill-Tab-Liste im Protokoll-Panel auf.
     // Zeigt pro Tab: Prioritäts-Button, Name, verbleibender Bedarf, Status.
@@ -2247,7 +2251,6 @@
       var container = document.getElementById('drill_tab_list');
       if (!container) return;
       container.innerHTML = '';
-      drillPriorities = {};
 
       state.reiter.forEach(function(r, i) {
         var row = document.createElement('div');
@@ -2269,6 +2272,7 @@
           prioBtn.textContent = next === 0 ? '—' : String(next);
           prioBtn.classList.toggle('active', next > 0);
           drillPriorities[i] = next;
+          sv();            // Persistenz: Prioritäten in localStorage speichern
           drillCalcAll();   // Carryover + Prognose neu berechnen
         };
 
