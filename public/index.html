@@ -1356,7 +1356,7 @@
     <script>
     // ============================================================================
     // STATE — Zentrales Zustandsobjekt der gesamten App
-    // Wird nach jeder Änderung via saveState() in localStorage geschrieben (JSON).
+    // Wird nach jeder Änderung via sv() in localStorage geschrieben (JSON).
     // Struktur:
     //   reiter[]     — Array von Feld-Tabs (jeder Tab = ein Feld mit eigenen Werten)
     //   activeReiter — Index des aktuell ausgewählten Tabs
@@ -1397,7 +1397,7 @@
     //   - SOLL / IST / Abweichung (wenn SOLL-Fläche gesetzt ist)
     //
     // Wird aufgerufen bei: onblur und Enter-Key auf #zaehler_stand
-    // Side Effect: state.zaehlerstand wird aktualisiert, saveState() aufgerufen
+    // Side Effect: state.zaehlerstand wird aktualisiert, sv() aufgerufen
     // ==========================================================================
     function zaehlerUpdate() {
       var z = parseDE(document.getElementById('zaehler_stand').value);
@@ -1450,15 +1450,15 @@
         document.getElementById('zaehler_soll_ist').style.display = 'none';
       }
 
-      saveState();  // Geänderten zaehlerstand persisiteren
+      sv();  // Geänderten zaehlerstand persisiteren
     }
 
     // ==========================================================================
     // PERSISTENZ — localStorage (JSON)
     //
     // Key: 'mais_rechner'
-    // saveState()  — Speichert state als JSON in localStorage
-    // loadState()  — Lädt state aus localStorage, führt Migrationen durch
+    // sv()  — Speichert state als JSON in localStorage
+    // lv()  — Lädt state aus localStorage, führt Migrationen durch
     //
     // Migrationen (lv):
     //   1. Altes Schema (einzelne Felder ohne Tabs) → Tab-Schema
@@ -1752,8 +1752,11 @@
       var isProtokoll = state.activeView === 'protokoll';
 
       // Alle normalen Cards in der Protokoll-Ansicht verstecken
+      // Ausgenommen: Cards mit eigener Sichtbarkeitslogik (werden von renderResults() gesteuert)
+      var skipIds = { zaehler_section: true, r_soll_ist_section: true };
       var cards = document.querySelectorAll('.card');
       cards.forEach(function(c) {
+        if (skipIds[c.id]) return;
         c.style.display = isProtokoll ? 'none' : 'block';
       });
 
@@ -2247,7 +2250,7 @@
     // ==========================================================================
 
     // Speichert die Prioritäten der Tabs (Key: Tab-Index, Value: Priorität 0-N)
-    // Wird aus state.drillPriorities initialisiert (oder aus localStorage nach loadState())
+    // Wird aus state.drillPriorities initialisiert (oder aus localStorage nach lv())
     var drillPriorities = state.drillPriorities || {};
 
     // Baut die Drill-Tab-Liste im Protokoll-Panel auf.
@@ -3111,7 +3114,7 @@
     // INIT — App-Initialisierung nach DOMContentLoaded
     //
     // Reihenfolge (wichtig!):
-    //   1. loadState()                    — State aus localStorage laden + migrieren
+    //   1. lv()                    — State aus localStorage laden + migrieren
     //   2. syncInputsFromState()   — State → Input-Felder
     //   3. renderTabs()            — Tab-Leiste aufbauen
     //   4. renderView()            — Sichtbarkeit je nach Ansicht setzen
