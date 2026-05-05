@@ -1728,11 +1728,14 @@
     // Beim Aktivieren des Protokolls: Zustand sichern + Drill-Tab-Liste rendern.
     function switchToProtokoll() {
       if (state.activeView === 'protokoll') {
-        state.activeView = null;    // Protokoll → Feld (ausschalten)
+        // Protokoll ausschalten → Zustand vorher sichern
+        syncStateFromInputs();
+        state.activeView = null;
       } else {
-        syncStateFromInputs();     // Aktuelle Eingaben sichern
+        // Protokoll einschalten → Zustand sichern + Tab-Liste aufbauen
+        syncStateFromInputs();
         state.activeView = 'protokoll';
-        renderDrillTabList();      // Prio-Buttons etc. neu aufbauen
+        renderDrillTabList();
       }
       renderTabs();
       sv();
