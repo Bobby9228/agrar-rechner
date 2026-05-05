@@ -267,9 +267,8 @@ describe('drillAdd multi-tab mode', () => {
 
     w.drillAdd();
 
-    // addedAny stays false → function returns early
-    expect(w.state.reiter[0].entries.length).toBe(0);
-    expect(w.state.machineLog.length).toBe(1); // machine log is pushed before check
+    // FIX: function returns early, no machineLog entry created
+    expect(w.state.machineLog.length).toBe(0);
   });
 
   it('distributes across multiple prioritized tabs', () => {
@@ -321,10 +320,8 @@ describe('drillAdd multi-tab mode', () => {
 
     w.drillAdd();
 
-    // BUG: machineLog has a ghost entry because push happens before the
-    // addedAny check — no tab actually got filled
-    expect(w.state.machineLog.length).toBe(1);
-    expect(w.state.machineLog[0].einheit).toBe(5);
+    // FIX: no ghost entry — function returns early before machineLog push
+    expect(w.state.machineLog.length).toBe(0);
     // No tab entries were created
     expect(w.state.reiter[0].entries.length).toBe(0);
     expect(w.state.reiter[1].entries.length).toBe(0);
@@ -346,10 +343,8 @@ describe('drillAdd multi-tab mode', () => {
 
     w.drillAdd();
 
-    // BUG: machineLog push happens before addedAny is checked,
-    // so a ghost entry is created even though no tab got values
-    expect(w.state.machineLog.length).toBe(1);
-    expect(w.state.machineLog[0].distributed).toBeUndefined(); // no distribution happened
+    // FIX: no ghost entry — function returns early before machineLog push
+    expect(w.state.machineLog.length).toBe(0);
   });
 
   // ── Carryover in multi-tab drillAdd ─────────────────────────────────────────
@@ -433,10 +428,8 @@ describe('drillAdd multi-tab mode', () => {
 
     w.drillAdd();
 
-    // BUG (ghost-entry): machineLog gets a raw entry even though
-    // no tab was actually filled
-    expect(w.state.machineLog.length).toBe(1);
-    expect(w.state.machineLog[0].distributed).toBeUndefined(); // nothing distributed
+    // FIX (ghost-entry): machineLog gets NO entry when all tabs have prio 0
+    expect(w.state.machineLog.length).toBe(0);
     // All tabs should be empty
     expect(w.state.reiter[0].entries.length).toBe(0);
     expect(w.state.reiter[1].entries.length).toBe(0);

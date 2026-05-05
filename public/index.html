@@ -2449,7 +2449,29 @@
       }
 
       // --- MULTI-TAB STANDARD-MODUS ---
+      // Erst prüfen ob irgendein Tab überhaupt etwas bekommt (prio > 0 und Eingabe > 0)
       var addedAny = false;
+      state.reiter.forEach(function(r, i) {
+        var prioInput = document.getElementById('dtl_prio_' + i);
+        if (!prioInput) return;
+        var prio = parseInt(prioInput.getAttribute('data-prio')) || 0;
+        if (prio <= 0) return;
+
+        var eInput = document.getElementById('dtl_e_' + i);
+        var dInput = document.getElementById('dtl_d_' + i);
+        if (!eInput || !dInput) return;
+
+        var einheitVal = parseDE(eInput.value) || 0;
+        var duengerVal = parseDE(dInput.value) || 0;
+
+        if (einheitVal > 0 || duengerVal > 0) {
+          addedAny = true;
+        }
+      });
+
+      // Kein Tab befüllt → nichts speichern, früh beenden
+      if (!addedAny) return;
+
       // Maschinen-Befüllung ins globale Log speichern (roh, noch nicht verteilt)
       state.machineLog.push({
         einheit: gesamtEinheit,
