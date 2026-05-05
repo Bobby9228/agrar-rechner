@@ -1,6 +1,5 @@
 /**
  * Test 25: Remaining partial coverage gaps
- * - getLastFilledTabIndex edge cases
  * - zaehlerUpdate negative delta
  * - computeAllCarryovers threshold (0.05)
  * - initUI zaehler_section visibility
@@ -8,65 +7,6 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { createDom } from './helpers.js';
-
-describe('getLastFilledTabIndex', () => {
-  it('returns -1 when all tabs have no entries', () => {
-    const { window: w } = createDom();
-    w.addReiter();
-    w.state.reiter[0].entries = [];
-    w.state.reiter.push({ name: 'Tab 2', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] });
-
-    expect(w.getLastFilledTabIndex()).toBe(-1);
-  });
-
-  it('returns index of tab with entries', () => {
-    const { window: w } = createDom();
-    w.addReiter(); // now state.reiter has 2 tabs (indices 0 and 1)
-    w.state.reiter[1].entries = [
-      { einheit: 5, duenger: 200, zaehlerStand: 3, time: '10:00' }
-    ];
-
-    expect(w.getLastFilledTabIndex()).toBe(1);
-  });
-
-  it('returns tab with latest timestamp when multiple have entries', () => {
-    const { window: w } = createDom();
-    w.state.reiter[0].entries = [
-      { einheit: 5, duenger: 200, zaehlerStand: 3, time: '09:00' }
-    ];
-    w.addReiter();
-    w.state.reiter[1].entries = [
-      { einheit: 3, duenger: 100, zaehlerStand: 5, time: '11:00' }
-    ];
-
-    expect(w.getLastFilledTabIndex()).toBe(1); // 11:00 > 09:00
-  });
-
-  it('returns -1 for entries with empty time string', () => {
-    const { window: w } = createDom();
-    w.state.reiter[0].entries = [
-      { einheit: 5, duenger: 200, zaehlerStand: 3, time: '' }
-    ];
-
-    // '' > '' is false, so no tab matches
-    expect(w.getLastFilledTabIndex()).toBe(-1);
-  });
-
-  it('picks tab with latest entry when one tab has multiple entries', () => {
-    const { window: w } = createDom();
-    w.addReiter();
-    w.state.reiter[0].entries = [
-      { einheit: 5, duenger: 200, zaehlerStand: 3, time: '08:00' },
-      { einheit: 3, duenger: 100, zaehlerStand: 5, time: '14:00' }
-    ];
-    w.state.reiter[1].entries = [
-      { einheit: 2, duenger: 50, zaehlerStand: 4, time: '12:00' }
-    ];
-
-    // Tab 0's last entry is 14:00 > tab 1's 12:00
-    expect(w.getLastFilledTabIndex()).toBe(0);
-  });
-});
 
 describe('zaehlerUpdate negative delta', () => {
   it('sets negative class when delta is negative', () => {

@@ -2037,24 +2037,6 @@
       return saatDone && duengerDone;
     }
 
-    // Findet den Tab mit dem jüngsten Drill-Eintrag (für Carryover-Verteilung).
-    // Returns: Index oder -1 wenn kein Tab Einträge hat.
-    function getLastFilledTabIndex() {
-      var lastIdx = -1;
-      var lastTime = '';
-      for (var i = 0; i < state.reiter.length; i++) {
-        var entries = state.reiter[i].entries;
-        if (entries.length > 0) {
-          var latestEntry = entries[entries.length - 1];
-          if (latestEntry.time && latestEntry.time > lastTime) {
-            lastTime = latestEntry.time;
-            lastIdx = i;
-          }
-        }
-      }
-      return lastIdx;
-    }
-
     // ==========================================================================
     // CARRYOVER-SYSTEM — Überträge zwischen Feldern (komplexester Algorithmus)
     //
