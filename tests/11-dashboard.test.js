@@ -175,13 +175,15 @@ describe('Dashboard', () => {
     });
 
     it('each card shows its respective values', () => {
-      w.state.activeReiter = 0;
-      w.syncInputsFromState();
+      // Tab 0: 10 ha, 90000 k → 18 units
       w.state.reiter[0].hektar = 10;
       w.state.reiter[0].koerner = 90000;
-      w.addReiter();
-      w.state.reiter[1].hektar = 20;
-      w.state.reiter[1].koerner = 80000;
+      // Tab 1: 20 ha, 80000 k → 32 units (pushed directly, no addReiter to avoid syncStateFromInputs overwriting tab 0)
+      // Push directly to avoid addReiter's syncStateFromInputs overwriting tab 0
+      w.state.reiter.push({
+        name: 'Tab 2', hektar: 20, koerner: 80000, duenger: 0, entries: []
+      });
+      w.state.activeReiter = 0;
       w.openDashboard();
       const cards = doc.querySelectorAll('.dashboard-reiter-card');
       // First card: 10 ha

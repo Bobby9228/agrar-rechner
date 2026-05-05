@@ -109,16 +109,15 @@ describe('Dashboard + Fahrgassen', () => {
     w.state.fahrgassenEnabled = true;
     w.state.fahrgassenBreite = 4;
     // Tab 1: 5 ha, 80000 k — faktor=0.75 → 5*80000/50000*0.75 = 6.0
-    w.state.activeReiter = 0;
-    w.syncInputsFromState();
     w.state.reiter[0].hektar = 5;
     w.state.reiter[0].koerner = 80000;
     w.state.reiter[0].entries = [];
     // Tab 2: 10 ha, 90000 k — faktor=0.75 → 10*90000/50000*0.75 = 13.5
-    w.addReiter();
-    w.state.reiter[1].hektar = 10;
-    w.state.reiter[1].koerner = 90000;
-    w.state.reiter[1].entries = [];
+    // (push directly to avoid addReiter's syncStateFromInputs overwriting tab 0)
+    // Push directly to avoid addReiter's syncStateFromInputs overwriting tab 0
+    w.state.reiter.push({
+      name: 'Tab 2', hektar: 10, koerner: 90000, duenger: 0, entries: []
+    });
 
     w.openDashboard();
     const content = doc.getElementById('dashboard_content');
