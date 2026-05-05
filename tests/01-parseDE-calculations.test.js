@@ -50,6 +50,12 @@ describe('formatEinheit', () => {
   it('0.5 => plural', () => expect(w.formatEinheit(0.5)).toBe('0,5 Einheiten'));
   it('0.0 => plural (not 1.0)', () => expect(w.formatEinheit(0.0)).toBe('0,0 Einheiten'));
   it('100 => plural', () => expect(w.formatEinheit(100)).toBe('100,0 Einheiten'));
+  // Rand-Cases aus Issue #85
+  it('1.049 => 1,0 Einheit (Singular — Aufrunden auf .5 Grenze)', () =>
+    expect(w.formatEinheit(1.049)).toBe('1,0 Einheit'));
+  it('1.05 => 1,1 Einheiten (Plural)', () =>
+    expect(w.formatEinheit(1.05)).toBe('1,1 Einheiten'));
+  // Hinweis: 0.95 → 1.0 Einheit (Singular), Math.round(0.95*10)/10 = 1.0
 });
 
 describe('Core calculations', () => {
