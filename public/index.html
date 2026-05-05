@@ -2232,6 +2232,17 @@
     // Baut die Drill-Tab-Liste im Protokoll-Panel auf.
     // Zeigt pro Tab: Prioritäts-Button, Name, verbleibender Bedarf, Status.
     // Wird bei jedem Öffnen des Protokolls aufgerufen.
+    // ==========================================================================
+    // DRILL-TAB-LISTE — Übersicht aller Tabs im Drill-Bereich (unter Eingabe)
+    //
+    // Jede Zeile enthält:
+    //   - Prioritäts-Button (zyklisch: — → 1 → 2 → … → N → —)
+    //   - Tab-Name + Status ("braucht X Einheiten" oder "✓ fertig")
+    //   - Zwei Eingabefelder: Einheiten, kg Dünger
+    //
+    // Nach jeder Änderung wird drillCalcAll() aufgerufen (Carryover + Prognose).
+    // Die Prioritäten steuern die Verteilungs-Reihenfolge in drillCalcAll().
+    // ==========================================================================
     function renderDrillTabList() {
       var container = document.getElementById('drill_tab_list');
       if (!container) return;
@@ -2636,10 +2647,13 @@
 
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-      // Effective: physically filled + carryover adjustments (savings reduce need, excess adds need)
+      // EffectiveUsed: Physikalisch verbraucht + Carryover-Anpassungen
+      //   + co.savedEinheit    → Ersparnis aus IST<SOLL (reduziert Bedarf, da andere Tabs profitieren)
+      //   + co.excessEinheit   → Mehrbedarf aus IST>SOLL (erhöht Bedarf, da andere Tabs davon nehmen)
+      // Beispiel: 5 Einheiten verbraucht, 0.5 Ersparnis, 0.2 Mehrbedarf → effective = 5 + 0.5 + 0.2 = 5.7
       var effectiveUsedE = usedEinheit + co.savedEinheit + co.excessEinheit;
       var effectiveUsedD = usedDuenger + co.savedDuenger + co.excessDuenger;
-      // Use IST-based need if available (IST < SOLL means less needed)
+      // IST-basierter Bedarf wenn vorhanden (d.h. IST < SOLL → weniger Bedarf als geplant)
       var istSum = getTabIstHektar(r);
       var istEinheiten = istSum > 0 ? getTabIstEinheiten(r) : einheiten;
       var istDuenger = istSum > 0 ? getTabIstDuenger(r) : duengerTotal;
@@ -2704,7 +2718,11 @@
       }
 
       // --- Drill summary: aggregate across ALL tabs (Protokoll view) ---
-      // SOLL-based totals (what was planned) and IST-based (what was actually needed)
+      // Aggregate über alle Tabs für die Zusammenfassung unten im Protokoll:
+      //   SOLL   = geplante Menge (basierend auf r.hektar × r.koerner)
+      //   IST    = tatsächlich benötigte Menge (basierend auf r.istHektar, falls vorhanden)
+      //   USED   = Summe aller Drill-Einträge (r.entries)
+      //   REMAIN = IST - USED (was noch zu befüllen ist)
       var allEinheitenSoll = 0, allEinheitenIst = 0, allEinheitenUsed = 0;
       var allDuengerSoll = 0, allDuengerIst = 0, allDuengerUsed = 0;
       state.reiter.forEach(function(tab) {
@@ -2712,7 +2730,7 @@
         var tabSollD = getTabTotalDuenger(tab);
         allEinheitenSoll += tabSollE;
         allDuengerSoll += tabSollD;
-        // IST-based: use actual area if IST values exist, otherwise SOLL
+        // IST-basierter Bedarf: wenn r.istHektar existiert → IST-Werte, sonst SOLL-Werte
         if (getTabIstHektar(tab) > 0) {
           allEinheitenIst += getTabIstEinheiten(tab);
           allDuengerIst += getTabIstDuenger(tab);
@@ -2723,7 +2741,7 @@
         allEinheitenUsed += tab.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
         allDuengerUsed += tab.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       });
-      // Remaining = what still needs to be filled = IST-needed - used
+      // Verbleibend = IST - USED (nie negativ, max(0, …))
       var allEinheitenRem = Math.max(0, allEinheitenIst - allEinheitenUsed);
       var allDuengerRem = Math.max(0, allDuengerIst - allDuengerUsed);
       document.getElementById('ds_saat_total').textContent = fmt(allEinheitenIst) + ' Einheiten';
@@ -2732,7 +2750,7 @@
       document.getElementById('ds_duenger_total').textContent = allDuengerIst > 0 ? allDuengerIst.toLocaleString('de-DE') + ' kg' : '—';
       document.getElementById('ds_duenger_used').textContent = allDuengerUsed > 0 ? allDuengerUsed.toLocaleString('de-DE') + ' kg' : '—';
       document.getElementById('ds_duenger_remaining').textContent = allDuengerIst > 0 ? allDuengerRem.toLocaleString('de-DE') + ' kg' : '—';
-      // Savings: SOLL - IST across all tabs (shows how much less seed/fertilizer needed due to smaller actual area)
+      // Ersparnis: SOLL - IST über alle Tabs (zeigt wie viel Saatgut/Dünger durch kleinere IST-Fläche gespart wurde)
       var einheitenSavings = allEinheitenSoll - allEinheitenIst;
       var duengerSavings = allDuengerSoll - allDuengerIst;
       var savingsEl = document.getElementById('ds_savings');
@@ -2802,6 +2820,10 @@
           mlContainer.appendChild(row);
 
           // Prognose: Rest aus vorheriger Befuellung + neu eingefuellt
+          // Formel für kumulierte Restmenge nach Fahrt von prevZählerstand zu m.zaehlerStand:
+          //   cumEinheit = max(0, cumEinheit - haDriven × unitsPerHa) + m.einheit
+          // wobei unitsPerHa = r.koerner × fahrgassenFaktor / koernerProEinheit
+          // Erste Befüllung (mi===0): cum wird auf Initialbefüllung gesetzt (kein Verbrauch davor).
           if (r.koerner > 0 && (m.einheit > 0 || m.duenger > 0 || cumEinheit > 0 || cumDuenger > 0)) {
             if (mi === 0) {
               cumEinheit = m.einheit;
@@ -2866,8 +2888,10 @@
             var istE = getTabIstEinheiten(r);
             var sollD = getTabTotalDuenger(r);
             var istD = getTabIstDuenger(r);
+            // Ersparnis = SOLL - IST (positiv wenn IST < SOLL, negativ wenn IST > SOLL)
             var savedE = sollE - istE;
             var savedD = sollD - istD;
+            // Ersparnis-Zeile nur anzeigen wenn IST < SOLL (savedE > 0)
             if (savedE > 0.05 || savedD > 0.05) {
               var savingsParts = [];
               if (savedE > 0.05) savingsParts.push(fmt(savedE) + ' Einheiten Saatgut');
@@ -2882,9 +2906,9 @@
             }
           }
 
-          // Show carryover for this tab
+          // --- Carryover-Zeile für diesen Tab im Drill-Protokoll ---
+          // Zeigt: Übertrag aus Ersparnissen (wird an andere Tabs verteilt)
           var carryover = getCarryover(tabIdx);
-          // Positive carryover: savings (IST < SOLL) → goes to first not-done tab
           if (carryover.savedEinheit > 0.05 || carryover.savedDuenger > 0.05) {
               var carryParts = [];
               if (carryover.savedEinheit > 0.05) carryParts.push(fmt(carryover.savedEinheit) + ' Einheiten Saatgut');
@@ -3099,6 +3123,8 @@
       setStoredTheme(next ? 'dark' : 'light');
       applyTheme(next);
     }
+    // initTheme — Lädt das gespeicherte Theme oder fällt auf die System-Einstellung zurück.
+    // Wird einmalig vor DOMContentLoaded aufgerufen (kein async/await, also synchron).
     function initTheme() {
       var stored = getStoredTheme();
       if (stored === 'dark') { applyTheme(true); return; }
