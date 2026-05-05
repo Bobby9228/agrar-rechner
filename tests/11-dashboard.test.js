@@ -120,13 +120,19 @@ describe('Dashboard', () => {
     });
 
     it('shows remaining duenger with remaining class when partially filled', () => {
+      // Setup: both einheiten and duenger are partially filled
+      // so that the min (not max) of their fill ratios drives the display
       w.state.reiter[0].hektar = 10;
-      w.state.reiter[0].koerner = 90000;
+      w.state.reiter[0].koerner = 90000;  // 10 * 90000 / 50000 = 18 units total
       w.state.reiter[0].duenger = 150;
-      w.state.reiter[0].entries = [{ einheit: 0, hektar: 0, duenger: 75, time: '08:00' }];
+      // Fill 5 of 18 einheiten (= 27.8%) AND 75 of 1500 kg duenger (= 5%)
+      // minFilled = 0.05 → pct = 5 → 'remaining' class
+      w.state.reiter[0].entries = [
+        { einheit: 5, hektar: 0, duenger: 75, time: '08:00' }
+      ];
       w.openDashboard();
       const values = doc.querySelectorAll('.dashboard-stat-value');
-      // Find duenger remaining (should be 750 kg)
+      // Find duenger remaining (should be 1425 kg)
       const duengerRem = Array.from(values).find(v => v.textContent.includes('kg'));
       expect(duengerRem.classList.contains('remaining')).toBe(true);
     });

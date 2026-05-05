@@ -1783,7 +1783,10 @@
     function fahrgassenUpdate() {
       var breite = parseDE(document.getElementById('fahrgassen_breite').value);
       state.fahrgassenBreite = breite;
-      if (breite > 0) {
+      if (breite <= 1 && breite !== 0) {
+        document.getElementById('fahrgassen_saved').textContent =
+          'Fahrgassenbreite muss mindestens 2m betragen';
+      } else if (breite > 1) {
         // Zeigt: "24 m -> ~4,2% weniger Körner"
         var prozent = (1 / breite * 100).toFixed(1);
         document.getElementById('fahrgassen_saved').textContent =
@@ -1892,6 +1895,7 @@
           return;  // Nutzer hat abgebrochen
         }
         entries.length = 0;  // Alle Einträge löschen
+        state.machineLog.length = 0;  // Auch das Maschinen-Log zurücksetzen
       }
 
       // --- Fertig: Speichern und neu Rendern ---
@@ -2443,6 +2447,7 @@
         });
         document.getElementById('drill_einheit').value = '';
         document.getElementById('drill_duenger').value = '';
+        document.getElementById('drill_hektar').value = '';
         sv();
         renderResults();
         return;
@@ -3304,11 +3309,11 @@
           usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
           duengerTotal = r.hektar * r.duenger;
           usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-          var maxUsed = Math.max(
-            einheiten > 0 ? usedEinheit / einheiten : 0,
-            duengerTotal > 0 ? usedDuenger / duengerTotal : 0
+          var minFilled = Math.min(
+            einheiten > 0 ? usedEinheit / einheiten : 1,
+            duengerTotal > 0 ? usedDuenger / duengerTotal : 1
           );
-          pct = Math.min(100, Math.round(maxUsed * 100));
+          pct = Math.min(100, Math.round(minFilled * 100));
           if (pct >= 100) statusClass = 'done';
           else if (pct > 0) statusClass = 'remaining';
         }
