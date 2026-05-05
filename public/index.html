@@ -1358,36 +1358,71 @@
     </div><!-- end .scrollable-content -->
   </div><!-- end .app-layout -->
 
-  <script>
-    // --- State ---
+    <script>
+    // ============================================================================
+    // STATE — Zentrales Zustandsobjekt der gesamten App
+    // Wird nach jeder Änderung via sv() in localStorage geschrieben (JSON).
+    // Struktur:
+    //   reiter[]     — Array von Feld-Tabs (jeder Tab = ein Feld mit eigenen Werten)
+    //   activeReiter — Index des aktuell ausgewählten Tabs
+    //   activeView   — 'protokoll' = Drill-Protokoll-Ansicht, sonst null (Feld-Ansicht)
+    //   fahrgassen*  — Fahrgassen-Korrektur (weniger Saatgut weil Gassen befahren)
+    //   einheitGroesse* — Anpassung der Körner-pro-Einheit (Standard: 50.000)
+    //   machineLog[] — Jede Maschinen-Befüllung (roh, unverteilt) für Prognose
+    //   zaehlerstand — Aktueller Hektarzähler-Stand
+    // ============================================================================
     var state = {
-      reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] }],
-      activeReiter: 0,
-      activeView: null, // null='field', 'protokoll'
-      fahrgassenEnabled: false,
-      fahrgassenBreite: 0,
-      einheitGroesseEnabled: false,
-      koernerProEinheit: 50000,
-      machineLog: [],
-      zaehlerstand: 0
+      reiter: [{
+        name:       'Tab 1',   // Anzeigename des Tabs (vom Nutzer änderbar)
+        hektar:     0,          // SOLL-Fläche in Hektar (geplant)
+        istHektar:  0,          // IST-Fläche in Hektar (tatsächlich bearbeitet)
+        koerner:    0,          // Aussaatstärke: Körner pro Hektar
+        duenger:    0,          // Düngermenge in kg/ha
+        entries:    []          // Drill-Protokoll-Einträge für diesen Tab
+                               // {einheit, duenger, zaehlerStand, time}
+      }],
+      activeReiter:   0,        // Welcher Tab gerade aktiv ist (Index in reiter[])
+      activeView:     null,     // 'protokoll' = Protokoll-Ansicht, sonst 'field'
+      fahrgassenEnabled: false, // Fahrgassen-Korrektur ein (true) / aus (false)
+      fahrgassenBreite:   0,   // Breite der Fahrgasse in Metern (z.B. 24 m)
+      einheitGroesseEnabled: false, // Benutzerdefinierte Einheiten-Größe aktiviert
+      koernerProEinheit:  50000, // Körner pro Saatgut-Einheit (Standard 50.000)
+      machineLog:    [],        // Globales Maschinen-Protokoll (alle Befüllungen)
+      zaehlerstand:  0         // Manuell eingetragener Hektarzähler-Stand
     };
 
-    // --- Hektarzähler ---
+    // ==========================================================================
+    // HEKTARZÄHLER — Manuelle Zählerstand-Eingabe
+    //
+    // Der Landwirt liest den Hektarzähler am Traktor ab und trägt den Stand ein.
+    // Die Funktion berechnet das Delta zum vorherigen Stand und zeigt:
+    //   - Wie viel Fläche seit dem letzten Eintrag bearbeitet wurde (Delta)
+    //   - Die Gesamte bearbeitete Fläche (kumuliert)
+    //   - SOLL / IST / Abweichung (wenn SOLL-Fläche gesetzt ist)
+    //
+    // Wird aufgerufen bei: onblur und Enter-Key auf #zaehler_stand
+    // Side Effect: state.zaehlerstand wird aktualisiert, sv() aufgerufen
+    // ==========================================================================
     function zaehlerUpdate() {
       var z = parseDE(document.getElementById('zaehler_stand').value);
+      // Kein gültiger Stand → Ergebis-Box verstecken, fertig
       if (z <= 0) {
         document.getElementById('zaehler_result').style.display = 'none';
         return;
       }
+      // Vorherigen Stand merken, dann neuen Stand speichern
       var prev = state.zaehlerstand;
       state.zaehlerstand = z;
 
+      // Ergebnis-Box einblenden
       var zaehlerResult = document.getElementById('zaehler_result');
       zaehlerResult.style.display = 'block';
 
+      // Delta = bearbeitete Fläche seit dem letzten eingetragenen Stand
       var delta = z - prev;
 
       document.getElementById('z_ist').textContent = fmt(delta) + ' ha';
+      // Farbe: grün = positive Bewegung (weitergeackert), rot = Rückwärts
       var zIstEl = document.getElementById('z_ist');
       if (delta >= 0) {
         zIstEl.className = 'delta-value positive';
@@ -1397,11 +1432,11 @@
 
       document.getElementById('z_total').textContent = fmt(z) + ' ha';
 
-      // Update SOLL/IST/DIFF display (uses r.istHektar for IST)
+      // SOLL / IST / Abweichung anzeigen (nur wenn SOLL-Fläche existiert)
       var r = getActiveReiter();
       var sollHa = r ? r.hektar : 0;
-      var istHa = r ? getTabIstHektar(r) : 0;
-      var diff = istHa - sollHa;
+      var istHa = r ? getTabIstHektar(r) : 0;  // IST = r.istHektar (direkte Nutzereingabe)
+      var diff = istHa - sollHa;               // Positiv = über SOLL, Negativ = unter SOLL
 
       document.getElementById('z_soll').textContent = fmt(sollHa) + ' ha';
       document.getElementById('z_ist_sum').textContent = fmt(istHa) + ' ha';
@@ -1419,93 +1454,152 @@
         document.getElementById('zaehler_soll_ist').style.display = 'none';
       }
 
-      sv();
+      sv();  // Geänderten zaehlerstand persisiteren
     }
 
-    // --- Storage ---
+    // ==========================================================================
+    // PERSISTENZ — localStorage (JSON)
+    //
+    // Key: 'mais_rechner'
+    // sv()  — Speichert state als JSON in localStorage
+    // lv()  — Lädt state aus localStorage, führt Migrationen durch
+    //
+    // Migrationen (lv):
+    //   1. Altes Schema (einzelne Felder ohne Tabs) → Tab-Schema
+    //      {hektar, koerner, duenger, entries} → {reiter:[{hektar, koerner, duenger, entries}]}
+    //   2. Globale entries → per-Tab entries (nach reiter[0].entries)
+    //   3. Fehlende Felder auf Default-Werte setzen (machineLog, zaehlerstand etc.)
+    // ==========================================================================
+
+    // --- Persistenz: Speichern ---
     function sv() {
       try { localStorage.setItem('mais_rechner', JSON.stringify(state)); } catch(e) {}
+      // Fehler werden still ignoriert (z.B. bei vollem Speicher oder privatem Modus)
     }
+
+    // --- Persistenz: Laden + Migrieren ---
     function lv() {
       try {
         var raw = localStorage.getItem('mais_rechner');
-        if (raw) {
-          var parsed = JSON.parse(raw);
-          // Ensure zaehlerstand exists
-          if (parsed.zaehlerstand === undefined) { parsed.zaehlerstand = 0; }
-          state = parsed;
-          if (parsed.reiter === undefined && parsed.koerner !== undefined) {
-            parsed.reiter = [{
-              name: 'Tab 1',
-              hektar: parsed.hektar || 0,
-              koerner: parsed.koerner || 0,
-              duenger: parsed.duenger || 0,
-              entries: parsed.entries || []
-            }];
-            delete parsed.hektar;
-            delete parsed.koerner;
-            delete parsed.duenger;
-            delete parsed.entries;
-            parsed.activeReiter = 0;
-          }
-          // Migrate: entries used to be global; move to first tab if missing
-          if (parsed.entries !== undefined) {
-            if (parsed.reiter && parsed.reiter[0] && parsed.reiter[0].entries === undefined) {
-              parsed.reiter[0].entries = parsed.entries;
-            }
-            delete parsed.entries;
-          }
-          // Ensure every reiter has an entries array
-          if (parsed.reiter) {
-            parsed.reiter.forEach(function(reiter) {
-              if (!reiter.entries) reiter.entries = [];
-            });
-          }
-          // Ensure machineLog exists (migration from older state)
-          if (!parsed.machineLog) parsed.machineLog = [];
-          state = parsed;
+        if (!raw) return;  // Keine gespeicherten Daten → Default-state behalten
+
+        var parsed = JSON.parse(raw);
+
+        // Sicherstellen, dass zaehlerstand existiert (alte Versionen haben es nicht)
+        if (parsed.zaehlerstand === undefined) { parsed.zaehlerstand = 0; }
+
+        // === MIGRATION 1: Tab-loses Schema → Tab-Schema ===
+        // Altes Format: {hektar, koerner, duenger, entries, ...}
+        // Neues Format: {reiter:[{hektar, koerner, duenger, entries, name}], ...}
+        if (parsed.reiter === undefined && parsed.koerner !== undefined) {
+          parsed.reiter = [{
+            name: 'Tab 1',
+            hektar: parsed.hektar || 0,
+            koerner: parsed.koerner || 0,
+            duenger: parsed.duenger || 0,
+            entries: parsed.entries || []   // entries waren global gespeichert
+          }];
+          // Alte Felder entfernen (nicht mehr benötigt)
+          delete parsed.hektar;
+          delete parsed.koerner;
+          delete parsed.duenger;
+          delete parsed.entries;
+          parsed.activeReiter = 0;
         }
-      } catch(e) {}
+
+        // === MIGRATION 2: Globale entries → Per-Tab entries ===
+        // Falls entries noch auf oberster Ebene existieren (sollte nicht mehr vorkommen)
+        if (parsed.entries !== undefined) {
+          if (parsed.reiter && parsed.reiter[0] && parsed.reiter[0].entries === undefined) {
+            parsed.reiter[0].entries = parsed.entries;  // Nach reiter[0] verschieben
+          }
+          delete parsed.entries;
+        }
+
+        // === MIGRATION 3: Fehlende Felder auf Default setzen ===
+        if (parsed.reiter) {
+          parsed.reiter.forEach(function(reiter) {
+            if (!reiter.entries) reiter.entries = [];  // Jeder Tab braucht entries-Array
+          });
+        }
+        // machineLog gab es in frühen Versionen nicht
+        if (!parsed.machineLog) parsed.machineLog = [];
+
+        state = parsed;
+      } catch(e) {
+        // Bei Parse-Fehlern oder anderen Fehlern: Default-state behalten
+      }
     }
 
-    // --- Helpers ---
+    // ==========================================================================
+    // HILFSFUNKTIONEN — Input/Output-Synchronisation und Formatierung
+    // ==========================================================================
+
+    // Liefert das aktive Tab-Objekt aus dem State.
+    // Nil-Safe: Falls entries fehlen, wird ein leeres Array erzeugt.
     function getActiveReiter() {
       var r = state.reiter[state.activeReiter];
       if (r && !r.entries) r.entries = [];
       return r;
     }
 
+    // Liest die Werte aus den Input-Feldern und schreibt sie in das aktive Tab.
+    // Wird aufgerufen VOR dem Wechseln von Tabs oder dem Speichern,
+    // damit keine Eingaben verloren gehen.
     function syncStateFromInputs() {
       var r = getActiveReiter();
-      r.hektar = parseDE(document.getElementById('hektar').value) || 0;
+      r.hektar    = parseDE(document.getElementById('hektar').value) || 0;
       r.istHektar = parseDE(document.getElementById('ist_hektar').value) || 0;
-      r.koerner = parseDE(document.getElementById('koerner').value) || 0;
-      r.duenger = parseDE(document.getElementById('duenger').value) || 0;
+      r.koerner   = parseDE(document.getElementById('koerner').value) || 0;
+      r.duenger    = parseDE(document.getElementById('duenger').value) || 0;
     }
 
+    // Wandelt eine Zahl ins deutsche Format um (Punkt → Komma).
+    // Wird für die Anzeige in Input-Feldern verwendet (nach dem Laden aus dem State).
     function formatDE(n) {
       return String(n).replace('.', ',');
     }
 
+    // Beschreibt die Input-Felder mit den Werten aus dem aktuellen Tab.
+    // Wird aufgerufen NACH dem Wechseln von Tabs oder dem Laden aus dem localStorage.
     function syncInputsFromState() {
       var r = getActiveReiter();
-      document.getElementById('hektar').value = r.hektar > 0 ? formatDE(r.hektar) : '';
+      document.getElementById('hektar').value    = r.hektar > 0    ? formatDE(r.hektar)    : '';
       document.getElementById('ist_hektar').value = r.istHektar > 0 ? formatDE(r.istHektar) : '';
-      document.getElementById('koerner').value = r.koerner > 0 ? formatDE(r.koerner) : '';
-      document.getElementById('duenger').value = r.duenger > 0 ? formatDE(r.duenger) : '';
+      document.getElementById('koerner').value    = r.koerner > 0   ? formatDE(r.koerner)   : '';
+      document.getElementById('duenger').value   = r.duenger > 0   ? formatDE(r.duenger)   : '';
     }
 
-    // --- Tab management ---
+    // ==========================================================================
+    // TAB-VERWALTUNG — Reiter (Tabs) für mehrere Felder
+    //
+    // Jeder Tab repräsentiert ein Feld mit eigenen SOLL/IST-Werten und Protokoll.
+    // UI: Custom Tab-Leiste mit eingebettetem Input-Feld für den Tab-Namen.
+    //
+    // WICHTIG: Vor jedem Tab-Wechsel syncStateFromInputs() aufrufen,
+    //          damit aktuelle Eingaben nicht verloren gehen!
+    // ==========================================================================
+
+    // Baut die gesamte Tab-Leiste neu auf (Button pro Tab + "+ Tab" + Protokoll).
+    // Der aktive Tab hat einen grünen Hintergrund.
+    // Jeder Tab-Button enthält ein unsichtbares <input> für den umbenennen.
     function renderTabs() {
       var bar = document.getElementById('tab_bar_left');
       bar.innerHTML = '';
+
       state.reiter.forEach(function(r, i) {
+        // Aktiver Tab? = dieser Index UND nicht in der Protokoll-Ansicht
         var isActive = i === state.activeReiter && state.activeView !== 'protokoll';
+
+        // --- Tab-Button (Klick = Tab wechseln) ---
         var btn = document.createElement('button');
         btn.className = 'tab-btn field-tab' + (isActive ? ' active' : '');
         btn.setAttribute('aria-label', 'Tab ' + (i+1));
         btn.onclick = function() { switchReiter(i); };
 
+        // --- Eingebettetes Namensfeld (direkt im Button) ---
+        // Besonderheit: Klick auf den Tab wechselt den Tab,
+        //               Klick auf das Namensfeld editiert den Namen
         var input = document.createElement('input');
         input.className = 'tab-name-input';
         input.type = 'text';
@@ -1513,13 +1607,13 @@
         input.setAttribute('aria-label', 'Tab-Name');
         input.onfocus = function() { this.select(); };
         input.onchange = function() { renameReiter(i, input.value); };
-        input.onblur = function() { renameReiter(i, input.value); };
+        input.onblur   = function() { renameReiter(i, input.value); };
         input.onkeydown = function(evt) {
-          if (evt.key === 'Enter') { input.blur(); }
-          else { evt.stopPropagation(); }
+          if (evt.key === 'Enter') { input.blur(); }        // Enter = bestätigen
+          else { evt.stopPropagation(); }                    // Sonstige Keys nicht an App durchreichen
         };
 
-        // Only show close button if more than 1 tab
+        // --- Schließen-Button (nur anzeigen wenn mehr als 1 Tab existiert) ---
         if (state.reiter.length > 1) {
           var close = document.createElement('span');
           close.className = 'tab-close';
@@ -1531,27 +1625,35 @@
         btn.appendChild(input);
         bar.appendChild(btn);
       });
+
+      // --- "+ Tab" Button ---
       var addBtn = document.createElement('button');
       addBtn.className = 'tab-add';
       addBtn.textContent = '+ Tab';
       addBtn.onclick = function() { addReiter(); };
       bar.appendChild(addBtn);
 
-      // Protokoll tab button
+      // --- Protokoll-Tab-Button (rechts außen) ---
       var protokollBtn = document.getElementById('protokoll_tab_btn');
       protokollBtn.classList.toggle('active', state.activeView === 'protokoll');
     }
 
+    // Erstellt einen neuen Tab, aktiviert ihn und fokussiert das Hektar-Feld.
     function addReiter() {
       var idx = state.reiter.length + 1;
-      state.reiter.push({ name: 'Tab ' + idx, hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] });
-      state.activeReiter = state.reiter.length - 1;
+      state.reiter.push({
+        name: 'Tab ' + idx,
+        hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: []
+      });
+      state.activeReiter = state.reiter.length - 1;  // Neuen Tab sofort aktivieren
       syncInputsFromState();
       renderTabs();
       sv();
       document.getElementById('hektar').focus();
     }
 
+    // Zeigt einen confirm()-Dialog bevor der Tab gelöscht wird.
+    // Nur bei Daten-Verlust-Warnung, nicht bei leerem Tab.
     function confirmRemoveReiter(idx) {
       var tab = state.reiter[idx];
       var hasData = tab.hektar > 0 || tab.koerner > 0 || tab.duenger > 0 || tab.entries.length > 0;
@@ -1565,12 +1667,14 @@
       removeReiter(idx);
     }
 
+    // Entfernt einen Tab (Index). Der aktive Tab wird ggf. korrigiert.
+    // Ablauf: Erst aktuellen Tab sichern → splice → activeReiter anpassen → neu rendern
     function removeReiter(idx) {
-      if (state.reiter.length <= 1) return;
-      syncStateFromInputs();  // Erst aktuellen Tab sichern
-      state.reiter.splice(idx, 1);
+      if (state.reiter.length <= 1) return;  // Mindestens 1 Tab muss bleiben
+      syncStateFromInputs();                   // Aktuellen Tab vorher speichern!
+      state.reiter.splice(idx, 1);            // Tab entfernen
       if (state.activeReiter >= state.reiter.length) {
-        state.activeReiter = state.reiter.length - 1;
+        state.activeReiter = state.reiter.length - 1;  // Hinter letzten → auf letzten
       }
       syncInputsFromState();
       renderTabs();
@@ -1578,68 +1682,92 @@
       renderResults();
     }
 
+    // Wechselt zum angegebenen Tab (speichert vorher den aktuellen!).
+    // Wenn der angeklickte Tab bereits aktiv ist → kein Wechsel (early return).
     function switchReiter(idx) {
       if (idx === state.activeReiter && state.activeView !== 'protokoll') return;
-      syncStateFromInputs();
+      syncStateFromInputs();     // Erst aktuellen Tab sichern!
       state.activeReiter = idx;
-      state.activeView = null;
-      syncInputsFromState();
+      state.activeView = null;   // Zurück zur Feld-Ansicht (nicht Protokoll)
+      syncInputsFromState();     // Dann Ziel-Tab in die Inputs laden
       renderTabs();
       sv();
       renderResults();
       renderView();
     }
 
+    // Schaltet zwischen Feld-Ansicht und Protokoll-Ansicht um.
+    // Beim Aktivieren des Protokolls: Zustand sichern + Drill-Tab-Liste rendern.
     function switchToProtokoll() {
       if (state.activeView === 'protokoll') {
-        state.activeView = null;
+        state.activeView = null;    // Protokoll → Feld (ausschalten)
       } else {
-        syncStateFromInputs();
+        syncStateFromInputs();     // Aktuelle Eingaben sichern
         state.activeView = 'protokoll';
-        renderDrillTabList();
+        renderDrillTabList();      // Prio-Buttons etc. neu aufbauen
       }
       renderTabs();
       sv();
       renderView();
     }
 
+    // Blendet Cards je nach Ansicht ein/aus (Feld vs. Protokoll).
+    // Die Protokoll-Ansicht zeigt #drill_section, alle anderen Cards werden versteckt.
+    // Wichtig: Die Sichtbarkeit des Sticky Footers wird hier auch gesteuert.
     function renderView() {
       var r = getActiveReiter();
       var hasData = r.hektar > 0 && r.koerner > 0;
       var isProtokoll = state.activeView === 'protokoll';
 
+      // Alle normalen Cards in der Protokoll-Ansicht verstecken
       var cards = document.querySelectorAll('.card');
       cards.forEach(function(c) {
         c.style.display = isProtokoll ? 'none' : '';
       });
 
+      // Ergebnis-Card: Nur bei Daten + nicht Protokoll
       var results = document.getElementById('results');
       if (results) results.style.display = (hasData && !isProtokoll) ? 'block' : 'none';
 
+      // Drill-Protokoll-Section: Nur in der Protokoll-Ansicht
       var drillSection = document.getElementById('drill_section');
       if (drillSection) drillSection.style.display = isProtokoll ? 'block' : 'none';
 
+      // Drill-Eingabe-Maske: Nur in der Protokoll-Ansicht
       var drillMask = document.getElementById('drill_mask');
       if (drillMask) drillMask.style.display = isProtokoll ? '' : 'none';
 
+      // Sticky Footer: In der Protokoll-Ansicht ausblenden (hat eigene Controls)
       var berechnenBtn = document.getElementById('berechnen_btn');
       if (berechnenBtn) berechnenBtn.style.display = isProtokoll ? 'none' : '';
       var resetBtn = document.getElementById('reset_btn');
       if (resetBtn) resetBtn.style.display = isProtokoll ? 'none' : '';
       var resetAllBtn = document.getElementById('reset_all_btn');
       if (resetAllBtn) resetAllBtn.style.display = isProtokoll ? 'none' : '';
-
       var stickyFooter = document.getElementById('sticky_footer');
       if (stickyFooter) stickyFooter.style.display = isProtokoll ? 'none' : '';
     }
 
+    // Speichert den neuen Tab-Namen (max. 20 Zeichen) und rendert die Tab-Leiste neu.
     function renameReiter(idx, name) {
       state.reiter[idx].name = name.substring(0, 20);
       sv();
       renderTabs();
     }
 
-    // --- Fahrgassen ---
+    // ==========================================================================
+    // FAHRGASSEN-KORREKTUR
+    //
+    // Fahrgassen = befahrene Streifen im Feld, die nicht besät werden.
+    // Durch die breiteren Gassen wird pro Fläche weniger Saatgut benötigt.
+    //
+    // Korrekturformel:
+    //   faktor = (fahrgassenBreite - 1) / fahrgassenBreite
+    // Beispiel (24 m): (24-1)/24 = 23/24 ≈ 0,958 → 4,17 % weniger Körner
+    // ==========================================================================
+
+    // Schaltet die Fahrgassen-Korrektur ein/aus (Toggle).
+    // Blendet die Einstellungen-Box ein/aus und speichert.
     function fahrgassenToggle() {
       var btn = document.getElementById('fahrgassen_toggle');
       var settings = document.getElementById('fahrgassen_settings');
@@ -1647,12 +1775,38 @@
       btn.classList.toggle('active', state.fahrgassenEnabled);
       settings.classList.toggle('open', state.fahrgassenEnabled);
       if (!state.fahrgassenEnabled) {
+        // Bei Deaktivierung: Info-Text löschen
         document.getElementById('fahrgassen_saved').textContent = '';
       }
       sv();
     }
 
-    // --- Einheiten-Größe ---
+    // Aktualisiert die Fahrgassenbreite und zeigt eine Info-Zeile an.
+    // Wird bei onchange und onblur des Eingabefelds aufgerufen.
+    function fahrgassenUpdate() {
+      var breite = parseDE(document.getElementById('fahrgassen_breite').value);
+      state.fahrgassenBreite = breite;
+      if (breite > 0) {
+        // Zeigt: "24 m -> ~4,2% weniger Körner"
+        var prozent = (1 / breite * 100).toFixed(1);
+        document.getElementById('fahrgassen_saved').textContent =
+          breite + ' m -> ~' + prozent + '% weniger Körner';
+      } else {
+        document.getElementById('fahrgassen_saved').textContent = '';
+      }
+      sv();
+    }
+
+    // ==========================================================================
+    // EINHEITEN-GRÖSSE — Anpassung der Körner pro Einheit
+    //
+    // Standard: 50.000 Körner/Einheit (gängige Handelsform von Maissaatgut).
+    // Manche Hersteller verwenden 100.000 Körner/Einheit.
+    //
+    // Formel: Einheiten = Körner gesamt / koernerProEinheit
+    // ==========================================================================
+
+    // Schaltet die benutzerdefinierte Einheiten-Größe ein/aus (Toggle).
     function einheitGroesseToggle() {
       var btn = document.getElementById('einheit_groesse_toggle');
       var settings = document.getElementById('einheit_groesse_settings');
@@ -1665,41 +1819,48 @@
       sv();
     }
 
+    // Liest die benutzerdefinierte Körner-pro-Einheit aus und speichert sie.
+    // Wird bei onchange und onblur aufgerufen. Default: 50.000.
     function einheitGroesseUpdate() {
       var val = parseDE(document.getElementById('koerner_pro_einheit').value);
       state.koernerProEinheit = (isNaN(val) || val <= 0) ? 50000 : val;
       var info = '';
       if (state.koernerProEinheit !== 50000) {
+        // Zeigt nur etwas an, wenn der Wert vom Standard abweicht
         info = state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit';
       }
       document.getElementById('einheit_groesse_saved').textContent = info;
       sv();
+      // Ergebnis sofort neu berechnen, falls bereits Daten vorhanden
       var r = getActiveReiter();
       if (r.hektar > 0 && r.koerner > 0) {
         renderResults();
       }
     }
 
-    function fahrgassenUpdate() {
-      var breite = parseDE(document.getElementById('fahrgassen_breite').value);
-      state.fahrgassenBreite = breite;
-      if (breite > 0) {
-        document.getElementById('fahrgassen_saved').textContent = breite + ' m -> ~' + (1 / breite * 100).toFixed(1) + '% weniger Körner';
-      } else {
-        document.getElementById('fahrgassen_saved').textContent = '';
-      }
-      sv();
-    }
-
-    // --- Core calculation ---
+    // ==========================================================================
+    // KERNBERECHNUNG — Hauptberechnung (Berechnen-Button)
+    //
+    // Formeln:
+    //   Körner gesamt = hektar × koerner × fahrgassenFaktor
+    //   Einheiten     = Körner gesamt / koernerProEinheit
+    //   Dünger gesamt = hektar × duenger
+    //
+    // Schutz: Wenn bereits Drill-Einträge existieren und die neuen SOLL-Werte
+    // geringer sind als die bereits eingetragenen Verbräuche,
+    // wird per confirm() gefragt, ob das Protokoll zurückgesetzt werden soll.
+    // ==========================================================================
     function berechne() {
+      // --- Validierung ---
       document.getElementById('err_hektar').textContent = '';
       document.getElementById('err_koerner').textContent = '';
       document.getElementById('hektar').style.borderColor = '';
       document.getElementById('koerner').style.borderColor = '';
+
       var h = parseDE(document.getElementById('hektar').value);
       var k = parseDE(document.getElementById('koerner').value);
       var d = parseDE(document.getElementById('duenger').value);
+
       if (isNaN(h) || h <= 0) {
         document.getElementById('err_hektar').textContent = 'Bitte Hektar eingeben';
         document.getElementById('hektar').style.borderColor = '#d32f2f';
@@ -1710,22 +1871,33 @@
         document.getElementById('koerner').style.borderColor = '#d32f2f';
         return;
       }
+
+      // --- Werte in State schreiben ---
       var r = getActiveReiter();
-      r.hektar = h;
+      r.hektar   = h;
       r.istHektar = parseDE(document.getElementById('ist_hektar').value) || 0;
-      r.koerner = k;
-      r.duenger = (isNaN(d) || d < 0) ? 0 : d;
+      r.koerner  = k;
+      r.duenger  = (isNaN(d) || d < 0) ? 0 : d;
+
       var entries = r.entries;
+      // Summe der bereits eingetragenen Verbräuche
       var usedEinheit = entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+
+      // IST-basierte Bedarfswerte (wenn IST-Fläche vorhanden, sonst SOLL)
       var istE = r.istHektar > 0 ? getTabIstEinheiten(r) : getTotalEinheiten();
       var istD = r.istHektar > 0 ? getTabIstDuenger(r) : getTotalDuenger();
+
+      // --- Drill-Protokoll-Schutz ---
+      // Wenn neue Werte geringer sind als bereits eingetragen: Warnung
       if (usedEinheit > istE || usedDuenger > istD) {
         if (!confirm('Die neuen Werte weichen von den eingetragenen Einheiten ab. Drill-Protokoll zurücksetzen?')) {
-          return;
+          return;  // Nutzer hat abgebrochen
         }
-        entries.length = 0;
+        entries.length = 0;  // Alle Einträge löschen
       }
+
+      // --- Fertig: Speichern und neu Rendern ---
       sv();
       renderTabs();
       renderResults();
@@ -1733,45 +1905,67 @@
       document.getElementById('results').style.display = 'block';
     }
 
+    // ==========================================================================
+    // BERECHNUNGS-HILFSFUNKTIONEN
+    //
+    // Alle Funktionen arbeiten auf einem Tab-Objekt 'r' oder dem aktiven Tab.
+    // Berücksichtigen fahrgassenEnabled + fahrgassenBreite automatisch.
+    //
+    // Wichtiges Muster: IST-Fläche (r.istHektar) hat Vorrang vor SOLL-Fläche.
+    // Wenn r.istHektar > 0, wird mit IST-Fläche gerechnet (tatsächlich bearbeitet).
+    // ==========================================================================
+
+    // Körner gesamt für den aktiven Tab
     function getKornerGesamt() {
       return getTabKornerGesamt(getActiveReiter());
     }
 
+    // Einheiten gesamt für den aktiven Tab
     function getTotalEinheiten() {
       var r = getActiveReiter();
       return getTabTotalEinheiten(r);
     }
 
+    // Einheiten für Tab r: Körner / Körner_pro_Einheit
+    // Formel: (hektar × koerner × fahrgassenFaktor) / koernerProEinheit
     function getTabTotalEinheiten(r) {
       if (!r.hektar || !r.koerner) return 0;
       return getTabKornerGesamt(r) / state.koernerProEinheit;
     }
 
+    // Körner gesamt für Tab r (inkl. Fahrgassen-Korrektur)
+    // Formel: hektar × koerner × fahrgassenFaktor
     function getTabKornerGesamt(r) {
       if (!r.hektar || !r.koerner) return 0;
       var k = r.hektar * r.koerner;
       if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
+        // Reduktion: (fahrgassenBreite-1)/fahrgassenBreite
+        // Beispiel: 24m → 23/24 ≈ 0,958 → 4,2% weniger Körner
         k = k * ((state.fahrgassenBreite - 1) / state.fahrgassenBreite);
       }
       return k;
     }
 
+    // Dünger gesamt für den aktiven Tab
     function getTotalDuenger() {
       var r = getActiveReiter();
       return getTabTotalDuenger(r);
     }
 
+    // Dünger für Tab r: hektar × duenger
     function getTabTotalDuenger(r) {
       if (!r.hektar) return 0;
       return r.hektar * r.duenger;
     }
 
-    // Get IST-Fläche for a tab (direct user input, not derived from entries)
+    // Gibt die IST-Fläche für Tab r zurück (direkte Nutzereingabe, NICHT aus Entries abgeleitet).
+    // Wird für SOLL/IST-Vergleich und Carryover verwendet.
     function getTabIstHektar(r) {
       return r.istHektar || 0;
     }
 
-    // IST-based Einheiten needed for a tab (uses IST-Fläche if available, else SOLL)
+    // IST-basierte Einheiten für Tab r.
+    // Verwendet IST-Fläche falls vorhanden, sonst SOLL-Fläche.
     function getTabIstEinheiten(r) {
       var istHa = getTabIstHektar(r);
       var ha = istHa > 0 ? istHa : r.hektar;
@@ -1783,7 +1977,8 @@
       return k / state.koernerProEinheit;
     }
 
-    // IST-based Duenger needed for a tab (uses IST-Fläche if available, else SOLL)
+    // IST-basierter Dünger für Tab r.
+    // Verwendet IST-Fläche falls vorhanden, sonst SOLL-Fläche.
     function getTabIstDuenger(r) {
       var istHa = getTabIstHektar(r);
       var ha = istHa > 0 ? istHa : r.hektar;
@@ -1791,7 +1986,9 @@
       return ha * r.duenger;
     }
 
-    // Check if a tab is "fertig" (all seed + fertilizer filled, including carryover)
+    // Prüft, ob ein Tab "fertig" ist (Saatgut + Dünger vollständig eingetragen).
+    // Berücksichtigt Carryover (Überträge) in der Berechnung.
+    // Toleranz: 0,05 Einheiten (verhindert Fließkomma-Probleme).
     function isTabDone(r, tabIdx) {
       if (!r.hektar || !r.koerner) return false;
       var istSum = getTabIstHektar(r);
@@ -1799,7 +1996,7 @@
       var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var totalD = istSum > 0 ? getTabIstDuenger(r) : getTabTotalDuenger(r);
       var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-      // Include carryover adjustment
+      // Carryover-Werte aus computeAllCarryovers()
       var co = (tabIdx !== undefined) ? getCarryover(tabIdx) : { savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 };
       var remE = Math.max(0, totalE - usedE - co.savedEinheit - co.excessEinheit);
       var remD = Math.max(0, totalD - usedD - co.savedDuenger - co.excessDuenger);
@@ -1808,7 +2005,8 @@
       return saatDone && duengerDone;
     }
 
-    // Find the index of the last-filled tab (most recent entry timestamp)
+    // Findet den Tab mit dem jüngsten Drill-Eintrag (für Carryover-Verteilung).
+    // Returns: Index oder -1 wenn kein Tab Einträge hat.
     function getLastFilledTabIndex() {
       var lastIdx = -1;
       var lastTime = '';
@@ -1825,21 +2023,39 @@
       return lastIdx;
     }
 
-    // Compute carryover distribution for ALL tabs (cascading)
-    // Savings cascade forward through not-done tabs, excess cascades backward through filled tabs
-    // Returns array of { savedEinheit, savedDuenger, excessEinheit, excessDuenger } per tab
+    // ==========================================================================
+    // CARRYOVER-SYSTEM — Überträge zwischen Feldern (komplexester Algorithmus)
+    //
+    // Problem: Wenn ein Landwirt mehrere Felder hat und die IST-Fläche smaller
+    // als die SOLL-Fläche ist (z.B. weil ein Teil nass war), "spart" er Saatgut.
+    // Dieses System verteilt Ersparnisse und Mehrbedarfe automatisch auf alle Tabs.
+    //
+    // Return pro Tab: { savedEinheit, savedDuenger, excessEinheit, excessDuenger }
+    //   savedEinheit   = Überschuss aus Ersparnis (IST < SOLL) → wird an andere verteilt
+    //   savedDuenger   = Dünger-Ersparnis
+    //   excessEinheit  = Mehrbedarf aus Überschreitung (IST > SOLL) → wird von anderen genommen
+    //   excessDuenger  = Dünger-Mehrbedarf
+    //
+    // Zwei-Phasen-Algorithmus:
+    //   Phase 1: Ersparnisse (IST < SOLL) → an nicht-ferige Tabs (vorwärts)
+    //   Phase 2: Mehrbedarfe (IST > SOLL) → von Tabs mit Einträgen (rückwärts, nach Zeit)
+    // ==========================================================================
+
+    // Berechnet Carryover für ALLE Tabs gleichzeitig.
+    // Wird bei jedem renderResults() aufgerufen und cached via getCarryover().
     function computeAllCarryovers() {
       var result = [];
       for (var i = 0; i < state.reiter.length; i++) {
         result.push({ savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 });
       }
 
-      // Calculate total savings and excess across all tabs
+      // --- Summiere Ersparnisse und Mehrbedarfe über alle Tabs ---
       var totalSavedE = 0, totalSavedD = 0, totalExcessE = 0, totalExcessD = 0;
       for (var i = 0; i < state.reiter.length; i++) {
         var t = state.reiter[i];
         var istHa = getTabIstHektar(t);
         if (istHa > 0 && t.hektar > 0) {
+          // SOLL - IST = Ersparnis (positiv) oder Mehrbedarf (negativ)
           var diffE = getTabTotalEinheiten(t) - getTabIstEinheiten(t);
           var diffD = getTabTotalDuenger(t) - getTabIstDuenger(t);
           if (diffE >= 0) totalSavedE += diffE; else totalExcessE += Math.abs(diffE);
@@ -1847,35 +2063,41 @@
         }
       }
 
-      // Distribute savings to not-done tabs (cascading forward)
+      // === PHASE 1: Ersparnisse verteilen (vorwärts durch Tabs) ===
+      // Tabs die noch nicht fertig sind (isTabDone = false) bekommen Ersparnis
       var remSavedE = totalSavedE, remSavedD = totalSavedD;
       for (var i = 0; i < state.reiter.length && (remSavedE > 0.05 || remSavedD > 0.05); i++) {
         var t = state.reiter[i];
+        // Tabs ohne Daten oder bereits fertige Tabs überspringen
         if (isTabDone(t) || !t.hektar || !t.koerner) continue;
+
         var istSum = getTabIstHektar(t);
         var totalE = istSum > 0 ? getTabIstEinheiten(t) : getTabTotalEinheiten(t);
         var usedE = t.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-        var tabRemE = Math.max(0, totalE - usedE);
+        var tabRemE = Math.max(0, totalE - usedE);   // Was dieser Tab noch braucht
         var totalD = istSum > 0 ? getTabIstDuenger(t) : getTabTotalDuenger(t);
         var usedD = t.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
         var tabRemD = Math.max(0, totalD - usedD);
 
+        // Gibt, was der Tab braucht, aber nicht mehr als verfügbar
         var giveE = Math.min(remSavedE, tabRemE);
         var giveD = Math.min(remSavedD, tabRemD);
         if (giveE > 0.05) { result[i].savedEinheit = giveE; remSavedE -= giveE; }
         if (giveD > 0.05) { result[i].savedDuenger = giveD; remSavedD -= giveD; }
       }
 
-      // Distribute excess to filled tabs (reverse chronological, cascading)
+      // === PHASE 2: Mehrbedarfe verteilen (rückwärts durch Tabs mit Einträgen) ===
+      // Tabs mit den neuesten Einträgen zuerst (umgekehrt chronologisch)
       var remExcessE = totalExcessE, remExcessD = totalExcessD;
       var filledTabs = [];
       for (var i = 0; i < state.reiter.length; i++) {
         if (state.reiter[i].entries.length > 0) filledTabs.push(i);
       }
+      // Sortiere nach Zeit des neuesten Eintrags (absteigend = neueste zuerst)
       filledTabs.sort(function(a, b) {
         var ea = state.reiter[a].entries, eb = state.reiter[b].entries;
         var ta = ea[ea.length - 1].time || '', tb = eb[eb.length - 1].time || '';
-        return tb.localeCompare(ta);
+        return tb.localeCompare(ta);  // Umgekehrt: tb > ta = a kommt zuerst
       });
 
       for (var fi = 0; fi < filledTabs.length && (remExcessE > 0.05 || remExcessD > 0.05); fi++) {
@@ -1884,11 +2106,12 @@
         var istSum = getTabIstHektar(t);
         var totalE = istSum > 0 ? getTabIstEinheiten(t) : getTabTotalEinheiten(t);
         var usedE = t.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-        var tabRemE = Math.max(0, totalE - usedE);
+        var tabRemE = Math.max(0, totalE - usedE);   // Was noch in diesem Tab fehlt
         var totalD = istSum > 0 ? getTabIstDuenger(t) : getTabTotalDuenger(t);
         var usedD = t.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
         var tabRemD = Math.max(0, totalD - usedD);
 
+        // Nimmt vom Mehrbedarf, aber nur bis zum verbleibenden Bedarf dieses Tabs
         var takeE = Math.min(remExcessE, tabRemE);
         var takeD = Math.min(remExcessD, tabRemD);
         if (takeE > 0.05) { result[idx].excessEinheit = takeE; remExcessE -= takeE; }
@@ -1898,76 +2121,130 @@
       return result;
     }
 
-    // Get carryover for a specific tab (lookup from computeAllCarryovers)
+    // Liefert die Carryover-Werte für einen bestimmten Tab (lookup + cache via computeAllCarryovers).
     function getCarryover(tabIndex) {
       var all = computeAllCarryovers();
       if (tabIndex >= 0 && tabIndex < all.length) return all[tabIndex];
       return { savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 };
     }
 
+    // ==========================================================================
+    // FORMATIERUNG — Deutsche Zahlenformatierung und Parsing
+    //
+    // Deutschland: Komma = Dezimaltrennzeichen, Punkt = Tausendertrennzeichen
+    // Eingaben: "12,5" → 12.5 | "1.500,3" → 1500.3
+    // Ausgaben:  12.5 → "12,5"
+    // ==========================================================================
+
+    // Formatiert eine Zahl für die Anzeige: eine Dezimalstelle, Komma als Trennzeichen.
+    // Beispiele: 12.555 → "12,6" | 12.0 → "12,0" | 0 → "0,0"
     function fmt(n) {
-      // German decimal format, no suffix. Always one decimal place.
-      var rounded = Math.round(n * 10) / 10;
+      var rounded = Math.round(n * 10) / 10;  // Auf/Abgerundet auf 1 Dezimalstelle
       return rounded.toFixed(1).replace('.', ',');
     }
 
+    // Formatiert eine Einheitenanzahl mit Einheiten-Text.
+    // Beispiele: 1.0 → "1,0 Einheit" | 4.5 → "4,5 Einheiten"
     function formatEinheit(n) {
       var rounded = Math.round(n * 10) / 10;  // DE Rundung: ab .5 aufrunden
       return rounded.toFixed(1).replace('.', ',') + (rounded === 1.0 ? ' Einheit' : ' Einheiten');
     }
 
-    // Parse a DE-formatted number string ( thousand dot separator, comma decimal )
+    // Parst einen deutschen Zahlenstring in eine JavaScript-Zahl.
+    //
+    // Regelwerk:
+    //   1. Tausenderpunkte werden IMMER entfernt (auch ohne Komma)
+    //   2. Wenn Komma vorhanden: Alles NACH dem Komma = Dezimalteil (Komma → Punkt)
+    //   3. Wenn kein Komma: nur Tausenderpunkte entfernen → als Ganzzahl parsen
+    //   4. Leere oder ungültige Eingabe → 0
+    //
+    // Beispiele:
+    //   '12,5'     → parseFloat('12.5') → 12.5
+    //   '1.500,3'  → '1500.3'           → 1500.3
+    //   '1500'     → '1500'              → 1500
+    //   ''         → 0
     function parseDE(val) {
       if (typeof val === 'number') return val;
       if (!val) return 0;
       var s = val.toString().trim();
-      // Remove thousand dots, replace comma decimal with dot
       var parts = s.split(',');
       if (parts.length > 1) {
-        // Has comma decimal: remove all dots, then replace comma with dot
+        // Komma gefunden → Dezimalzahl
+        // Alle Tausenderpunkte entfernen, dann Komma → Punkt
         return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
       }
-      // No comma: just remove dots (thousand separators)
+      // Kein Komma → nur Tausenderpunkte entfernen
       return parseFloat(s.replace(/\./g, '')) || 0;
     }
 
-    // Strips invalid characters while typing. No thousand separators.
-    // mode: 'integer' (digits only) or 'decimal' (digits + one comma)
+    // Bereinigt Benutzereingaben während des Tippens.
+    //
+    // Modus 'integer': Nur Ziffern erlaubt (für Körner/ha).
+    // Modus 'decimal': Ziffern + maximal ein Komma (für Hektar, Dünger).
+    //
+    // Das verhindert, dass der Nutzer ungültige Zeichen eingibt,
+    // und hält die Eingabe всегда im deutschen Format.
+    //
+    // Beispiel decimal: '12..5' → '12.5' | '1.500' → '1500' (Tausenderpunkt entfernt)
     function onInputFormat(el, mode) {
       var val = el.value;
       if (!val) return;
       var cleaned;
       if (mode === 'integer') {
+        // Nur Ziffern
         cleaned = val.replace(/[^\d]/g, '');
       } else {
-        // Allow digits and at most one comma (decimal separator)
+        // Dezimal: Ziffern + ein Komma maximal
         var hasComma = val.indexOf(',') !== -1;
         cleaned = val.replace(/[^\d,]/g, '');
         if (hasComma) {
+          // Nur das erste Komma behalten, Rest abschneiden
           var parts = cleaned.split(',');
           cleaned = parts[0] + ',' + (parts[1] || '');
         }
       }
       if (el.value !== cleaned) {
         el.value = cleaned;
+        // Cursor ans Ende setzen (nach dem Ersetzen springt der Cursor manchmal)
         el.setSelectionRange(cleaned.length, cleaned.length);
       }
     }
 
-    // --- Drill log ---
-    // Priority state for drill tab list
+    // ==========================================================================
+    // DRILL-PROTOKOLL — Maschinen-Befüllungen eintragen und auf Tabs verteilen
+    //
+    // Zwei getrennte Log-Typen:
+    //   machineLog[]  — Maschinen-Befüllungen (roh, nicht auf Tabs verteilt)
+    //                   Gespeist durch "Befüllung" + "Prognose" im Drill-Protokoll
+    //   tabEntries[]  — Bereits auf Tabs verteilte Einträge
+    //                   (entsteht durch Anklicken von machineLog-Einträgen)
+    //
+    // drillPriorities{} — Manuell gesetzte Prioritäten (Key: Tab-Index, Value: Zahl)
+    //                     Höhere Zahl = wird zuerst bedient (1 = höchste)
+    //
+    // Prognose: Berechnet basierend auf machineLog, wie viele Einheiten
+    //           nach der aktuellen Verteilung noch übrig sind.
+    // ==========================================================================
+
+    // Speichert die Prioritäten der Tabs (Key: Tab-Index, Value: Priorität 0-N)
     var drillPriorities = {};
 
+    // Baut die Drill-Tab-Liste im Protokoll-Panel auf.
+    // Zeigt pro Tab: Prioritäts-Button, Name, verbleibender Bedarf, Status.
+    // Wird bei jedem Öffnen des Protokolls aufgerufen.
     function renderDrillTabList() {
       var container = document.getElementById('drill_tab_list');
       if (!container) return;
       container.innerHTML = '';
       drillPriorities = {};
+
       state.reiter.forEach(function(r, i) {
         var row = document.createElement('div');
         row.className = 'drill-tab-row';
 
-        // Priority button: click cycles — (off) → 1 → 2 → … → — (off)
+        // --- Prioritäts-Button ---
+        // Klick: Zyklus — (0) → 1 → 2 → … → N → — (0)
+        // Höchste Zahl = höchste Priorität (wird zuerst befüllt)
         var prioBtn = document.createElement('button');
         prioBtn.className = 'drill-prio-btn';
         prioBtn.id = 'dtl_prio_' + i;
@@ -1981,10 +2258,10 @@
           prioBtn.textContent = next === 0 ? '—' : String(next);
           prioBtn.classList.toggle('active', next > 0);
           drillPriorities[i] = next;
-          drillCalcAll();
+          drillCalcAll();   // Carryover + Prognose neu berechnen
         };
 
-        // Tab name + remaining need
+        // --- Tab-Name + Status-Zeile ---
         var nameWrap = document.createElement('div');
         nameWrap.style.flex = '1';
         nameWrap.style.minWidth = '0';
@@ -1992,7 +2269,8 @@
         label.className = 'drill-tab-name';
         label.textContent = r.name || ('Tab ' + (i + 1));
         nameWrap.appendChild(label);
-        // Show remaining need or done status (based on IST if available, else SOLL)
+
+        // Verbleibender Bedarf oder "Fertig"-Status anzeigen
         if (r.hektar > 0 && r.koerner > 0) {
           var istSum = getTabIstHektar(r);
           var totalE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
@@ -2045,11 +2323,24 @@
       });
     }
 
+    // ==========================================================================
+    // PROGNOSE-VERTEILUNG — Verteilungs-Algorithmus für Drill-Eingabe
+    //
+    // Liest die aktuellen Eingabewerte (drill_einheit, drill_duenger),
+    // sortiert Tabs nach Priorität und verteilt die Eingabe automatisch.
+    //
+    // Verteilungs-Logik (nachrangige Tabs bekommen nur den Rest):
+    //   1. Sammle alle Tabs mit Priorität > 0
+    //   2. Sortiere nach Priorität aufsteigend (1 = höchste = zuerst bedient)
+    //   3. Jeder Tab bekommt: min(Bedarf, noch_verfügbar)
+    //   4. Ergebnis wird in die Eingabefelder der Tabs geschrieben
+    // ==========================================================================
     function drillCalcAll() {
+      // Liest die aktuelle Befüllungs-Eingabe
       var gesamtEinheit = parseDE(document.getElementById('drill_einheit').value) || 0;
       var gesamtDuenger = parseDE(document.getElementById('drill_duenger').value) || 0;
 
-      // Collect tabs with priority > 0, sort by priority ascending (1 = highest = first)
+      // Sammle Tabs mit gesetzter Priorität (> 0)
       var prioritized = [];
       state.reiter.forEach(function(r, i) {
         var prio = drillPriorities[i] || 0;
@@ -2057,32 +2348,35 @@
           prioritized.push({ idx: i, prio: prio, reiter: r });
         }
       });
+      // Sortiere aufsteigend: Prio 1 = zuerst, Prio 2 = danach, etc.
       prioritized.sort(function(a, b) { return a.prio - b.prio; });
 
-      // Distribute: highest priority first, give what they need, remainder to next
+      // --- Verteilung: Höchste Priorität zuerst, Rest fließt weiter ---
       var remEinheit = gesamtEinheit;
       var remDuenger = gesamtDuenger;
-      var distribution = {};
+      var distribution = {};  // { tabIndex: { einheit, duenger } }
       prioritized.forEach(function(item) {
         var r = item.reiter;
         var istSum = getTabIstHektar(r);
         var totalE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
         var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
         var tabCo = getCarryover(item.idx);
+        // Bedarf = SOLL - bereits eingetragen - Carryover
         var needE = Math.max(0, totalE - usedE - tabCo.savedEinheit - tabCo.excessEinheit);
 
         var totalD = istSum > 0 ? getTabIstDuenger(r) : getTabTotalDuenger(r);
         var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
         var needD = Math.max(0, totalD - usedD - tabCo.savedDuenger - tabCo.excessDuenger);
 
+        // Verteile: nicht mehr als verfügbar, nicht mehr als benötigt
         var giveE = Math.min(needE, remEinheit);
         var giveD = Math.min(needD, remDuenger);
         distribution[item.idx] = { einheit: giveE, duenger: giveD };
-        remEinheit -= giveE;
+        remEinheit -= giveE;   // Verbleibend für nächste Tabs
         remDuenger -= giveD;
       });
 
-      // Write values to inputs
+      // Schreibt die errechneten Werte in die Tab-Eingabefelder
       state.reiter.forEach(function(r, i) {
         var eInput = document.getElementById('dtl_e_' + i);
         var dInput = document.getElementById('dtl_d_' + i);
@@ -2097,21 +2391,33 @@
       });
     }
 
+    // ==========================================================================
+    // DRILL HINZUFÜGEN — Trägt eine Maschinen-Befüllung ins Protokoll ein
+    //
+    // Zwei Modi:
+    //   Single-Tab (Fallback):  Befüllung geht direkt in den aktiven Tab
+    //   Multi-Tab (Standard):   Erst in machineLog speichern, dann via
+    //                           "Verteilen"-Buttons auf einzelne Tabs verteilen
+    //
+    // machineLog[] speichert: {einheit, duenger, zaehlerStand, time}
+    // tabEntries[] (in reiter[]): werden durch Klick auf ML-Einträge befüllt
+    // ==========================================================================
     function drillAdd() {
       var gesamtEinheit = parseDE(document.getElementById('drill_einheit').value) || 0;
       var gesamtDuenger = parseDE(document.getElementById('drill_duenger').value) || 0;
       var zaehlerStand = parseDE(document.getElementById('drill_hektar').value) || 0;
 
-      // If no tab list rendered (e.g. in tests), fall back to single-tab mode
+      // Prüft ob die Tab-Liste im DOM existiert (renderDrillTabList() wurde aufgerufen)
       var hasTabList = document.getElementById('dtl_prio_0') !== null;
 
+      // --- SINGLE-TAB FALLBACK ---
+      // Wenn keine Tab-Liste existiert (z.B. nach App-Start ohne Tabs): direkt eintragen
       if (!hasTabList) {
-        // Single-tab fallback: add entry directly to active tab
         var r = getActiveReiter();
         if (!r.hektar || !r.koerner) return;
         if (gesamtEinheit <= 0 && gesamtDuenger <= 0) return;
 
-        // Log machine fill
+        // Eintrag sowohl ins machineLog (für Prognose) als auch direkt in den Tab
         state.machineLog.push({
           einheit: gesamtEinheit,
           zaehlerStand: zaehlerStand,
@@ -2131,55 +2437,64 @@
         return;
       }
 
+      // --- MULTI-TAB STANDARD-MODUS ---
       var addedAny = false;
-      // Log machine fill
+      // Maschinen-Befüllung ins globale Log speichern (roh, noch nicht verteilt)
       state.machineLog.push({
         einheit: gesamtEinheit,
         zaehlerStand: zaehlerStand,
         duenger: gesamtDuenger,
         time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
       });
-      state.reiter.forEach(function(r, i) {
-        var prio = drillPriorities[i] || 0;
-        if (prio <= 0) return;
+      var mlIdx = state.machineLog.length - 1;  // Index des neuen Eintrags
 
+      // Alle Tabs durchgehen: Ist in der Tab-Eingabe ein Wert → als Eintrag speichern
+      state.reiter.forEach(function(r, i) {
         var eInput = document.getElementById('dtl_e_' + i);
         var dInput = document.getElementById('dtl_d_' + i);
-        var einheit = parseDE(eInput ? eInput.value : '') || 0;
-        var duenger = parseDE(dInput ? dInput.value : '') || 0;
+        if (!eInput || !dInput) return;
 
-        if (einheit > 0 || duenger > 0) {
-          r.entries.push({
-            einheit: einheit,
+        var einheitVal = parseDE(eInput.value) || 0;
+        var duengerVal = parseDE(dInput.value) || 0;
+
+        if (einheitVal > 0 || duengerVal > 0) {
+          // Tab-Eintrag erstellen
+          var entry = {
+            einheit: einheitVal,
+            duenger: duengerVal,
             zaehlerStand: zaehlerStand,
-            duenger: duenger,
-            time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-          });
+            time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+            mlIdx: mlIdx  // Verknüpfung zum machineLog-Eintrag
+          };
+          r.entries.push(entry);
+
+          // Im machineLog: distributed aktualisieren (für Prognose-Fortschritt)
+          if (!state.machineLog[mlIdx].distributed) {
+            state.machineLog[mlIdx].distributed = 0;
+          }
+          state.machineLog[mlIdx].distributed += einheitVal;
+
+          // Eingabefelder leeren
+          eInput.value = '';
+          dInput.value = '';
           addedAny = true;
         }
       });
 
-      if (!addedAny) return;
-
-      // Clear inputs
+      // Drill-Eingabe-Maske leeren
       document.getElementById('drill_einheit').value = '';
       document.getElementById('drill_duenger').value = '';
       document.getElementById('drill_hektar').value = '';
-      state.reiter.forEach(function(r, i) {
-        var eInput = document.getElementById('dtl_e_' + i);
-        var dInput = document.getElementById('dtl_d_' + i);
-        if (eInput) eInput.value = '';
-        if (dInput) dInput.value = '';
-      });
-
-      // Reset priorities after fill
-      drillPriorities = {};
-      renderDrillTabList();
 
       sv();
-      renderResults();
+      renderDrillTabList();  // Tab-Liste mit neuen Bedarfswerten aktualisieren
+      renderResults();       // Ergebnis-Card + Maschinen-Protokoll + Drill-Protokoll aktualisieren
+      drillCalcAll();        // Prognose neu berechnen
     }
 
+    // Entfernt einen Eintrag aus dem Maschinen-Log (nach Index).
+    // Die bereits auf Tabs verteilten Werte werden NICHT zurückgesetzt
+    // (bleiben in den Tab-Entries erhalten — manueller Eintrag).
     function drillMachineRemove(idx) {
       if (!state.machineLog || idx < 0 || idx >= state.machineLog.length) return;
       state.machineLog.splice(idx, 1);
@@ -2187,6 +2502,8 @@
       renderResults();
     }
 
+    // Entfernt einen einzelnen Tab-Eintrag (aus reiter[tabIdx].entries).
+    // Damit kann der Landwirt eine einzelne Befüllung rückgängig machen.
     function drillRemove(tabIdx, entryIdx) {
       if (!state.reiter[tabIdx] || entryIdx >= state.reiter[tabIdx].entries.length) return;
       state.reiter[tabIdx].entries.splice(entryIdx, 1);
@@ -2194,21 +2511,40 @@
       renderResults();
     }
 
+    // ==========================================================================
+    // ERGEBNIS-CARD — Berechnete Werte in der UI aktualisieren
+    //
+    // Liest aktuelle Werte aus dem active Tab und State,
+    // berechnet alle abgeleiteten Größen (Körner, Einheiten, Dünger)
+    // und schreibt sie in die DOM-Elemente der Ergebnis-Card.
+    //
+    // Wird aufgerufen nach: berechne(), drillAdd(), drillRemove(), Tab-Wechsel
+    //
+    // ANMERKUNG: Diese Funktion rendert AUCH das Drill-Protokoll (Maschinen-Log,
+    // Drill-Tab-Liste, Carryover-Anzeige) direkt — es gibt keine separate
+    // renderMachineLog()-Funktion (diese wurde im Code vergessen).
+    // Das Maschinen-Protokoll wird inline innerhalb von renderResults()
+    // über das Element #drill_machine_log gerendert.
+    // ==========================================================================
     function renderResults() {
       var r = getActiveReiter();
       var kornerGesamt = getKornerGesamt();
       var einheiten = getTotalEinheiten();
       var duengerTotal = getTotalDuenger();
+
+      // Ergebnis-Card: Körner gesamt, Einheiten, Dünger
       document.getElementById('r_korner').textContent = Math.round(kornerGesamt).toLocaleString('de-DE');
       document.getElementById('r_einheiten').textContent = formatEinheit(einheiten);
       document.getElementById('r_duenger').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
+
+      // Info-Zeile unter dem Ergebnis
       if (duengerTotal > 0) {
         document.getElementById('r_info').textContent = duengerTotal.toLocaleString('de-DE') + ' kg Dünger, ' + formatEinheit(einheiten) + ' Saat';
       } else {
         document.getElementById('r_info').textContent = formatEinheit(einheiten) + ' Saat (ohne Dünger)';
       }
 
-      // Update mini-result in sticky footer
+      // Mini-Result im Sticky Footer aktualisieren
       var miniResult = document.getElementById('mini_result');
       if (miniResult) {
         if (r.hektar > 0 && r.koerner > 0) {
@@ -2223,7 +2559,7 @@
         }
       }
 
-      // Show zaehler section if zähler tracking is active
+      // Hektarzähler-Sektion einblenden wenn Zählerstand vorhanden
       var hasZaehler = state.zaehlerstand > 0;
       document.getElementById('zaehler_section').style.display = hasZaehler ? 'block' : 'none';
 
@@ -2412,7 +2748,11 @@
       if (allEinheitenUsed > 0) summaryParts.push(formatEinheit(allEinheitenUsed));
       if (allDuengerUsed > 0) summaryParts.push(allDuengerUsed.toLocaleString('de-DE') + ' kg Dünger');
       document.getElementById('ds_total_summary').textContent = summaryParts.join(' + ');
-      // Machine log (raw fills into machine, independent of tab distribution)
+
+      // --- Maschinen-Protokoll rendern (roh, unverändert) ---
+      // Zeigt alle Maschinen-Befüllungen mit:
+      //   - Prognose "Saat/Dünger leer bei ~X ha" (basierend auf kumuliertem Verbrauch)
+      //   - Fortschrittsbalken (distributed / einheit)
       var mlContainer = document.getElementById('drill_machine_log');
       mlContainer.innerHTML = '';
       if (state.machineLog && state.machineLog.length > 0) {
@@ -2600,6 +2940,13 @@
       }
     }
 
+    // ==============================================================================
+    // RESET-FUNKTIONEN — Zurücksetzen von Eingaben
+    // ==============================================================================
+
+    // Zeigt einen confirm()-Dialog und ruft dann resetActiveTab() oder resetAll() auf.
+    // fullReset=false → nur aktuellen Tab zurücksetzen
+    // fullReset=true  → ALLE Daten zurücksetzen (alle Tabs, Einstellungen, machineLog)
     function confirmResetAll(fullReset) {
       var tabName = state.reiter[state.activeReiter].name;
       if (fullReset) {
@@ -2611,16 +2958,18 @@
       }
     }
 
-    // Reset only the active tab's data (preserves other tabs, global settings, machineLog)
+    // Setzt nur die Felder des aktiven Tabs zurück (Name und SOLL/IST bleiben erhalten).
+    // Alle Drill-Protokoll-Einträge dieses Tabs werden gelöscht.
+    // Andere Tabs, globale Einstellungen und machineLog bleiben unberührt.
     function resetActiveTab() {
       var active = state.activeReiter;
       state.reiter[active] = {
-        name: state.reiter[active].name,
+        name: state.reiter[active].name,  // Tab-Name beibehalten
         hektar: 0,
         istHektar: 0,
         koerner: 0,
         duenger: 0,
-        entries: []
+        entries: []  // Drill-Einträge löschen
       };
       document.getElementById('hektar').value = '';
       document.getElementById('ist_hektar').value = '';
@@ -2637,7 +2986,9 @@
       sv();
     }
 
-    // Full reset - clears everything (used for extreme cases, not via UI button)
+    // Setzt ALLE Daten zurück: Alle Tabs, maschinelles Log, globale Einstellungen.
+    // Wird nur über einen versteckten internen Mechanismus aufgerufen (nicht über UI-Buttons).
+    // ACHTUNG: Diese Aktion kann nicht rückgängig gemacht werden.
     function resetAll() {
       state = {
         reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] }],
@@ -2675,11 +3026,23 @@
     }
 
     // --- Init after DOM is ready ---
+    // ==========================================================================
+    // INIT — App-Initialisierung nach DOMContentLoaded
+    //
+    // Reihenfolge (wichtig!):
+    //   1. lv()                    — State aus localStorage laden + migrieren
+    //   2. syncInputsFromState()   — State → Input-Felder
+    //   3. renderTabs()            — Tab-Leiste aufbauen
+    //   4. renderView()            — Sichtbarkeit je nach Ansicht setzen
+    //   5. Toggle-Zustände wieder-  — Fahrgassen/Einheiten-UI wiederherstellen
+    //      herstellen
+    //   6. renderResults()         — Ergebnis-Card falls Daten vorhanden
+    // ==========================================================================
     function initUI() {
-      lv();
-      syncInputsFromState();
-      renderTabs();
-      renderView();
+      lv();                          // 1. State laden
+      syncInputsFromState();          // 2. Inputs beschreiben
+      renderTabs();                   // 3. Tab-Leiste
+      renderView();                   // 4. Ansicht (Feld/Protokoll)
       if (state.fahrgassenEnabled) {
         document.getElementById('fahrgassen_toggle').classList.add('active');
         document.getElementById('fahrgassen_settings').classList.add('open');
@@ -2744,19 +3107,35 @@
     document.addEventListener('DOMContentLoaded', initUI);
 
     // --- Dashboard ---
+    // Öffnet das Dashboard als Bottom-Sheet-Overlay.
+    // Zeigt eine Zusammenfassung aller Tabs und einen Fortschrittsbalken.
+    // Body-Scroll wird deaktiviert während das Dashboard offen ist.
     function openDashboard() {
-      renderDashboard();
+      renderDashboard();  // Daten aktualisieren bevor das Sheet erscheint
       document.getElementById('dashboard_overlay').classList.add('open');
       document.getElementById('dashboard_sheet').classList.add('open');
       document.body.style.overflow = 'hidden';
     }
 
+    // Schließt das Dashboard (entfernt die CSS-Klassen 'open').
+    // Body-Scroll wird wieder aktiviert.
     function closeDashboard() {
       document.getElementById('dashboard_overlay').classList.remove('open');
       document.getElementById('dashboard_sheet').classList.remove('open');
       document.body.style.overflow = '';
     }
 
+    // ==========================================================================
+    // DASHBOARD — Übersicht aller Felder als Bottom-Sheet
+    //
+    // Zeigt eine kompakte Tabelle aller Tabs mit:
+    //   - Fortschrittsbalken (IST/SOLL in %)
+    //   - Tab-Name, SOLL/IST-Fläche, Einheiten (verbraucht/gesamt)
+    //   - Zusammenfassung über alle Tabs oben
+    //
+    // Fortschrittsbalken-Farben:
+    //   < 33%: blau | 33-66%: gelb | > 66%: grün | 100%+: läuft über (grün)
+    // ==========================================================================
     function renderDashboard() {
       var container = document.getElementById('dashboard_content');
       var reiter = state.reiter;
