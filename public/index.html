@@ -1563,7 +1563,7 @@
 
     // Wandelt eine Zahl ins deutsche Format um (Punkt → Komma).
     // Wird für die Anzeige in Input-Feldern verwendet (nach dem Laden aus dem State).
-    function formatDE(n) {
+    function toInputValue(n) {
       return String(n).replace('.', ',');
     }
 
@@ -1571,10 +1571,10 @@
     // Wird aufgerufen NACH dem Wechseln von Tabs oder dem Laden aus dem localStorage.
     function syncInputsFromState() {
       var r = getActiveReiter();
-      document.getElementById('hektar').value    = r.hektar > 0    ? formatDE(r.hektar)    : '';
-      document.getElementById('ist_hektar').value = r.istHektar > 0 ? formatDE(r.istHektar) : '';
-      document.getElementById('koerner').value    = r.koerner > 0   ? formatDE(r.koerner)   : '';
-      document.getElementById('duenger').value   = r.duenger > 0   ? formatDE(r.duenger)   : '';
+      document.getElementById('hektar').value    = r.hektar > 0    ? toInputValue(r.hektar)    : '';
+      document.getElementById('ist_hektar').value = r.istHektar > 0 ? toInputValue(r.istHektar) : '';
+      document.getElementById('koerner').value    = r.koerner > 0   ? toInputValue(r.koerner)   : '';
+      document.getElementById('duenger').value   = r.duenger > 0   ? toInputValue(r.duenger)   : '';
     }
 
     // ==========================================================================
@@ -3125,7 +3125,7 @@
         document.getElementById('fahrgassen_toggle').classList.add('active');
         document.getElementById('fahrgassen_settings').classList.add('open');
         if (state.fahrgassenBreite > 0) {
-          document.getElementById('fahrgassen_breite').value = formatDE(state.fahrgassenBreite);
+          document.getElementById('fahrgassen_breite').value = toInputValue(state.fahrgassenBreite);
           document.getElementById('fahrgassen_saved').textContent = state.fahrgassenBreite + ' m -> ~' + (1 / state.fahrgassenBreite * 100).toFixed(1) + '% weniger Körner';
         }
       }
@@ -3133,7 +3133,7 @@
         document.getElementById('einheit_groesse_toggle').classList.add('active');
         document.getElementById('einheit_groesse_settings').classList.add('open');
         if (state.koernerProEinheit > 0) {
-          document.getElementById('koerner_pro_einheit').value = formatDE(state.koernerProEinheit);
+          document.getElementById('koerner_pro_einheit').value = toInputValue(state.koernerProEinheit);
           if (state.koernerProEinheit !== 50000) {
             document.getElementById('einheit_groesse_saved').textContent = state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit';
           }

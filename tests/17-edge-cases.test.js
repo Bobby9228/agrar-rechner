@@ -1,7 +1,7 @@
 /**
  * Tests for remaining edge cases and utility functions:
  * - fmt() formatting
- * - formatDE() number to string
+ * - toInputValue() number to string
  * - getTabKornerGesamt / getTabTotalDuenger with various inputs
  * - getTabTotalEinheiten with fahrgassen
  * - lv() migration edge cases
@@ -48,24 +48,24 @@ describe('fmt()', () => {
   });
 });
 
-describe('formatDE()', () => {
+describe('toInputValue()', () => {
   let w;
   beforeEach(() => { w = createDom().window; });
 
   it('replaces dot with comma', () => {
-    expect(w.formatDE(3.5)).toBe('3,5');
+    expect(w.toInputValue(3.5)).toBe('3,5');
   });
 
   it('integer stays integer (no comma)', () => {
-    expect(w.formatDE(10)).toBe('10');
+    expect(w.toInputValue(10)).toBe('10');
   });
 
   it('0 stays 0', () => {
-    expect(w.formatDE(0)).toBe('0');
+    expect(w.toInputValue(0)).toBe('0');
   });
 
   it('works with very small decimals', () => {
-    expect(w.formatDE(0.1)).toBe('0,1');
+    expect(w.toInputValue(0.1)).toBe('0,1');
   });
 });
 
