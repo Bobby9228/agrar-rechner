@@ -1216,6 +1216,7 @@
           <span class="value small" id="r_diff_ha">—</span>
         </div>
       </div>
+      <div id="r_carryover_hint" style="font-size:0.85rem;padding:4px 0;"></div>
 
       <div id="r_drill_section" style="display:none">
         <div class="drill-separator"></div>
@@ -2650,14 +2651,13 @@
       }
 
       // --- Carryover-Hint in der Ergebnis-Card ---
-      // Dynamisch erzeugtes DOM-Element (#r_carryover_hint) unter der SOLL/IST-Zeile.
       // Zeigt Überträge aus Ersparnissen (blau, ↗) oder Mehrbedarfen (rot, ↘) für den aktiven Tab.
       var carryoverHint = document.getElementById('r_carryover_hint');
       if (!carryoverHint) {
+        // Fallback: nur zur Sicherheit, Element sollte bereits im HTML existieren
         carryoverHint = document.createElement('div');
         carryoverHint.id = 'r_carryover_hint';
         carryoverHint.style.cssText = 'font-size:0.85rem;padding:4px 0;';
-        // Element wird direkt nach der SOLL/IST-Section eingefügt
         sollIstSection.parentNode.insertBefore(carryoverHint, sollIstSection.nextSibling);
       }
       carryoverHint.innerHTML = '';
