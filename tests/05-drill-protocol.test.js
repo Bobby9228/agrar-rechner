@@ -116,8 +116,8 @@ describe('Drill-Protokoll', () => {
       w.drillAdd();
 
       const entry = w.getActiveReiter().entries[0];
-      // Time should be a string in HH:MM format
-      expect(entry.time).toMatch(/^\d{2}:\d{2}$/);
+      // Time should be a string in HH:MM or HH:MM:SS format
+      expect(entry.time).toMatch(/^\d{2}:\d{2}(:\d{2})?$/);
     });
   });
 

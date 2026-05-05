@@ -70,15 +70,6 @@ describe('Blind spots — renderTabs callbacks', () => {
     expect(typeof input.onfocus).toBe('function');
   });
 
-  it('tab name input onchange calls renameReiter', () => {
-    const inputs = doc.querySelectorAll('.tab-name-input');
-    const input = inputs[1];
-    input.value = 'Neuer Name';
-    input.onchange();
-
-    expect(w.state.reiter[1].name).toBe('Neuer Name');
-  });
-
   it('tab name input onblur calls renameReiter', () => {
     const inputs = doc.querySelectorAll('.tab-name-input');
     const input = inputs[1];

@@ -1609,8 +1609,7 @@
         input.value = r.name;
         input.setAttribute('aria-label', 'Tab-Name');
         input.onfocus = function() { this.select(); };
-        input.onchange = function() { renameReiter(i, input.value); };
-        input.onblur   = function() { renameReiter(i, input.value); };
+        input.onblur  = function() { renameReiter(i, input.value); };
         input.onkeydown = function(evt) {
           if (evt.key === 'Enter') { input.blur(); }        // Enter = bestätigen
           else { evt.stopPropagation(); }                    // Sonstige Keys nicht an App durchreichen
@@ -1643,7 +1642,15 @@
 
     // Erstellt einen neuen Tab, aktiviert ihn und fokussiert das Hektar-Feld.
     function addReiter() {
-      var idx = state.reiter.length + 1;
+      var maxIdx = 0;
+      state.reiter.forEach(function(r) {
+        var match = r.name.match(/^Tab (\d+)$/);
+        if (match) {
+          var n = parseInt(match[1], 10);
+          if (n > maxIdx) maxIdx = n;
+        }
+      });
+      var idx = maxIdx + 1;
       state.reiter.push({
         name: 'Tab ' + idx,
         hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: []
@@ -2428,6 +2435,9 @@
       var gesamtDuenger = parseDE(document.getElementById('drill_duenger').value) || 0;
       var zaehlerStand = parseDE(document.getElementById('drill_hektar').value) || 0;
 
+      // Ein einziger Timestamp für alle Einträge dieses Aufrufs
+      var now = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
       // Prüft ob die Tab-Liste im DOM existiert (renderDrillTabList() wurde aufgerufen)
       var hasTabList = document.getElementById('dtl_prio_0') !== null;
 
@@ -2443,13 +2453,13 @@
           einheit: gesamtEinheit,
           zaehlerStand: zaehlerStand,
           duenger: gesamtDuenger,
-          time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+          time: now
         });
         r.entries.push({
           einheit: gesamtEinheit,
           zaehlerStand: zaehlerStand,
           duenger: gesamtDuenger,
-          time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+          time: now
         });
         document.getElementById('drill_einheit').value = '';
         document.getElementById('drill_duenger').value = '';
@@ -2488,7 +2498,7 @@
         einheit: gesamtEinheit,
         zaehlerStand: zaehlerStand,
         duenger: gesamtDuenger,
-        time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+        time: now
       });
       var mlIdx = state.machineLog.length - 1;  // Index des neuen Eintrags
 
@@ -2507,7 +2517,7 @@
             einheit: einheitVal,
             duenger: duengerVal,
             zaehlerStand: zaehlerStand,
-            time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+            time: now,
             mlIdx: mlIdx  // Verknüpfung zum machineLog-Eintrag
           };
           r.entries.push(entry);
