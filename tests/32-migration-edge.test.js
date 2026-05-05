@@ -28,7 +28,7 @@ describe('lv() migration edge cases', () => {
       // no duenger, no entries
     });
 
-    w.lv();
+    w.loadState();
 
     expect(w.state.reiter).toBeDefined();
     expect(w.state.reiter.length).toBe(1);
@@ -49,7 +49,7 @@ describe('lv() migration edge cases', () => {
       ]
     });
 
-    w.lv();
+    w.loadState();
 
     expect(w.state.reiter[0].entries.length).toBe(2);
     expect(w.state.reiter[0].entries[0].einheit).toBe(5);
@@ -68,7 +68,7 @@ describe('lv() migration edge cases', () => {
       entries: []
     });
 
-    w.lv();
+    w.loadState();
 
     // #105 fix: tab-level istHektar is now 0 (not undefined) after migration
     expect(w.state.reiter[0].istHektar).toBe(0);
@@ -77,17 +77,17 @@ describe('lv() migration edge cases', () => {
   });
   it('does not crash when parsed state is null', () => {
     store['mais_rechner'] = 'null';
-    expect(() => w.lv()).not.toThrow();
+    expect(() => w.loadState()).not.toThrow();
   });
 
   it('does not crash when parsed state is array (invalid format)', () => {
     store['mais_rechner'] = JSON.stringify([{ foo: 'bar' }]);
-    expect(() => w.lv()).not.toThrow();
+    expect(() => w.loadState()).not.toThrow();
   });
 
   it('does not crash when parsed state is a string (invalid format)', () => {
     store['mais_rechner'] = JSON.stringify('just a string');
-    expect(() => w.lv()).not.toThrow();
+    expect(() => w.loadState()).not.toThrow();
   });
 
   it('ensures machineLog exists after migration', () => {
@@ -97,7 +97,7 @@ describe('lv() migration edge cases', () => {
       // no machineLog
     });
 
-    w.lv();
+    w.loadState();
 
     expect(w.state.machineLog).toBeDefined();
     expect(Array.isArray(w.state.machineLog)).toBe(true);
@@ -110,7 +110,7 @@ describe('lv() migration edge cases', () => {
       machineLog: [{ einheit: 5, zaehlerStand: 3, duenger: 100, time: '09:00' }]
     });
 
-    w.lv();
+    w.loadState();
 
     expect(w.state.machineLog.length).toBe(1);
   });
@@ -126,7 +126,7 @@ describe('lv() migration edge cases', () => {
       koerner: 80000
     });
 
-    w.lv();
+    w.loadState();
 
     expect(w.state.reiter[0].hektar).toBe(20);
     expect(w.state.reiter[0].koerner).toBe(90000);
@@ -141,7 +141,7 @@ describe('lv() migration edge cases', () => {
       // no zaehlerstand
     });
 
-    w.lv();
+    w.loadState();
 
     expect(w.state.zaehlerstand).toBe(0);
   });
@@ -154,7 +154,7 @@ describe('lv() migration edge cases', () => {
       entries: [{ einheit: 5, zaehlerStand: 3, duenger: 100, time: '09:00' }]
     });
 
-    w.lv();
+    w.loadState();
 
     expect(w.state.reiter[0].entries.length).toBe(1);
     expect(w.state.entries).toBeUndefined();
@@ -169,7 +169,7 @@ describe('lv() migration edge cases', () => {
       fahrgassenBreite: 0
     });
 
-    w.lv();
+    w.loadState();
 
     // Tab already has an entry → global entry should NOT be added
     expect(w.state.reiter[0].entries.length).toBe(1);
@@ -184,7 +184,7 @@ describe('lv() migration edge cases', () => {
       // no einheitGroesseEnabled
     });
 
-    w.lv();
+    w.loadState();
 
     // Migration 4 sets default value false for einheitGroesseEnabled
     expect(w.state.einheitGroesseEnabled).toBe(false);
@@ -197,7 +197,7 @@ describe('lv() migration edge cases', () => {
       // no koernerProEinheit
     });
 
-    w.lv();
+    w.loadState();
 
     // Migration 4 sets default value 50000 for koernerProEinheit
     expect(w.state.koernerProEinheit).toBe(50000);

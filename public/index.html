@@ -1356,7 +1356,7 @@
     <script>
     // ============================================================================
     // STATE — Zentrales Zustandsobjekt der gesamten App
-    // Wird nach jeder Änderung via sv() in localStorage geschrieben (JSON).
+    // Wird nach jeder Änderung via saveState() in localStorage geschrieben (JSON).
     // Struktur:
     //   reiter[]     — Array von Feld-Tabs (jeder Tab = ein Feld mit eigenen Werten)
     //   activeReiter — Index des aktuell ausgewählten Tabs
@@ -1397,7 +1397,7 @@
     //   - SOLL / IST / Abweichung (wenn SOLL-Fläche gesetzt ist)
     //
     // Wird aufgerufen bei: onblur und Enter-Key auf #zaehler_stand
-    // Side Effect: state.zaehlerstand wird aktualisiert, sv() aufgerufen
+    // Side Effect: state.zaehlerstand wird aktualisiert, saveState() aufgerufen
     // ==========================================================================
     function zaehlerUpdate() {
       var z = parseDE(document.getElementById('zaehler_stand').value);
@@ -1450,15 +1450,15 @@
         document.getElementById('zaehler_soll_ist').style.display = 'none';
       }
 
-      sv();  // Geänderten zaehlerstand persisiteren
+      saveState();  // Geänderten zaehlerstand persisiteren
     }
 
     // ==========================================================================
     // PERSISTENZ — localStorage (JSON)
     //
     // Key: 'mais_rechner'
-    // sv()  — Speichert state als JSON in localStorage
-    // lv()  — Lädt state aus localStorage, führt Migrationen durch
+    // saveState()  — Speichert state als JSON in localStorage
+    // loadState()  — Lädt state aus localStorage, führt Migrationen durch
     //
     // Migrationen (lv):
     //   1. Altes Schema (einzelne Felder ohne Tabs) → Tab-Schema
@@ -1468,13 +1468,13 @@
     // ==========================================================================
 
     // --- Persistenz: Speichern ---
-    function sv() {
+    function saveState() {
       try { localStorage.setItem('mais_rechner', JSON.stringify(state)); } catch(e) {}
       // Fehler werden still ignoriert (z.B. bei vollem Speicher oder privatem Modus)
     }
 
     // --- Persistenz: Laden + Migrieren ---
-    function lv() {
+    function loadState() {
       try {
         var raw = localStorage.getItem('mais_rechner');
         if (!raw) return;  // Keine gespeicherten Daten → Default-state behalten
@@ -1664,7 +1664,7 @@
       state.activeReiter = state.reiter.length - 1;  // Neuen Tab sofort aktivieren
       syncInputsFromState();
       renderTabs();
-      sv();
+      saveState();
       document.getElementById('hektar').focus();
     }
 
@@ -1707,7 +1707,7 @@
       }
       syncInputsFromState();
       renderTabs();
-      sv();
+      saveState();
       renderResults();
     }
 
@@ -1720,7 +1720,7 @@
       state.activeView = null;   // Zurück zur Feld-Ansicht (nicht Protokoll)
       syncInputsFromState();     // Dann Ziel-Tab in die Inputs laden
       renderTabs();
-      sv();
+      saveState();
       renderResults();
       renderView();
     }
@@ -1739,7 +1739,7 @@
         renderDrillTabList();
       }
       renderTabs();
-      sv();
+      saveState();
       renderView();
     }
 
@@ -1786,7 +1786,7 @@
     // Speichert den neuen Tab-Namen (max. 20 Zeichen) und rendert die Tab-Leiste neu.
     function renameReiter(idx, name) {
       state.reiter[idx].name = name.substring(0, 20);
-      sv();
+      saveState();
       renderTabs();
     }
 
@@ -1813,7 +1813,7 @@
         // Bei Deaktivierung: Info-Text löschen
         document.getElementById('fahrgassen_saved').textContent = '';
       }
-      sv();
+      saveState();
     }
 
     // Aktualisiert die Fahrgassenbreite und zeigt eine Info-Zeile an.
@@ -1832,7 +1832,7 @@
       } else {
         document.getElementById('fahrgassen_saved').textContent = '';
       }
-      sv();
+      saveState();
     }
 
     // ==========================================================================
@@ -1854,7 +1854,7 @@
       if (!state.einheitGroesseEnabled) {
         document.getElementById('einheit_groesse_saved').textContent = '';
       }
-      sv();
+      saveState();
     }
 
     // Liest die benutzerdefinierte Körner-pro-Einheit aus und speichert sie.
@@ -1868,7 +1868,7 @@
         info = state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit';
       }
       document.getElementById('einheit_groesse_saved').textContent = info;
-      sv();
+      saveState();
       // Ergebnis sofort neu berechnen, falls bereits Daten vorhanden
       var r = getActiveReiter();
       if (r.hektar > 0 && r.koerner > 0) {
@@ -1937,7 +1937,7 @@
       }
 
       // --- Fertig: Speichern und neu Rendern ---
-      sv();
+      saveState();
       renderTabs();
       renderResults();
       renderView();
@@ -2157,6 +2157,19 @@
     // Ausgaben:  12.5 → "12,5"
     // ==========================================================================
 
+    // Berechnet Verbrauchsraten (Einheiten/ha, Dünger/ha) für einen bestimmten Tab.
+    function getTabRates(tabIdx) {
+      var r = state.reiter[tabIdx];
+      if (!r) return { unitsPerHa: 0, duengerPerHa: 0 };
+      var fgFactor = 1;
+      if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
+        fgFactor = (state.fahrgassenBreite - 1) / state.fahrgassenBreite;
+      }
+      var unitsPerHa = r.koerner * fgFactor / state.koernerProEinheit;
+      var duengerPerHa = r.duenger || 0;
+      return { unitsPerHa: unitsPerHa, duengerPerHa: duengerPerHa };
+    }
+
     // Formatiert eine Zahl für die Anzeige: eine Dezimalstelle, Komma als Trennzeichen.
     // Beispiele: 12.555 → "12,6" | 12.0 → "12,0" | 0 → "0,0"
     function fmt(n) {
@@ -2250,7 +2263,7 @@
     // ==========================================================================
 
     // Speichert die Prioritäten der Tabs (Key: Tab-Index, Value: Priorität 0-N)
-    // Wird aus state.drillPriorities initialisiert (oder aus localStorage nach lv())
+    // Wird aus state.drillPriorities initialisiert (oder aus localStorage nach loadState())
     var drillPriorities = state.drillPriorities || {};
 
     // Baut die Drill-Tab-Liste im Protokoll-Panel auf.
@@ -2292,7 +2305,7 @@
           prioBtn.textContent = next === 0 ? '—' : String(next);
           prioBtn.classList.toggle('active', next > 0);
           drillPriorities[i] = next;
-          sv();            // Persistenz: Prioritäten in localStorage speichern
+          saveState();            // Persistenz: Prioritäten in localStorage speichern
           drillCalcAll();   // Carryover + Prognose neu berechnen
         };
 
@@ -2460,6 +2473,7 @@
           einheit: gesamtEinheit,
           zaehlerStand: zaehlerStand,
           duenger: gesamtDuenger,
+          tabIdx: state.activeReiter,
           time: now
         });
         r.entries.push({
@@ -2471,7 +2485,7 @@
         document.getElementById('drill_einheit').value = '';
         document.getElementById('drill_duenger').value = '';
         document.getElementById('drill_hektar').value = '';
-        sv();
+        saveState();
         renderResults();
         return;
       }
@@ -2547,7 +2561,7 @@
       document.getElementById('drill_duenger').value = '';
       document.getElementById('drill_hektar').value = '';
 
-      sv();
+      saveState();
       renderDrillTabList();  // Tab-Liste mit neuen Bedarfswerten aktualisieren
       renderResults();       // Ergebnis-Card + Maschinen-Protokoll + Drill-Protokoll aktualisieren
       drillCalcAll();        // Prognose neu berechnen
@@ -2565,7 +2579,7 @@
           if (e.mlIdx > idx) e.mlIdx--;
         });
       });
-      sv();
+      saveState();
       renderResults();
     }
 
@@ -2574,7 +2588,7 @@
     function drillRemove(tabIdx, entryIdx) {
       if (!state.reiter[tabIdx] || entryIdx >= state.reiter[tabIdx].entries.length) return;
       state.reiter[tabIdx].entries.splice(entryIdx, 1);
-      sv();
+      saveState();
       renderResults();
     }
 
@@ -2838,13 +2852,6 @@
         mlTitle.className = 'drill-entry-tab-header';
         mlTitle.textContent = 'Maschinen-Protokoll';
         mlContainer.appendChild(mlTitle);
-        // Verbrauchsraten einmal berechnen
-        var fgFactor = 1;
-        if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
-          fgFactor = (state.fahrgassenBreite - 1) / state.fahrgassenBreite;
-        }
-        var unitsPerHa = r.koerner * fgFactor / state.koernerProEinheit;
-        var duengerPerHa = r.duenger || 0;
         // Kumulativ: Restmenge im Tank + neu eingefuellt
         var cumEinheit = 0, cumDuenger = 0;
 
@@ -2877,25 +2884,28 @@
           // Prognose: Rest aus vorheriger Befuellung + neu eingefuellt
           // Formel für kumulierte Restmenge nach Fahrt von prevZählerstand zu m.zaehlerStand:
           //   cumEinheit = max(0, cumEinheit - haDriven × unitsPerHa) + m.einheit
-          // wobei unitsPerHa = r.koerner × fahrgassenFaktor / koernerProEinheit
           // Erste Befüllung (mi===0): cum wird auf Initialbefüllung gesetzt (kein Verbrauch davor).
-          if (r.koerner > 0 && (m.einheit > 0 || m.duenger > 0 || cumEinheit > 0 || cumDuenger > 0)) {
+          var tabR = state.reiter[m.tabIdx !== undefined ? m.tabIdx : state.activeReiter] || r;
+          var rates = getTabRates(m.tabIdx !== undefined ? m.tabIdx : state.activeReiter);
+          var mlUnitsPerHa = rates.unitsPerHa;
+          var mlDuengerPerHa = rates.duengerPerHa;
+          if (tabR.koerner > 0 && (m.einheit > 0 || m.duenger > 0 || cumEinheit > 0 || cumDuenger > 0)) {
             if (mi === 0) {
               cumEinheit = m.einheit;
               cumDuenger = m.duenger;
             } else {
               var prevM = state.machineLog[mi - 1];
               var haDriven = Math.max(0, (m.zaehlerStand || 0) - (prevM.zaehlerStand || 0));
-              cumEinheit = Math.max(0, cumEinheit - haDriven * unitsPerHa) + m.einheit;
-              cumDuenger = Math.max(0, cumDuenger - haDriven * duengerPerHa) + m.duenger;
+              cumEinheit = Math.max(0, cumEinheit - haDriven * mlUnitsPerHa) + m.einheit;
+              cumDuenger = Math.max(0, cumDuenger - haDriven * mlDuengerPerHa) + m.duenger;
             }
             var prognoseParts = [];
-            if (cumEinheit > 0 && unitsPerHa > 0) {
-              var prognoseSaat = (m.zaehlerStand || 0) + cumEinheit / unitsPerHa;
+            if (cumEinheit > 0 && mlUnitsPerHa > 0) {
+              var prognoseSaat = (m.zaehlerStand || 0) + cumEinheit / mlUnitsPerHa;
               prognoseParts.push('<span><span class="prog-label">Saat leer bei</span> <span class="prog-val">~' + fmt(prognoseSaat) + ' ha</span></span>');
             }
-            if (cumDuenger > 0 && duengerPerHa > 0) {
-              var prognoseDuenger = (m.zaehlerStand || 0) + cumDuenger / duengerPerHa;
+            if (cumDuenger > 0 && mlDuengerPerHa > 0) {
+              var prognoseDuenger = (m.zaehlerStand || 0) + cumDuenger / mlDuengerPerHa;
               prognoseParts.push('<span><span class="prog-label">Dünger leer bei</span> <span class="prog-val">~' + fmt(prognoseDuenger) + ' ha</span></span>');
             }
             if (prognoseParts.length > 0) {
@@ -3065,7 +3075,7 @@
       document.getElementById('drill_section').style.display = 'none';
       syncInputsFromState();
       renderTabs();
-      sv();
+      saveState();
     }
 
     // Setzt ALLE Daten zurück: Alle Tabs, maschinelles Log, globale Einstellungen.
@@ -3106,7 +3116,7 @@
       drillPriorities = {};
       state.drillPriorities = drillPriorities;
       renderTabs();
-      sv();
+      saveState();
     }
 
     // --- Init after DOM is ready ---
@@ -3114,7 +3124,7 @@
     // INIT — App-Initialisierung nach DOMContentLoaded
     //
     // Reihenfolge (wichtig!):
-    //   1. lv()                    — State aus localStorage laden + migrieren
+    //   1. loadState()                    — State aus localStorage laden + migrieren
     //   2. syncInputsFromState()   — State → Input-Felder
     //   3. renderTabs()            — Tab-Leiste aufbauen
     //   4. renderView()            — Sichtbarkeit je nach Ansicht setzen
@@ -3123,7 +3133,7 @@
     //   6. renderResults()         — Ergebnis-Card falls Daten vorhanden
     // ==========================================================================
     function initUI() {
-      lv();                          // 1. State laden
+      loadState();                          // 1. State laden
       syncInputsFromState();          // 2. Inputs beschreiben
       renderTabs();                   // 3. Tab-Leiste
       renderView();                   // 4. Ansicht (Feld/Protokoll)

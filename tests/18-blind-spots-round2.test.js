@@ -260,7 +260,7 @@ describe('initUI restores einheitGroesse with custom value', () => {
   it('restores einheitGroesseEnabled and shows settings', () => {
     w.state.einheitGroesseEnabled = true;
     w.state.koernerProEinheit = 80000;
-    w.sv();
+    w.saveState();
     w.initUI();
 
     var toggle = w.document.getElementById('einheit_groesse_toggle');
@@ -273,7 +273,7 @@ describe('initUI restores einheitGroesse with custom value', () => {
   it('shows custom koernerProEinheit info text', () => {
     w.state.einheitGroesseEnabled = true;
     w.state.koernerProEinheit = 80000;
-    w.sv();
+    w.saveState();
     w.initUI();
 
     var saved = w.document.getElementById('einheit_groesse_saved');
@@ -284,7 +284,7 @@ describe('initUI restores einheitGroesse with custom value', () => {
   it('does NOT show info text when koernerProEinheit is default 50000', () => {
     w.state.einheitGroesseEnabled = true;
     w.state.koernerProEinheit = 50000;
-    w.sv();
+    w.saveState();
     w.initUI();
 
     var saved = w.document.getElementById('einheit_groesse_saved');
@@ -353,7 +353,7 @@ describe('lv() migration: ensures entries array on all reiters', () => {
       machineLog: []
     };
     w.localStorage.setItem('mais_rechner', JSON.stringify(migratedState));
-    w.lv();
+    w.loadState();
     expect(w.state.reiter[0].entries).toEqual([]);
     expect(w.state.reiter[1].entries.length).toBe(1);
   });
@@ -366,7 +366,7 @@ describe('lv() migration: ensures entries array on all reiters', () => {
       machineLog: []
     };
     w.localStorage.setItem('mais_rechner', JSON.stringify(migratedState));
-    w.lv();
+    w.loadState();
     expect(w.state.reiter).toBeTruthy();
     expect(w.state.reiter.length).toBe(1);
     expect(w.state.reiter[0].entries).toEqual([]);

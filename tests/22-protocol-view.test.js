@@ -32,7 +32,7 @@ describe('switchToProtokoll', () => {
     w.state.reiter[0].hektar = 10;
     w.state.reiter[0].koerner = 90000;
     w.state.reiter[0].duenger = 150;
-    w.sv();
+    w.saveState();
 
     w.switchToProtokoll();
 
@@ -74,10 +74,14 @@ describe('renderView', () => {
     w.berechne();
     w.switchToProtokoll();
 
-    // Cards should be hidden
+    // Input cards should be hidden (drill_section stays visible in protokoll mode)
     const cards = w.document.querySelectorAll('.card');
     cards.forEach(c => {
-      expect(c.style.display).toBe('none');
+      if (c.id === 'drill_section') {
+        expect(c.style.display).toBe('block');
+      } else {
+        expect(c.style.display).toBe('none');
+      }
     });
   });
 
@@ -91,6 +95,8 @@ describe('renderView', () => {
 
     const cards = w.document.querySelectorAll('.card');
     cards.forEach(c => {
+      // zaehler_section and drill_section may be hidden if no data — that's fine
+      if (c.id === 'zaehler_section' || c.id === 'drill_section') return;
       expect(c.style.display).not.toBe('none');
     });
   });

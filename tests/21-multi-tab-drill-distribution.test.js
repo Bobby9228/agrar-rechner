@@ -21,7 +21,7 @@ function setupMultiTab(w) {
   w.state.reiter[2].koerner = 80000;
   w.state.reiter[2].duenger = 120;
   w.state.reiter[2].entries = [];
-  w.sv();
+  w.saveState();
 }
 
 describe('renderDrillTabList', () => {
@@ -444,7 +444,7 @@ describe('drillMachineRemove', () => {
       { einheit: 4, duenger: 200, zaehlerStand: 3, time: '10:00' },
       { einheit: 3, duenger: 150, zaehlerStand: 6, time: '11:00' },
     ];
-    w.sv();
+    w.saveState();
 
     w.drillMachineRemove(0);
 
@@ -504,7 +504,7 @@ describe('drillPriorities persistence', () => {
     expect(w.drillPriorities[1]).toBe(1);
 
     // Simulate page reload: lv() is called which rehydrates state
-    w.lv();
+    w.loadState();
 
     // Priorities restored from localStorage
     expect(w.drillPriorities[0]).toBe(1);
@@ -521,7 +521,7 @@ describe('drillPriorities persistence', () => {
       zaehlerstand: 0
     });
 
-    w.lv();
+    w.loadState();
 
     // Should default to {}
     expect(w.drillPriorities).toEqual({});

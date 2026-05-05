@@ -123,7 +123,7 @@ describe('lv() migration edge cases', () => {
       entries: [{ einheit: 5, duenger: 100 }]
     };
     w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
-    w.lv();
+    w.loadState();
     expect(w.state.reiter).toBeTruthy();
     expect(w.state.reiter.length).toBe(1);
     expect(w.state.reiter[0].hektar).toBe(10);
@@ -137,7 +137,7 @@ describe('lv() migration edge cases', () => {
       entries: [{ einheit: 3, duenger: 50 }]
     };
     w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
-    w.lv();
+    w.loadState();
     expect(w.state.reiter[0].entries.length).toBe(1);
     // Global entries should be removed
     expect(w.state.entries).toBeUndefined();
@@ -152,7 +152,7 @@ describe('lv() migration edge cases', () => {
       entries: [{ einheit: 3 }]
     };
     w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
-    w.lv();
+    w.loadState();
     // Tab 1 already has entries, should keep them
     expect(w.state.reiter[0].entries.length).toBe(1);
     expect(w.state.reiter[0].entries[0].einheit).toBe(2);
@@ -166,7 +166,7 @@ describe('lv() migration edge cases', () => {
     };
     delete oldState.machineLog;
     w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
-    w.lv();
+    w.loadState();
     expect(w.state.machineLog).toEqual([]);
   });
 });
