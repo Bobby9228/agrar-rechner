@@ -1,13 +1,9 @@
 /**
  * Tests for Dashboard with Fahrgassen feature.
  *
- * CRITICAL BUG (Z.2775): renderDashboard() calculates totalEinheiten as
- *   r.hektar * r.koerner / state.koernerProEinheit
- * but berechne() uses getTabTotalEinheiten(r) which applies the fahrgassen factor:
+ * renderDashboard() uses getTabTotalEinheiten(r) which applies the fahrgassen factor:
  *   faktor = (fahrgassenBreite - 1) / fahrgassenBreite
- * So dashboard shows WRONG totals when fahrgassenEnabled=true.
- *
- * These tests VERIFY the current buggy behavior, then document the expected correct behavior.
+ * So dashboard correctly shows fahrgassen-adjusted totals.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createDom } from './helpers.js';
@@ -22,13 +18,12 @@ describe('Dashboard + Fahrgassen', () => {
     store = result.store;
   });
 
-  // ── Bug verification: dashboard ignores fahrgassen factor ─────────────────
+  // ── Dashboard applies fahrgassen factor via getTabTotalEinheiten() ────────
 
-  it('BUG: dashboard shows raw hectare*koerner even when fahrgassenEnabled=true', () => {
+  it('dashboard shows fahrgassen-adjusted units in summary', () => {
     // Setup: 1 tab, 10 ha, 80000 körner/ha, fahrgassen enabled (breite=4)
-    // With fahrgassen, faktor = (4-1)/4 = 0.75
+    // faktor = (4-1)/4 = 0.75
     // Correct units = 10 * 80000 / 50000 * 0.75 = 12.0 units
-    // Bug shows:   10 * 80000 / 50000        = 16.0 units
     w.state.fahrgassenEnabled = true;
     w.state.fahrgassenBreite = 4;
     w.state.reiter[0].hektar = 10;
@@ -41,13 +36,11 @@ describe('Dashboard + Fahrgassen', () => {
     const statsEls = content.querySelectorAll('.dashboard-summary-stat');
     const einheitenVal = statsEls[1]?.querySelector('.dashboard-summary-value')?.textContent || '';
 
-    // Bug: einheiten remaining shows ~16.0 (wrong, ignores fahrgassen factor)
-    // Correct: should show ~12.0
-    const rawUnits = (10 * 80000 / 50000).toFixed(1).replace('.', ',');
-    expect(einheitenVal).toBe(rawUnits); // BUG: shows 16,0 instead of 12,0
+    // Correct: 12,0 (fahrgassen factor applied)
+    expect(einheitenVal).toBe('12,0');
   });
 
-  it('BUG: per-tab card also ignores fahrgassen factor', () => {
+  it('per-tab card shows fahrgassen-adjusted units', () => {
     w.state.fahrgassenEnabled = true;
     w.state.fahrgassenBreite = 4;
     w.state.reiter[0].hektar = 10;
@@ -60,9 +53,8 @@ describe('Dashboard + Fahrgassen', () => {
     const tab1Stats = cards[0].querySelectorAll('.dashboard-stat');
     const einheitenCardVal = tab1Stats[2]?.querySelector('.dashboard-stat-value')?.textContent || '';
 
-    // Bug: should be 12,0 but shows 16,0
-    const rawUnits = (10 * 80000 / 50000).toFixed(1).replace('.', ',');
-    expect(einheitenCardVal).toBe(rawUnits);
+    // Correct: 12,0 (fahrgassen factor applied)
+    expect(einheitenCardVal).toBe('12,0');
   });
 
   it('dashboard summary flaeche is always correct (ha unaffected by fahrgassen)', () => {
@@ -113,14 +105,14 @@ describe('Dashboard + Fahrgassen', () => {
     expect(duengerVal).toBe('2.000 kg'); // 10 ha * 200 kg = 2000 kg
   });
 
-  it('BUG: multi-tab dashboard: each tab shows wrong units when fahrgassen enabled', () => {
+  it('multi-tab dashboard: each tab shows fahrgassen-adjusted units', () => {
     w.state.fahrgassenEnabled = true;
     w.state.fahrgassenBreite = 4;
-    // Tab 1: 5 ha, 80000 k — raw=8.0, correct=6.0
+    // Tab 1: 5 ha, 80000 k — faktor=0.75 → 5*80000/50000*0.75 = 6.0
     w.state.reiter[0].hektar = 5;
     w.state.reiter[0].koerner = 80000;
     w.state.reiter[0].entries = [];
-    // Tab 2: 10 ha, 90000 k — raw=18.0, correct=13.5
+    // Tab 2: 10 ha, 90000 k — faktor=0.75 → 10*90000/50000*0.75 = 13.5
     w.addReiter();
     w.state.reiter[1].hektar = 10;
     w.state.reiter[1].koerner = 90000;
@@ -133,12 +125,12 @@ describe('Dashboard + Fahrgassen', () => {
     // Tab 1 card — 3rd stat = Einheiten verbl.
     const tab1Stats = cards[0].querySelectorAll('.dashboard-stat');
     const tab1Units = tab1Stats[2]?.querySelector('.dashboard-stat-value')?.textContent || '';
-    expect(tab1Units).toBe('8,0'); // Bug: raw instead of 6,0
+    expect(tab1Units).toBe('6,0'); // fahrgassen-corrected
 
     // Tab 2 card
     const tab2Stats = cards[1].querySelectorAll('.dashboard-stat');
     const tab2Units = tab2Stats[2]?.querySelector('.dashboard-stat-value')?.textContent || '';
-    expect(tab2Units).toBe('18,0'); // Bug: raw instead of 13,5
+    expect(tab2Units).toBe('13,5'); // fahrgassen-corrected
   });
 
   it('openDashboard adds open class to sheet and overlay', () => {

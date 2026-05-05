@@ -3186,7 +3186,7 @@
       reiter.forEach(function(r) {
         if (r.hektar > 0 && r.koerner > 0) {
           totalHa += r.hektar;
-          totalEinheiten += r.hektar * r.koerner / state.koernerProEinheit;
+          totalEinheiten += getTabTotalEinheiten(r);
           totalDuenger += r.hektar * r.duenger;
           totalUsedEinheit += r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
           totalUsedDuenger += r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
@@ -3278,7 +3278,7 @@
         var pct = 0;
         var statusClass = 'na';
         if (r.hektar > 0 && r.koerner > 0) {
-          einheiten = r.hektar * r.koerner / state.koernerProEinheit;
+          einheiten = getTabTotalEinheiten(r);
           usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
           duengerTotal = r.hektar * r.duenger;
           usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
