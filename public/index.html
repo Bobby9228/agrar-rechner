@@ -2174,10 +2174,12 @@
       if (parts.length > 1) {
         // Komma gefunden → Dezimalzahl
         // Alle Tausenderpunkte entfernen, dann Komma → Punkt
-        return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+        var result = parseFloat(s.replace(/\./g, '').replace(',', '.'));
+        return isNaN(result) ? 0 : result;
       }
       // Kein Komma → nur Tausenderpunkte entfernen
-      return parseFloat(s.replace(/\./g, '')) || 0;
+      var result = parseFloat(s.replace(/\./g, ''));
+      return isNaN(result) ? 0 : result;
     }
 
     // Bereinigt Benutzereingaben während des Tippens.
