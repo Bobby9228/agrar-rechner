@@ -2295,8 +2295,10 @@
         var prioBtn = document.createElement('button');
         prioBtn.className = 'drill-prio-btn';
         prioBtn.id = 'dtl_prio_' + i;
-        prioBtn.textContent = '—';
-        prioBtn.setAttribute('data-prio', '0');
+        var initPrio = Object.prototype.hasOwnProperty.call(drillPriorities, String(i)) ? drillPriorities[i] : 0;
+        prioBtn.textContent = initPrio === 0 ? '—' : String(initPrio);
+        prioBtn.setAttribute('data-prio', String(initPrio));
+        prioBtn.classList.toggle('active', initPrio > 0);
         prioBtn.onclick = function() {
           var current = parseInt(prioBtn.getAttribute('data-prio')) || 0;
           var maxPrio = state.reiter.length;
@@ -2396,8 +2398,8 @@
           prioritized.push({ idx: i, prio: prio, reiter: r });
         }
       });
-      // Sortiere aufsteigend: Prio 1 = zuerst, Prio 2 = danach, etc.
-      prioritized.sort(function(a, b) { return a.prio - b.prio; });
+      // Sortiere absteigend: Höchste Zahl = zuerst bedient (Prio 2 vor Prio 1)
+      prioritized.sort(function(a, b) { return b.prio - a.prio; });
 
       // --- Verteilung: Höchste Priorität zuerst, Rest fließt weiter ---
       var remEinheit = gesamtEinheit;
@@ -2562,6 +2564,8 @@
       document.getElementById('drill_hektar').value = '';
 
       saveState();
+      drillPriorities = {};
+      state.drillPriorities = drillPriorities;
       renderDrillTabList();  // Tab-Liste mit neuen Bedarfswerten aktualisieren
       renderResults();       // Ergebnis-Card + Maschinen-Protokoll + Drill-Protokoll aktualisieren
       drillCalcAll();        // Prognose neu berechnen

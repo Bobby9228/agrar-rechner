@@ -145,22 +145,22 @@ describe('drillCalcAll', () => {
     setupMultiTab(w);
     w.renderDrillTabList();
 
-    // Tab 1 = prio 1, tab 0 = prio 2
+    // Tab 1 = prio 2 (higher), tab 0 = prio 1 (lower) — fill tab 1 first
     const btn1 = w.document.getElementById('dtl_prio_1');
     btn1.click(); // prio 1
+    btn1.click(); // prio 2
     const btn0 = w.document.getElementById('dtl_prio_0');
     btn0.click(); // prio 1
-    btn0.click(); // prio 2
 
-    // Tab 1 needs 13.6 einheiten, give 10 total
+    // Tab 1 needs 13.6 einheiten, give 20 total → gets 13.6 first
     w.document.getElementById('drill_einheit').value = '20';
     w.document.getElementById('drill_duenger').value = '0';
 
     w.drillCalcAll();
 
-    // Tab 1 (prio 1) needs 13.6 → gets min(13.6, 20) = 13.6
+    // Tab 1 (prio 2) needs 13.6 → gets min(13.6, 20) = 13.6
     expect(w.document.getElementById('dtl_e_1').value).toBe('13,6');
-    // Tab 0 (prio 2) needs 18 → gets min(18, 20-13.6) = 6.4
+    // Tab 0 (prio 1) needs 18 → gets min(18, 20-13.6) = 6.4
     expect(w.document.getElementById('dtl_e_0').value).toBe('6,4');
   });
 
@@ -236,7 +236,7 @@ describe('drillAdd multi-tab mode', () => {
     expect(w.state.machineLog.length).toBe(1);
   });
 
-  it('re-renders drill tab list after add without resetting priorities', () => {
+  it('re-renders drill tab list after add and clears priorities', () => {
     const { window: w } = createDom();
     setupMultiTab(w);
     w.renderDrillTabList();
@@ -247,12 +247,12 @@ describe('drillAdd multi-tab mode', () => {
 
     w.drillAdd();
 
-    // Priorities persist (not reset after drillAdd) — this is the new correct behavior
-    expect(w.drillPriorities[0]).toBe(1);
-    // drillAdd calls renderDrillTabList() which re-creates buttons with data-prio='0'
-    // (the prio attribute is only set on click, not on render)
+    // Priorities are reset after drillAdd (consistent with tests/14)
+    expect(w.drillPriorities[0]).toBeUndefined();
+    // renderDrillTabList re-reads from drillPriorities (now empty) → data-prio='0'
     const btn = w.document.getElementById('dtl_prio_0');
     expect(btn.getAttribute('data-prio')).toBe('0');
+    expect(btn.textContent).toBe('—');
   });
 
   it('does nothing if no tab has einheit or duenger > 0', () => {
@@ -359,10 +359,10 @@ describe('drillAdd multi-tab mode', () => {
 
     w.renderDrillTabList();
 
-    // Set priority: tab 0 = 1, tab 1 = 2
-    w.document.getElementById('dtl_prio_0').click();
-    w.document.getElementById('dtl_prio_1').click();
-    w.document.getElementById('dtl_prio_1').click();
+    // Set priority: tab 0 = 1 (lower), tab 1 = 2 (higher — filled first)
+    w.document.getElementById('dtl_prio_0').click(); // prio 1
+    w.document.getElementById('dtl_prio_1').click(); // prio 1
+    w.document.getElementById('dtl_prio_1').click(); // prio 2
 
     // Fill 10 units (less than combined remaining)
     w.document.getElementById('drill_einheit').value = '10';
@@ -370,10 +370,10 @@ describe('drillAdd multi-tab mode', () => {
 
     w.drillCalcAll();
 
-    // Tab 0 needs 13 more → gets min(13, 10) = 10
-    expect(w.document.getElementById('dtl_e_0').value).toBe('10,0');
-    // Tab 1 would need 3.6 more but nothing left
-    expect(w.document.getElementById('dtl_e_1').value).toBe('');
+    // Tab 1 (prio 2) needs 3.6 more → gets min(3.6, 10) = 3.6 (filled first)
+    expect(w.document.getElementById('dtl_e_1').value).toBe('3,6');
+    // Tab 0 (prio 1) needs 13 more → gets min(13, 10-3.6=6.4) = 6.4
+    expect(w.document.getElementById('dtl_e_0').value).toBe('6,4');
   });
 
   // ── machineLog with multiple tabs ────────────────────────────────────────────
