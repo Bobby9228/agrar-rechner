@@ -642,25 +642,6 @@
       margin-top: 8px;
       text-align: center;
     }
-    .zaehler-result {
-      background: #f0f4e8;
-      border-radius: 8px;
-      padding: 12px;
-      margin-top: 12px;
-    }
-    .zaehler-delta {
-      display: flex;
-      justify-content: space-between;
-      padding: 6px 0;
-      font-size: 1rem;
-    }
-    .zaehler-delta .delta-label { color: #555; }
-    .zaehler-delta .delta-value { font-weight: 700; color: #2d5016; }
-    .zaehler-delta .delta-value.negative { color: #d32f2f; }
-    .zaehler-delta .delta-value.positive { color: #4a7c23; }
-    html.dark .zaehler-delta .delta-value { color: #a5d6a7; }
-    html.dark .zaehler-delta .delta-value.negative { color: #ef5350; }
-    html.dark .zaehler-delta .delta-value.positive { color: #66bb6a; }
     .entry-diff.positive { color: #4a7c23; font-weight: 600; }
     .entry-diff.negative { color: #d32f2f; font-weight: 600; }
     html.dark .entry-diff.positive { color: #66bb6a; }
@@ -1242,43 +1223,6 @@
       <div class="info" id="r_info"></div>
     </div><!-- end results card -->
 
-    <div class="card" id="zaehler_section" style="display:none">
-      <h2>📏 Hektarzähler</h2>
-      <div class="field">
-        <label for="zaehler_stand">Zählerstand nach Bearbeitung</label>
-        <div class="input-with-suffix">
-          <input type="text" inputmode="decimal" id="zaehler_stand" placeholder="z.B. 15,8" oninput="onInputFormat(this, 'decimal')" onfocus="this.select()" onblur="zaehlerUpdate()" onkeydown="if(event.key==='Enter'){zaehlerUpdate()}">
-          <span class="suffix">ha</span>
-        </div>
-        <div class="info">Trage den aktuellen Stand des Hektarzählers ein</div>
-      </div>
-      <div class="zaehler-result" id="zaehler_result" style="display:none">
-        <div class="zaehler-delta">
-          <span class="delta-label">IST-Fläche seit letztem Eintrag:</span>
-          <span class="delta-value" id="z_ist">—</span>
-        </div>
-        <div class="zaehler-delta">
-          <span class="delta-label">Gesamt bearbeitete Fläche:</span>
-          <span class="delta-value" id="z_total">—</span>
-        </div>
-        <div class="zaehler-soll-ist" id="zaehler_soll_ist" style="display:none">
-          <div class="drill-separator"></div>
-          <div class="result-row">
-            <span class="label">SOLL-Fläche:</span>
-            <span class="value small" id="z_soll">—</span>
-          </div>
-          <div class="result-row">
-            <span class="label">IST-Fläche (kumuliert):</span>
-            <span class="value small" id="z_ist_sum">—</span>
-          </div>
-          <div class="result-row" id="z_diff_row">
-            <span class="label">Abweichung:</span>
-            <span class="value small" id="z_diff">—</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <div class="card" id="drill_section" style="display:none">
       <h2>🔧 Drill-Protokoll</h2>
       <div id="drill_mask">
@@ -1364,7 +1308,6 @@
     //   fahrgassen*  — Fahrgassen-Korrektur (weniger Saatgut weil Gassen befahren)
     //   einheitGroesse* — Anpassung der Körner-pro-Einheit (Standard: 50.000)
     //   machineLog[] — Jede Maschinen-Befüllung (roh, unverteilt) für Prognose
-    //   zaehlerstand — Aktueller Hektarzähler-Stand
     // ============================================================================
     var state = {
       reiter: [{
@@ -1374,7 +1317,6 @@
         koerner:    0,          // Aussaatstärke: Körner pro Hektar
         duenger:    0,          // Düngermenge in kg/ha
         entries:    []          // Drill-Protokoll-Einträge für diesen Tab
-                               // {einheit, duenger, zaehlerStand, time}
       }],
       activeReiter:   0,        // Welcher Tab gerade aktiv ist (Index in reiter[])
       activeView:     null,     // 'protokoll' = Protokoll-Ansicht, sonst 'field'
@@ -1383,7 +1325,6 @@
       einheitGroesseEnabled: false, // Benutzerdefinierte Einheiten-Größe aktiviert
       koernerProEinheit:  50000, // Körner pro Saatgut-Einheit (Standard 50.000)
       machineLog:    [],        // Globales Maschinen-Protokoll (alle Befüllungen)
-      zaehlerstand:  0,         // Manuell eingetragener Hektarzähler-Stand
       drillPriorities: {}       // Tab-Prioritäten für Multi-Tab-Verteilung (persistiert)
     };
 
@@ -1391,68 +1332,6 @@
     // HEKTARZÄHLER — Manuelle Zählerstand-Eingabe
     //
     // Der Landwirt liest den Hektarzähler am Traktor ab und trägt den Stand ein.
-    // Die Funktion berechnet das Delta zum vorherigen Stand und zeigt:
-    //   - Wie viel Fläche seit dem letzten Eintrag bearbeitet wurde (Delta)
-    //   - Die Gesamte bearbeitete Fläche (kumuliert)
-    //   - SOLL / IST / Abweichung (wenn SOLL-Fläche gesetzt ist)
-    //
-    // Wird aufgerufen bei: onblur und Enter-Key auf #zaehler_stand
-    // Side Effect: state.zaehlerstand wird aktualisiert, saveState() aufgerufen
-    // ==========================================================================
-    function zaehlerUpdate() {
-      var z = parseDE(document.getElementById('zaehler_stand').value);
-      // Kein gültiger Stand → Ergebis-Box verstecken, fertig
-      if (z <= 0) {
-        document.getElementById('zaehler_result').style.display = 'none';
-        return;
-      }
-      // Vorherigen Stand merken, dann neuen Stand speichern
-      var prev = state.zaehlerstand;
-      state.zaehlerstand = z;
-
-      // Ergebnis-Box einblenden
-      var zaehlerResult = document.getElementById('zaehler_result');
-      zaehlerResult.style.display = 'block';
-
-      // Delta = bearbeitete Fläche seit dem letzten eingetragenen Stand
-      var delta = z - prev;
-
-      document.getElementById('z_ist').textContent = fmt(delta) + ' ha';
-      // Farbe: grün = positive Bewegung (weitergeackert), rot = Rückwärts
-      var zIstEl = document.getElementById('z_ist');
-      if (delta >= 0) {
-        zIstEl.className = 'delta-value positive';
-      } else {
-        zIstEl.className = 'delta-value negative';
-      }
-
-      document.getElementById('z_total').textContent = fmt(z) + ' ha';
-
-      // SOLL / IST / Abweichung anzeigen (nur wenn SOLL-Fläche existiert)
-      var r = getActiveReiter();
-      var sollHa = r ? r.hektar : 0;
-      var istHa = r ? getTabIstHektar(r) : 0;  // IST = r.istHektar (direkte Nutzereingabe)
-      var diff = istHa - sollHa;               // Positiv = über SOLL, Negativ = unter SOLL
-
-      document.getElementById('z_soll').textContent = fmt(sollHa) + ' ha';
-      document.getElementById('z_ist_sum').textContent = fmt(istHa) + ' ha';
-      var zDiffEl = document.getElementById('z_diff');
-      if (sollHa > 0) {
-        if (diff >= 0) {
-          zDiffEl.textContent = '+' + fmt(diff) + ' ha';
-          zDiffEl.className = 'value small positive';
-        } else {
-          zDiffEl.textContent = fmt(diff) + ' ha';
-          zDiffEl.className = 'value small negative';
-        }
-        document.getElementById('zaehler_soll_ist').style.display = 'block';
-      } else {
-        document.getElementById('zaehler_soll_ist').style.display = 'none';
-      }
-
-      saveState();  // Geänderten zaehlerstand persisiteren
-    }
-
     // ==========================================================================
     // PERSISTENZ — localStorage (JSON)
     //
@@ -1464,7 +1343,7 @@
     //   1. Altes Schema (einzelne Felder ohne Tabs) → Tab-Schema
     //      {hektar, koerner, duenger, entries} → {reiter:[{hektar, koerner, duenger, entries}]}
     //   2. Globale entries → per-Tab entries (nach reiter[0].entries)
-    //   3. Fehlende Felder auf Default-Werte setzen (machineLog, zaehlerstand etc.)
+    //   3. Fehlende Felder auf Default-Werte setzen (machineLog etc.)
     // ==========================================================================
 
     // --- Persistenz: Speichern ---
@@ -1480,9 +1359,6 @@
         if (!raw) return;  // Keine gespeicherten Daten → Default-state behalten
 
         var parsed = JSON.parse(raw);
-
-        // Sicherstellen, dass zaehlerstand existiert (alte Versionen haben es nicht)
-        if (parsed.zaehlerstand === undefined) { parsed.zaehlerstand = 0; }
 
         // === MIGRATION 1: Tab-loses Schema → Tab-Schema ===
         // Altes Format: {hektar, koerner, duenger, entries, ...}
@@ -1753,7 +1629,7 @@
 
       // Alle normalen Cards in der Protokoll-Ansicht verstecken
       // Ausgenommen: Cards mit eigener Sichtbarkeitslogik (werden von renderResults() gesteuert)
-      var skipIds = { zaehler_section: true, r_soll_ist_section: true };
+      var skipIds = { r_soll_ist_section: true };
       var cards = document.querySelectorAll('.card');
       cards.forEach(function(c) {
         if (skipIds[c.id]) return;
@@ -2449,7 +2325,7 @@
     //   Multi-Tab (Standard):   Erst in machineLog speichern, dann via
     //                           "Verteilen"-Buttons auf einzelne Tabs verteilen
     //
-    // machineLog[] speichert: {einheit, duenger, zaehlerStand, time}
+    // machineLog[] speichert: {einheit, duenger, time}
     // tabEntries[] (in reiter[]): werden durch Klick auf ML-Einträge befüllt
     // ==========================================================================
     function drillAdd() {
@@ -2644,10 +2520,6 @@
         }
       }
 
-      // Hektarzähler-Sektion einblenden wenn Zählerstand vorhanden
-      var hasZaehler = state.zaehlerstand > 0;
-      document.getElementById('zaehler_section').style.display = hasZaehler ? 'block' : 'none';
-
       // Update SOLL/IST/DIFF — uses r.istHektar for IST
       var sollHa = r.hektar;
       var istHa = getTabIstHektar(r);
@@ -2701,22 +2573,6 @@
         coHtml += '<span style="color:#c62828">↘ Mehrwert aus überschrittenen Flächen: -' + eparts.join(', ') + '</span>';
       }
       carryoverHint.innerHTML = coHtml;
-
-      document.getElementById('z_soll').textContent = fmt(sollHa) + ' ha';
-      document.getElementById('z_ist_sum').textContent = fmt(istHa) + ' ha';
-      var zDiffEl = document.getElementById('z_diff');
-      if (sollHa > 0) {
-        if (diff >= 0) {
-          zDiffEl.textContent = '+' + fmt(diff) + ' ha';
-          zDiffEl.className = 'value small positive';
-        } else {
-          zDiffEl.textContent = fmt(diff) + ' ha';
-          zDiffEl.className = 'value small negative';
-        }
-        document.getElementById('zaehler_soll_ist').style.display = 'block';
-      } else {
-        document.getElementById('zaehler_soll_ist').style.display = 'none';
-      }
 
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
@@ -3094,8 +2950,7 @@
         fahrgassenBreite: 0,
         einheitGroesseEnabled: false,
         koernerProEinheit: 50000,
-        machineLog: [],
-        zaehlerstand: 0
+        machineLog: []
       };
       document.getElementById('hektar').value = '';
       document.getElementById('ist_hektar').value = '';
@@ -3107,8 +2962,6 @@
       document.getElementById('koerner').style.borderColor = '';
       document.getElementById('results').style.display = 'none';
       document.getElementById('drill_section').style.display = 'none';
-      document.getElementById('zaehler_section').style.display = 'none';
-      document.getElementById('zaehler_stand').value = '';
       document.getElementById('fahrgassen_toggle').classList.remove('active');
       document.getElementById('fahrgassen_settings').classList.remove('open');
       document.getElementById('fahrgassen_breite').value = '';
