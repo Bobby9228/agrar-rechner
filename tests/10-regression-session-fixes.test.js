@@ -36,7 +36,7 @@ describe('Regression: entries undefined on reiter', () => {
       fahrgassenEnabled: false,
       fahrgassenBreite: 0,
     });
-    w.lv();
+    w.loadState();
 
     // The reiter should now have entries initialized
     const r = w.getActiveReiter();
@@ -67,7 +67,7 @@ describe('Regression: entries undefined on reiter', () => {
       fahrgassenEnabled: false,
       fahrgassenBreite: 0,
     });
-    w.lv();
+    w.loadState();
 
     // Switch to the tab without entries
     doc.getElementById('hektar').value = '8';
@@ -87,7 +87,7 @@ describe('Regression: entries undefined on reiter', () => {
       fahrgassenEnabled: false,
       fahrgassenBreite: 0,
     });
-    w.lv();
+    w.loadState();
 
     expect(Array.isArray(w.state.reiter[0].entries)).toBe(true);
     expect(Array.isArray(w.state.reiter[1].entries)).toBe(true);
@@ -218,7 +218,7 @@ describe('Regression: syncInputsFromState uses DE format', () => {
     doc.getElementById('koerner').value = '80000';
     doc.getElementById('duenger').value = '200,5';
     w.berechne();
-    w.sv();
+    w.saveState();
 
     // Reload state via lv + syncInputsFromState
     w.state = {
@@ -227,7 +227,7 @@ describe('Regression: syncInputsFromState uses DE format', () => {
       fahrgassenEnabled: false,
       fahrgassenBreite: 0,
     };
-    w.lv();
+    w.loadState();
     w.syncInputsFromState();
 
     // Should show DE format
@@ -245,7 +245,7 @@ describe('Regression: syncInputsFromState uses DE format', () => {
     // Save state with decimal fahrgassenBreite
     w.state.fahrgassenEnabled = true;
     w.state.fahrgassenBreite = 24.5;
-    w.sv();
+    w.saveState();
 
     // Reload and init
     w.state = {
@@ -254,7 +254,7 @@ describe('Regression: syncInputsFromState uses DE format', () => {
       fahrgassenEnabled: false,
       fahrgassenBreite: 0,
     };
-    w.lv();
+    w.loadState();
     w.initUI();
 
     expect(doc.getElementById('fahrgassen_breite').value).toBe('24,5');
@@ -284,7 +284,7 @@ describe('Regression: integration — old localStorage + tabs + decimals', () =>
       fahrgassenEnabled: false,
       fahrgassenBreite: 0,
     });
-    w.lv();
+    w.loadState();
     w.syncInputsFromState();
 
     // Should show DE format

@@ -120,13 +120,19 @@ describe('Dashboard', () => {
     });
 
     it('shows remaining duenger with remaining class when partially filled', () => {
+      // Setup: both einheiten and duenger are partially filled
+      // so that the min (not max) of their fill ratios drives the display
       w.state.reiter[0].hektar = 10;
-      w.state.reiter[0].koerner = 90000;
+      w.state.reiter[0].koerner = 90000;  // 10 * 90000 / 50000 = 18 units total
       w.state.reiter[0].duenger = 150;
-      w.state.reiter[0].entries = [{ einheit: 0, hektar: 0, duenger: 75, time: '08:00' }];
+      // Fill 5 of 18 einheiten (= 27.8%) AND 75 of 1500 kg duenger (= 5%)
+      // minFilled = 0.05 → pct = 5 → 'remaining' class
+      w.state.reiter[0].entries = [
+        { einheit: 5, hektar: 0, duenger: 75, time: '08:00' }
+      ];
       w.openDashboard();
       const values = doc.querySelectorAll('.dashboard-stat-value');
-      // Find duenger remaining (should be 750 kg)
+      // Find duenger remaining (should be 1425 kg)
       const duengerRem = Array.from(values).find(v => v.textContent.includes('kg'));
       expect(duengerRem.classList.contains('remaining')).toBe(true);
     });
@@ -169,11 +175,15 @@ describe('Dashboard', () => {
     });
 
     it('each card shows its respective values', () => {
+      // Tab 0: 10 ha, 90000 k → 18 units
       w.state.reiter[0].hektar = 10;
       w.state.reiter[0].koerner = 90000;
-      w.addReiter();
-      w.state.reiter[1].hektar = 20;
-      w.state.reiter[1].koerner = 80000;
+      // Tab 1: 20 ha, 80000 k → 32 units (pushed directly, no addReiter to avoid syncStateFromInputs overwriting tab 0)
+      // Push directly to avoid addReiter's syncStateFromInputs overwriting tab 0
+      w.state.reiter.push({
+        name: 'Tab 2', hektar: 20, koerner: 80000, duenger: 0, entries: []
+      });
+      w.state.activeReiter = 0;
       w.openDashboard();
       const cards = doc.querySelectorAll('.dashboard-reiter-card');
       // First card: 10 ha

@@ -136,6 +136,8 @@ describe('Tab management', () => {
     it('loads inputs from target tab', () => {
       w.state.reiter[0].hektar = 15;
       w.state.reiter[0].koerner = 80000;
+      w.state.activeReiter = 0; // ensure we're on tab 0 first
+      w.syncInputsFromState();
       w.addReiter();
       // Now on tab 1 (empty)
       expect(doc.getElementById('hektar').value).toBe('');
@@ -146,6 +148,8 @@ describe('Tab management', () => {
     it('shows results if target tab has data', () => {
       w.state.reiter[0].hektar = 10;
       w.state.reiter[0].koerner = 90000;
+      w.state.activeReiter = 0; // ensure we're on tab 0
+      w.syncInputsFromState();
       w.addReiter();
       w.switchReiter(0);
       expect(doc.getElementById('results').style.display).toBe('block');

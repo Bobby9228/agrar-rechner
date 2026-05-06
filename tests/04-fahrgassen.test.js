@@ -56,14 +56,15 @@ describe('Fahrgassen', () => {
       w.fahrgassenUpdate();
       const text = doc.getElementById('fahrgassen_saved').textContent;
       expect(text).toContain('24 m');
-      expect(text).toContain('~4.2%');
+      // (24-1)/24 * 100 = 95.8%
+      expect(text).toContain('~95.8%');
     });
 
     it('calculates percentage correctly for breite=10', () => {
       doc.getElementById('fahrgassen_breite').value = '10';
       w.fahrgassenUpdate();
-      // 1/10 * 100 = 10.0%
-      expect(doc.getElementById('fahrgassen_saved').textContent).toContain('~10.0%');
+      // (10-1)/10 * 100 = 90.0%
+      expect(doc.getElementById('fahrgassen_saved').textContent).toContain('~90.0%');
     });
 
     it('clears info for breite=0', () => {

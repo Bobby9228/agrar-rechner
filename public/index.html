@@ -16,7 +16,7 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: #f0f4e8;
-      min-height: 100vh;
+      min-height: 100dvh;
       padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
       color: #1a1a1a;
     }
@@ -335,12 +335,6 @@
     .tab-btn.protokoll-tab:not(.active):hover {
       background: #d0e8b8;
     }
-    .tab-bar {
-      display: flex;
-      gap: 0;
-      margin-bottom: 12px;
-      align-items: center;
-    }
     .tab-bar > .tab-bar-left {
       display: flex;
       gap: 6px;
@@ -425,6 +419,41 @@
       padding-top: 8px;
       margin-top: 4px;
       border-top: 1px solid #d0deb8;
+    }
+    .drill-summary-savings {
+      background: #e8f5e9;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: #2e7d32;
+      font-weight: 600;
+    }
+    .drill-savings {
+      font-size: 0.85rem;
+      color: #2e7d32;
+      font-weight: 600;
+      padding: 2px 0;
+    }
+    .drill-savings .entry-text::before {
+      content: '↘ ';
+    }
+    .drill-carryover {
+      font-size: 0.85rem;
+      color: #1565c0;
+      font-weight: 600;
+      padding: 2px 0;
+    }
+    .drill-carryover .entry-text::before {
+      content: '↗ ';
+    }
+    .drill-excess {
+      font-size: 0.85rem;
+      color: #c62828;
+      padding: 2px 0;
+    }
+    .drill-excess .entry-text::before {
+      content: '↘ ';
     }
     .drill-summary-total {
       margin-top: 10px;
@@ -613,25 +642,6 @@
       margin-top: 8px;
       text-align: center;
     }
-    .zaehler-result {
-      background: #f0f4e8;
-      border-radius: 8px;
-      padding: 12px;
-      margin-top: 12px;
-    }
-    .zaehler-delta {
-      display: flex;
-      justify-content: space-between;
-      padding: 6px 0;
-      font-size: 1rem;
-    }
-    .zaehler-delta .delta-label { color: #555; }
-    .zaehler-delta .delta-value { font-weight: 700; color: #2d5016; }
-    .zaehler-delta .delta-value.negative { color: #d32f2f; }
-    .zaehler-delta .delta-value.positive { color: #4a7c23; }
-    html.dark .zaehler-delta .delta-value { color: #a5d6a7; }
-    html.dark .zaehler-delta .delta-value.negative { color: #ef5350; }
-    html.dark .zaehler-delta .delta-value.positive { color: #66bb6a; }
     .entry-diff.positive { color: #4a7c23; font-weight: 600; }
     .entry-diff.negative { color: #d32f2f; font-weight: 600; }
     html.dark .entry-diff.positive { color: #66bb6a; }
@@ -640,7 +650,7 @@
     .app-layout {
       display: flex;
       flex-direction: column;
-      min-height: calc(100vh - max(20px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom)));
+      min-height: calc(100dvh - max(20px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom)));
     }
     .scrollable-content {
       flex: 1;
@@ -1058,6 +1068,10 @@
     html.dark .drill-summary-row { color: #c8d0b8; }
     html.dark .drill-summary-row.remaining { color: #ef5350; }
     html.dark .drill-summary-total { color: #8bc34a; border-top-color: #4a7c23; }
+    html.dark .drill-summary-savings { background: #1a2e1a; color: #66bb6a; }
+    html.dark .drill-savings { color: #66bb6a; }
+    html.dark .drill-carryover { color: #42a5f5; }
+    html.dark .drill-excess { color: #ef5350; }
     html.dark #drill_machine_log { border-bottom-color: #3a4030; }
     html.dark .drill-entry-tab-header { color: #9aa88a; border-bottom-color: #3a4030; }
     html.dark .drill-entry { border-bottom-color: #3a4030; }
@@ -1097,15 +1111,19 @@
     <div class="tab-bar" id="tab_bar">
       <div class="tab-bar-left" id="tab_bar_left"><button class="tab-add" onclick="addReiter()">+ Tab</button></div>
       <div class="tab-separator"></div>
-      <button class="protokoll-tab" id="protokoll_tab_btn" onclick="switchToProtokoll()">🔧 Protokoll</button>
+      <button class="tab-btn protokoll-tab" id="protokoll_tab_btn" onclick="switchToProtokoll()">🔧 Protokoll</button>
     </div>
 
     <div class="card card-input" id="card_input">
       <h2>📐 Fläche & Aussaatstärke</h2>
       <div class="field">
-        <label for="hektar">Hektar</label>
+        <label for="hektar">Hektar (SOLL)</label>
         <input type="text" inputmode="decimal" id="hektar" placeholder="z.B. 12,5" oninput="onInputFormat(this, 'decimal')">
         <div class="error-msg" id="err_hektar"></div>
+      </div>
+      <div class="field">
+        <label for="ist_hektar">IST-Fläche (ha)</label>
+        <input type="text" inputmode="decimal" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal')">
       </div>
       <div class="field">
         <label for="koerner">Körner pro Hektar</label>
@@ -1164,6 +1182,23 @@
         <span class="value small" id="r_duenger">—</span>
       </div>
 
+      <div id="r_soll_ist_section" style="display:none">
+        <div class="drill-separator"></div>
+        <div class="result-row">
+          <span class="label">SOLL-Fläche</span>
+          <span class="value small" id="r_soll_ha">—</span>
+        </div>
+        <div class="result-row">
+          <span class="label">IST-Fläche</span>
+          <span class="value small" id="r_ist_ha">—</span>
+        </div>
+        <div class="result-row">
+          <span class="label">Abweichung</span>
+          <span class="value small" id="r_diff_ha">—</span>
+        </div>
+      </div>
+      <div id="r_carryover_hint" style="font-size:0.85rem;padding:4px 0;"></div>
+
       <div id="r_drill_section" style="display:none">
         <div class="drill-separator"></div>
         <div class="result-row">
@@ -1188,28 +1223,6 @@
       <div class="info" id="r_info"></div>
     </div><!-- end results card -->
 
-    <div class="card" id="zaehler_section" style="display:none">
-      <h2>📏 Hektarzähler</h2>
-      <div class="field">
-        <label for="zaehler_stand">Zählerstand nach Bearbeitung</label>
-        <div class="input-with-suffix">
-          <input type="text" inputmode="decimal" id="zaehler_stand" placeholder="z.B. 15,8" oninput="onInputFormat(this, 'decimal')" onfocus="selectAll(this)" onblur="zaehlerUpdate()" onkeydown="if(event.key==='Enter'){zaehlerUpdate()}">
-          <span class="suffix">ha</span>
-        </div>
-        <div class="info">Trage den aktuellen Stand des Hektarzählers ein</div>
-      </div>
-      <div class="zaehler-result" id="zaehler_result" style="display:none">
-        <div class="zaehler-delta">
-          <span class="delta-label">IST-Fläche seit letztem Eintrag:</span>
-          <span class="delta-value" id="z_ist">—</span>
-        </div>
-        <div class="zaehler-delta">
-          <span class="delta-label">Gesamt bearbeitete Fläche:</span>
-          <span class="delta-value" id="z_total">—</span>
-        </div>
-      </div>
-    </div>
-
     <div class="card" id="drill_section" style="display:none">
       <h2>🔧 Drill-Protokoll</h2>
       <div id="drill_mask">
@@ -1224,7 +1237,7 @@
           </div>
         </div>
         <div class="field">
-          <label for="drill_hektar">Hektar-Zählerstand</label>
+          <label for="drill_hektar">Zählerstand (ha)</label>
           <input type="text" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal')">
         </div>
         <div class="drill-tabs-section">
@@ -1259,6 +1272,7 @@
           <span>Dünger verbleibend</span>
           <span id="ds_duenger_remaining">—</span>
         </div>
+        <div class="drill-summary-savings" id="ds_savings" style="display:none"></div>
       </div>
       <div id="drill_machine_log"></div>
       <div id="drill_entries"></div>
@@ -1283,150 +1297,210 @@
     </div><!-- end .scrollable-content -->
   </div><!-- end .app-layout -->
 
-  <script>
-    // --- State ---
+    <script>
+    // ============================================================================
+    // STATE — Zentrales Zustandsobjekt der gesamten App
+    // Wird nach jeder Änderung via saveState() in localStorage geschrieben (JSON).
+    // Struktur:
+    //   reiter[]     — Array von Feld-Tabs (jeder Tab = ein Feld mit eigenen Werten)
+    //   activeReiter — Index des aktuell ausgewählten Tabs
+    //   activeView   — 'protokoll' = Drill-Protokoll-Ansicht, sonst null (Feld-Ansicht)
+    //   fahrgassen*  — Fahrgassen-Korrektur (weniger Saatgut weil Gassen befahren)
+    //   einheitGroesse* — Anpassung der Körner-pro-Einheit (Standard: 50.000)
+    //   machineLog[] — Jede Maschinen-Befüllung (roh, unverteilt) für Prognose
+    // ============================================================================
     var state = {
-      reiter: [{ name: 'Tab 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
-      activeReiter: 0,
-      activeView: null, // null='field', 'protokoll'
-      fahrgassenEnabled: false,
-      fahrgassenBreite: 0,
-      einheitGroesseEnabled: false,
-      koernerProEinheit: 50000,
-      machineLog: [],
-      zaehlerstand: 0
+      reiter: [{
+        name:       'Tab 1',   // Anzeigename des Tabs (vom Nutzer änderbar)
+        hektar:     0,          // SOLL-Fläche in Hektar (geplant)
+        istHektar:  0,          // IST-Fläche in Hektar (tatsächlich bearbeitet)
+        koerner:    0,          // Aussaatstärke: Körner pro Hektar
+        duenger:    0,          // Düngermenge in kg/ha
+        entries:    []          // Drill-Protokoll-Einträge für diesen Tab
+      }],
+      activeReiter:   0,        // Welcher Tab gerade aktiv ist (Index in reiter[])
+      activeView:     null,     // 'protokoll' = Protokoll-Ansicht, sonst 'field'
+      fahrgassenEnabled: false, // Fahrgassen-Korrektur ein (true) / aus (false)
+      fahrgassenBreite:   0,   // Breite der Fahrgasse in Metern (z.B. 24 m)
+      einheitGroesseEnabled: false, // Benutzerdefinierte Einheiten-Größe aktiviert
+      koernerProEinheit:  50000, // Körner pro Saatgut-Einheit (Standard 50.000)
+      machineLog:    [],        // Globales Maschinen-Protokoll (alle Befüllungen)
+      drillPriorities: {}       // Tab-Prioritäten für Multi-Tab-Verteilung (persistiert)
     };
 
-    // --- Hektarzähler ---
-    function zaehlerUpdate() {
-      var z = parseDE(document.getElementById('zaehler_stand').value);
-      if (isNaN(z) || z < 0) {
-        document.getElementById('zaehler_result').style.display = 'none';
-        return;
-      }
-      var prev = state.zaehlerstand;
-      state.zaehlerstand = z;
+    // ==========================================================================
+    // HEKTARZÄHLER — Manuelle Zählerstand-Eingabe
+    //
+    // Der Landwirt liest den Hektarzähler am Traktor ab und trägt den Stand ein.
+    // ==========================================================================
+    // PERSISTENZ — localStorage (JSON)
+    //
+    // Key: 'mais_rechner'
+    // saveState()  — Speichert state als JSON in localStorage
+    // loadState()  — Lädt state aus localStorage, führt Migrationen durch
+    //
+    // Migrationen (lv):
+    //   1. Altes Schema (einzelne Felder ohne Tabs) → Tab-Schema
+    //      {hektar, koerner, duenger, entries} → {reiter:[{hektar, koerner, duenger, entries}]}
+    //   2. Globale entries → per-Tab entries (nach reiter[0].entries)
+    //   3. Fehlende Felder auf Default-Werte setzen (machineLog etc.)
+    // ==========================================================================
 
-      var zaehlerResult = document.getElementById('zaehler_result');
-      zaehlerResult.style.display = 'block';
-
-      var istHa = z - prev;
-      var r = getActiveReiter();
-      var totalIst = z; // total from zähler
-
-      document.getElementById('z_ist').textContent = fmt(istHa) + ' ha';
-      var zIstEl = document.getElementById('z_ist');
-      if (istHa >= 0) {
-        zIstEl.className = 'delta-value positive';
-      } else {
-        zIstEl.className = 'delta-value negative';
-      }
-
-      document.getElementById('z_total').textContent = fmt(z) + ' ha';
-
-      sv();
-    }
-
-    // --- Storage ---
-    function sv() {
+    // --- Persistenz: Speichern ---
+    function saveState() {
       try { localStorage.setItem('mais_rechner', JSON.stringify(state)); } catch(e) {}
+      // Fehler werden still ignoriert (z.B. bei vollem Speicher oder privatem Modus)
     }
-    function lv() {
+
+    // --- Persistenz: Laden + Migrieren ---
+    function loadState() {
       try {
         var raw = localStorage.getItem('mais_rechner');
-        if (raw) {
-          var parsed = JSON.parse(raw);
-          // Ensure zaehlerstand exists
-          if (parsed.zaehlerstand === undefined) { parsed.zaehlerstand = 0; }
-          state = parsed;
-          if (parsed.reiter === undefined && parsed.koerner !== undefined) {
-            parsed.reiter = [{
-              name: 'Tab 1',
-              hektar: parsed.hektar || 0,
-              koerner: parsed.koerner || 0,
-              duenger: parsed.duenger || 0,
-              entries: parsed.entries || []
-            }];
-            delete parsed.hektar;
-            delete parsed.koerner;
-            delete parsed.duenger;
-            delete parsed.entries;
-            parsed.activeReiter = 0;
-          }
-          // Migrate: entries used to be global; move to first tab if missing
-          if (parsed.entries !== undefined) {
-            if (parsed.reiter && parsed.reiter[0] && parsed.reiter[0].entries === undefined) {
-              parsed.reiter[0].entries = parsed.entries;
-            }
-            delete parsed.entries;
-          }
-          // Ensure every reiter has an entries array
-          if (parsed.reiter) {
-            parsed.reiter.forEach(function(reiter) {
-              if (!reiter.entries) reiter.entries = [];
-            });
-          }
-          // Ensure machineLog exists (migration from older state)
-          if (!parsed.machineLog) parsed.machineLog = [];
-          state = parsed;
+        if (!raw) return;  // Keine gespeicherten Daten → Default-state behalten
+
+        var parsed = JSON.parse(raw);
+
+        // === MIGRATION 1: Tab-loses Schema → Tab-Schema ===
+        // Altes Format: {hektar, koerner, duenger, entries, ...}
+        // Neues Format: {reiter:[{hektar, koerner, duenger, entries, name}], ...}
+        if (parsed.reiter === undefined && parsed.koerner !== undefined) {
+          parsed.reiter = [{
+            name: 'Tab 1',
+            hektar: parsed.hektar || 0,
+            koerner: parsed.koerner || 0,
+            duenger: parsed.duenger || 0,
+            entries: parsed.entries || []   // entries waren global gespeichert
+          }];
+          // Alte Felder entfernen (nicht mehr benötigt)
+          delete parsed.hektar;
+          delete parsed.koerner;
+          delete parsed.duenger;
+          delete parsed.entries;
+          parsed.activeReiter = 0;
         }
-      } catch(e) {}
+
+        // === MIGRATION 2: Globale entries → Per-Tab entries ===
+        // Falls entries noch auf oberster Ebene existieren (sollte nicht mehr vorkommen)
+        if (parsed.entries !== undefined) {
+          if (parsed.reiter && parsed.reiter[0] && parsed.reiter[0].entries === undefined) {
+            parsed.reiter[0].entries = parsed.entries;  // Nach reiter[0] verschieben
+          }
+          delete parsed.entries;
+        }
+
+        // === MIGRATION 3: Fehlende Felder auf Default setzen ===
+        if (parsed.reiter) {
+          parsed.reiter.forEach(function(reiter) {
+            if (!reiter.entries) reiter.entries = [];  // Jeder Tab braucht entries-Array
+            if (reiter.istHektar === undefined) reiter.istHektar = 0;  // Alte Speicherstände
+          });
+        }
+        // machineLog gab es in frühen Versionen nicht
+        if (!parsed.machineLog) parsed.machineLog = [];
+        // drillPriorities gab es in frühen Versionen nicht
+        if (!parsed.drillPriorities) parsed.drillPriorities = {};
+        // MIGRATION 4: koernerProEinheit und einheitGroesseEnabled fehlten in alten Speicherständen
+        if (parsed.koernerProEinheit === undefined) parsed.koernerProEinheit = 50000;
+        if (parsed.einheitGroesseEnabled === undefined) parsed.einheitGroesseEnabled = false;
+
+        state = parsed;
+        drillPriorities = state.drillPriorities;
+      } catch(e) {
+        // Bei Parse-Fehlern oder anderen Fehlern: Default-state behalten
+      }
     }
 
-    // --- Helpers ---
+    // ==========================================================================
+    // HILFSFUNKTIONEN — Input/Output-Synchronisation und Formatierung
+    // ==========================================================================
+
+    // Liefert das aktive Tab-Objekt aus dem State.
+    // Nil-Safe: Falls entries fehlen, wird ein leeres Array erzeugt.
     function getActiveReiter() {
       var r = state.reiter[state.activeReiter];
-      if (r && !r.entries) r.entries = [];
+      if (!r) {
+        console.warn('Invalid activeReiter index:', state.activeReiter);
+        state.activeReiter = 0;
+        r = state.reiter[0];
+      }
+      if (!r.entries) r.entries = [];
       return r;
     }
 
+    // Liest die Werte aus den Input-Feldern und schreibt sie in das aktive Tab.
+    // Wird aufgerufen VOR dem Wechseln von Tabs oder dem Speichern,
+    // damit keine Eingaben verloren gehen.
     function syncStateFromInputs() {
       var r = getActiveReiter();
-      r.hektar = parseDE(document.getElementById('hektar').value) || 0;
-      r.koerner = parseDE(document.getElementById('koerner').value) || 0;
-      r.duenger = parseDE(document.getElementById('duenger').value) || 0;
+      r.hektar    = parseDE(document.getElementById('hektar').value) || 0;
+      r.istHektar = parseDE(document.getElementById('ist_hektar').value) || 0;
+      r.koerner   = parseDE(document.getElementById('koerner').value) || 0;
+      r.duenger    = parseDE(document.getElementById('duenger').value) || 0;
     }
 
-    function formatDE(n) {
+    // Wandelt eine Zahl ins deutsche Format um (Punkt → Komma).
+    // Wird für die Anzeige in Input-Feldern verwendet (nach dem Laden aus dem State).
+    function toInputValue(n) {
       return String(n).replace('.', ',');
     }
 
+    // Beschreibt die Input-Felder mit den Werten aus dem aktuellen Tab.
+    // Wird aufgerufen NACH dem Wechseln von Tabs oder dem Laden aus dem localStorage.
     function syncInputsFromState() {
       var r = getActiveReiter();
-      document.getElementById('hektar').value = r.hektar > 0 ? formatDE(r.hektar) : '';
-      document.getElementById('koerner').value = r.koerner > 0 ? formatDE(r.koerner) : '';
-      document.getElementById('duenger').value = r.duenger > 0 ? formatDE(r.duenger) : '';
+      document.getElementById('hektar').value    = r.hektar > 0    ? toInputValue(r.hektar)    : '';
+      document.getElementById('ist_hektar').value = r.istHektar > 0 ? toInputValue(r.istHektar) : '';
+      document.getElementById('koerner').value    = r.koerner > 0   ? toInputValue(r.koerner)   : '';
+      document.getElementById('duenger').value   = r.duenger > 0   ? toInputValue(r.duenger)   : '';
     }
 
-    // --- Tab management ---
+    // ==========================================================================
+    // TAB-VERWALTUNG — Reiter (Tabs) für mehrere Felder
+    //
+    // Jeder Tab repräsentiert ein Feld mit eigenen SOLL/IST-Werten und Protokoll.
+    // UI: Custom Tab-Leiste mit eingebettetem Input-Feld für den Tab-Namen.
+    //
+    // WICHTIG: Vor jedem Tab-Wechsel syncStateFromInputs() aufrufen,
+    //          damit aktuelle Eingaben nicht verloren gehen!
+    // ==========================================================================
+
+    // Baut die gesamte Tab-Leiste neu auf (Button pro Tab + "+ Tab" + Protokoll).
+    // Der aktive Tab hat einen grünen Hintergrund.
+    // Jeder Tab-Button enthält ein unsichtbares <input> für den umbenennen.
     function renderTabs() {
       var bar = document.getElementById('tab_bar_left');
       bar.innerHTML = '';
+
       state.reiter.forEach(function(r, i) {
+        // Aktiver Tab? = dieser Index UND nicht in der Protokoll-Ansicht
         var isActive = i === state.activeReiter && state.activeView !== 'protokoll';
+
+        // --- Tab-Button (Klick = Tab wechseln) ---
         var btn = document.createElement('button');
         btn.className = 'tab-btn field-tab' + (isActive ? ' active' : '');
         btn.setAttribute('aria-label', 'Tab ' + (i+1));
         btn.onclick = function() { switchReiter(i); };
 
+        // --- Eingebettetes Namensfeld (direkt im Button) ---
+        // Besonderheit: Klick auf den Tab wechselt den Tab,
+        //               Klick auf das Namensfeld editiert den Namen
         var input = document.createElement('input');
         input.className = 'tab-name-input';
         input.type = 'text';
         input.value = r.name;
         input.setAttribute('aria-label', 'Tab-Name');
         input.onfocus = function() { this.select(); };
-        input.onchange = function() { renameReiter(i, input.value); };
-        input.onblur = function() { renameReiter(i, input.value); };
+        input.onblur  = function() { renameReiter(i, input.value); };
         input.onkeydown = function(evt) {
-          if (evt.key === 'Enter') { input.blur(); }
-          else { evt.stopPropagation(); }
+          if (evt.key === 'Enter') { input.blur(); }        // Enter = bestätigen
+          else { evt.stopPropagation(); }                    // Sonstige Keys nicht an App durchreichen
         };
 
-        // Only show close button if more than 1 tab
+        // --- Schließen-Button (nur anzeigen wenn mehr als 1 Tab existiert) ---
         if (state.reiter.length > 1) {
           var close = document.createElement('span');
           close.className = 'tab-close';
-          close.setAttribute('onclick', 'event.stopPropagation(); confirmRemoveReiter(' + i + ')');
+          close.onclick = function(evt) { evt.stopPropagation(); confirmRemoveReiter(i); };
           close.textContent = '✕';
           btn.appendChild(close);
         }
@@ -1434,27 +1508,44 @@
         btn.appendChild(input);
         bar.appendChild(btn);
       });
+
+      // --- "+ Tab" Button ---
       var addBtn = document.createElement('button');
       addBtn.className = 'tab-add';
       addBtn.textContent = '+ Tab';
       addBtn.onclick = function() { addReiter(); };
       bar.appendChild(addBtn);
 
-      // Protokoll tab button
+      // --- Protokoll-Tab-Button (rechts außen) ---
       var protokollBtn = document.getElementById('protokoll_tab_btn');
       protokollBtn.classList.toggle('active', state.activeView === 'protokoll');
     }
 
+    // Erstellt einen neuen Tab, aktiviert ihn und fokussiert das Hektar-Feld.
     function addReiter() {
-      var idx = state.reiter.length + 1;
-      state.reiter.push({ name: 'Tab ' + idx, hektar: 0, koerner: 0, duenger: 0, entries: [] });
-      state.activeReiter = state.reiter.length - 1;
+      syncStateFromInputs();
+      var maxIdx = 0;
+      state.reiter.forEach(function(r) {
+        var match = r.name.match(/^Tab (\d+)$/);
+        if (match) {
+          var n = parseInt(match[1], 10);
+          if (n > maxIdx) maxIdx = n;
+        }
+      });
+      var idx = maxIdx + 1;
+      state.reiter.push({
+        name: 'Tab ' + idx,
+        hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: []
+      });
+      state.activeReiter = state.reiter.length - 1;  // Neuen Tab sofort aktivieren
       syncInputsFromState();
       renderTabs();
-      sv();
+      saveState();
       document.getElementById('hektar').focus();
     }
 
+    // Zeigt einen confirm()-Dialog bevor der Tab gelöscht wird.
+    // Nur bei Daten-Verlust-Warnung, nicht bei leerem Tab.
     function confirmRemoveReiter(idx) {
       var tab = state.reiter[idx];
       var hasData = tab.hektar > 0 || tab.koerner > 0 || tab.duenger > 0 || tab.entries.length > 0;
@@ -1468,81 +1559,126 @@
       removeReiter(idx);
     }
 
+    // Entfernt einen Tab (Index). Der aktive Tab wird ggf. korrigiert.
+    // Ablauf: Erst aktuellen Tab sichern → splice → activeReiter anpassen → neu rendern
     function removeReiter(idx) {
-      if (state.reiter.length <= 1) return;
-      syncStateFromInputs();  // Erst aktuellen Tab sichern
-      state.reiter.splice(idx, 1);
+      if (state.reiter.length <= 1) return;  // Mindestens 1 Tab muss bleiben
+      syncStateFromInputs();                   // Aktuellen Tab vorher speichern!
+      state.reiter.splice(idx, 1);            // Tab entfernen
+      // drillPriorities: entfernten Index löschen und restliche neu indizieren
+      var newPriorities = {};
+      Object.keys(drillPriorities).forEach(function(key) {
+        var k = parseInt(key, 10);
+        if (k < idx) {
+          newPriorities[k] = drillPriorities[k];
+        } else if (k > idx) {
+          newPriorities[k - 1] = drillPriorities[k];
+        }
+        // k === idx: gelöscht, wird nicht übernommen
+      });
+      drillPriorities = newPriorities;
+      state.drillPriorities = drillPriorities;
       if (state.activeReiter >= state.reiter.length) {
-        state.activeReiter = state.reiter.length - 1;
+        state.activeReiter = state.reiter.length - 1;  // Hinter letzten → auf letzten
       }
       syncInputsFromState();
       renderTabs();
-      sv();
+      saveState();
       renderResults();
     }
 
+    // Wechselt zum angegebenen Tab (speichert vorher den aktuellen!).
+    // Wenn der angeklickte Tab bereits aktiv ist → kein Wechsel (early return).
     function switchReiter(idx) {
       if (idx === state.activeReiter && state.activeView !== 'protokoll') return;
-      syncStateFromInputs();
+      syncStateFromInputs();     // Erst aktuellen Tab sichern!
       state.activeReiter = idx;
-      state.activeView = null;
-      syncInputsFromState();
+      state.activeView = null;   // Zurück zur Feld-Ansicht (nicht Protokoll)
+      syncInputsFromState();     // Dann Ziel-Tab in die Inputs laden
       renderTabs();
-      sv();
+      saveState();
       renderResults();
       renderView();
     }
 
+    // Schaltet zwischen Feld-Ansicht und Protokoll-Ansicht um.
+    // Beim Aktivieren des Protokolls: Zustand sichern + Drill-Tab-Liste rendern.
     function switchToProtokoll() {
       if (state.activeView === 'protokoll') {
+        // Protokoll ausschalten → Zustand vorher sichern
+        syncStateFromInputs();
         state.activeView = null;
       } else {
+        // Protokoll einschalten → Zustand sichern + Tab-Liste aufbauen
         syncStateFromInputs();
         state.activeView = 'protokoll';
         renderDrillTabList();
       }
       renderTabs();
-      sv();
+      saveState();
       renderView();
     }
 
+    // Blendet Cards je nach Ansicht ein/aus (Feld vs. Protokoll).
+    // Die Protokoll-Ansicht zeigt #drill_section, alle anderen Cards werden versteckt.
+    // Wichtig: Die Sichtbarkeit des Sticky Footers wird hier auch gesteuert.
     function renderView() {
       var r = getActiveReiter();
       var hasData = r.hektar > 0 && r.koerner > 0;
       var isProtokoll = state.activeView === 'protokoll';
 
+      // Alle normalen Cards in der Protokoll-Ansicht verstecken
+      // Ausgenommen: Cards mit eigener Sichtbarkeitslogik (werden von renderResults() gesteuert)
+      var skipIds = { r_soll_ist_section: true };
       var cards = document.querySelectorAll('.card');
       cards.forEach(function(c) {
-        c.style.display = isProtokoll ? 'none' : '';
+        if (skipIds[c.id]) return;
+        c.style.display = isProtokoll ? 'none' : 'block';
       });
 
+      // Ergebnis-Card: Nur bei Daten + nicht Protokoll
       var results = document.getElementById('results');
       if (results) results.style.display = (hasData && !isProtokoll) ? 'block' : 'none';
 
+      // Drill-Protokoll-Section: Nur in der Protokoll-Ansicht
       var drillSection = document.getElementById('drill_section');
       if (drillSection) drillSection.style.display = isProtokoll ? 'block' : 'none';
 
+      // Drill-Eingabe-Maske: Nur in der Protokoll-Ansicht
       var drillMask = document.getElementById('drill_mask');
       if (drillMask) drillMask.style.display = isProtokoll ? '' : 'none';
 
+      // Sticky Footer: In der Protokoll-Ansicht ausblenden (hat eigene Controls)
       var berechnenBtn = document.getElementById('berechnen_btn');
       if (berechnenBtn) berechnenBtn.style.display = isProtokoll ? 'none' : '';
       var resetBtn = document.getElementById('reset_btn');
       if (resetBtn) resetBtn.style.display = isProtokoll ? 'none' : '';
       var resetAllBtn = document.getElementById('reset_all_btn');
       if (resetAllBtn) resetAllBtn.style.display = isProtokoll ? 'none' : '';
-
       var stickyFooter = document.getElementById('sticky_footer');
       if (stickyFooter) stickyFooter.style.display = isProtokoll ? 'none' : '';
     }
 
+    // Speichert den neuen Tab-Namen (max. 20 Zeichen) und rendert die Tab-Leiste neu.
     function renameReiter(idx, name) {
       state.reiter[idx].name = name.substring(0, 20);
-      sv();
+      saveState();
       renderTabs();
     }
 
-    // --- Fahrgassen ---
+    // ==========================================================================
+    // FAHRGASSEN-KORREKTUR
+    //
+    // Fahrgassen = befahrene Streifen im Feld, die nicht besät werden.
+    // Durch die breiteren Gassen wird pro Fläche weniger Saatgut benötigt.
+    //
+    // Korrekturformel:
+    //   faktor = (fahrgassenBreite - 1) / fahrgassenBreite
+    // Beispiel (24 m): (24-1)/24 = 23/24 ≈ 0,958 → 4,17 % weniger Körner
+    // ==========================================================================
+
+    // Schaltet die Fahrgassen-Korrektur ein/aus (Toggle).
+    // Blendet die Einstellungen-Box ein/aus und speichert.
     function fahrgassenToggle() {
       var btn = document.getElementById('fahrgassen_toggle');
       var settings = document.getElementById('fahrgassen_settings');
@@ -1550,12 +1686,41 @@
       btn.classList.toggle('active', state.fahrgassenEnabled);
       settings.classList.toggle('open', state.fahrgassenEnabled);
       if (!state.fahrgassenEnabled) {
+        // Bei Deaktivierung: Info-Text löschen
         document.getElementById('fahrgassen_saved').textContent = '';
       }
-      sv();
+      saveState();
     }
 
-    // --- Einheiten-Größe ---
+    // Aktualisiert die Fahrgassenbreite und zeigt eine Info-Zeile an.
+    // Wird bei onchange und onblur des Eingabefelds aufgerufen.
+    function fahrgassenUpdate() {
+      var breite = parseDE(document.getElementById('fahrgassen_breite').value);
+      state.fahrgassenBreite = breite;
+      if (breite <= 1 && breite !== 0) {
+        document.getElementById('fahrgassen_saved').textContent =
+          'Fahrgassenbreite muss mindestens 2m betragen';
+      } else if (breite > 1) {
+        // Zeigt: "24 m -> ~4,2% weniger Körner"
+        var prozent = ((breite - 1) / breite * 100).toFixed(1);
+        document.getElementById('fahrgassen_saved').textContent =
+          breite + ' m -> ~' + prozent + '% weniger Körner';
+      } else {
+        document.getElementById('fahrgassen_saved').textContent = '';
+      }
+      saveState();
+    }
+
+    // ==========================================================================
+    // EINHEITEN-GRÖSSE — Anpassung der Körner pro Einheit
+    //
+    // Standard: 50.000 Körner/Einheit (gängige Handelsform von Maissaatgut).
+    // Manche Hersteller verwenden 100.000 Körner/Einheit.
+    //
+    // Formel: Einheiten = Körner gesamt / koernerProEinheit
+    // ==========================================================================
+
+    // Schaltet die benutzerdefinierte Einheiten-Größe ein/aus (Toggle).
     function einheitGroesseToggle() {
       var btn = document.getElementById('einheit_groesse_toggle');
       var settings = document.getElementById('einheit_groesse_settings');
@@ -1565,175 +1730,451 @@
       if (!state.einheitGroesseEnabled) {
         document.getElementById('einheit_groesse_saved').textContent = '';
       }
-      sv();
+      saveState();
     }
 
+    // Liest die benutzerdefinierte Körner-pro-Einheit aus und speichert sie.
+    // Wird bei onchange und onblur aufgerufen. Default: 50.000.
     function einheitGroesseUpdate() {
       var val = parseDE(document.getElementById('koerner_pro_einheit').value);
-      state.koernerProEinheit = (isNaN(val) || val <= 0) ? 50000 : val;
+      state.koernerProEinheit = (val <= 0) ? 50000 : val;
       var info = '';
       if (state.koernerProEinheit !== 50000) {
+        // Zeigt nur etwas an, wenn der Wert vom Standard abweicht
         info = state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit';
       }
       document.getElementById('einheit_groesse_saved').textContent = info;
-      sv();
+      saveState();
+      // Ergebnis sofort neu berechnen, falls bereits Daten vorhanden
       var r = getActiveReiter();
       if (r.hektar > 0 && r.koerner > 0) {
         renderResults();
       }
     }
 
-    function fahrgassenUpdate() {
-      var breite = parseDE(document.getElementById('fahrgassen_breite').value);
-      state.fahrgassenBreite = breite;
-      if (breite > 0) {
-        document.getElementById('fahrgassen_saved').textContent = breite + ' m -> ~' + (1 / breite * 100).toFixed(1) + '% weniger Körner';
-      } else {
-        document.getElementById('fahrgassen_saved').textContent = '';
-      }
-      sv();
-    }
-
-    // --- Core calculation ---
+    // ==========================================================================
+    // KERNBERECHNUNG — Hauptberechnung (Berechnen-Button)
+    //
+    // Formeln:
+    //   Körner gesamt = hektar × koerner × fahrgassenFaktor
+    //   Einheiten     = Körner gesamt / koernerProEinheit
+    //   Dünger gesamt = hektar × duenger
+    //
+    // Schutz: Wenn bereits Drill-Einträge existieren und die neuen SOLL-Werte
+    // geringer sind als die bereits eingetragenen Verbräuche,
+    // wird per confirm() gefragt, ob das Protokoll zurückgesetzt werden soll.
+    // ==========================================================================
     function berechne() {
+      // --- Validierung ---
       document.getElementById('err_hektar').textContent = '';
       document.getElementById('err_koerner').textContent = '';
       document.getElementById('hektar').style.borderColor = '';
       document.getElementById('koerner').style.borderColor = '';
+
       var h = parseDE(document.getElementById('hektar').value);
       var k = parseDE(document.getElementById('koerner').value);
       var d = parseDE(document.getElementById('duenger').value);
-      if (isNaN(h) || h <= 0) {
+
+      if (h <= 0) {
         document.getElementById('err_hektar').textContent = 'Bitte Hektar eingeben';
         document.getElementById('hektar').style.borderColor = '#d32f2f';
         return;
       }
-      if (isNaN(k) || k <= 0) {
+      if (k <= 0) {
         document.getElementById('err_koerner').textContent = 'Bitte Körner pro ha eingeben';
         document.getElementById('koerner').style.borderColor = '#d32f2f';
         return;
       }
+
+      // --- Werte in State schreiben ---
       var r = getActiveReiter();
-      r.hektar = h;
-      r.koerner = k;
-      r.duenger = (isNaN(d) || d < 0) ? 0 : d;
+      r.hektar   = h;
+      r.istHektar = parseDE(document.getElementById('ist_hektar').value) || 0;
+      r.koerner  = k;
+      r.duenger  = (d < 0) ? 0 : d;
+
       var entries = r.entries;
+      // Summe der bereits eingetragenen Verbräuche
       var usedEinheit = entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-      if (usedEinheit > getTotalEinheiten() || usedDuenger > getTotalDuenger()) {
+
+      // IST-basierte Bedarfswerte (wenn IST-Fläche vorhanden, sonst SOLL)
+      var istE = r.istHektar > 0 ? getTabIstEinheiten(r) : getTotalEinheiten();
+      var istD = r.istHektar > 0 ? getTabIstDuenger(r) : getTotalDuenger();
+
+      // --- Drill-Protokoll-Schutz ---
+      // Wenn neue Werte geringer sind als bereits eingetragen: Warnung
+      if (usedEinheit > istE || usedDuenger > istD) {
         if (!confirm('Die neuen Werte weichen von den eingetragenen Einheiten ab. Drill-Protokoll zurücksetzen?')) {
-          return;
+          return;  // Nutzer hat abgebrochen
         }
-        entries.length = 0;
+        entries.length = 0;  // Alle Einträge löschen
+        state.machineLog.length = 0;  // Auch das Maschinen-Log zurücksetzen
       }
-      sv();
+
+      // --- Fertig: Speichern und neu Rendern ---
+      saveState();
       renderTabs();
       renderResults();
       renderView();
       document.getElementById('results').style.display = 'block';
     }
 
+    // ==========================================================================
+    // BERECHNUNGS-HILFSFUNKTIONEN
+    //
+    // Alle Funktionen arbeiten auf einem Tab-Objekt 'r' oder dem aktiven Tab.
+    // Berücksichtigen fahrgassenEnabled + fahrgassenBreite automatisch.
+    //
+    // Wichtiges Muster: IST-Fläche (r.istHektar) hat Vorrang vor SOLL-Fläche.
+    // Wenn r.istHektar > 0, wird mit IST-Fläche gerechnet (tatsächlich bearbeitet).
+    // ==========================================================================
+
+    // Körner gesamt für den aktiven Tab
     function getKornerGesamt() {
       return getTabKornerGesamt(getActiveReiter());
     }
 
+    // Einheiten gesamt für den aktiven Tab
     function getTotalEinheiten() {
       var r = getActiveReiter();
       return getTabTotalEinheiten(r);
     }
 
+    // Einheiten für Tab r: Körner / Körner_pro_Einheit
+    // Formel: (hektar × koerner × fahrgassenFaktor) / koernerProEinheit
     function getTabTotalEinheiten(r) {
       if (!r.hektar || !r.koerner) return 0;
       return getTabKornerGesamt(r) / state.koernerProEinheit;
     }
 
+    // Körner gesamt für Tab r (inkl. Fahrgassen-Korrektur)
+    // Formel: hektar × koerner × fahrgassenFaktor
     function getTabKornerGesamt(r) {
       if (!r.hektar || !r.koerner) return 0;
       var k = r.hektar * r.koerner;
       if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
+        // Reduktion: (fahrgassenBreite-1)/fahrgassenBreite
+        // Beispiel: 24m → 23/24 ≈ 0,958 → 4,2% weniger Körner
         k = k * ((state.fahrgassenBreite - 1) / state.fahrgassenBreite);
       }
       return k;
     }
 
+    // Dünger gesamt für den aktiven Tab
     function getTotalDuenger() {
       var r = getActiveReiter();
       return getTabTotalDuenger(r);
     }
 
+    // Dünger für Tab r: hektar × duenger
     function getTabTotalDuenger(r) {
       if (!r.hektar) return 0;
       return r.hektar * r.duenger;
     }
 
+    // Gibt die IST-Fläche für Tab r zurück (direkte Nutzereingabe, NICHT aus Entries abgeleitet).
+    // Wird für SOLL/IST-Vergleich und Carryover verwendet.
+    function getTabIstHektar(r) {
+      return r.istHektar || 0;
+    }
+
+    // IST-basierte Einheiten für Tab r.
+    // Verwendet IST-Fläche falls vorhanden, sonst SOLL-Fläche.
+    function getTabIstEinheiten(r) {
+      var istHa = getTabIstHektar(r);
+      var ha = istHa > 0 ? istHa : r.hektar;
+      if (!ha || !r.koerner) return 0;
+      var k = ha * r.koerner;
+      if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
+        k = k * ((state.fahrgassenBreite - 1) / state.fahrgassenBreite);
+      }
+      return k / state.koernerProEinheit;
+    }
+
+    // IST-basierter Dünger für Tab r.
+    // Verwendet IST-Fläche falls vorhanden, sonst SOLL-Fläche.
+    function getTabIstDuenger(r) {
+      var istHa = getTabIstHektar(r);
+      var ha = istHa > 0 ? istHa : r.hektar;
+      if (!ha) return 0;
+      return ha * r.duenger;
+    }
+
+    // Prüft, ob ein Tab "fertig" ist (Saatgut + Dünger vollständig eingetragen).
+    // Berücksichtigt Carryover (Überträge) in der Berechnung.
+    // Toleranz: 0,05 Einheiten (verhindert Fließkomma-Probleme).
+    function isTabDone(r, tabIdx) {
+      if (!r.hektar || !r.koerner) return false;
+      var istSum = getTabIstHektar(r);
+      var totalE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
+      var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+      var totalD = istSum > 0 ? getTabIstDuenger(r) : getTabTotalDuenger(r);
+      var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+      // Carryover-Werte aus computeAllCarryovers()
+      var co = (tabIdx !== undefined) ? getCarryover(tabIdx) : { savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 };
+      var remE = Math.max(0, totalE - usedE - co.savedEinheit - co.excessEinheit);
+      var remD = Math.max(0, totalD - usedD - co.savedDuenger - co.excessDuenger);
+      var saatDone = remE <= 0.05;
+      var duengerDone = totalD <= 0 || remD <= 0.05;
+      return saatDone && duengerDone;
+    }
+
+    // ==========================================================================
+    // CARRYOVER-SYSTEM — Überträge zwischen Feldern (komplexester Algorithmus)
+    //
+    // Problem: Wenn ein Landwirt mehrere Felder hat und die IST-Fläche smaller
+    // als die SOLL-Fläche ist (z.B. weil ein Teil nass war), "spart" er Saatgut.
+    // Dieses System verteilt Ersparnisse und Mehrbedarfe automatisch auf alle Tabs.
+    //
+    // Return pro Tab: { savedEinheit, savedDuenger, excessEinheit, excessDuenger }
+    //   savedEinheit   = Überschuss aus Ersparnis (IST < SOLL) → wird an andere verteilt
+    //   savedDuenger   = Dünger-Ersparnis
+    //   excessEinheit  = Mehrbedarf aus Überschreitung (IST > SOLL) → wird von anderen genommen
+    //   excessDuenger  = Dünger-Mehrbedarf
+    //
+    // Zwei-Phasen-Algorithmus:
+    //   Phase 1: Ersparnisse (IST < SOLL) → an nicht-ferige Tabs (vorwärts)
+    //   Phase 2: Mehrbedarfe (IST > SOLL) → von Tabs mit Einträgen (rückwärts, nach Zeit)
+    // ==========================================================================
+
+    // Berechnet Carryover für ALLE Tabs gleichzeitig.
+    // Wird bei jedem renderResults() aufgerufen und cached via getCarryover().
+    function computeAllCarryovers() {
+      var result = [];
+      for (var i = 0; i < state.reiter.length; i++) {
+        result.push({ savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 });
+      }
+
+      // --- Summiere Ersparnisse und Mehrbedarfe über alle Tabs ---
+      var totalSavedE = 0, totalSavedD = 0, totalExcessE = 0, totalExcessD = 0;
+      for (var i = 0; i < state.reiter.length; i++) {
+        var t = state.reiter[i];
+        var istHa = getTabIstHektar(t);
+        if (istHa > 0 && t.hektar > 0) {
+          // SOLL - IST = Ersparnis (positiv) oder Mehrbedarf (negativ)
+          var diffE = getTabTotalEinheiten(t) - getTabIstEinheiten(t);
+          var diffD = getTabTotalDuenger(t) - getTabIstDuenger(t);
+          if (diffE >= 0) totalSavedE += diffE; else totalExcessE += Math.abs(diffE);
+          if (diffD >= 0) totalSavedD += diffD; else totalExcessD += Math.abs(diffD);
+        }
+      }
+
+      // === PHASE 1: Ersparnisse verteilen (vorwärts durch Tabs) ===
+      // Tabs die noch nicht fertig sind (isTabDone = false) bekommen Ersparnis
+      var remSavedE = totalSavedE, remSavedD = totalSavedD;
+      for (var i = 0; i < state.reiter.length && (remSavedE > 0.05 || remSavedD > 0.05); i++) {
+        var t = state.reiter[i];
+        // Tabs ohne Daten oder bereits fertige Tabs überspringen
+        if (isTabDone(t) || !t.hektar || !t.koerner) continue;
+
+        var istSum = getTabIstHektar(t);
+        var totalE = istSum > 0 ? getTabIstEinheiten(t) : getTabTotalEinheiten(t);
+        var usedE = t.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+        var tabRemE = Math.max(0, totalE - usedE);   // Was dieser Tab noch braucht
+        var totalD = istSum > 0 ? getTabIstDuenger(t) : getTabTotalDuenger(t);
+        var usedD = t.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+        var tabRemD = Math.max(0, totalD - usedD);
+
+        // Gibt, was der Tab braucht, aber nicht mehr als verfügbar
+        var giveE = Math.min(remSavedE, tabRemE);
+        var giveD = Math.min(remSavedD, tabRemD);
+        if (giveE > 0.05) { result[i].savedEinheit = giveE; remSavedE -= giveE; }
+        if (giveD > 0.05) { result[i].savedDuenger = giveD; remSavedD -= giveD; }
+      }
+
+      // === PHASE 2: Mehrbedarfe verteilen (rückwärts durch Tabs mit Einträgen) ===
+      // Tabs mit den neuesten Einträgen zuerst (umgekehrt chronologisch)
+      var remExcessE = totalExcessE, remExcessD = totalExcessD;
+      var filledTabs = [];
+      for (var i = 0; i < state.reiter.length; i++) {
+        if (state.reiter[i].entries.length > 0) filledTabs.push(i);
+      }
+      // Sortiere nach Zeit des neuesten Eintrags (absteigend = neueste zuerst)
+      filledTabs.sort(function(a, b) {
+        var ea = state.reiter[a].entries, eb = state.reiter[b].entries;
+        var ta = ea[ea.length - 1].time || '', tb = eb[eb.length - 1].time || '';
+        return tb.localeCompare(ta);  // Umgekehrt: tb > ta = a kommt zuerst
+      });
+
+      for (var fi = 0; fi < filledTabs.length && (remExcessE > 0.05 || remExcessD > 0.05); fi++) {
+        var idx = filledTabs[fi];
+        var t = state.reiter[idx];
+        var istSum = getTabIstHektar(t);
+        var totalE = istSum > 0 ? getTabIstEinheiten(t) : getTabTotalEinheiten(t);
+        var usedE = t.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+        var tabRemE = Math.max(0, totalE - usedE);   // Was noch in diesem Tab fehlt
+        var totalD = istSum > 0 ? getTabIstDuenger(t) : getTabTotalDuenger(t);
+        var usedD = t.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+        var tabRemD = Math.max(0, totalD - usedD);
+
+        // Nimmt vom Mehrbedarf, aber nur bis zum verbleibenden Bedarf dieses Tabs
+        var takeE = Math.min(remExcessE, tabRemE);
+        var takeD = Math.min(remExcessD, tabRemD);
+        if (takeE > 0.05) { result[idx].excessEinheit = takeE; remExcessE -= takeE; }
+        if (takeD > 0.05) { result[idx].excessDuenger = takeD; remExcessD -= takeD; }
+      }
+
+      return result;
+    }
+
+    // Liefert die Carryover-Werte für einen bestimmten Tab (lookup + cache via computeAllCarryovers).
+    function getCarryover(tabIndex) {
+      var all = computeAllCarryovers();
+      if (tabIndex >= 0 && tabIndex < all.length) return all[tabIndex];
+      return { savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 };
+    }
+
+    // ==========================================================================
+    // FORMATIERUNG — Deutsche Zahlenformatierung und Parsing
+    //
+    // Deutschland: Komma = Dezimaltrennzeichen, Punkt = Tausendertrennzeichen
+    // Eingaben: "12,5" → 12.5 | "1.500,3" → 1500.3
+    // Ausgaben:  12.5 → "12,5"
+    // ==========================================================================
+
+    // Berechnet Verbrauchsraten (Einheiten/ha, Dünger/ha) für einen bestimmten Tab.
+    function getTabRates(tabIdx) {
+      var r = state.reiter[tabIdx];
+      if (!r) return { unitsPerHa: 0, duengerPerHa: 0 };
+      var fgFactor = 1;
+      if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
+        fgFactor = (state.fahrgassenBreite - 1) / state.fahrgassenBreite;
+      }
+      var unitsPerHa = r.koerner * fgFactor / state.koernerProEinheit;
+      var duengerPerHa = r.duenger || 0;
+      return { unitsPerHa: unitsPerHa, duengerPerHa: duengerPerHa };
+    }
+
+    // Formatiert eine Zahl für die Anzeige: eine Dezimalstelle, Komma als Trennzeichen.
+    // Beispiele: 12.555 → "12,6" | 12.0 → "12,0" | 0 → "0,0"
     function fmt(n) {
-      // German decimal format, no suffix. Always one decimal place.
-      var rounded = Math.round(n * 10) / 10;
+      var rounded = Math.round(n * 10) / 10;  // Auf/Abgerundet auf 1 Dezimalstelle
       return rounded.toFixed(1).replace('.', ',');
     }
 
+    // Formatiert eine Einheitenanzahl mit Einheiten-Text.
+    // Beispiele: 1.0 → "1,0 Einheit" | 4.5 → "4,5 Einheiten"
     function formatEinheit(n) {
       var rounded = Math.round(n * 10) / 10;  // DE Rundung: ab .5 aufrunden
       return rounded.toFixed(1).replace('.', ',') + (rounded === 1.0 ? ' Einheit' : ' Einheiten');
     }
 
-    // Parse a DE-formatted number string ( thousand dot separator, comma decimal )
+    // Parst einen deutschen Zahlenstring in eine JavaScript-Zahl.
+    //
+    // Regelwerk:
+    //   1. Tausenderpunkte werden IMMER entfernt (auch ohne Komma)
+    //   2. Wenn Komma vorhanden: Alles NACH dem Komma = Dezimalteil (Komma → Punkt)
+    //   3. Wenn kein Komma: nur Tausenderpunkte entfernen → als Ganzzahl parsen
+    //   4. Leere oder ungültige Eingabe → 0
+    //
+    // Beispiele:
+    //   '12,5'     → parseFloat('12.5') → 12.5
+    //   '1.500,3'  → '1500.3'           → 1500.3
+    //   '1500'     → '1500'              → 1500
+    //   ''         → 0
     function parseDE(val) {
       if (typeof val === 'number') return val;
       if (!val) return 0;
       var s = val.toString().trim();
-      // Remove thousand dots, replace comma decimal with dot
       var parts = s.split(',');
       if (parts.length > 1) {
-        // Has comma decimal: remove all dots, then replace comma with dot
-        return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+        // Komma gefunden → Dezimalzahl
+        // Alle Tausenderpunkte entfernen, dann Komma → Punkt
+        var result = parseFloat(s.replace(/\./g, '').replace(',', '.'));
+        return isNaN(result) ? 0 : result;
       }
-      // No comma: just remove dots (thousand separators)
-      return parseFloat(s.replace(/\./g, '')) || 0;
+      // Kein Komma → nur Tausenderpunkte entfernen
+      var result = parseFloat(s.replace(/\./g, ''));
+      return isNaN(result) ? 0 : result;
     }
 
-    // Strips invalid characters while typing. No thousand separators.
-    // mode: 'integer' (digits only) or 'decimal' (digits + one comma)
+    // Bereinigt Benutzereingaben während des Tippens.
+    //
+    // Modus 'integer': Nur Ziffern erlaubt (für Körner/ha).
+    // Modus 'decimal': Ziffern + maximal ein Komma (für Hektar, Dünger).
+    //
+    // Das verhindert, dass der Nutzer ungültige Zeichen eingibt,
+    // und hält die Eingabe всегда im deutschen Format.
+    //
+    // Beispiel decimal: '12..5' → '12.5' | '1.500' → '1500' (Tausenderpunkt entfernt)
     function onInputFormat(el, mode) {
       var val = el.value;
       if (!val) return;
       var cleaned;
       if (mode === 'integer') {
+        // Nur Ziffern
         cleaned = val.replace(/[^\d]/g, '');
       } else {
-        // Allow digits and at most one comma (decimal separator)
+        // Dezimal: Ziffern + ein Komma maximal
         var hasComma = val.indexOf(',') !== -1;
         cleaned = val.replace(/[^\d,]/g, '');
         if (hasComma) {
+          // Nur das erste Komma behalten, Rest abschneiden
           var parts = cleaned.split(',');
           cleaned = parts[0] + ',' + (parts[1] || '');
         }
       }
       if (el.value !== cleaned) {
         el.value = cleaned;
+        // Cursor ans Ende setzen (nach dem Ersetzen springt der Cursor manchmal)
         el.setSelectionRange(cleaned.length, cleaned.length);
       }
     }
 
-    // --- Drill log ---
-    // Priority state for drill tab list
-    var drillPriorities = {};
+    // ==========================================================================
+    // DRILL-PROTOKOLL — Maschinen-Befüllungen eintragen und auf Tabs verteilen
+    //
+    // Zwei getrennte Log-Typen:
+    //   machineLog[]  — Maschinen-Befüllungen (roh, nicht auf Tabs verteilt)
+    //                   Gespeist durch "Befüllung" + "Prognose" im Drill-Protokoll
+    //   tabEntries[]  — Bereits auf Tabs verteilte Einträge
+    //                   (entsteht durch Anklicken von machineLog-Einträgen)
+    //
+    // drillPriorities{} — Manuell gesetzte Prioritäten (Key: Tab-Index, Value: Zahl)
+    //                     Höhere Zahl = wird zuerst bedient (1 = höchste)
+    //
+    // Prognose: Berechnet basierend auf machineLog, wie viele Einheiten
+    //           nach der aktuellen Verteilung noch übrig sind.
+    // ==========================================================================
 
+    // Speichert die Prioritäten der Tabs (Key: Tab-Index, Value: Priorität 0-N)
+    // Wird aus state.drillPriorities initialisiert (oder aus localStorage nach loadState())
+    var drillPriorities = state.drillPriorities || {};
+
+    // Baut die Drill-Tab-Liste im Protokoll-Panel auf.
+    // Zeigt pro Tab: Prioritäts-Button, Name, verbleibender Bedarf, Status.
+    // Wird bei jedem Öffnen des Protokolls aufgerufen.
+    // ==========================================================================
+    // DRILL-TAB-LISTE — Übersicht aller Tabs im Drill-Bereich (unter Eingabe)
+    //
+    // Jede Zeile enthält:
+    //   - Prioritäts-Button (zyklisch: — → 1 → 2 → … → N → —)
+    //   - Tab-Name + Status ("braucht X Einheiten" oder "✓ fertig")
+    //   - Zwei Eingabefelder: Einheiten, kg Dünger
+    //
+    // Nach jeder Änderung wird drillCalcAll() aufgerufen (Carryover + Prognose).
+    // Die Prioritäten steuern die Verteilungs-Reihenfolge in drillCalcAll().
+    // ==========================================================================
     function renderDrillTabList() {
       var container = document.getElementById('drill_tab_list');
       if (!container) return;
       container.innerHTML = '';
-      drillPriorities = {};
+
       state.reiter.forEach(function(r, i) {
         var row = document.createElement('div');
         row.className = 'drill-tab-row';
 
-        // Priority button: click cycles — (off) → 1 → 2 → … → — (off)
+        // --- Prioritäts-Button ---
+        // Klick: Zyklus — (0) → 1 → 2 → … → N → — (0)
+        // Höchste Zahl = höchste Priorität (wird zuerst befüllt)
         var prioBtn = document.createElement('button');
         prioBtn.className = 'drill-prio-btn';
         prioBtn.id = 'dtl_prio_' + i;
-        prioBtn.textContent = '—';
-        prioBtn.setAttribute('data-prio', '0');
+        var initPrio = Object.prototype.hasOwnProperty.call(drillPriorities, String(i)) ? drillPriorities[i] : 0;
+        prioBtn.textContent = initPrio === 0 ? '—' : String(initPrio);
+        prioBtn.setAttribute('data-prio', String(initPrio));
+        prioBtn.classList.toggle('active', initPrio > 0);
         prioBtn.onclick = function() {
           var current = parseInt(prioBtn.getAttribute('data-prio')) || 0;
           var maxPrio = state.reiter.length;
@@ -1742,10 +2183,11 @@
           prioBtn.textContent = next === 0 ? '—' : String(next);
           prioBtn.classList.toggle('active', next > 0);
           drillPriorities[i] = next;
-          drillCalcAll();
+          saveState();            // Persistenz: Prioritäten in localStorage speichern
+          drillCalcAll();   // Carryover + Prognose neu berechnen
         };
 
-        // Tab name + remaining need
+        // --- Tab-Name + Status-Zeile ---
         var nameWrap = document.createElement('div');
         nameWrap.style.flex = '1';
         nameWrap.style.minWidth = '0';
@@ -1753,14 +2195,17 @@
         label.className = 'drill-tab-name';
         label.textContent = r.name || ('Tab ' + (i + 1));
         nameWrap.appendChild(label);
-        // Show remaining need or done status
+
+        // Verbleibender Bedarf oder "Fertig"-Status anzeigen
         if (r.hektar > 0 && r.koerner > 0) {
-          var totalE = getTabTotalEinheiten(r);
+          var istSum = getTabIstHektar(r);
+          var totalE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
           var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-          var remE = Math.max(0, totalE - usedE);
-          var totalD = getTabTotalDuenger(r);
+          var totalD = istSum > 0 ? getTabIstDuenger(r) : getTabTotalDuenger(r);
           var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-          var remD = Math.max(0, totalD - usedD);
+          var tabCo = getCarryover(i);
+          var remE = Math.max(0, totalE - usedE - tabCo.savedEinheit - tabCo.excessEinheit);
+          var remD = Math.max(0, totalD - usedD - tabCo.savedDuenger - tabCo.excessDuenger);
           var needDiv = document.createElement('div');
           needDiv.className = 'drill-tab-need';
           needDiv.id = 'dtl_need_' + i;
@@ -1804,11 +2249,24 @@
       });
     }
 
+    // ==========================================================================
+    // PROGNOSE-VERTEILUNG — Verteilungs-Algorithmus für Drill-Eingabe
+    //
+    // Liest die aktuellen Eingabewerte (drill_einheit, drill_duenger),
+    // sortiert Tabs nach Priorität und verteilt die Eingabe automatisch.
+    //
+    // Verteilungs-Logik (nachrangige Tabs bekommen nur den Rest):
+    //   1. Sammle alle Tabs mit Priorität > 0
+    //   2. Sortiere nach Priorität aufsteigend (1 = höchste = zuerst bedient)
+    //   3. Jeder Tab bekommt: min(Bedarf, noch_verfügbar)
+    //   4. Ergebnis wird in die Eingabefelder der Tabs geschrieben
+    // ==========================================================================
     function drillCalcAll() {
+      // Liest die aktuelle Befüllungs-Eingabe
       var gesamtEinheit = parseDE(document.getElementById('drill_einheit').value) || 0;
       var gesamtDuenger = parseDE(document.getElementById('drill_duenger').value) || 0;
 
-      // Collect tabs with priority > 0, sort by priority descending
+      // Sammle Tabs mit gesetzter Priorität (> 0)
       var prioritized = [];
       state.reiter.forEach(function(r, i) {
         var prio = drillPriorities[i] || 0;
@@ -1816,30 +2274,35 @@
           prioritized.push({ idx: i, prio: prio, reiter: r });
         }
       });
+      // Sortiere absteigend: Höchste Zahl = zuerst bedient (Prio 2 vor Prio 1)
       prioritized.sort(function(a, b) { return b.prio - a.prio; });
 
-      // Distribute: highest priority first, give what they need, remainder to next
+      // --- Verteilung: Höchste Priorität zuerst, Rest fließt weiter ---
       var remEinheit = gesamtEinheit;
       var remDuenger = gesamtDuenger;
-      var distribution = {};
+      var distribution = {};  // { tabIndex: { einheit, duenger } }
       prioritized.forEach(function(item) {
         var r = item.reiter;
-        var totalE = getTabTotalEinheiten(r);
+        var istSum = getTabIstHektar(r);
+        var totalE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
         var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-        var needE = Math.max(0, totalE - usedE);
+        var tabCo = getCarryover(item.idx);
+        // Bedarf = SOLL - bereits eingetragen - Carryover
+        var needE = Math.max(0, totalE - usedE - tabCo.savedEinheit - tabCo.excessEinheit);
 
-        var totalD = getTabTotalDuenger(r);
+        var totalD = istSum > 0 ? getTabIstDuenger(r) : getTabTotalDuenger(r);
         var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-        var needD = Math.max(0, totalD - usedD);
+        var needD = Math.max(0, totalD - usedD - tabCo.savedDuenger - tabCo.excessDuenger);
 
+        // Verteile: nicht mehr als verfügbar, nicht mehr als benötigt
         var giveE = Math.min(needE, remEinheit);
         var giveD = Math.min(needD, remDuenger);
         distribution[item.idx] = { einheit: giveE, duenger: giveD };
-        remEinheit -= giveE;
+        remEinheit -= giveE;   // Verbleibend für nächste Tabs
         remDuenger -= giveD;
       });
 
-      // Write values to inputs
+      // Schreibt die errechneten Werte in die Tab-Eingabefelder
       state.reiter.forEach(function(r, i) {
         var eInput = document.getElementById('dtl_e_' + i);
         var dInput = document.getElementById('dtl_d_' + i);
@@ -1854,139 +2317,195 @@
       });
     }
 
+    // ==========================================================================
+    // DRILL HINZUFÜGEN — Trägt eine Maschinen-Befüllung ins Protokoll ein
+    //
+    // Zwei Modi:
+    //   Single-Tab (Fallback):  Befüllung geht direkt in den aktiven Tab
+    //   Multi-Tab (Standard):   Erst in machineLog speichern, dann via
+    //                           "Verteilen"-Buttons auf einzelne Tabs verteilen
+    //
+    // machineLog[] speichert: {einheit, duenger, time}
+    // tabEntries[] (in reiter[]): werden durch Klick auf ML-Einträge befüllt
+    // ==========================================================================
     function drillAdd() {
       var gesamtEinheit = parseDE(document.getElementById('drill_einheit').value) || 0;
       var gesamtDuenger = parseDE(document.getElementById('drill_duenger').value) || 0;
-      var hektarStand = parseDE(document.getElementById('drill_hektar').value) || 0;
+      var zaehlerStand = parseDE(document.getElementById('drill_hektar').value) || 0;
 
-      // If no tab list rendered (e.g. in tests), fall back to single-tab mode
+      // Ein einziger Timestamp für alle Einträge dieses Aufrufs
+      var now = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      // Prüft ob die Tab-Liste im DOM existiert (renderDrillTabList() wurde aufgerufen)
       var hasTabList = document.getElementById('dtl_prio_0') !== null;
 
+      // --- SINGLE-TAB FALLBACK ---
+      // Wenn keine Tab-Liste existiert (z.B. nach App-Start ohne Tabs): direkt eintragen
       if (!hasTabList) {
-        // Single-tab fallback: add entry directly to active tab
         var r = getActiveReiter();
         if (!r.hektar || !r.koerner) return;
         if (gesamtEinheit <= 0 && gesamtDuenger <= 0) return;
 
-        // If zählerstand is set, use zähler difference as IST-Fläche
-        var istHa = hektarStand;
-        if (state.zaehlerstand > 0) {
-          var prevZaehler = r.entries.reduce(function(s, e) { return s + (e.istHa || e.hektar || 0); }, 0);
-          istHa = state.zaehlerstand - prevZaehler;
-        }
-
-        // Log machine fill
+        // Eintrag sowohl ins machineLog (für Prognose) als auch direkt in den Tab
         state.machineLog.push({
           einheit: gesamtEinheit,
-          hektar: istHa,
-          istHa: istHa,
+          zaehlerStand: zaehlerStand,
           duenger: gesamtDuenger,
-          time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+          tabIdx: state.activeReiter,
+          time: now
         });
         r.entries.push({
           einheit: gesamtEinheit,
-          hektar: istHa,
-          istHa: istHa,
+          zaehlerStand: zaehlerStand,
           duenger: gesamtDuenger,
-          time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+          time: now
         });
         document.getElementById('drill_einheit').value = '';
         document.getElementById('drill_duenger').value = '';
-        sv();
+        document.getElementById('drill_hektar').value = '';
+        saveState();
         renderResults();
         return;
       }
 
+      // --- MULTI-TAB STANDARD-MODUS ---
+      // Erst prüfen ob irgendein Tab überhaupt etwas bekommt (prio > 0 und Eingabe > 0)
       var addedAny = false;
-      // If zählerstand is set, calculate IST-Fläche from zähler difference
-      var istHa = hektarStand;
-      if (state.zaehlerstand > 0) {
-        var totalPrevIst = 0;
-        state.reiter.forEach(function(r) {
-          r.entries.forEach(function(e) {
-            totalPrevIst += e.istHa || e.hektar || 0;
-          });
-        });
-        istHa = state.zaehlerstand - totalPrevIst;
-      }
-      // Log machine fill
-      state.machineLog.push({
-        einheit: gesamtEinheit,
-        hektar: istHa,
-        istHa: istHa,
-        duenger: gesamtDuenger,
-        time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-      });
       state.reiter.forEach(function(r, i) {
-        var prio = drillPriorities[i] || 0;
+        var prioInput = document.getElementById('dtl_prio_' + i);
+        if (!prioInput) return;
+        var prio = parseInt(prioInput.getAttribute('data-prio')) || 0;
         if (prio <= 0) return;
 
         var eInput = document.getElementById('dtl_e_' + i);
         var dInput = document.getElementById('dtl_d_' + i);
-        var einheit = parseDE(eInput ? eInput.value : '') || 0;
-        var duenger = parseDE(dInput ? dInput.value : '') || 0;
+        if (!eInput || !dInput) return;
 
-        if (einheit > 0 || duenger > 0) {
-          r.entries.push({
-            einheit: einheit,
-            hektar: istHa,
-            istHa: istHa,
-            duenger: duenger,
-            time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-          });
+        var einheitVal = parseDE(eInput.value) || 0;
+        var duengerVal = parseDE(dInput.value) || 0;
+
+        if (einheitVal > 0 || duengerVal > 0) {
           addedAny = true;
         }
       });
 
+      // Kein Tab befüllt → nichts speichern, früh beenden
       if (!addedAny) return;
 
-      // Clear inputs
-      document.getElementById('drill_einheit').value = '';
-      document.getElementById('drill_duenger').value = '';
-      document.getElementById('drill_hektar').value = '';
+      // Maschinen-Befüllung ins globale Log speichern (roh, noch nicht verteilt)
+      state.machineLog.push({
+        einheit: gesamtEinheit,
+        zaehlerStand: zaehlerStand,
+        duenger: gesamtDuenger,
+        time: now
+      });
+      var mlIdx = state.machineLog.length - 1;  // Index des neuen Eintrags
+
+      // Alle Tabs durchgehen: Ist in der Tab-Eingabe ein Wert → als Eintrag speichern
       state.reiter.forEach(function(r, i) {
         var eInput = document.getElementById('dtl_e_' + i);
         var dInput = document.getElementById('dtl_d_' + i);
-        if (eInput) eInput.value = '';
-        if (dInput) dInput.value = '';
+        if (!eInput || !dInput) return;
+
+        var einheitVal = parseDE(eInput.value) || 0;
+        var duengerVal = parseDE(dInput.value) || 0;
+
+        if (einheitVal > 0 || duengerVal > 0) {
+          // Tab-Eintrag erstellen
+          var entry = {
+            einheit: einheitVal,
+            duenger: duengerVal,
+            zaehlerStand: zaehlerStand,
+            time: now,
+            mlIdx: mlIdx  // Verknüpfung zum machineLog-Eintrag
+          };
+          r.entries.push(entry);
+
+          // Im machineLog: distributed aktualisieren (für Prognose-Fortschritt)
+          if (!state.machineLog[mlIdx].distributed) {
+            state.machineLog[mlIdx].distributed = 0;
+          }
+          state.machineLog[mlIdx].distributed += einheitVal;
+
+          // Eingabefelder leeren
+          eInput.value = '';
+          dInput.value = '';
+          addedAny = true;
+        }
       });
 
-      // Reset priorities after fill
-      drillPriorities = {};
-      renderDrillTabList();
+      // Drill-Eingabe-Maske leeren
+      document.getElementById('drill_einheit').value = '';
+      document.getElementById('drill_duenger').value = '';
+      document.getElementById('drill_hektar').value = '';
 
-      sv();
-      renderResults();
+      saveState();
+      drillPriorities = {};
+      state.drillPriorities = drillPriorities;
+      renderDrillTabList();  // Tab-Liste mit neuen Bedarfswerten aktualisieren
+      renderResults();       // Ergebnis-Card + Maschinen-Protokoll + Drill-Protokoll aktualisieren
+      drillCalcAll();        // Prognose neu berechnen
     }
 
+    // Entfernt einen Eintrag aus dem Maschinen-Log (nach Index).
+    // Die bereits auf Tabs verteilten Werte werden NICHT zurückgesetzt
+    // (bleiben in den Tab-Entries erhalten — manueller Eintrag).
     function drillMachineRemove(idx) {
       if (!state.machineLog || idx < 0 || idx >= state.machineLog.length) return;
       state.machineLog.splice(idx, 1);
-      sv();
+      // mlIdx-Referenzen aller Tab-Entries anpassen
+      state.reiter.forEach(function(r) {
+        r.entries.forEach(function(e) {
+          if (e.mlIdx > idx) e.mlIdx--;
+        });
+      });
+      saveState();
       renderResults();
     }
 
+    // Entfernt einen einzelnen Tab-Eintrag (aus reiter[tabIdx].entries).
+    // Damit kann der Landwirt eine einzelne Befüllung rückgängig machen.
     function drillRemove(tabIdx, entryIdx) {
+      if (!state.reiter[tabIdx] || entryIdx >= state.reiter[tabIdx].entries.length) return;
       state.reiter[tabIdx].entries.splice(entryIdx, 1);
-      sv();
+      saveState();
       renderResults();
     }
 
+    // ==========================================================================
+    // ERGEBNIS-CARD — Berechnete Werte in der UI aktualisieren
+    //
+    // Liest aktuelle Werte aus dem active Tab und State,
+    // berechnet alle abgeleiteten Größen (Körner, Einheiten, Dünger)
+    // und schreibt sie in die DOM-Elemente der Ergebnis-Card.
+    //
+    // Wird aufgerufen nach: berechne(), drillAdd(), drillRemove(), Tab-Wechsel
+    //
+    // ANMERKUNG: Diese Funktion rendert AUCH das Drill-Protokoll (Maschinen-Log,
+    // Drill-Tab-Liste, Carryover-Anzeige) direkt — es gibt keine separate
+    // renderMachineLog()-Funktion (diese wurde im Code vergessen).
+    // Das Maschinen-Protokoll wird inline innerhalb von renderResults()
+    // über das Element #drill_machine_log gerendert.
+    // ==========================================================================
     function renderResults() {
       var r = getActiveReiter();
       var kornerGesamt = getKornerGesamt();
       var einheiten = getTotalEinheiten();
       var duengerTotal = getTotalDuenger();
+
+      // Ergebnis-Card: Körner gesamt, Einheiten, Dünger
       document.getElementById('r_korner').textContent = Math.round(kornerGesamt).toLocaleString('de-DE');
       document.getElementById('r_einheiten').textContent = formatEinheit(einheiten);
       document.getElementById('r_duenger').textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
+
+      // Info-Zeile unter dem Ergebnis
       if (duengerTotal > 0) {
         document.getElementById('r_info').textContent = duengerTotal.toLocaleString('de-DE') + ' kg Dünger, ' + formatEinheit(einheiten) + ' Saat';
       } else {
         document.getElementById('r_info').textContent = formatEinheit(einheiten) + ' Saat (ohne Dünger)';
       }
 
-      // Update mini-result in sticky footer
+      // Mini-Result im Sticky Footer aktualisieren
       var miniResult = document.getElementById('mini_result');
       if (miniResult) {
         if (r.hektar > 0 && r.koerner > 0) {
@@ -2001,19 +2520,80 @@
         }
       }
 
-      // Show zaehler section if zähler tracking is active (entries with istHa or zaehlerstand set)
-      var hasZaehler = state.reiter.some(function(t) { return t.entries.some(function(e) { return e.istHa !== undefined; }); }) || state.zaehlerstand > 0;
-      document.getElementById('zaehler_section').style.display = hasZaehler ? 'block' : 'none';
+      // Update SOLL/IST/DIFF — uses r.istHektar for IST
+      var sollHa = r.hektar;
+      var istHa = getTabIstHektar(r);
+      var diff = istHa - sollHa;
+
+      // Update SOLL/IST/DIFF in result card
+      var sollIstSection = document.getElementById('r_soll_ist_section');
+      if (sollHa > 0 && istHa > 0) {
+        document.getElementById('r_soll_ha').textContent = fmt(sollHa) + ' ha';
+        document.getElementById('r_ist_ha').textContent = fmt(istHa) + ' ha';
+        var rDiffEl = document.getElementById('r_diff_ha');
+        if (diff >= 0) {
+          rDiffEl.textContent = '+' + fmt(diff) + ' ha';
+          rDiffEl.className = 'value small positive';
+        } else {
+          rDiffEl.textContent = fmt(diff) + ' ha';
+          rDiffEl.className = 'value small negative';
+        }
+        sollIstSection.style.display = 'block';
+      } else {
+        sollIstSection.style.display = 'none';
+      }
+
+      // --- Carryover-Hint in der Ergebnis-Card ---
+      // Zeigt Überträge aus Ersparnissen (blau, ↗) oder Mehrbedarfen (rot, ↘) für den aktiven Tab.
+      var carryoverHint = document.getElementById('r_carryover_hint');
+      if (!carryoverHint) {
+        // Fallback: nur zur Sicherheit, Element sollte bereits im HTML existieren
+        carryoverHint = document.createElement('div');
+        carryoverHint.id = 'r_carryover_hint';
+        carryoverHint.style.cssText = 'font-size:0.85rem;padding:4px 0;';
+        sollIstSection.parentNode.insertBefore(carryoverHint, sollIstSection.nextSibling);
+      }
+      carryoverHint.innerHTML = '';
+      var activeIdx = state.activeReiter || 0;
+      var co = getCarryover(activeIdx);
+      var coHtml = '';
+      // Ersparnis: IST < SOLL → Überschuss wird auf andere Tabs verteilt (blau, ↗)
+      if (co.savedEinheit > 0.05 || co.savedDuenger > 0.05) {
+        var parts = [];
+        if (co.savedEinheit > 0.05) parts.push(fmt(co.savedEinheit) + ' Einheiten');
+        if (co.savedDuenger > 0.05) parts.push(fmt(co.savedDuenger) + ' kg Dünger');
+        coHtml += '<span style="color:#1565c0">↗ Übertrag aus ersparten Flächen: +' + parts.join(', ') + '</span>';
+      }
+      // Mehrbedarf: IST > SOLL → Fehlbetrag wird von anderen Tabs genommen (rot, ↘)
+      if (co.excessEinheit > 0.05 || co.excessDuenger > 0.05) {
+        var eparts = [];
+        if (co.excessEinheit > 0.05) eparts.push(fmt(co.excessEinheit) + ' Einheiten');
+        if (co.excessDuenger > 0.05) eparts.push(fmt(co.excessDuenger) + ' kg Dünger');
+        if (coHtml) coHtml += '<br>';
+        coHtml += '<span style="color:#c62828">↘ Mehrwert aus überschrittenen Flächen: -' + eparts.join(', ') + '</span>';
+      }
+      carryoverHint.innerHTML = coHtml;
+
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-      var remEinheit = Math.max(0, einheiten - usedEinheit);
-      var remDuenger = Math.max(0, duengerTotal - usedDuenger);
+      // EffectiveUsed: Physikalisch verbraucht + Carryover-Anpassungen
+      //   + co.savedEinheit    → Ersparnis aus IST<SOLL (reduziert Bedarf, da andere Tabs profitieren)
+      //   + co.excessEinheit   → Mehrbedarf aus IST>SOLL (erhöht Bedarf, da andere Tabs davon nehmen)
+      // Beispiel: 5 Einheiten verbraucht, 0.5 Ersparnis, 0.2 Mehrbedarf → effective = 5 + 0.5 + 0.2 = 5.7
+      var effectiveUsedE = usedEinheit + co.savedEinheit + co.excessEinheit;
+      var effectiveUsedD = usedDuenger + co.savedDuenger + co.excessDuenger;
+      // IST-basierter Bedarf wenn vorhanden (d.h. IST < SOLL → weniger Bedarf als geplant)
+      var istSum = getTabIstHektar(r);
+      var istEinheiten = istSum > 0 ? getTabIstEinheiten(r) : einheiten;
+      var istDuenger = istSum > 0 ? getTabIstDuenger(r) : duengerTotal;
+      var remEinheit = Math.max(0, istEinheiten - effectiveUsedE);
+      var remDuenger = Math.max(0, istDuenger - effectiveUsedD);
       var drillSection = document.getElementById('r_drill_section');
       if (drillSection) {
         var showDrill = einheiten > 0;
         drillSection.style.display = showDrill ? 'block' : 'none';
         if (showDrill) {
-          document.getElementById('r_drill_e_used').textContent = formatEinheit(usedEinheit);
+          document.getElementById('r_drill_e_used').textContent = formatEinheit(effectiveUsedE);
           var eRemRow = document.getElementById('r_drill_e_rem_row');
           var eRemVal = document.getElementById('r_drill_e_rem');
           eRemVal.textContent = formatEinheit(remEinheit);
@@ -2024,7 +2604,7 @@
           if (duengerTotal > 0) {
             dUsedRow.style.display = '';
             dRemRow.style.display = '';
-            document.getElementById('r_drill_d_used').textContent = fmt(usedDuenger) + ' kg';
+            document.getElementById('r_drill_d_used').textContent = fmt(effectiveUsedD) + ' kg';
             document.getElementById('r_drill_d_rem').textContent = fmt(remDuenger) + ' kg';
             dRemRow.className = 'result-row ' + (remDuenger <= 0.05 ? 'done' : 'remaining');
           } else {
@@ -2039,17 +2619,10 @@
             r.entries.forEach(function(e, entryIdx) {
               var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
               var dl = ds ? ' + ' + ds + ' Dünger' : '';
-              var istHa = e.istHa !== undefined ? e.istHa : e.hektar;
-              var sollHa = r.hektar;
+              var zs = e.zaehlerStand || 0;
               var hl = '';
-              if (istHa > 0) {
-                hl = ' @ ' + fmt(istHa) + ' ha';
-                var diff = istHa - sollHa;
-                if (diff >= 0) {
-                  hl += ' <span class="entry-diff positive">+' + fmt(diff) + '</span>';
-                } else {
-                  hl += ' <span class="entry-diff negative">' + fmt(diff) + '</span>';
-                }
+              if (zs > 0) {
+                hl = ' @ ' + fmt(zs) + ' ha';
               }
               var entry = document.createElement('div');
               entry.className = 'drill-entry-inline';
@@ -2074,35 +2647,64 @@
       }
 
       // --- Drill summary: aggregate across ALL tabs (Protokoll view) ---
-      var allEinheitenTotal = 0, allEinheitenUsed = 0;
-      var allDuengerTotal = 0, allDuengerUsed = 0;
+      // Aggregate über alle Tabs für die Zusammenfassung unten im Protokoll:
+      //   SOLL   = geplante Menge (basierend auf r.hektar × r.koerner)
+      //   IST    = tatsächlich benötigte Menge (basierend auf r.istHektar, falls vorhanden)
+      //   USED   = Summe aller Drill-Einträge (r.entries)
+      //   REMAIN = IST - USED (was noch zu befüllen ist)
+      var allEinheitenSoll = 0, allEinheitenIst = 0, allEinheitenUsed = 0;
+      var allDuengerSoll = 0, allDuengerIst = 0, allDuengerUsed = 0;
       state.reiter.forEach(function(tab) {
-        var tabE = getTabTotalEinheiten(tab);
-        var tabD = getTabTotalDuenger(tab);
-        var tabUsedE = tab.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-        var tabUsedD = tab.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-        allEinheitenTotal += tabE;
-        allEinheitenUsed += tabUsedE;
-        allDuengerTotal += tabD;
-        allDuengerUsed += tabUsedD;
+        var tabSollE = getTabTotalEinheiten(tab);
+        var tabSollD = getTabTotalDuenger(tab);
+        allEinheitenSoll += tabSollE;
+        allDuengerSoll += tabSollD;
+        // IST-basierter Bedarf: wenn r.istHektar existiert → IST-Werte, sonst SOLL-Werte
+        if (getTabIstHektar(tab) > 0) {
+          allEinheitenIst += getTabIstEinheiten(tab);
+          allDuengerIst += getTabIstDuenger(tab);
+        } else {
+          allEinheitenIst += tabSollE;
+          allDuengerIst += tabSollD;
+        }
+        allEinheitenUsed += tab.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+        allDuengerUsed += tab.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       });
-      var allEinheitenRem = Math.max(0, allEinheitenTotal - allEinheitenUsed);
-      var allDuengerRem = Math.max(0, allDuengerTotal - allDuengerUsed);
-      document.getElementById('ds_saat_total').textContent = fmt(allEinheitenTotal) + ' Einheiten';
+      // Verbleibend = IST - USED (nie negativ, max(0, …))
+      var allEinheitenRem = Math.max(0, allEinheitenIst - allEinheitenUsed);
+      var allDuengerRem = Math.max(0, allDuengerIst - allDuengerUsed);
+      document.getElementById('ds_saat_total').textContent = fmt(allEinheitenIst) + ' Einheiten';
       document.getElementById('ds_saat_used').textContent = fmt(allEinheitenUsed) + ' Einheiten';
       document.getElementById('ds_saat_remaining').textContent = fmt(allEinheitenRem) + ' Einheiten';
-      document.getElementById('ds_duenger_total').textContent = allDuengerTotal > 0 ? allDuengerTotal.toLocaleString('de-DE') + ' kg' : '—';
+      document.getElementById('ds_duenger_total').textContent = allDuengerIst > 0 ? allDuengerIst.toLocaleString('de-DE') + ' kg' : '—';
       document.getElementById('ds_duenger_used').textContent = allDuengerUsed > 0 ? allDuengerUsed.toLocaleString('de-DE') + ' kg' : '—';
-      document.getElementById('ds_duenger_remaining').textContent = allDuengerTotal > 0 ? allDuengerRem.toLocaleString('de-DE') + ' kg' : '—';
+      document.getElementById('ds_duenger_remaining').textContent = allDuengerIst > 0 ? allDuengerRem.toLocaleString('de-DE') + ' kg' : '—';
+      // Ersparnis: SOLL - IST über alle Tabs (zeigt wie viel Saatgut/Dünger durch kleinere IST-Fläche gespart wurde)
+      var einheitenSavings = allEinheitenSoll - allEinheitenIst;
+      var duengerSavings = allDuengerSoll - allDuengerIst;
+      var savingsEl = document.getElementById('ds_savings');
+      if (savingsEl && (einheitenSavings > 0.05 || duengerSavings > 0.05)) {
+        var savingsParts = [];
+        if (einheitenSavings > 0.05) savingsParts.push(fmt(einheitenSavings) + ' Einheiten Saatgut');
+        if (duengerSavings > 0.05) savingsParts.push(fmt(duengerSavings) + ' kg Dünger');
+        savingsEl.textContent = '↓ Ersparnis durch geringere IST-Fläche: ' + savingsParts.join(' + ');
+        savingsEl.style.display = '';
+      } else if (savingsEl) {
+        savingsEl.style.display = 'none';
+      }
       var hasAnyEntries = state.reiter.some(function(r) { return r.entries.length > 0; });
-      var hasAnyData = allEinheitenTotal > 0 || allDuengerTotal > 0;
+      var hasAnyData = allEinheitenSoll > 0 || allDuengerSoll > 0;
       document.getElementById('drill_summary').style.display = (hasAnyData || hasAnyEntries) ? 'block' : 'none';
       // Build total summary text
       var summaryParts = [];
       if (allEinheitenUsed > 0) summaryParts.push(formatEinheit(allEinheitenUsed));
       if (allDuengerUsed > 0) summaryParts.push(allDuengerUsed.toLocaleString('de-DE') + ' kg Dünger');
       document.getElementById('ds_total_summary').textContent = summaryParts.join(' + ');
-      // Machine log (raw fills into machine, independent of tab distribution)
+
+      // --- Maschinen-Protokoll rendern (roh, unverändert) ---
+      // Zeigt alle Maschinen-Befüllungen mit:
+      //   - Prognose "Saat/Dünger leer bei ~X ha" (basierend auf kumuliertem Verbrauch)
+      //   - Fortschrittsbalken (distributed / einheit)
       var mlContainer = document.getElementById('drill_machine_log');
       mlContainer.innerHTML = '';
       if (state.machineLog && state.machineLog.length > 0) {
@@ -2110,30 +2712,16 @@
         mlTitle.className = 'drill-entry-tab-header';
         mlTitle.textContent = 'Maschinen-Protokoll';
         mlContainer.appendChild(mlTitle);
-        // Verbrauchsraten einmal berechnen
-        var fgFactor = 1;
-        if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
-          fgFactor = (state.fahrgassenBreite - 1) / state.fahrgassenBreite;
-        }
-        var unitsPerHa = r.koerner * fgFactor / state.koernerProEinheit;
-        var duengerPerHa = r.duenger || 0;
         // Kumulativ: Restmenge im Tank + neu eingefuellt
         var cumEinheit = 0, cumDuenger = 0;
 
         state.machineLog.forEach(function(m, mi) {
           var ds = m.duenger > 0 ? m.duenger.toLocaleString('de-DE') + ' kg' : '';
           var dl = ds ? ' + ' + ds + ' Dünger' : '';
-          var istHa = m.istHa !== undefined ? m.istHa : m.hektar;
-          var sollHa = r.hektar;
+          var zs = m.zaehlerStand || 0;
           var hl = '';
-          if (istHa > 0) {
-            hl = ' @ ' + fmt(istHa) + ' ha';
-            var diff = istHa - sollHa;
-            if (diff >= 0) {
-              hl += ' <span class="entry-diff positive">+' + fmt(diff) + '</span>';
-            } else {
-              hl += ' <span class="entry-diff negative">' + fmt(diff) + '</span>';
-            }
+          if (zs > 0) {
+            hl = ' @ ' + fmt(zs) + ' ha';
           }
           var row = document.createElement('div');
           row.className = 'drill-entry';
@@ -2154,23 +2742,30 @@
           mlContainer.appendChild(row);
 
           // Prognose: Rest aus vorheriger Befuellung + neu eingefuellt
-          if (r.koerner > 0 && (m.einheit > 0 || m.duenger > 0 || cumEinheit > 0 || cumDuenger > 0)) {
+          // Formel für kumulierte Restmenge nach Fahrt von prevZählerstand zu m.zaehlerStand:
+          //   cumEinheit = max(0, cumEinheit - haDriven × unitsPerHa) + m.einheit
+          // Erste Befüllung (mi===0): cum wird auf Initialbefüllung gesetzt (kein Verbrauch davor).
+          var tabR = state.reiter[m.tabIdx !== undefined ? m.tabIdx : state.activeReiter] || r;
+          var rates = getTabRates(m.tabIdx !== undefined ? m.tabIdx : state.activeReiter);
+          var mlUnitsPerHa = rates.unitsPerHa;
+          var mlDuengerPerHa = rates.duengerPerHa;
+          if (tabR.koerner > 0 && (m.einheit > 0 || m.duenger > 0 || cumEinheit > 0 || cumDuenger > 0)) {
             if (mi === 0) {
               cumEinheit = m.einheit;
               cumDuenger = m.duenger;
             } else {
               var prevM = state.machineLog[mi - 1];
-              var haDriven = Math.max(0, (m.hektar || 0) - (prevM.hektar || 0));
-              cumEinheit = Math.max(0, cumEinheit - haDriven * unitsPerHa) + m.einheit;
-              cumDuenger = Math.max(0, cumDuenger - haDriven * duengerPerHa) + m.duenger;
+              var haDriven = Math.max(0, (m.zaehlerStand || 0) - (prevM.zaehlerStand || 0));
+              cumEinheit = Math.max(0, cumEinheit - haDriven * mlUnitsPerHa) + m.einheit;
+              cumDuenger = Math.max(0, cumDuenger - haDriven * mlDuengerPerHa) + m.duenger;
             }
             var prognoseParts = [];
-            if (cumEinheit > 0 && unitsPerHa > 0) {
-              var prognoseSaat = (m.hektar || 0) + cumEinheit / unitsPerHa;
+            if (cumEinheit > 0 && mlUnitsPerHa > 0) {
+              var prognoseSaat = (m.zaehlerStand || 0) + cumEinheit / mlUnitsPerHa;
               prognoseParts.push('<span><span class="prog-label">Saat leer bei</span> <span class="prog-val">~' + fmt(prognoseSaat) + ' ha</span></span>');
             }
-            if (cumDuenger > 0 && duengerPerHa > 0) {
-              var prognoseDuenger = (m.hektar || 0) + cumDuenger / duengerPerHa;
+            if (cumDuenger > 0 && mlDuengerPerHa > 0) {
+              var prognoseDuenger = (m.zaehlerStand || 0) + cumDuenger / mlDuengerPerHa;
               prognoseParts.push('<span><span class="prog-label">Dünger leer bei</span> <span class="prog-val">~' + fmt(prognoseDuenger) + ' ha</span></span>');
             }
             if (prognoseParts.length > 0) {
@@ -2199,20 +2794,79 @@
           tabHeader.textContent = r.name || ('Tab ' + (tabIdx + 1));
           container.appendChild(tabHeader);
 
+          // Show SOLL/IST summary per tab (uses r.istHektar)
+          var tabIstHektar = getTabIstHektar(r);
+          if (tabIstHektar > 0 && r.hektar > 0) {
+            var tabDiff = tabIstHektar - r.hektar;
+            var summaryDiv = document.createElement('div');
+            summaryDiv.className = 'drill-entry';
+            summaryDiv.style.fontWeight = '600';
+            summaryDiv.style.fontSize = '0.85rem';
+            summaryDiv.style.color = '#555';
+            var diffClass = tabDiff >= 0 ? 'entry-diff positive' : 'entry-diff negative';
+            var diffSign = tabDiff >= 0 ? '+' : '';
+            summaryDiv.innerHTML = '<span class="entry-text">SOLL: ' + fmt(r.hektar) + ' ha | IST: ' + fmt(tabIstHektar) + ' ha | Abw: <span class="' + diffClass + '">' + diffSign + fmt(tabDiff) + ' ha</span></span>';
+            container.appendChild(summaryDiv);
+
+            // Show savings in Saatgut/Dünger when IST < SOLL
+            var sollE = getTabTotalEinheiten(r);
+            var istE = getTabIstEinheiten(r);
+            var sollD = getTabTotalDuenger(r);
+            var istD = getTabIstDuenger(r);
+            // Ersparnis = SOLL - IST (positiv wenn IST < SOLL, negativ wenn IST > SOLL)
+            var savedE = sollE - istE;
+            var savedD = sollD - istD;
+            // Ersparnis-Zeile nur anzeigen wenn IST < SOLL (savedE > 0)
+            if (savedE > 0.05 || savedD > 0.05) {
+              var savingsParts = [];
+              if (savedE > 0.05) savingsParts.push(fmt(savedE) + ' Einheiten Saatgut');
+              if (savedD > 0.05) savingsParts.push(fmt(savedD) + ' kg Dünger');
+              var savingsDiv = document.createElement('div');
+              savingsDiv.className = 'drill-savings';
+              var savingsSpan = document.createElement('span');
+              savingsSpan.className = 'entry-text';
+              savingsSpan.textContent = 'Ersparnis: ' + savingsParts.join(', ');
+              savingsDiv.appendChild(savingsSpan);
+              container.appendChild(savingsDiv);
+            }
+          }
+
+          // --- Carryover-Zeile für diesen Tab im Drill-Protokoll ---
+          // Zeigt: Übertrag aus Ersparnissen (wird an andere Tabs verteilt)
+          var carryover = getCarryover(tabIdx);
+          if (carryover.savedEinheit > 0.05 || carryover.savedDuenger > 0.05) {
+              var carryParts = [];
+              if (carryover.savedEinheit > 0.05) carryParts.push(fmt(carryover.savedEinheit) + ' Einheiten Saatgut');
+              if (carryover.savedDuenger > 0.05) carryParts.push(fmt(carryover.savedDuenger) + ' kg Dünger');
+              var carryDiv = document.createElement('div');
+              carryDiv.className = 'drill-carryover';
+              var carrySpan = document.createElement('span');
+              carrySpan.className = 'entry-text';
+              carrySpan.textContent = 'Übertrag aus ersparten Flächen: +' + carryParts.join(', ');
+              carryDiv.appendChild(carrySpan);
+              container.appendChild(carryDiv);
+            }
+          // Negative carryover: excess (IST > SOLL) → deducted from last-filled tab
+          if (carryover.excessEinheit > 0.05 || carryover.excessDuenger > 0.05) {
+              var excessParts = [];
+              if (carryover.excessEinheit > 0.05) excessParts.push(fmt(carryover.excessEinheit) + ' Einheiten Saatgut');
+              if (carryover.excessDuenger > 0.05) excessParts.push(fmt(carryover.excessDuenger) + ' kg Dünger');
+              var excessDiv = document.createElement('div');
+              excessDiv.className = 'drill-excess';
+              var excessSpan = document.createElement('span');
+              excessSpan.className = 'entry-text';
+              excessSpan.textContent = 'Mehrwert aus überschrittenen Flächen: -' + excessParts.join(', ');
+              excessDiv.appendChild(excessSpan);
+              container.appendChild(excessDiv);
+            }
+
           r.entries.forEach(function(e, entryIdx) {
             var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
             var dl = ds ? ' + ' + ds + ' Dünger' : '';
-            var istHa = e.istHa !== undefined ? e.istHa : e.hektar;
-            var sollHa = r.hektar;
+            var zs = e.zaehlerStand || 0;
             var hl = '';
-            if (istHa > 0) {
-              hl = ' @ ' + fmt(istHa) + ' ha';
-              var diff = istHa - sollHa;
-              if (diff >= 0) {
-                hl += ' <span class="entry-diff positive">+' + fmt(diff) + '</span>';
-              } else {
-                hl += ' <span class="entry-diff negative">' + fmt(diff) + '</span>';
-              }
+            if (zs > 0) {
+              hl = ' @ ' + fmt(zs) + ' ha';
             }
 
             var entry = document.createElement('div');
@@ -2240,6 +2894,13 @@
       }
     }
 
+    // ==============================================================================
+    // RESET-FUNKTIONEN — Zurücksetzen von Eingaben
+    // ==============================================================================
+
+    // Zeigt einen confirm()-Dialog und ruft dann resetActiveTab() oder resetAll() auf.
+    // fullReset=false → nur aktuellen Tab zurücksetzen
+    // fullReset=true  → ALLE Daten zurücksetzen (alle Tabs, Einstellungen, machineLog)
     function confirmResetAll(fullReset) {
       var tabName = state.reiter[state.activeReiter].name;
       if (fullReset) {
@@ -2251,19 +2912,21 @@
       }
     }
 
-    // Reset only the active tab's data (preserves other tabs, global settings, machineLog)
+    // Setzt nur die Felder des aktiven Tabs zurück (Name und SOLL/IST bleiben erhalten).
+    // Alle Drill-Protokoll-Einträge dieses Tabs werden gelöscht.
+    // Andere Tabs, globale Einstellungen und machineLog bleiben unberührt.
     function resetActiveTab() {
       var active = state.activeReiter;
       state.reiter[active] = {
-        name: state.reiter[active].name,
+        name: state.reiter[active].name,  // Tab-Name beibehalten
         hektar: 0,
+        istHektar: 0,
         koerner: 0,
         duenger: 0,
-        entries: []
+        entries: []  // Drill-Einträge löschen
       };
-      document.getElementById('hektar').value = '';
-      document.getElementById('koerner').value = '';
-      document.getElementById('duenger').value = '';
+      // machineLog-Einträge für diesen Tab entfernen
+      state.machineLog = state.machineLog.filter(function(e) { return e.tabIndex !== active; });
       document.getElementById('err_hektar').textContent = '';
       document.getElementById('err_koerner').textContent = '';
       document.getElementById('hektar').style.borderColor = '';
@@ -2272,23 +2935,25 @@
       document.getElementById('drill_section').style.display = 'none';
       syncInputsFromState();
       renderTabs();
-      sv();
+      saveState();
     }
 
-    // Full reset - clears everything (used for extreme cases, not via UI button)
+    // Setzt ALLE Daten zurück: Alle Tabs, maschinelles Log, globale Einstellungen.
+    // Wird nur über einen versteckten internen Mechanismus aufgerufen (nicht über UI-Buttons).
+    // ACHTUNG: Diese Aktion kann nicht rückgängig gemacht werden.
     function resetAll() {
       state = {
-        reiter: [{ name: 'Tab 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
+        reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] }],
         activeReiter: 0,
         activeView: null,
         fahrgassenEnabled: false,
         fahrgassenBreite: 0,
         einheitGroesseEnabled: false,
         koernerProEinheit: 50000,
-        machineLog: [],
-        zaehlerstand: 0
+        machineLog: []
       };
       document.getElementById('hektar').value = '';
+      document.getElementById('ist_hektar').value = '';
       document.getElementById('koerner').value = '';
       document.getElementById('duenger').value = '';
       document.getElementById('err_hektar').textContent = '';
@@ -2297,8 +2962,6 @@
       document.getElementById('koerner').style.borderColor = '';
       document.getElementById('results').style.display = 'none';
       document.getElementById('drill_section').style.display = 'none';
-      document.getElementById('zaehler_section').style.display = 'none';
-      document.getElementById('zaehler_stand').value = '';
       document.getElementById('fahrgassen_toggle').classList.remove('active');
       document.getElementById('fahrgassen_settings').classList.remove('open');
       document.getElementById('fahrgassen_breite').value = '';
@@ -2307,21 +2970,35 @@
       document.getElementById('einheit_groesse_settings').classList.remove('open');
       document.getElementById('koerner_pro_einheit').value = '';
       document.getElementById('einheit_groesse_saved').textContent = '';
+      drillPriorities = {};
+      state.drillPriorities = drillPriorities;
       renderTabs();
-      sv();
+      saveState();
     }
 
     // --- Init after DOM is ready ---
+    // ==========================================================================
+    // INIT — App-Initialisierung nach DOMContentLoaded
+    //
+    // Reihenfolge (wichtig!):
+    //   1. loadState()                    — State aus localStorage laden + migrieren
+    //   2. syncInputsFromState()   — State → Input-Felder
+    //   3. renderTabs()            — Tab-Leiste aufbauen
+    //   4. renderView()            — Sichtbarkeit je nach Ansicht setzen
+    //   5. Toggle-Zustände wieder-  — Fahrgassen/Einheiten-UI wiederherstellen
+    //      herstellen
+    //   6. renderResults()         — Ergebnis-Card falls Daten vorhanden
+    // ==========================================================================
     function initUI() {
-      lv();
-      syncInputsFromState();
-      renderTabs();
-      renderView();
+      loadState();                          // 1. State laden
+      syncInputsFromState();          // 2. Inputs beschreiben
+      renderTabs();                   // 3. Tab-Leiste
+      renderView();                   // 4. Ansicht (Feld/Protokoll)
       if (state.fahrgassenEnabled) {
         document.getElementById('fahrgassen_toggle').classList.add('active');
         document.getElementById('fahrgassen_settings').classList.add('open');
         if (state.fahrgassenBreite > 0) {
-          document.getElementById('fahrgassen_breite').value = formatDE(state.fahrgassenBreite);
+          document.getElementById('fahrgassen_breite').value = toInputValue(state.fahrgassenBreite);
           document.getElementById('fahrgassen_saved').textContent = state.fahrgassenBreite + ' m -> ~' + (1 / state.fahrgassenBreite * 100).toFixed(1) + '% weniger Körner';
         }
       }
@@ -2329,7 +3006,7 @@
         document.getElementById('einheit_groesse_toggle').classList.add('active');
         document.getElementById('einheit_groesse_settings').classList.add('open');
         if (state.koernerProEinheit > 0) {
-          document.getElementById('koerner_pro_einheit').value = formatDE(state.koernerProEinheit);
+          document.getElementById('koerner_pro_einheit').value = toInputValue(state.koernerProEinheit);
           if (state.koernerProEinheit !== 50000) {
             document.getElementById('einheit_groesse_saved').textContent = state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit';
           }
@@ -2345,6 +3022,10 @@
     }
 
     // --- Dark Mode ---
+    // Key: 'mais_rechner_theme' in localStorage (Wert: 'dark' oder 'light')
+    // initTheme(): Stored Preference → System-Präferenz als Fallback
+    // applyTheme(dark): Setzt CSS-Klasse .dark auf <html>, Button-Icon, Meta-Theme-Color
+    // toggleTheme(): Liest aktuellen Zustand → toggled → speichert + anwendet
     function getStoredTheme() {
       try { return localStorage.getItem('mais_rechner_theme'); } catch(e) { return null; }
     }
@@ -2352,11 +3033,11 @@
       try { localStorage.setItem('mais_rechner_theme', theme); } catch(e) {}
     }
     function applyTheme(dark) {
-      document.documentElement.classList.toggle('dark', dark);
+      document.documentElement.classList.toggle('dark', dark);         // CSS .dark Klasse
       var btn = document.getElementById('theme_toggle');
-      if (btn) btn.textContent = dark ? '☀️' : '🌙';
+      if (btn) btn.textContent = dark ? '☀️' : '🌙';                   // Icon: Hell=Dunkel-Modus, Dunkel=Hell-Modus
       var meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', dark ? '#1a1f16' : '#2d5016');
+      if (meta) meta.setAttribute('content', dark ? '#1a1f16' : '#2d5016');  // Android Status Bar
     }
     function toggleTheme() {
       var isDark = document.documentElement.classList.contains('dark');
@@ -2364,11 +3045,13 @@
       setStoredTheme(next ? 'dark' : 'light');
       applyTheme(next);
     }
+    // initTheme — Lädt das gespeicherte Theme oder fällt auf die System-Einstellung zurück.
+    // Wird einmalig vor DOMContentLoaded aufgerufen (kein async/await, also synchron).
     function initTheme() {
       var stored = getStoredTheme();
       if (stored === 'dark') { applyTheme(true); return; }
       if (stored === 'light') { applyTheme(false); return; }
-      // No stored preference: follow system
+      // Keine gespeicherte Präferenz → Systemeinstellung verwenden
       var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
       applyTheme(prefersDark);
     }
@@ -2381,19 +3064,35 @@
     document.addEventListener('DOMContentLoaded', initUI);
 
     // --- Dashboard ---
+    // Öffnet das Dashboard als Bottom-Sheet-Overlay.
+    // Zeigt eine Zusammenfassung aller Tabs und einen Fortschrittsbalken.
+    // Body-Scroll wird deaktiviert während das Dashboard offen ist.
     function openDashboard() {
-      renderDashboard();
+      renderDashboard();  // Daten aktualisieren bevor das Sheet erscheint
       document.getElementById('dashboard_overlay').classList.add('open');
       document.getElementById('dashboard_sheet').classList.add('open');
       document.body.style.overflow = 'hidden';
     }
 
+    // Schließt das Dashboard (entfernt die CSS-Klassen 'open').
+    // Body-Scroll wird wieder aktiviert.
     function closeDashboard() {
       document.getElementById('dashboard_overlay').classList.remove('open');
       document.getElementById('dashboard_sheet').classList.remove('open');
       document.body.style.overflow = '';
     }
 
+    // ==========================================================================
+    // DASHBOARD — Übersicht aller Felder als Bottom-Sheet
+    //
+    // Zeigt eine kompakte Tabelle aller Tabs mit:
+    //   - Fortschrittsbalken (IST/SOLL in %)
+    //   - Tab-Name, SOLL/IST-Fläche, Einheiten (verbraucht/gesamt)
+    //   - Zusammenfassung über alle Tabs oben
+    //
+    // Fortschrittsbalken-Farben:
+    //   < 33%: blau | 33-66%: gelb | > 66%: grün | 100%+: läuft über (grün)
+    // ==========================================================================
     function renderDashboard() {
       var container = document.getElementById('dashboard_content');
       var reiter = state.reiter;
@@ -2409,7 +3108,7 @@
       reiter.forEach(function(r) {
         if (r.hektar > 0 && r.koerner > 0) {
           totalHa += r.hektar;
-          totalEinheiten += r.hektar * r.koerner / state.koernerProEinheit;
+          totalEinheiten += getTabTotalEinheiten(r);
           totalDuenger += r.hektar * r.duenger;
           totalUsedEinheit += r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
           totalUsedDuenger += r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
@@ -2493,7 +3192,7 @@
         kDiv.appendChild(kDivVal);
         stats.appendChild(kDiv);
 
-        // Calculate progress
+        // Calculate progress (mit Carryover)
         var einheiten = 0;
         var usedEinheit = 0;
         var duengerTotal = 0;
@@ -2501,21 +3200,23 @@
         var pct = 0;
         var statusClass = 'na';
         if (r.hektar > 0 && r.koerner > 0) {
-          einheiten = r.hektar * r.koerner / state.koernerProEinheit;
+          einheiten = getTabTotalEinheiten(r);
           usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
           duengerTotal = r.hektar * r.duenger;
           usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-          var maxUsed = Math.max(
-            einheiten > 0 ? usedEinheit / einheiten : 0,
-            duengerTotal > 0 ? usedDuenger / duengerTotal : 0
+          var tabCo = getCarryover(idx);
+          einheitRem = Math.max(0, einheiten - usedEinheit - tabCo.savedEinheit - tabCo.excessEinheit);
+          duengerRem = Math.max(0, duengerTotal - usedDuenger - tabCo.savedDuenger - tabCo.excessDuenger);
+          var minFilled = Math.min(
+            einheiten > 0 ? usedEinheit / einheiten : 1,
+            duengerTotal > 0 ? usedDuenger / duengerTotal : 1
           );
-          pct = Math.min(100, Math.round(maxUsed * 100));
+          pct = Math.min(100, Math.round(minFilled * 100));
           if (pct >= 100) statusClass = 'done';
           else if (pct > 0) statusClass = 'remaining';
         }
 
         // Einheiten verbleibend
-        var einheitRem = Math.max(0, einheiten - usedEinheit);
         var eStat = document.createElement('div');
         eStat.className = 'dashboard-stat';
         var eStatLabel = document.createElement('div');
@@ -2529,7 +3230,6 @@
         stats.appendChild(eStat);
 
         // Dünger verbleibend
-        var duengerRem = Math.max(0, duengerTotal - usedDuenger);
         var dStat = document.createElement('div');
         dStat.className = 'dashboard-stat';
         var dStatLabel = document.createElement('div');

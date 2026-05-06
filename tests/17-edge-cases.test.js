@@ -1,7 +1,7 @@
 /**
  * Tests for remaining edge cases and utility functions:
  * - fmt() formatting
- * - formatDE() number to string
+ * - toInputValue() number to string
  * - getTabKornerGesamt / getTabTotalDuenger with various inputs
  * - getTabTotalEinheiten with fahrgassen
  * - lv() migration edge cases
@@ -48,24 +48,24 @@ describe('fmt()', () => {
   });
 });
 
-describe('formatDE()', () => {
+describe('toInputValue()', () => {
   let w;
   beforeEach(() => { w = createDom().window; });
 
   it('replaces dot with comma', () => {
-    expect(w.formatDE(3.5)).toBe('3,5');
+    expect(w.toInputValue(3.5)).toBe('3,5');
   });
 
   it('integer stays integer (no comma)', () => {
-    expect(w.formatDE(10)).toBe('10');
+    expect(w.toInputValue(10)).toBe('10');
   });
 
   it('0 stays 0', () => {
-    expect(w.formatDE(0)).toBe('0');
+    expect(w.toInputValue(0)).toBe('0');
   });
 
   it('works with very small decimals', () => {
-    expect(w.formatDE(0.1)).toBe('0,1');
+    expect(w.toInputValue(0.1)).toBe('0,1');
   });
 });
 
@@ -123,7 +123,7 @@ describe('lv() migration edge cases', () => {
       entries: [{ einheit: 5, duenger: 100 }]
     };
     w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
-    w.lv();
+    w.loadState();
     expect(w.state.reiter).toBeTruthy();
     expect(w.state.reiter.length).toBe(1);
     expect(w.state.reiter[0].hektar).toBe(10);
@@ -137,7 +137,7 @@ describe('lv() migration edge cases', () => {
       entries: [{ einheit: 3, duenger: 50 }]
     };
     w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
-    w.lv();
+    w.loadState();
     expect(w.state.reiter[0].entries.length).toBe(1);
     // Global entries should be removed
     expect(w.state.entries).toBeUndefined();
@@ -152,7 +152,7 @@ describe('lv() migration edge cases', () => {
       entries: [{ einheit: 3 }]
     };
     w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
-    w.lv();
+    w.loadState();
     // Tab 1 already has entries, should keep them
     expect(w.state.reiter[0].entries.length).toBe(1);
     expect(w.state.reiter[0].entries[0].einheit).toBe(2);
@@ -166,7 +166,7 @@ describe('lv() migration edge cases', () => {
     };
     delete oldState.machineLog;
     w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
-    w.lv();
+    w.loadState();
     expect(w.state.machineLog).toEqual([]);
   });
 });
