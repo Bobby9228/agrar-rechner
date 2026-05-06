@@ -196,7 +196,7 @@ describe('renderDashboard: BUG — does not apply fahrgassen factor', () => {
     var cards = w.document.getElementById('dashboard_content').querySelectorAll('.dashboard-reiter-card');
     // Per-tab card shows raw calculation (20.0 instead of 15.0)
     var einheitenVal = cards[0].querySelectorAll('.dashboard-stat-value')[2]; // "Einheiten verbl."
-    expect(einheitenVal.textContent).toContain('20,0'); // BUG: should be 15,0
+    expect(einheitenVal.textContent).toContain('15,0'); // FIXED: fahrgassen factor now applied
   });
 
   it('dashboard summary also uses raw calculation (known bug)', () => {
@@ -208,8 +208,8 @@ describe('renderDashboard: BUG — does not apply fahrgassen factor', () => {
     var summaryValues = w.document.getElementById('dashboard_content')
       .querySelectorAll('.dashboard-summary-value');
     // [0] = Fläche, [1] = Einheiten verbl., [2] = Dünger verbl.
-    // Summary shows 20,0 (raw) instead of 15,0 (with fahrgassen)
-    expect(summaryValues[1].textContent).toContain('20,0'); // BUG: should be 15,0
+    // Summary now shows 15,0 (with fahrgassen) instead of 20,0 (raw)
+    expect(summaryValues[1].textContent).toContain('15,0'); // FIXED: fahrgassen factor now applied
   });
 });
 
