@@ -20,6 +20,7 @@ describe('machineLog', () => {
     w.document.getElementById('drill_einheit').value = '5';
     w.document.getElementById('drill_duenger').value = '200';
     w.document.getElementById('drill_hektar').value = '3';
+    w.drillCalcAll();  // populate per-tab inputs before drillAdd
     w.drillAdd();
 
     expect(w.state.machineLog.length).toBe(1);
@@ -35,11 +36,12 @@ describe('machineLog', () => {
     w.renderDrillTabList();
     w.document.getElementById('drill_einheit').value = '5';
     w.document.getElementById('drill_duenger').value = '0';
+    w.drillCalcAll();  // populate per-tab inputs before drillAdd
     w.drillAdd();
 
     expect(w.state.machineLog[0].time).toBeTruthy();
-    // Time should match HH:MM format
-    expect(w.state.machineLog[0].time).toMatch(/^\d{2}:\d{2}$/);
+    // Time should match HH:MM or HH:MM:SS format
+    expect(w.state.machineLog[0].time).toMatch(/^\d{2}:\d{2}(:\d{2})?$/);
   });
 
   it('accumulates multiple entries', () => {
@@ -49,9 +51,14 @@ describe('machineLog', () => {
     w.renderDrillTabList();
     w.document.getElementById('drill_einheit').value = '3';
     w.document.getElementById('drill_duenger').value = '0';
+    w.drillCalcAll();  // populate per-tab inputs before drillAdd
     w.drillAdd();
 
+    // After drillAdd, priorities are reset. Re-set for second entry.
+    w.drillPriorities[0] = 1;
+    w.renderDrillTabList();
     w.document.getElementById('drill_einheit').value = '4';
+    w.drillCalcAll();  // populate per-tab inputs before second drillAdd
     w.drillAdd();
 
     expect(w.state.machineLog.length).toBe(2);
@@ -239,16 +246,16 @@ describe('machineLog prognose', () => {
   });
 
   it('calculates cumulative tank level correctly', () => {
-    // First fill: 5 einheiten at 0 ha
-    // Second fill: 3 einheiten at 4 ha (drove 4ha since last)
+    // First fill: 5 einheiten at 0 ha (zaehlerStand)
+    // Second fill: 3 einheiten at 4 ha (zaehlerStand = drove 4ha since last)
     // unitsPerHa = 90000/50000 = 1.8 einheiten/ha
     // After first: cumEinheit = 5
     // After driving 4ha: cumEinheit = max(0, 5 - 4*1.8) + 3 = max(0, 5-7.2) + 3 = 0 + 3 = 3
     // Prognose: 4 + 3/1.8 = ~5.7 ha
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000, duenger: 0, entries: [] };
     w.state.machineLog = [
-      { einheit: 5, hektar: 0, duenger: 0, time: '10:00' },
-      { einheit: 3, hektar: 4, duenger: 0, time: '11:00' },
+      { einheit: 5, zaehlerStand: 0, duenger: 0, time: '10:00' },
+      { einheit: 3, zaehlerStand: 4, duenger: 0, time: '11:00' },
     ];
     w.renderResults();
 

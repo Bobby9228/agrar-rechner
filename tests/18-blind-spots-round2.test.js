@@ -117,8 +117,8 @@ describe('Prognose: hektar going backwards (edge case)', () => {
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000, duenger: 0, entries: [] };
     // unitsPerHa = 90000/50000 = 1.8
     w.state.machineLog = [
-      { einheit: 5, hektar: 5, duenger: 0, time: '10:00' },
-      { einheit: 3, hektar: 3, duenger: 0, time: '11:00' }, // hektar went backwards!
+      { einheit: 5, zaehlerStand: 5, duenger: 0, time: '10:00' },
+      { einheit: 3, zaehlerStand: 3, duenger: 0, time: '11:00' }, // zaehlerStand went backwards!
     ];
     w.renderResults();
 
