@@ -26,7 +26,7 @@ describe('drillCalcAll()', () => {
   });
 
   it('leaves non-prioritized tabs empty', () => {
-    w.drillPriorities = { 1: 1 };
+    w.state.drillPriorities = { 1: 1 };
     doc.getElementById('drill_einheit').value = '5';
     doc.getElementById('drill_duenger').value = '';
     w.drillCalcAll();
@@ -35,7 +35,7 @@ describe('drillCalcAll()', () => {
   });
 
   it('distributes to highest priority tab first', () => {
-    w.drillPriorities = { 0: 1, 1: 2 };
+    w.state.drillPriorities = { 0: 1, 1: 2 };
     doc.getElementById('drill_einheit').value = '15';
     doc.getElementById('drill_duenger').value = '';
     w.drillCalcAll();
@@ -48,7 +48,7 @@ describe('drillCalcAll()', () => {
     // Tab A: 3 used → needE = 7; Tab B: 0 used → needE = 10
     w.state.reiter[0].entries = [{ einheit: 3, hektar: 3 }];
     w.state.reiter[1].entries = [];
-    w.drillPriorities = { 0: 1, 1: 2 };
+    w.state.drillPriorities = { 0: 1, 1: 2 };
     doc.getElementById('drill_einheit').value = '20';
     doc.getElementById('drill_duenger').value = '';
     w.drillCalcAll();
@@ -62,7 +62,7 @@ describe('drillCalcAll()', () => {
       { name: 'B', hektar: 5, koerner: 50000, duenger: 200, entries: [] },
     ];
     w.renderDrillTabList();
-    w.drillPriorities = { 0: 1, 1: 2 };
+    w.state.drillPriorities = { 0: 1, 1: 2 };
     doc.getElementById('drill_einheit').value = '5';
     doc.getElementById('drill_duenger').value = '3000';
     w.drillCalcAll();
@@ -71,7 +71,7 @@ describe('drillCalcAll()', () => {
   });
 
   it('handles empty gesamtEinheit', () => {
-    w.drillPriorities = { 0: 1 };
+    w.state.drillPriorities = { 0: 1 };
     doc.getElementById('drill_einheit').value = '';
     doc.getElementById('drill_duenger').value = '';
     w.drillCalcAll();
@@ -80,7 +80,7 @@ describe('drillCalcAll()', () => {
   });
 
   it('handles empty drill_duenger', () => {
-    w.drillPriorities = { 0: 1 };
+    w.state.drillPriorities = { 0: 1 };
     doc.getElementById('drill_einheit').value = '5';
     doc.getElementById('drill_duenger').value = '';
     w.drillCalcAll();
@@ -89,7 +89,7 @@ describe('drillCalcAll()', () => {
   });
 
   it('writes empty for tabs with no priority', () => {
-    w.drillPriorities = { 0: 1 };
+    w.state.drillPriorities = { 0: 1 };
     doc.getElementById('drill_einheit').value = '10';
     doc.getElementById('drill_duenger').value = '';
     w.drillCalcAll();
@@ -339,7 +339,7 @@ describe('renderDrillTabList()', () => {
       { name: 'B', hektar: 10, koerner: 50000, duenger: 0, entries: [] },
     ];
     w.renderDrillTabList();
-    w.drillPriorities = { 1: 1 };
+    w.state.drillPriorities = { 1: 1 };
     doc.getElementById('drill_einheit').value = '5';
     doc.getElementById('drill_duenger').value = '';
     doc.getElementById('dtl_prio_0').onclick(); // sets prio 0 → 1, calls drillCalcAll

@@ -82,8 +82,8 @@ describe('drillCalcAll (priority distribution)', () => {
     w.state.activeReiter = 0;
     w.renderDrillTabList();
     // Priorities direkt setzen und DOM neu bauen
-    w.drillPriorities[0] = 2;
-    w.drillPriorities[1] = 1;
+    w.state.drillPriorities[0] = 2;
+    w.state.drillPriorities[1] = 1;
     w.renderDrillTabList(); // DOM mit korrekten data-prio Werten aktualisieren
   }
 
@@ -124,8 +124,8 @@ describe('drillCalcAll (priority distribution)', () => {
     w.document.getElementById('drill_einheit').value = '5';
     w.document.getElementById('drill_duenger').value = '0';
 
-    w.drillPriorities[0] = 0; // no priority
-    w.drillPriorities[1] = 1;
+    w.state.drillPriorities[0] = 0; // no priority
+    w.state.drillPriorities[1] = 1;
     w.drillCalcAll();
 
     var eA = w.document.getElementById('dtl_e_0');
@@ -139,7 +139,7 @@ describe('drillCalcAll (priority distribution)', () => {
     w.document.getElementById('drill_einheit').value = '10';
     w.document.getElementById('drill_duenger').value = '0';
 
-    w.drillPriorities[0] = 1;
+    w.state.drillPriorities[0] = 1;
     // Tab 1 has no priority
     w.drillCalcAll();
 
@@ -152,7 +152,7 @@ describe('drillCalcAll (priority distribution)', () => {
     w.document.getElementById('drill_einheit').value = '0';
     w.document.getElementById('drill_duenger').value = '0';
 
-    w.drillPriorities[0] = 1;
+    w.state.drillPriorities[0] = 1;
     w.drillCalcAll();
 
     var eA = w.document.getElementById('dtl_e_0');
@@ -170,8 +170,8 @@ describe('drillAdd multi-tab mode', () => {
       { name: 'B', hektar: 5, koerner: 80000, duenger: 100, entries: [] },
     ];
     w.state.activeReiter = 0;
-    w.drillPriorities[0] = 1;
-    w.drillPriorities[1] = 2;
+    w.state.drillPriorities[0] = 1;
+    w.state.drillPriorities[1] = 2;
     w.renderDrillTabList(); // DOM mit korrekten data-prio Werten aufbauen
   }
 
@@ -226,14 +226,14 @@ describe('drillAdd multi-tab mode', () => {
     w.drillCalcAll();
     w.drillAdd();
 
-    expect(Object.keys(w.drillPriorities).length).toBe(0);
+    expect(Object.keys(w.state.drillPriorities).length).toBe(0);
   });
 
   it('does nothing when no prioritized tabs have values', () => {
     setupMultiTabWithPrio();
     w.document.getElementById('drill_einheit').value = '0';
     w.document.getElementById('drill_duenger').value = '0';
-    w.drillPriorities = {}; // no priorities
+    w.state.drillPriorities = {}; // no priorities
     w.drillAdd();
     expect(w.state.reiter[0].entries.length).toBe(0);
     expect(w.state.reiter[1].entries.length).toBe(0);

@@ -100,11 +100,11 @@ describe('renderDrillTabList', () => {
 
     const btn = w.document.getElementById('dtl_prio_0');
     btn.click(); // set prio to 1
-    expect(w.drillPriorities[0]).toBe(1);
+    expect(w.state.drillPriorities[0]).toBe(1);
 
     // Re-render does NOT reset — priorities persist
     w.renderDrillTabList();
-    expect(w.drillPriorities[0]).toBe(1);
+    expect(w.state.drillPriorities[0]).toBe(1);
   });
 
   it('does nothing if drill_tab_list container is missing', () => {
@@ -248,7 +248,7 @@ describe('drillAdd multi-tab mode', () => {
     w.drillAdd();
 
     // Priorities are reset after drillAdd (consistent with tests/14)
-    expect(w.drillPriorities[0]).toBeUndefined();
+    expect(w.state.drillPriorities[0]).toBeUndefined();
     // renderDrillTabList re-reads from drillPriorities (now empty) → data-prio='0'
     const btn = w.document.getElementById('dtl_prio_0');
     expect(btn.getAttribute('data-prio')).toBe('0');
@@ -485,7 +485,7 @@ describe('drillPriorities persistence', () => {
     w.renderDrillTabList();
 
     w.document.getElementById('dtl_prio_0').click();
-    expect(w.drillPriorities[0]).toBe(1);
+    expect(w.state.drillPriorities[0]).toBe(1);
 
     // Saved to localStorage
     const saved = JSON.parse(store['mais_rechner']);
@@ -500,15 +500,15 @@ describe('drillPriorities persistence', () => {
     // Set priorities
     w.document.getElementById('dtl_prio_0').click(); // tab 0 = prio 1
     w.document.getElementById('dtl_prio_1').click(); // tab 1 = prio 1
-    expect(w.drillPriorities[0]).toBe(1);
-    expect(w.drillPriorities[1]).toBe(1);
+    expect(w.state.drillPriorities[0]).toBe(1);
+    expect(w.state.drillPriorities[1]).toBe(1);
 
     // Simulate page reload: lv() is called which rehydrates state
     w.loadState();
 
     // Priorities restored from localStorage
-    expect(w.drillPriorities[0]).toBe(1);
-    expect(w.drillPriorities[1]).toBe(1);
+    expect(w.state.drillPriorities[0]).toBe(1);
+    expect(w.state.drillPriorities[1]).toBe(1);
   });
 
   it('lv() initializes drillPriorities to {} if missing in saved state', () => {
@@ -524,7 +524,7 @@ describe('drillPriorities persistence', () => {
     w.loadState();
 
     // Should default to {}
-    expect(w.drillPriorities).toEqual({});
+    expect(w.state.drillPriorities).toEqual({});
     expect(w.state.drillPriorities).toEqual({});
   });
 });

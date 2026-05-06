@@ -15,7 +15,7 @@ describe('machineLog', () => {
   it('records entry on drillAdd (single-tab mode)', () => {
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000, entries: [] };
     w.renderDrillTabList();
-    w.drillPriorities[0] = 1;
+    w.state.drillPriorities[0] = 1;
     w.renderDrillTabList();
     w.document.getElementById('drill_einheit').value = '5';
     w.document.getElementById('drill_duenger').value = '200';
@@ -32,7 +32,7 @@ describe('machineLog', () => {
   it('records time for machineLog entry', () => {
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000, entries: [] };
     w.renderDrillTabList();
-    w.drillPriorities[0] = 1;
+    w.state.drillPriorities[0] = 1;
     w.renderDrillTabList();
     w.document.getElementById('drill_einheit').value = '5';
     w.document.getElementById('drill_duenger').value = '0';
@@ -47,7 +47,7 @@ describe('machineLog', () => {
   it('accumulates multiple entries', () => {
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000, entries: [] };
     w.renderDrillTabList();
-    w.drillPriorities[0] = 1;
+    w.state.drillPriorities[0] = 1;
     w.renderDrillTabList();
     w.document.getElementById('drill_einheit').value = '3';
     w.document.getElementById('drill_duenger').value = '0';
@@ -55,7 +55,7 @@ describe('machineLog', () => {
     w.drillAdd();
 
     // After drillAdd, priorities are reset. Re-set for second entry.
-    w.drillPriorities[0] = 1;
+    w.state.drillPriorities[0] = 1;
     w.renderDrillTabList();
     w.document.getElementById('drill_einheit').value = '4';
     w.drillCalcAll();  // populate per-tab inputs before second drillAdd

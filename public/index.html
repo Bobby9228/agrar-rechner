@@ -1406,7 +1406,6 @@
         if (parsed.einheitGroesseEnabled === undefined) parsed.einheitGroesseEnabled = false;
 
         state = parsed;
-        drillPriorities = state.drillPriorities;
       } catch(e) {
         console.warn('loadState: Migration/Parse-Fehler — verwende Default-state:', e);
         // Bei Parse-Fehlern oder anderen Fehlern: Default-state behalten
@@ -1570,17 +1569,16 @@
       state.reiter.splice(idx, 1);            // Tab entfernen
       // drillPriorities: entfernten Index löschen und restliche neu indizieren
       var newPriorities = {};
-      Object.keys(drillPriorities).forEach(function(key) {
+      Object.keys(state.drillPriorities).forEach(function(key) {
         var k = parseInt(key, 10);
         if (k < idx) {
-          newPriorities[k] = drillPriorities[k];
+          newPriorities[k] = state.drillPriorities[k];
         } else if (k > idx) {
-          newPriorities[k - 1] = drillPriorities[k];
+          newPriorities[k - 1] = state.drillPriorities[k];
         }
         // k === idx: gelöscht, wird nicht übernommen
       });
-      drillPriorities = newPriorities;
-      state.drillPriorities = drillPriorities;
+      state.drillPriorities = newPriorities;
       if (state.activeReiter >= state.reiter.length) {
         state.activeReiter = state.reiter.length - 1;  // Hinter letzten → auf letzten
       }
@@ -2198,17 +2196,12 @@
     //   tabEntries[]  — Bereits auf Tabs verteilte Einträge
     //                   (entsteht durch Anklicken von machineLog-Einträgen)
     //
-    // drillPriorities{} — Manuell gesetzte Prioritäten (Key: Tab-Index, Value: Zahl)
-    //                     Höhere Zahl = wird zuerst bedient (1 = höchste)
+    //   state.drillPriorities{} — Manuell gesetzte Prioritäten (Key: Tab-Index, Value: Zahl)
+    //                             Höhere Zahl = wird zuerst bedient (1 = höchste)
     //
     // Prognose: Berechnet basierend auf machineLog, wie viele Einheiten
     //           nach der aktuellen Verteilung noch übrig sind.
-    // ==========================================================================
-
-    // Speichert die Prioritäten der Tabs (Key: Tab-Index, Value: Priorität 0-N)
-    // Wird aus state.drillPriorities initialisiert (oder aus localStorage nach loadState())
-    var drillPriorities = state.drillPriorities || {};
-
+    // Zustand: state.drillPriorities ist die Single Source of Truth.
     // ==========================================================================
     // DRILL-TAB-LISTE — Übersicht aller Tabs im Drill-Bereich (unter Eingabe)
     //
@@ -2220,8 +2213,7 @@
     // Nach jeder Änderung wird drillCalcAll() aufgerufen (Carryover + Prognose).
     // Die Prioritäten steuern die Verteilungs-Reihenfolge in drillCalcAll().
     //
-    // Zustand: drillPriorities ist ein module-level Object (nicht in state),
-    // wird aber zusätzlich nach state.drillPriorities gespiegelt für Persistenz.
+    // Zustand: state.drillPriorities ist die Single Source of Truth.
     //
     // Bedarf-Berechnung je Tab:
     //   remaining = totalNeed - usedEntries - carryover.saved + carryover.excess
@@ -2242,7 +2234,7 @@
         var prioBtn = document.createElement('button');
         prioBtn.className = 'drill-prio-btn';
         prioBtn.id = 'dtl_prio_' + i;
-        var initPrio = Object.prototype.hasOwnProperty.call(drillPriorities, String(i)) ? drillPriorities[i] : 0;
+        var initPrio = Object.prototype.hasOwnProperty.call(state.drillPriorities, String(i)) ? state.drillPriorities[i] : 0;
         prioBtn.textContent = initPrio === 0 ? '—' : String(initPrio);
         prioBtn.setAttribute('data-prio', String(initPrio));
         prioBtn.classList.toggle('active', initPrio > 0);
@@ -2253,7 +2245,7 @@
           prioBtn.setAttribute('data-prio', String(next));
           prioBtn.textContent = next === 0 ? '—' : String(next);
           prioBtn.classList.toggle('active', next > 0);
-          drillPriorities[i] = next;
+          state.drillPriorities[i] = next;
           saveState();            // Persistenz: Prioritäten in localStorage speichern
           drillCalcAll();   // Carryover + Prognose neu berechnen
         };
@@ -2345,7 +2337,7 @@
       // Sammle Tabs mit gesetzter Priorität (> 0)
       var prioritized = [];
       state.reiter.forEach(function(r, i) {
-        var prio = drillPriorities[i] || 0;
+        var prio = state.drillPriorities[i] || 0;
         if (prio > 0) {
           prioritized.push({ idx: i, prio: prio, reiter: r });
         }
@@ -2515,9 +2507,8 @@
       document.getElementById('drill_duenger').value = '';
       document.getElementById('drill_hektar').value = '';
 
+      state.drillPriorities = {};
       saveState();
-      drillPriorities = {};
-      state.drillPriorities = drillPriorities;
       renderDrillTabList();  // Tab-Liste mit neuen Bedarfswerten aktualisieren
       renderResults();       // Ergebnis-Card + Maschinen-Protokoll + Drill-Protokoll aktualisieren
       drillCalcAll();        // Prognose neu berechnen
@@ -2971,8 +2962,7 @@
       document.getElementById('einheit_groesse_settings').classList.remove('open');
       document.getElementById('koerner_pro_einheit').value = '';
       document.getElementById('einheit_groesse_saved').textContent = '';
-      drillPriorities = {};
-      state.drillPriorities = drillPriorities;
+      state.drillPriorities = {};
       renderTabs();
       saveState();
     }
