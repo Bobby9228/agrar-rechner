@@ -1348,12 +1348,14 @@
 
     // --- Persistenz: Speichern ---
     function saveState() {
+      invalidateCarryoverCache();
       try { localStorage.setItem('mais_rechner', JSON.stringify(state)); } catch(e) {}
       // Fehler werden still ignoriert (z.B. bei vollem Speicher oder privatem Modus)
     }
 
     // --- Persistenz: Laden + Migrieren ---
     function loadState() {
+      invalidateCarryoverCache();
       try {
         var raw = localStorage.getItem('mais_rechner');
         if (!raw) return;  // Keine gespeicherten Daten → Default-state behalten
@@ -1954,7 +1956,10 @@
     //   Phase 2: Mehrbedarfe (IST > SOLL) → von Tabs mit Einträgen (rückwärts, nach Zeit)
     // ==========================================================================
 
+    var _carryoverCache = null;
+
     function computeAllCarryovers() {
+      if (_carryoverCache !== null) return _carryoverCache;
       var result = [];
       for (var i = 0; i < state.reiter.length; i++) {
         result.push({ savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 });
@@ -2029,8 +2034,11 @@
         if (takeD > 0.05) { result[idx].excessDuenger = takeD; remExcessD -= takeD; }
       }
 
+      _carryoverCache = result;
       return result;
     }
+
+    function invalidateCarryoverCache() { _carryoverCache = null; }
 
     // Liefert die Carryover-Werte für einen bestimmten Tab (lookup + cache via computeAllCarryovers).
     function getCarryover(tabIndex) {
@@ -2916,6 +2924,7 @@
     }
 
     function renderResults() {
+      invalidateCarryoverCache();
       renderResultCard();
       renderMiniFooter();
       renderDrillSummary();
