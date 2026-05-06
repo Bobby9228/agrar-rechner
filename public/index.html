@@ -1933,13 +1933,26 @@
     //   excessEinheit  = Mehrbedarf aus Überschreitung (IST > SOLL) → wird von anderen genommen
     //   excessDuenger  = Dünger-Mehrbedarf
     //
+    // ==========================================================================
+    // CARRYOVER-BERECHNUNG — computeAllCarryovers()
+    //
+    // Zentraler Algorithmus für automatische Flächen-Überträge.
+    // Berechnet für JEDEN Tab gleichzeitig, wie viel Saatgut/Dünger
+    // er aus Ersparnissen anderer Tabs bekommt oder an andere Tabs abgibt.
+    //
+    // Wird bei jedem renderResults() aufgerufen und gecached via getCarryover().
+    //
+    // Return pro Tab: { savedEinheit, savedDuenger, excessEinheit, excessDuenger }
+    //   savedEinheit   = Überschuss aus Ersparnis (IST < SOLL) → wird an andere verteilt
+    //   savedDuenger   = Dünger-Ersparnis
+    //   excessEinheit  = Mehrbedarf aus Überschreitung (IST > SOLL) → wird von anderen genommen
+    //   excessDuenger  = Dünger-Mehrbedarf
+    //
     // Zwei-Phasen-Algorithmus:
     //   Phase 1: Ersparnisse (IST < SOLL) → an nicht-ferige Tabs (vorwärts)
     //   Phase 2: Mehrbedarfe (IST > SOLL) → von Tabs mit Einträgen (rückwärts, nach Zeit)
     // ==========================================================================
 
-    // Berechnet Carryover für ALLE Tabs gleichzeitig.
-    // Wird bei jedem renderResults() aufgerufen und cached via getCarryover().
     function computeAllCarryovers() {
       var result = [];
       for (var i = 0; i < state.reiter.length; i++) {
@@ -2097,7 +2110,9 @@
     // Das verhindert, dass der Nutzer ungültige Zeichen eingibt,
     // und hält die Eingabe всегда im deutschen Format.
     //
-    // Beispiel decimal: '12..5' → '12.5' | '1.500' → '1500' (Tausenderpunkt entfernt)
+    // Beispiel decimal: '12..5' → '12.' (zweiter Punkt wird entfernt, kein Doppelpunkt-Konzept)
+    //                  '1.500' → '1500' (Tausenderpunkte entfernt, Komma bleibt Dezimaltrennzeichen)
+    //                  '12,5,5' → '12,5' (nur erstes Komma bleibt)
     function onInputFormat(el, mode) {
       var val = el.value;
       if (!val) return;
@@ -2142,9 +2157,6 @@
     // Wird aus state.drillPriorities initialisiert (oder aus localStorage nach loadState())
     var drillPriorities = state.drillPriorities || {};
 
-    // Baut die Drill-Tab-Liste im Protokoll-Panel auf.
-    // Zeigt pro Tab: Prioritäts-Button, Name, verbleibender Bedarf, Status.
-    // Wird bei jedem Öffnen des Protokolls aufgerufen.
     // ==========================================================================
     // DRILL-TAB-LISTE — Übersicht aller Tabs im Drill-Bereich (unter Eingabe)
     //
@@ -2155,6 +2167,13 @@
     //
     // Nach jeder Änderung wird drillCalcAll() aufgerufen (Carryover + Prognose).
     // Die Prioritäten steuern die Verteilungs-Reihenfolge in drillCalcAll().
+    //
+    // Zustand: drillPriorities ist ein module-level Object (nicht in state),
+    // wird aber zusätzlich nach state.drillPriorities gespiegelt für Persistenz.
+    //
+    // Bedarf-Berechnung je Tab:
+    //   remaining = totalNeed - usedEntries - carryover.saved + carryover.excess
+    //   (Ersparnisse reduzieren den Bedarf, Mehrbedarfe erhöhen ihn)
     // ==========================================================================
     function renderDrillTabList() {
       var container = document.getElementById('drill_tab_list');
@@ -2255,11 +2274,16 @@
     // Liest die aktuellen Eingabewerte (drill_einheit, drill_duenger),
     // sortiert Tabs nach Priorität und verteilt die Eingabe automatisch.
     //
+    // Zustandsabhängig: Tab-Liste muss im DOM existieren
+    // (document.getElementById('dtl_prio_0') !== null), sonst macht die
+    // Funktion nichts — dann Single-Tab-Fallback in drillAdd().
+    //
     // Verteilungs-Logik (nachrangige Tabs bekommen nur den Rest):
     //   1. Sammle alle Tabs mit Priorität > 0
     //   2. Sortiere nach Priorität aufsteigend (1 = höchste = zuerst bedient)
     //   3. Jeder Tab bekommt: min(Bedarf, noch_verfügbar)
-    //   4. Ergebnis wird in die Eingabefelder der Tabs geschrieben
+    //   4. Ergebnis wird in die Eingabefelder der Tabs geschrieben (dtl_e_X, dtl_d_X)
+    //   5. Tabs ohne Priorität (prio=0) bekommen die verbleibende Restmenge
     // ==========================================================================
     function drillCalcAll() {
       // Liest die aktuelle Befüllungs-Eingabe
@@ -2448,8 +2472,8 @@
     }
 
     // Entfernt einen Eintrag aus dem Maschinen-Log (nach Index).
-    // Die bereits auf Tabs verteilten Werte werden NICHT zurückgesetzt
-    // (bleiben in den Tab-Entries erhalten — manueller Eintrag).
+    // Tab-Einträge bleiben erhalten — ihre mlIdx-Referenzen werden korrigiert
+    // (Einträge die nach dem entfernten Index lagen: mlIdx--).
     function drillMachineRemove(idx) {
       if (!state.machineLog || idx < 0 || idx >= state.machineLog.length) return;
       state.machineLog.splice(idx, 1);
@@ -3022,7 +3046,7 @@
     }
 
     // --- Dark Mode ---
-    // Key: 'mais_rechner_theme' in localStorage (Wert: 'dark' oder 'light')
+    // Key: 'mais_rechner_theme' in localStorage (Wert: 'dark' oder 'light', null wenn nicht gesetzt)
     // initTheme(): Stored Preference → System-Präferenz als Fallback
     // applyTheme(dark): Setzt CSS-Klasse .dark auf <html>, Button-Icon, Meta-Theme-Color
     // toggleTheme(): Liest aktuellen Zustand → toggled → speichert + anwendet
