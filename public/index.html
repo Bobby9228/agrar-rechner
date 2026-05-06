@@ -2131,9 +2131,19 @@
         }
       }
       if (el.value !== cleaned) {
+        // Cursorposition proportional merken, damit Editierung in der Mitte nicht ans Ende springt
+        var oldLen = el.value.length;
+        var selStart = el.selectionStart;
         el.value = cleaned;
-        // Cursor ans Ende setzen (nach dem Ersetzen springt der Cursor manchmal)
-        el.setSelectionRange(cleaned.length, cleaned.length);
+        var newPos;
+        if (selStart === oldLen) {
+          // Cursor war am Ende → am Ende bleiben
+          newPos = cleaned.length;
+        } else {
+          // Cursor war in der Mitte → proportional anpassen
+          newPos = Math.round(selStart * cleaned.length / oldLen);
+        }
+        el.setSelectionRange(newPos, newPos);
       }
     }
 
