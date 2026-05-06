@@ -1406,6 +1406,7 @@
         state = parsed;
         drillPriorities = state.drillPriorities;
       } catch(e) {
+        console.warn('loadState: Migration/Parse-Fehler — verwende Default-state:', e);
         // Bei Parse-Fehlern oder anderen Fehlern: Default-state behalten
       }
     }
