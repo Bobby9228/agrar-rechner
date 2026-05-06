@@ -2082,6 +2082,39 @@
       return rounded.toFixed(1).replace('.', ',') + (rounded === 1.0 ? ' Einheit' : ' Einheiten');
     }
 
+    // Erstellt ein Entry-Element für Drill-Einträge (wiederverwendet in r_drill_entries,
+    // drill_machine_log und drill_entries).
+    // entry: object mit {duenger, zaehlerStand, time, einheit}
+    // idx: 1-basierte Nummer für die Anzeige
+    // onDelete: onclick-Handler für den Löschen-Button
+    // cssClass: optional, default 'drill-entry' (r_drill_entries nutzt 'drill-entry-inline')
+    function createEntryElement(entry, idx, onDelete, cssClass) {
+      var ds = entry.duenger > 0 ? entry.duenger.toLocaleString('de-DE') + ' kg' : '';
+      var dl = ds ? ' + ' + ds + ' Dünger' : '';
+      var zs = entry.zaehlerStand || 0;
+      var hl = '';
+      if (zs > 0) {
+        hl = ' @ ' + fmt(zs) + ' ha';
+      }
+      var entryEl = document.createElement('div');
+      entryEl.className = cssClass || 'drill-entry';
+      var span = document.createElement('span');
+      span.className = 'entry-text';
+      var hash = document.createElement('span');
+      hash.textContent = '#' + (idx + 1) + ' ';
+      var txt = (entry.time ? entry.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(entry.einheit) + dl;
+      var txtNode = document.createTextNode(txt + ' ');
+      span.appendChild(hash);
+      span.appendChild(txtNode);
+      var btn = document.createElement('button');
+      btn.className = 'btn-danger';
+      btn.textContent = '✕';
+      btn.onclick = onDelete;
+      entryEl.appendChild(span);
+      entryEl.appendChild(btn);
+      return entryEl;
+    }
+
     // Parst einen deutschen Zahlenstring in eine JavaScript-Zahl.
     //
     // Regelwerk:
@@ -2663,29 +2696,7 @@
           if (rEntriesContainer) {
             rEntriesContainer.innerHTML = '';
             r.entries.forEach(function(e, entryIdx) {
-              var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
-              var dl = ds ? ' + ' + ds + ' Dünger' : '';
-              var zs = e.zaehlerStand || 0;
-              var hl = '';
-              if (zs > 0) {
-                hl = ' @ ' + fmt(zs) + ' ha';
-              }
-              var entry = document.createElement('div');
-              entry.className = 'drill-entry-inline';
-              var span = document.createElement('span');
-              span.className = 'entry-text';
-              var hash = document.createElement('span');
-              hash.textContent = '#' + (entryIdx + 1) + ' ';
-              var txt = (e.time ? e.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(e.einheit) + dl;
-              var txtNode = document.createTextNode(txt + ' ');
-              span.appendChild(hash);
-              span.appendChild(txtNode);
-              var btn = document.createElement('button');
-              btn.className = 'btn-danger';
-              btn.textContent = '✕';
-              btn.onclick = (function(ti, ei) { return function() { drillRemove(ti, ei); }; })(state.activeReiter, entryIdx);
-              entry.appendChild(span);
-              entry.appendChild(btn);
+              var entry = createEntryElement(e, entryIdx, (function(ti, ei) { return function() { drillRemove(ti, ei); }; })(state.activeReiter, entryIdx), 'drill-entry-inline');
               rEntriesContainer.appendChild(entry);
             });
           }
@@ -2754,29 +2765,8 @@
         var cumEinheit = 0, cumDuenger = 0;
 
         state.machineLog.forEach(function(m, mi) {
-          var ds = m.duenger > 0 ? m.duenger.toLocaleString('de-DE') + ' kg' : '';
-          var dl = ds ? ' + ' + ds + ' Dünger' : '';
-          var zs = m.zaehlerStand || 0;
-          var hl = '';
-          if (zs > 0) {
-            hl = ' @ ' + fmt(zs) + ' ha';
-          }
-          var row = document.createElement('div');
-          row.className = 'drill-entry';
-          var span = document.createElement('span');
-          span.className = 'entry-text';
-          var hash = document.createElement('span');
-          hash.textContent = '#' + (mi + 1) + ' ';
-          var txt = (m.time ? m.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(m.einheit) + dl;
-          var txtNode = document.createTextNode(txt + ' ');
-          span.appendChild(hash);
-          span.appendChild(txtNode);
-          row.appendChild(span);
-          var btn = document.createElement('button');
-          btn.className = 'btn-danger';
-          btn.textContent = '✕';
-          btn.onclick = (function(idx) { return function() { drillMachineRemove(idx); }; })(mi);
-          row.appendChild(btn);
+          var onDelete = (function(idx) { return function() { drillMachineRemove(idx); }; })(mi);
+          var row = createEntryElement(m, mi, onDelete);
           mlContainer.appendChild(row);
 
           var tabR = state.reiter[m.tabIdx !== undefined ? m.tabIdx : state.activeReiter] || r;
@@ -2890,33 +2880,7 @@
             }
 
           r.entries.forEach(function(e, entryIdx) {
-            var ds = e.duenger > 0 ? e.duenger.toLocaleString('de-DE') + ' kg' : '';
-            var dl = ds ? ' + ' + ds + ' Dünger' : '';
-            var zs = e.zaehlerStand || 0;
-            var hl = '';
-            if (zs > 0) {
-              hl = ' @ ' + fmt(zs) + ' ha';
-            }
-
-            var entry = document.createElement('div');
-            entry.className = 'drill-entry';
-
-            var span = document.createElement('span');
-            span.className = 'entry-text';
-            var hash = document.createElement('span');
-            hash.textContent = '#' + (entryIdx + 1) + ' ';
-            var txt = (e.time ? e.time + ' – ' : '') + hl + (hl ? ', ' : '') + formatEinheit(e.einheit) + dl;
-            var txtNode = document.createTextNode(txt + ' ');
-            span.appendChild(hash);
-            span.appendChild(txtNode);
-
-            var btn = document.createElement('button');
-            btn.className = 'btn-danger';
-            btn.textContent = '✕';
-            btn.onclick = (function(ti, ei) { return function() { drillRemove(ti, ei); }; })(tabIdx, entryIdx);
-
-            entry.appendChild(span);
-            entry.appendChild(btn);
+            var entry = createEntryElement(e, entryIdx, (function(ti, ei) { return function() { drillRemove(ti, ei); }; })(tabIdx, entryIdx));
             container.appendChild(entry);
           });
         });
