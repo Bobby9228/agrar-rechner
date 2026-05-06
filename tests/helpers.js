@@ -11,11 +11,16 @@ const htmlPath = resolve(__dirname, '../public/index.html');
 const htmlContent = readFileSync(htmlPath, 'utf-8');
 
 const DOM_TEMPLATE = `<!DOCTYPE html><html><body>
+  <meta name="theme-color" content="#2d5016">
+  <button id="theme_toggle">🌙</button>
   <div id="tab_bar">
     <div id="tab_bar_left"></div>
     <div class="tab-separator"></div>
     <button class="protokoll-tab" id="protokoll_tab_btn" onclick="switchToProtokoll()">🔧 Protokoll</button>
   </div>
+  <button id="berechnen_btn">Berechnen</button>
+  <button id="reset_btn">Reset</button>
+  <button id="reset_all_btn">Reset Alle</button>
   <input id="hektar" value="">
   <input id="koerner" value="">
   <input id="duenger" value="">
@@ -36,6 +41,8 @@ const DOM_TEMPLATE = `<!DOCTYPE html><html><body>
     <div id="r_info"></div>
   </div>
   <div id="drill_section" style="display:none"></div>
+  <div id="drill_mask"></div>
+  <div id="drill_tab_list"></div>
   <input id="drill_einheit" value="">
   <input id="drill_hektar" value="">
   <input id="drill_duenger" value="">
@@ -58,6 +65,13 @@ const DOM_TEMPLATE = `<!DOCTYPE html><html><body>
   <div id="einheit_groesse_settings"></div>
   <input id="koerner_pro_einheit" value="">
   <div id="einheit_groesse_saved"></div>
+  <div id="zaehler_section" style="display:none">
+    <div id="zaehler_result" style="display:none">
+      <span id="z_ist"></span>
+      <span id="z_total"></span>
+    </div>
+  </div>
+  <input id="zaehler_stand" value="">
   <div class="dashboard-overlay" id="dashboard_overlay"></div>
   <div class="dashboard-sheet" id="dashboard_sheet">
     <div class="dashboard-header">
