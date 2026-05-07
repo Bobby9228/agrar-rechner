@@ -3023,7 +3023,7 @@
         document.getElementById('fahrgassen_settings').classList.add('open');
         if (state.fahrgassenBreite > 0) {
           document.getElementById('fahrgassen_breite').value = toInputValue(state.fahrgassenBreite);
-          document.getElementById('fahrgassen_saved').textContent = state.fahrgassenBreite + ' m -> ~' + (1 / state.fahrgassenBreite * 100).toFixed(1) + '% weniger Körner';
+          document.getElementById('fahrgassen_saved').textContent = state.fahrgassenBreite + ' m -> ~' + ((state.fahrgassenBreite - 1) / state.fahrgassenBreite * 100).toFixed(1) + '% weniger Körner';
         }
       }
       if (state.einheitGroesseEnabled) {
