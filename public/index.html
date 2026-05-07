@@ -2058,12 +2058,15 @@
       }
 
       // === PHASE 1: Ersparnisse verteilen (vorwärts durch Tabs) ===
-      // Tabs die noch nicht fertig sind (isTabDone = false) bekommen Ersparnis
+      // Tabs die noch nicht fertig sind (isTabDone = false) bekommen Ersparnis.
+      // Cache provisorisch setzen, damit isTabDone(t, i) Carryover berücksichtigt
+      // (Fix für #138 — Tabs die nur dank Carryover fertig sind werden übersprungen).
+      _carryoverCache = result;
       var remSavedE = totalSavedE, remSavedD = totalSavedD;
       for (var i = 0; i < state.reiter.length && (remSavedE > 0.05 || remSavedD > 0.05); i++) {
         var t = state.reiter[i];
-        // Tabs ohne Daten oder bereits fertige Tabs überspringen
-        if (isTabDone(t) || !t.hektar || !t.koerner) continue;
+        // Tabs ohne Daten oder bereits fertige Tabs überspringen (mit Carryover prüfen)
+        if (isTabDone(t, i) || !t.hektar || !t.koerner) continue;
 
         var istSum = getTabIstHektar(t);
         var totalE = istSum > 0 ? getTabIstEinheiten(t) : getTabTotalEinheiten(t);
