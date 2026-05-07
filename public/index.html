@@ -1335,7 +1335,7 @@ font-size: 0.75rem;
         <div class="footer-btn-row">
           <button class="btn" onclick="berechne()" id="berechnen_btn">Berechnen</button>
           <button class="btn btn-secondary" onclick="confirmResetAll()" id="reset_btn">Zurücksetzen</button>
-          <button class="btn btn-danger" onclick="confirmResetAll(true)" id="reset_all_btn">Reset All</button>
+          <button class="btn btn-danger" onclick="confirmResetAll(true)" id="reset_all_btn">Alles zurücksetzen</button>
         </div>
       </div>
     </div>
@@ -2951,7 +2951,7 @@ font-size: 0.75rem;
               excessDiv.className = 'drill-excess';
               var excessSpan = document.createElement('span');
               excessSpan.className = 'entry-text';
-              excessSpan.textContent = 'Mehrwert aus überschrittenen Flächen: -' + excessParts.join(', ');
+              excessSpan.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + excessParts.join(', ');
               excessDiv.appendChild(excessSpan);
               container.appendChild(excessDiv);
             }
@@ -3177,7 +3177,7 @@ font-size: 0.75rem;
       var container = document.getElementById('dashboard_content');
       var reiter = state.reiter;
       if (reiter.length === 0) {
-        container.innerHTML = '<div class="dashboard-empty">Keine Reiter vorhanden</div>';
+        container.innerHTML = '<div class="dashboard-empty">Keine Tabs vorhanden</div>';
         return;
       }
       container.innerHTML = '';
@@ -3342,7 +3342,7 @@ font-size: 0.75rem;
   <div class="dashboard-overlay" id="dashboard_overlay" onclick="closeDashboard()"></div>
   <div class="dashboard-sheet" id="dashboard_sheet">
     <div class="dashboard-header">
-      <h2>📊 Alle Reiter</h2>
+      <h2>📊 Alle Tabs</h2>
       <button class="dashboard-close" onclick="closeDashboard()" aria-label="Schließen">✕</button>
     </div>
     <div class="dashboard-content" id="dashboard_content"></div>
