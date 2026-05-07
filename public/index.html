@@ -3099,6 +3099,26 @@ font-size: 0.75rem;
           document.getElementById('results').style.display = 'block';
         }
       }
+
+      // --- Cross-Tab-Synchronisation ---
+      // Lauscht auf localStorage-Änderungen von anderen Tabs/Fenstern.
+      // Der storage-Event feuert nur in Tabs, die den Wert NICHT selbst gesetzt haben.
+      window.addEventListener('storage', function(e) {
+        if (e.key === 'mais_rechner' && e.newValue) {
+          try {
+            var remote = JSON.parse(e.newValue);
+            if (JSON.stringify(remote) !== JSON.stringify(state)) {
+              state = remote;
+              syncInputsFromState();
+              renderTabs();
+              renderView();
+              renderResults();
+            }
+          } catch(err) {
+            console.warn('Cross-tab sync: ungültiger State ignoriert', err);
+          }
+        }
+      });
     }
 
     // --- Dark Mode ---
