@@ -217,7 +217,7 @@ describe('IST/SOLL Savings & Carryover', () => {
     const container = w.document.getElementById('drill_entries');
     const excessDivs = container.querySelectorAll('.drill-excess');
     expect(excessDivs.length).toBeGreaterThanOrEqual(1);
-    expect(excessDivs[0].textContent).toContain('Mehrwert aus überschrittenen Flächen');
+     expect(excessDivs[0].textContent).toContain('Mehrbedarf aus überschrittenen Flächen');
     expect(excessDivs[0].textContent).toContain('-');
   });
 
