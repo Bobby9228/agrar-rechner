@@ -1275,11 +1275,11 @@ font-size: 0.75rem;
         <div class="drill-machine-row">
           <div class="field">
             <label for="drill_einheit">Maschine eingefüllt (Einheiten)</label>
-            <input type="text" inputmode="decimal" id="drill_einheit" placeholder="z.B. 4" oninput="drillCalcAll(); onInputFormat(this, 'decimal')">
+            <input type="text" inputmode="decimal" id="drill_einheit" placeholder="z.B. 4" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal')">
           </div>
           <div class="field">
             <label for="drill_duenger">Maschine eingefüllt (Dünger kg)</label>
-            <input type="text" inputmode="decimal" id="drill_duenger" placeholder="z.B. 200" oninput="drillCalcAll(); onInputFormat(this, 'decimal')">
+            <input type="text" inputmode="decimal" id="drill_duenger" placeholder="z.B. 200" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal')">
           </div>
         </div>
         <div class="field">
@@ -2404,6 +2404,15 @@ font-size: 0.75rem;
 
     // ==========================================================================
     // PROGNOSE-VERTEILUNG — Verteilungs-Algorithmus für Drill-Eingabe
+    //
+    // Debounce-Wrapper: verzögert drillCalcAll() um 150ms, damit bei
+    // schnellen Tasteneingaben nicht jeder Tastendruck sofort eine
+    // vollständige Neuberechnung aller Tabs auslöst (#131).
+    var _drillCalcTimer;
+    function drillCalcDebounced() {
+      clearTimeout(_drillCalcTimer);
+      _drillCalcTimer = setTimeout(drillCalcAll, 150);
+    }
     //
     // Liest die aktuellen Eingabewerte (drill_einheit, drill_duenger),
     // sortiert Tabs nach Priorität und verteilt die Eingabe automatisch.
