@@ -2162,13 +2162,20 @@
         cleaned = val.replace(/[^\d]/g, '');
       } else {
         // Dezimal: Ziffern + ein Komma maximal
+        // iOS mit englischer Tastatur: inputmode="decimal" liefert '.' statt ','.
+        // Nur den ersten Punkt in ein Komma umwandeln, wenn noch kein Komma
+        // vorhanden ist (sonst wäre es ein Tausenderpunkt in "1.234,5").
         var hasComma = val.indexOf(',') !== -1;
-        cleaned = val.replace(/[^\d,]/g, '');
-        if (hasComma) {
-          // Nur das erste Komma behalten, Rest abschneiden
-          var parts = cleaned.split(',');
-          cleaned = parts[0] + ',' + (parts[1] || '');
+        if (!hasComma) {
+          var firstDot = val.indexOf('.');
+          if (firstDot > -1) {
+            val = val.substring(0, firstDot) + ',' + val.substring(firstDot + 1);
+          }
         }
+        cleaned = val.replace(/[^\d,]/g, '');
+        // Nur das erste Komma behalten, Rest abschneiden
+        var parts = cleaned.split(',');
+        cleaned = parts[0] + ',' + (parts[1] || '');
       }
       if (el.value !== cleaned) {
         // Cursorposition proportional merken, damit Editierung in der Mitte nicht ans Ende springt
