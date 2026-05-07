@@ -119,6 +119,33 @@ describe('onInputFormat', () => {
       w.onInputFormat(el, 'decimal');
       expect(el.value).toBe('1234,5');
     });
+
+    // iOS with English keyboard: inputmode="decimal" sends '.' instead of ','
+    it('iOS decimal dot: converts dot to comma (12.5 → 12,5)', () => {
+      const el = makeInput('12.5');
+      w.onInputFormat(el, 'decimal');
+      expect(el.value).toBe('12,5');
+    });
+
+    it('iOS decimal dot: handles 1.234,5 gracefully (dot before comma)', () => {
+      const el = makeInput('1.234,5');
+      w.onInputFormat(el, 'decimal');
+      // first dot removed, comma stays → 1234,5
+      expect(el.value).toBe('1234,5');
+    });
+
+    it('iOS decimal dot: handles 0.5 → 0,5', () => {
+      const el = makeInput('0.5');
+      w.onInputFormat(el, 'decimal');
+      expect(el.value).toBe('0,5');
+    });
+
+    it('iOS decimal dot: second dot stripped after comma conversion', () => {
+      const el = makeInput('12..5');
+      w.onInputFormat(el, 'decimal');
+      // first dot → comma, second dot stripped → 12,5
+      expect(el.value).toBe('12,5');
+    });
   });
 
   describe('cursor position preservation', () => {
