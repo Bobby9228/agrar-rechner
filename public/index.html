@@ -1772,12 +1772,16 @@
     // Aktualisiert die Fahrgassenbreite und zeigt eine Info-Zeile an.
     // Wird bei onchange und onblur des Eingabefelds aufgerufen.
     function fahrgassenUpdate() {
-      var breite = parseDE(document.getElementById('fahrgassen_breite').value);
-      state.fahrgassenBreite = breite;
-      if (breite <= 1 && breite !== 0) {
+      var el = document.getElementById('fahrgassen_breite');
+      var breite = parseDE(el.value);
+      if (breite < 2 && breite !== 0) {
         document.getElementById('fahrgassen_saved').textContent =
           'Fahrgassenbreite muss mindestens 2m betragen';
-      } else if (breite > 1) {
+        el.value = state.fahrgassenBreite > 0 ? state.fahrgassenBreite : '';
+        return;
+      }
+      state.fahrgassenBreite = breite;
+      if (breite > 1) {
         // Zeigt: "24 m -> ~4,2% weniger Körner"
         var prozent = ((breite - 1) / breite * 100).toFixed(1);
         document.getElementById('fahrgassen_saved').textContent =
