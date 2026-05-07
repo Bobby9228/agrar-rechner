@@ -2935,7 +2935,7 @@
         entries: []  // Drill-Einträge löschen
       };
       // machineLog-Einträge für diesen Tab entfernen
-      state.machineLog = state.machineLog.filter(function(e) { return e.tabIndex !== active; });
+      state.machineLog = state.machineLog.filter(function(e) { return e.tabIdx !== active; });
       document.getElementById('err_hektar').textContent = '';
       document.getElementById('err_koerner').textContent = '';
       document.getElementById('hektar').style.borderColor = '';
