@@ -695,3 +695,27 @@ Die Tests nutzen ein `helpers.js`-Modul, das den DOM mockt und den globalen `sta
 4. **Max. Tab-Name: 20 Zeichen** — hardcodiert in `renameReiter`
 5. **Prioritäts-Buttons** — Bei mehr als 9 Tabs funktioniert die Prio-Zahl noch, aber die Anzeige kann eng werden
 6. **Kein Druckmodus** — Für das Protokoll als Beleg beim Landwirt
+
+---
+
+## Deployment
+
+Deployed als **Cloudflare Pages** (Static Assets):
+
+```bash
+npx wrangler pages deploy public/
+```
+
+Die `wrangler.jsonc` ist als Workers Static Assets konfiguriert (`"assets": { "directory": "./public" }`).
+Für reine statische Sites wird `wrangler pages deploy` empfohlen.
+
+### Cache-Header
+
+`public/_headers` definiert Cache-Control-Regeln für Cloudflare:
+
+| Pfad | Cache-Strategie |
+|------|----------------|
+| `/sw.js` | `no-cache, no-store, must-revalidate` — Service Worker muss immer aktuell sein |
+| `/*.html` | `no-cache` |
+| `/*.png`, `/*.svg` | `public, max-age=604800` (7 Tage) |
+| `/manifest.json` | `no-cache` |
