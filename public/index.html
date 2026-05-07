@@ -3020,6 +3020,9 @@
       syncInputsFromState();          // 2. Inputs beschreiben
       renderTabs();                   // 3. Tab-Leiste
       renderView();                   // 4. Ansicht (Feld/Protokoll)
+      if (state.activeView === 'protokoll') {
+        renderDrillTabList();         // Protokoll-Ansicht: Tab-Liste rendern
+      }
       if (state.fahrgassenEnabled) {
         document.getElementById('fahrgassen_toggle').classList.add('active');
         document.getElementById('fahrgassen_settings').classList.add('open');
