@@ -247,12 +247,12 @@ describe('drillAdd multi-tab mode', () => {
 
     w.drillAdd();
 
-    // Priorities are reset after drillAdd (consistent with tests/14)
-    expect(w.state.drillPriorities[0]).toBeUndefined();
-    // renderDrillTabList re-reads from drillPriorities (now empty) → data-prio='0'
+    // Priorities persist after drillAdd (bug #146)
+    expect(w.state.drillPriorities[0]).toBe(1);
+    // renderDrillTabList re-reads from drillPriorities (still set) → data-prio='1'
     const btn = w.document.getElementById('dtl_prio_0');
-    expect(btn.getAttribute('data-prio')).toBe('0');
-    expect(btn.textContent).toBe('—');
+    expect(btn.getAttribute('data-prio')).toBe('1');
+    expect(btn.textContent).toBe('1');
   });
 
   it('does nothing if no tab has einheit or duenger > 0', () => {

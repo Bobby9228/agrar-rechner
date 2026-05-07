@@ -218,7 +218,7 @@ describe('drillAdd multi-tab mode', () => {
     expect(w.document.getElementById('drill_hektar').value).toBe('');
   });
 
-  it('resets priorities after adding', () => {
+  it('preserves priorities after adding', () => {
     setupMultiTabWithPrio();
     w.document.getElementById('drill_einheit').value = '10';
     w.document.getElementById('drill_duenger').value = '0';
@@ -226,7 +226,10 @@ describe('drillAdd multi-tab mode', () => {
     w.drillCalcAll();
     w.drillAdd();
 
-    expect(Object.keys(w.state.drillPriorities).length).toBe(0);
+    // Priorities persist after drillAdd (bug #146)
+    expect(Object.keys(w.state.drillPriorities).length).toBe(2);
+    expect(w.state.drillPriorities[0]).toBe(1);
+    expect(w.state.drillPriorities[1]).toBe(2);
   });
 
   it('does nothing when no prioritized tabs have values', () => {
