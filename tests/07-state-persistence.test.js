@@ -71,6 +71,34 @@ describe('State persistence', () => {
       w.localStorage.getItem = () => { throw new Error('Access denied'); };
       expect(() => w.loadState()).not.toThrow();
     });
+
+    it('uses default state when localStorage contains empty object {}', () => {
+      store['mais_rechner'] = '{}';
+      w.loadState();
+      expect(w.state.reiter.length).toBe(1);
+      expect(w.state.activeReiter).toBe(0);
+    });
+
+    it('uses default state when localStorage contains empty array []', () => {
+      store['mais_rechner'] = '[]';
+      w.loadState();
+      expect(w.state.reiter.length).toBe(1);
+      expect(w.state.activeReiter).toBe(0);
+    });
+
+    it('uses default state when reiter is present but empty', () => {
+      store['mais_rechner'] = JSON.stringify({ reiter: [] });
+      w.loadState();
+      expect(w.state.reiter.length).toBe(1);
+      expect(w.state.activeReiter).toBe(0);
+    });
+
+    it('uses default state when reiter is null', () => {
+      store['mais_rechner'] = JSON.stringify({ reiter: null });
+      w.loadState();
+      expect(w.state.reiter.length).toBe(1);
+      expect(w.state.activeReiter).toBe(0);
+    });
   });
 
   describe('Migration: old flat state to tabbed state', () => {

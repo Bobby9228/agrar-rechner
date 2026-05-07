@@ -1376,6 +1376,22 @@
 
         var parsed = JSON.parse(raw);
 
+        // --- Structural validation: reject valid-JSON but structurally broken state ---
+        // Covers:
+        //   - parsed is null / primitive (typeof !== 'object')          → reject
+        //   - parsed is array (including [])                             → reject (top-level array)
+        //   - parsed.reiter is present but not a non-empty array        → reject
+        //   - parsed.reiter undefined AND no koerner AND not an object  → reject
+        // Only old flat format (koerner !== undefined) passes through to migrations.
+        var valid = (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) &&
+          (parsed.reiter !== undefined
+            ? (Array.isArray(parsed.reiter) && parsed.reiter.length > 0)
+            : parsed.koerner !== undefined);
+        if (!valid) {
+          console.warn('loadState: invalid state structure (missing/non-array reiter), using defaults');
+          return;
+        }
+
         // === MIGRATION 1: Tab-loses Schema → Tab-Schema ===
         // Altes Format: {hektar, koerner, duenger, entries, ...}
         // Neues Format: {reiter:[{hektar, koerner, duenger, entries, name}], ...}
