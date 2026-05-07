@@ -669,6 +669,32 @@
       -webkit-overflow-scrolling: touch;
       padding-bottom: max(80px, env(safe-area-inset-bottom));
     }
+    .save-error-banner {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      font-size: 0.9rem;
+      color: #856404;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: slideDown 0.2s ease;
+    }
+    .save-error-banner button {
+      margin-left: auto;
+      background: none;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      color: #856404;
+      padding: 0 4px;
+    }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
     .sticky-footer {
       position: fixed;
       bottom: 0;
@@ -1110,6 +1136,10 @@
 </head>
 <body>
   <div class="app-layout">
+    <div id="save_error_banner" class="save-error-banner" style="display:none">
+      <span>⚠️ <strong>Speichern fehlgeschlagen</strong> — localStorage voll. Daten gehen bei Neuladung verloren!</span>
+      <button onclick="dismissSaveError()" aria-label="Schließen">✕</button>
+    </div>
     <div class="scrollable-content">
   <div class="container">
     <div class="header-row">
@@ -1365,8 +1395,22 @@
     // --- Persistenz: Speichern ---
     function saveState() {
       invalidateCarryoverCache();
-      try { localStorage.setItem('mais_rechner', JSON.stringify(state)); } catch(e) {}
-      // Fehler werden still ignoriert (z.B. bei vollem Speicher oder privatem Modus)
+      try { localStorage.setItem('mais_rechner', JSON.stringify(state)); } catch(e) {
+        if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_FILE_CANT_CREATE') {
+          showSaveError();
+        }
+        console.error('saveState failed:', e);
+      }
+    }
+
+    function showSaveError() {
+      var el = document.getElementById('save_error_banner');
+      if (el) el.style.display = 'flex';
+    }
+
+    function dismissSaveError() {
+      var el = document.getElementById('save_error_banner');
+      if (el) el.style.display = 'none';
     }
 
     // --- Persistenz: Laden + Migrieren ---
