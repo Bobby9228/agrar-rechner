@@ -455,6 +455,17 @@
     .drill-excess .entry-text::before {
       content: '↘ ';
     }
+    .carryover-hint {
+      color: #1565c0;
+    }
+    .excess-hint {
+      color: #c62828;
+    }
+    .summary-muted {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #555;
+    }
     .drill-summary-total {
       margin-top: 10px;
       padding-top: 10px;
@@ -1072,6 +1083,9 @@
     html.dark .drill-savings { color: #66bb6a; }
     html.dark .drill-carryover { color: #42a5f5; }
     html.dark .drill-excess { color: #ef5350; }
+    html.dark .carryover-hint { color: #42a5f5; }
+    html.dark .excess-hint { color: #ef5350; }
+    html.dark .summary-muted { color: #b0b8a8; }
     html.dark #drill_machine_log { border-bottom-color: #3a4030; }
     html.dark .drill-entry-tab-header { color: #9aa88a; border-bottom-color: #3a4030; }
     html.dark .drill-entry { border-bottom-color: #3a4030; }
@@ -2616,14 +2630,14 @@
         var parts = [];
         if (co.savedEinheit > 0.05) parts.push(fmt(co.savedEinheit) + ' Einheiten');
         if (co.savedDuenger > 0.05) parts.push(fmt(co.savedDuenger) + ' kg Dünger');
-        coHtml += '<span style="color:#1565c0">↗ Übertrag aus ersparten Flächen: +' + parts.join(', ') + '</span>';
+        coHtml += '<span class="carryover-hint">Übertrag aus ersparten Flächen: +' + parts.join(', ') + '</span>';
       }
       if (co.excessEinheit > 0.05 || co.excessDuenger > 0.05) {
         var eparts = [];
         if (co.excessEinheit > 0.05) eparts.push(fmt(co.excessEinheit) + ' Einheiten');
         if (co.excessDuenger > 0.05) eparts.push(fmt(co.excessDuenger) + ' kg Dünger');
         if (coHtml) coHtml += '<br>';
-        coHtml += '<span style="color:#c62828">↘ Mehrwert aus überschrittenen Flächen: -' + eparts.join(', ') + '</span>';
+        coHtml += '<span class="excess-hint">Mehrbedarf aus überschrittenen Flächen: -' + eparts.join(', ') + '</span>';
       }
       carryoverHint.innerHTML = coHtml;
     }
@@ -2821,10 +2835,7 @@
           if (tabIstHektar > 0 && r.hektar > 0) {
             var tabDiff = tabIstHektar - r.hektar;
             var summaryDiv = document.createElement('div');
-            summaryDiv.className = 'drill-entry';
-            summaryDiv.style.fontWeight = '600';
-            summaryDiv.style.fontSize = '0.85rem';
-            summaryDiv.style.color = '#555';
+            summaryDiv.className = 'drill-entry summary-muted';
             var diffClass = tabDiff >= 0 ? 'entry-diff positive' : 'entry-diff negative';
             var diffSign = tabDiff >= 0 ? '+' : '';
             summaryDiv.innerHTML = '<span class="entry-text">SOLL: ' + fmt(r.hektar) + ' ha | IST: ' + fmt(tabIstHektar) + ' ha | Abw: <span class="' + diffClass + '">' + diffSign + fmt(tabDiff) + ' ha</span></span>';
