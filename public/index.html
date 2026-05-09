@@ -2233,11 +2233,8 @@ font-size: 0.75rem;
       return isNaN(result) ? 0 : result;
     }
 
-    // keydown-Tracking: Merkt sich die zuletzt gedrückte Taste.
-    // Wird genutzt um zu unterscheiden, ob ein aufgetauchtes Komma vom User
-    // (Taste ',' oder '.') oder vom Browser/Keyboard auto-inserted wurde.
-    // Hinweis: Auf Android Soft-Keyboards liefert keydown oft 'Unidentified'.
-    // Deshalb wird InputEvent.data als primäres Signal verwendet (siehe onInputFormat).
+    // Fallback: keydown-Tracking für physische Tastaturen und Testumgebungen
+    // wo InputEvent.data nicht verfügbar ist.
     var _pendingKey = null;
     document.addEventListener('keydown', function(e) {
       _pendingKey = e.key;
@@ -2246,19 +2243,6 @@ font-size: 0.75rem;
       _pendingKey = null; // Nach jedem Input zurücksetzen, damit kein veralteter Wert hängt
     });
 
-    // Bereinigt Benutzereingaben während des Tippens.
-    //
-    // Modus 'integer': Nur Ziffern erlaubt (für Körner/ha).
-    // Modus 'decimal': Ziffern + maximal ein Komma (für Hektar, Dünger).
-    //
-    // Auto-Komma-Erkennung: Manche Handy-Tastaturen (besonders Android)
-    // fügen automatisch ein Komma ein (z.B. "2"+"5" → "2,5" statt "25").
-    // Die Erkennung basiert auf keydown-Tracking: wenn der User KEINE
-    // Komma/Dot-Taste gedrückt hat, ist jedes neue Komma auto-inserted.
-    //
-    // Beispiel decimal: '12..5' → '12.' (zweiter Punkt wird entfernt)
-    //                  '1.500' → '1500' (Tausenderpunkte entfernt)
-    //                  '12,5,5' → '12,5' (nur erstes Komma bleibt)
     // Bereinigt Benutzereingaben während des Tippens.
     //
     // Modus 'integer': Nur Ziffern erlaubt (für Körner/ha).
