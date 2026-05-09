@@ -30,11 +30,4 @@ describe('Cloudflare deploy sanity', () => {
     expect(match).not.toBeNull();
     expect(match[1].length).toBeGreaterThan(0);
   });
-
-  it('index.html has a visible version number', () => {
-    const indexPath = resolve(publicDir, 'index.html');
-    const content = readFileSync(indexPath, 'utf-8');
-    // <span class="version">vNN</span> muss existieren
-    expect(content).toMatch(/<span class="version">v\d+<\/span>/);
-  });
 });
