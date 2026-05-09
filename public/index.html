@@ -3254,7 +3254,12 @@ font-size: 0.75rem;
     }
 
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js');
+      try {
+        var swReg = navigator.serviceWorker.register('sw.js');
+        if (swReg && swReg.then) {
+          swReg.then(function(reg) { reg.update(); });
+        }
+      } catch(swErr) {}
     }
 
     initTheme();
