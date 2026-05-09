@@ -1164,12 +1164,12 @@ font-size: 0.75rem;
       <h2>📐 Fläche & Aussaatstärke</h2>
       <div class="field">
         <label for="hektar">Hektar (SOLL)</label>
-        <input type="text" inputmode="decimal" id="hektar" placeholder="z.B. 12,5" oninput="onInputFormat(this, 'decimal')">
+        <input type="text" id="hektar" placeholder="z.B. 12,5" oninput="onInputFormat(this, 'decimal')">
         <div class="error-msg" id="err_hektar"></div>
       </div>
       <div class="field">
         <label for="ist_hektar">IST-Fläche (ha)</label>
-        <input type="text" inputmode="decimal" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal')">
+        <input type="text" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal')">
       </div>
       <div class="field">
         <label for="koerner">Körner pro Hektar</label>
@@ -1196,7 +1196,7 @@ font-size: 0.75rem;
       <h2>🧪 Dünger</h2>
       <div class="field">
         <label for="duenger">Dünger (kg/ha)</label>
-        <input type="text" inputmode="decimal" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal')">
+        <input type="text" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal')">
       </div>
 
       <div class="fahrgassen-toggle">
@@ -1206,7 +1206,7 @@ font-size: 0.75rem;
       <div class="fahrgassen-settings" id="fahrgassen_settings">
         <div class="field" style="margin-bottom:8px">
           <label for="fahrgassen_breite">Fahrgassenbreite (m)</label>
-          <input type="text" inputmode="decimal" id="fahrgassen_breite" placeholder="z.B. 24" oninput="onInputFormat(this, 'decimal')" onchange="fahrgassenUpdate()" onblur="fahrgassenUpdate()">
+          <input type="text" id="fahrgassen_breite" placeholder="z.B. 24" oninput="onInputFormat(this, 'decimal')" onchange="fahrgassenUpdate()" onblur="fahrgassenUpdate()">
         </div>
         <div class="fahrgassen-saved" id="fahrgassen_saved"></div>
         <div class="fahrgassen-info">Die Körnerzahl wird um ca. 1/Fahrgassenbreite × 100 % reduziert.</div>
@@ -1275,16 +1275,16 @@ font-size: 0.75rem;
         <div class="drill-machine-row">
           <div class="field">
             <label for="drill_einheit">Maschine eingefüllt (Einheiten)</label>
-            <input type="text" inputmode="decimal" id="drill_einheit" placeholder="z.B. 4" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal')">
+            <input type="text" id="drill_einheit" placeholder="z.B. 4" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal')">
           </div>
           <div class="field">
             <label for="drill_duenger">Maschine eingefüllt (Dünger kg)</label>
-            <input type="text" inputmode="decimal" id="drill_duenger" placeholder="z.B. 200" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal')">
+            <input type="text" id="drill_duenger" placeholder="z.B. 200" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal')">
           </div>
         </div>
         <div class="field">
           <label for="drill_hektar">Zählerstand (ha)</label>
-          <input type="text" inputmode="decimal" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal')">
+          <input type="text" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal')">
         </div>
         <div class="drill-tabs-section">
           <div class="drill-tabs-header">Aufteilen auf (Klick = Prio: 1 → 2 → 3 → aus):</div>
