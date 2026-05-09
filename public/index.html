@@ -2233,30 +2233,16 @@ font-size: 0.75rem;
       return isNaN(result) ? 0 : result;
     }
 
-    // keydown-Tracking: Merkt sich die zuletzt gedrückte Taste.
-    // Wird genutzt um zu unterscheiden, ob ein aufgetauchtes Komma vom User
-    // (Taste ',' oder '.') oder vom Browser/Keyboard auto-inserted wurde.
-    var _pendingKey = null;
-    document.addEventListener('keydown', function(e) {
-      _pendingKey = e.key;
-    });
-
     // Bereinigt Benutzereingaben während des Tippens.
     //
     // Modus 'integer': Nur Ziffern erlaubt (für Körner/ha).
     // Modus 'decimal': Ziffern + maximal ein Komma (für Hektar, Dünger).
     //
-    // Auto-Komma-Erkennung: Manche Handy-Tastaturen (besonders Android)
-    // fügen automatisch ein Komma ein (z.B. "2"+"5" → "2,5" statt "25").
-    // Die Erkennung basiert auf keydown-Tracking: wenn der User KEINE
-    // Komma/Dot-Taste gedrückt hat, ist jedes neue Komma auto-inserted.
-    //
-    // Beispiel decimal: '12..5' → '12.' (zweiter Punkt wird entfernt)
+    // Beispiel decimal: '12..5' → '12,' (Punkt→Komma, zweiter Punkt entfernt)
     //                  '1.500' → '1500' (Tausenderpunkte entfernt)
     //                  '12,5,5' → '12,5' (nur erstes Komma bleibt)
     function onInputFormat(el, mode) {
       var val = el.value;
-      var newVal = val;  // Originalwert vor Modifikation (für dot→comma-Erkennung)
       if (!val) { el.dataset.prev = ''; el.dataset.cleaned = ''; return; }
       var prev = el.dataset.prev || '';
       var cleaned;
@@ -2275,30 +2261,17 @@ font-size: 0.75rem;
             val = val.substring(0, firstDot) + ',' + val.substring(firstDot + 1);
           }
         }
-        // Auto-Komma-Erkennung via keydown-Tracking:
-        // Wenn ein Komma aufgetaucht ist, das in prev nicht war, prüfen wir
-        // ob der User eine Komma/Dot-Taste gedrückt hat.
-        //
-        // Strategie:
-        // 1. keydown sagt ','/'.' → User-Intention → Komma behalten
-        // 2. keydown sagt bekannte Nicht-Komma-Taste → Auto-Insert → entfernen
-        // 3. keydown ist null/Unidentified → Fallback auf Ziffern-Vergleich:
-        //    wenn exactly 1 neue Ziffer + Komma → Auto-Insert → entfernen
+        // Automatisch eingefügte Kommata entfernen.
+        // Manche Handy-Tastaturen fügen ein Komma ein (z.B. "2"+"5" → "2,5").
+        // Erkennung: Wenn ein neues Komma auftaucht und ohne das Komma genau
+        // 1 Zeichen mehr als prev da ist → Komma kam mit der Ziffer zusammen
+        // → war auto-inserted → entfernen.
+        // User tippt wirklich Komma: prev="2", val="2," → withoutComma="2"
+        // → Länge 1 ≠ 2 → Komma bleibt.
         if (prev.indexOf(',') === -1 && val.indexOf(',') > 0) {
-          var key = _pendingKey;
-          var isDecimalKey = (key === ',' || key === '.' || key === 'Decimal' || key === 'Comma');
-          if (isDecimalKey) {
-            // User hat Dezimaltaste gedrückt → Komma behalten
-          } else if (key !== null && key !== 'Unidentified') {
-            // Bekannte Nicht-Komma-Taste → Komma war auto-inserted → entfernen
-            val = val.replace(',', '');
-          } else {
-            // Kein keydown-Info (null=kein Event, Unidentified=Soft-Tastatur)
-            // Fallback: Ziffern-Vergleich (ursprünglicher Fall 1)
-            var withoutComma = val.replace(',', '');
-            if (withoutComma.length === prev.length + 1) {
-              val = withoutComma;
-            }
+          var withoutComma = val.replace(',', '');
+          if (withoutComma.length === prev.length + 1) {
+            val = withoutComma;
           }
         }
         cleaned = val.replace(/[^\d,]/g, '');
