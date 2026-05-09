@@ -333,12 +333,13 @@ describe('renderDrillTabList()', () => {
     expect(doc.getElementById('dtl_d_0').inputMode).toBe('numeric');
   });
 
-  it('all main decimal inputs have numeric inputMode (not decimal)', () => {
-    // decimal inputs should use numeric to avoid automatic comma insertion on some devices
+  it('all main decimal inputs have no inputMode (let onInputFormat control formatting)', () => {
+    // inputmode removed — it caused browser auto-formatting that inserted commas
+    // between digits on some Android keyboards. onInputFormat handles everything now.
     const mainInputs = ['hektar', 'ist_hektar', 'duenger', 'fahrgassen_breite', 'drill_einheit', 'drill_duenger', 'drill_hektar'];
     for (const id of mainInputs) {
       const el = doc.getElementById(id);
-      expect(el.inputMode).toBe('numeric');
+      expect(el.inputMode).toBe('');
     }
   });
 
