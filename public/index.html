@@ -2238,7 +2238,8 @@ font-size: 0.75rem;
     //                  '12,5,5' → '12,5' (nur erstes Komma bleibt)
     function onInputFormat(el, mode) {
       var val = el.value;
-      if (!val) return;
+      if (!val) { el.dataset.prev = ''; return; }
+      var prev = el.dataset.prev || '';
       var cleaned;
       if (mode === 'integer') {
         // Nur Ziffern
@@ -2255,11 +2256,22 @@ font-size: 0.75rem;
             val = val.substring(0, firstDot) + ',' + val.substring(firstDot + 1);
           }
         }
+        // Auto-Format-Erkennung: Manche Handy-Tastaturen fügen automatisch ein
+        // Komma ein (z.B. "2" + "5" → "2,5" statt "25"). Wenn der vorherige Wert
+        // kein Komma hatte und der neue eins hat, aber nach Entfernen des Kommas
+        // genau 1 Zeichen hinzukam, war das Komma auto-eingefügt → entfernen.
+        if (prev.indexOf(',') === -1 && val.indexOf(',') > 0) {
+          var withoutComma = val.replace(',', '');
+          if (withoutComma.length === prev.length + 1) {
+            val = withoutComma;
+          }
+        }
         cleaned = val.replace(/[^\d,]/g, '');
         // Nur das erste Komma behalten, Rest abschneiden
         var parts = cleaned.split(',');
         cleaned = parts[0] + (parts[1] !== undefined ? ',' + parts[1] : '');
       }
+      el.dataset.prev = cleaned;
       if (el.value !== cleaned) {
         // Cursorposition proportional merken, damit Editierung in der Mitte nicht ans Ende springt
         var oldLen = el.value.length;
