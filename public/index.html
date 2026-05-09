@@ -1164,12 +1164,12 @@ font-size: 0.75rem;
       <h2>📐 Fläche & Aussaatstärke</h2>
       <div class="field">
         <label for="hektar">Hektar (SOLL)</label>
-        <input type="text" id="hektar" placeholder="z.B. 12,5" oninput="onInputFormat(this, 'decimal')">
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="hektar" placeholder="z.B. 12,5" oninput="onInputFormat(this, 'decimal')">
         <div class="error-msg" id="err_hektar"></div>
       </div>
       <div class="field">
         <label for="ist_hektar">IST-Fläche (ha)</label>
-        <input type="text" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal')">
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal')">
       </div>
       <div class="field">
         <label for="koerner">Körner pro Hektar</label>
@@ -1196,7 +1196,7 @@ font-size: 0.75rem;
       <h2>🧪 Dünger</h2>
       <div class="field">
         <label for="duenger">Dünger (kg/ha)</label>
-        <input type="text" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal')">
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal')">
       </div>
 
       <div class="fahrgassen-toggle">
@@ -1206,7 +1206,7 @@ font-size: 0.75rem;
       <div class="fahrgassen-settings" id="fahrgassen_settings">
         <div class="field" style="margin-bottom:8px">
           <label for="fahrgassen_breite">Fahrgassenbreite (m)</label>
-          <input type="text" id="fahrgassen_breite" placeholder="z.B. 24" oninput="onInputFormat(this, 'decimal')" onchange="fahrgassenUpdate()" onblur="fahrgassenUpdate()">
+          <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="fahrgassen_breite" placeholder="z.B. 24" oninput="onInputFormat(this, 'decimal')" onchange="fahrgassenUpdate()" onblur="fahrgassenUpdate()">
         </div>
         <div class="fahrgassen-saved" id="fahrgassen_saved"></div>
         <div class="fahrgassen-info">Die Körnerzahl wird um ca. 1/Fahrgassenbreite × 100 % reduziert.</div>
@@ -1275,16 +1275,16 @@ font-size: 0.75rem;
         <div class="drill-machine-row">
           <div class="field">
             <label for="drill_einheit">Maschine eingefüllt (Einheiten)</label>
-            <input type="text" id="drill_einheit" placeholder="z.B. 4" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal')">
+            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_einheit" placeholder="z.B. 4" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal')">
           </div>
           <div class="field">
             <label for="drill_duenger">Maschine eingefüllt (Dünger kg)</label>
-            <input type="text" id="drill_duenger" placeholder="z.B. 200" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal')">
+            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_duenger" placeholder="z.B. 200" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal')">
           </div>
         </div>
         <div class="field">
           <label for="drill_hektar">Zählerstand (ha)</label>
-          <input type="text" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal')">
+          <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal')">
         </div>
         <div class="drill-tabs-section">
           <div class="drill-tabs-header">Aufteilen auf (Klick = Prio: 1 → 2 → 3 → aus):</div>
@@ -2233,20 +2233,30 @@ font-size: 0.75rem;
       return isNaN(result) ? 0 : result;
     }
 
+    // keydown-Tracking: Merkt sich die zuletzt gedrückte Taste.
+    // Wird genutzt um zu unterscheiden, ob ein aufgetauchtes Komma vom User
+    // (Taste ',' oder '.') oder vom Browser/Keyboard auto-inserted wurde.
+    var _pendingKey = null;
+    document.addEventListener('keydown', function(e) {
+      _pendingKey = e.key;
+    });
+
     // Bereinigt Benutzereingaben während des Tippens.
     //
     // Modus 'integer': Nur Ziffern erlaubt (für Körner/ha).
     // Modus 'decimal': Ziffern + maximal ein Komma (für Hektar, Dünger).
     //
-    // Das verhindert, dass der Nutzer ungültige Zeichen eingibt,
-    // und hält die Eingabe всегда im deutschen Format.
+    // Auto-Komma-Erkennung: Manche Handy-Tastaturen (besonders Android)
+    // fügen automatisch ein Komma ein (z.B. "2"+"5" → "2,5" statt "25").
+    // Die Erkennung basiert auf keydown-Tracking: wenn der User KEINE
+    // Komma/Dot-Taste gedrückt hat, ist jedes neue Komma auto-inserted.
     //
-    // Beispiel decimal: '12..5' → '12.' (zweiter Punkt wird entfernt, kein Doppelpunkt-Konzept)
-    //                  '1.500' → '1500' (Tausenderpunkte entfernt, Komma bleibt Dezimaltrennzeichen)
+    // Beispiel decimal: '12..5' → '12.' (zweiter Punkt wird entfernt)
+    //                  '1.500' → '1500' (Tausenderpunkte entfernt)
     //                  '12,5,5' → '12,5' (nur erstes Komma bleibt)
     function onInputFormat(el, mode) {
       var val = el.value;
-      var newVal = val;  // Originalwert vor jeglicher Modifikation (für dot→comma-Erkennung)
+      var newVal = val;  // Originalwert vor Modifikation (für dot→comma-Erkennung)
       if (!val) { el.dataset.prev = ''; el.dataset.cleaned = ''; return; }
       var prev = el.dataset.prev || '';
       var cleaned;
@@ -2265,35 +2275,30 @@ font-size: 0.75rem;
             val = val.substring(0, firstDot) + ',' + val.substring(firstDot + 1);
           }
         }
-        // Auto-Format-Erkennung: Manche Handy-Tastaturen fügen automatisch ein
-        // Komma ein (z.B. "2" + "5" → "2,5" statt "25"). Erkennung in zwei Fällen:
+        // Auto-Komma-Erkennung via keydown-Tracking:
+        // Wenn ein Komma aufgetaucht ist, das in prev nicht war, prüfen wir
+        // ob der User eine Komma/Dot-Taste gedrückt hat.
         //
-        // Fall 1: prev hatte kein Komma, val hat Komma (zwischen Ziffern), und nach
-        //         Entfernen des Kommas ist genau 1 Zeichen hinzugekommen → Auto-Komma.
-// Fall 2: prev hatte schon ein Komma (das wir nicht entfernen konnten, weil
-        //         es zwischen zwei Ziffern stand, z.B. "2," auto-inserted auf dem ersten
-        //         Tastendruck), und jetzt kommt genau eine Ziffer dazu.
-        //         Erkennung: prev ist "X," (genau 1 Ziffer + Komma), val ist "X,Y"
-        //         (dieselbe Ziffer + Komma + genau 1 neue Ziffer).
-        //         WICHTIG: Nicht auslösen wenn das Komma gerade aus einem '.' konvertiert
-        //         wurde (iOS dot→comma Fall), da das Komma dann absichtlich ist.
-        if (prev.indexOf(',') !== -1 && val.indexOf(',') > 0) {
-          // Prüfe ob das Komma gerade aus '.' konvertiert wurde (iOS dot→comma)
-          var hadDotConversion = (val.indexOf('.') === -1 && newVal !== val);
-          if (!hadDotConversion) {
-            // Fall 2: prev hatte schon ein Komma, val hat auch eins. Wenn val genau
-            // eine weitere Ziffer nach dem Komma hat und prev nur die Ziffern davor,
-            // war das Komma auto-inserted → entfernen.
-            var parts2 = val.split(',');
-            if (parts2.length === 2 && parts2[1].match(/^\d$/)) {
-              // Genau 1 Ziffer nach Komma → wahrscheinlich Auto-Insert
-              val = val.replace(',', '');
+        // Strategie:
+        // 1. keydown sagt ','/'.' → User-Intention → Komma behalten
+        // 2. keydown sagt bekannte Nicht-Komma-Taste → Auto-Insert → entfernen
+        // 3. keydown ist null/Unidentified → Fallback auf Ziffern-Vergleich:
+        //    wenn exactly 1 neue Ziffer + Komma → Auto-Insert → entfernen
+        if (prev.indexOf(',') === -1 && val.indexOf(',') > 0) {
+          var key = _pendingKey;
+          var isDecimalKey = (key === ',' || key === '.' || key === 'Decimal' || key === 'Comma');
+          if (isDecimalKey) {
+            // User hat Dezimaltaste gedrückt → Komma behalten
+          } else if (key !== null && key !== 'Unidentified') {
+            // Bekannte Nicht-Komma-Taste → Komma war auto-inserted → entfernen
+            val = val.replace(',', '');
+          } else {
+            // Kein keydown-Info (null=kein Event, Unidentified=Soft-Tastatur)
+            // Fallback: Ziffern-Vergleich (ursprünglicher Fall 1)
+            var withoutComma = val.replace(',', '');
+            if (withoutComma.length === prev.length + 1) {
+              val = withoutComma;
             }
-          }
-        } else if (prev.indexOf(',') === -1 && val.indexOf(',') > 0) {
-          var withoutComma = val.replace(',', '');
-          if (withoutComma.length === prev.length + 1) {
-            val = withoutComma;
           }
         }
         cleaned = val.replace(/[^\d,]/g, '');
@@ -2425,14 +2430,20 @@ font-size: 0.75rem;
         eInput.type = 'text';
         eInput.id = 'dtl_e_' + i;
         eInput.placeholder = 'Einheiten';
-        eInput.inputMode = 'numeric';
+        eInput.inputMode = 'decimal';
+        eInput.setAttribute('autocomplete', 'off');
+        eInput.setAttribute('autocorrect', 'off');
+        eInput.setAttribute('spellcheck', 'false');
         eInput.oninput = function() { onInputFormat(eInput, 'decimal'); };
 
         var dInput = document.createElement('input');
         dInput.type = 'text';
         dInput.id = 'dtl_d_' + i;
         dInput.placeholder = 'kg Dünger';
-        dInput.inputMode = 'numeric';
+        dInput.inputMode = 'decimal';
+        dInput.setAttribute('autocomplete', 'off');
+        dInput.setAttribute('autocorrect', 'off');
+        dInput.setAttribute('spellcheck', 'false');
         dInput.oninput = function() { onInputFormat(dInput, 'decimal'); };
 
         values.appendChild(eInput);

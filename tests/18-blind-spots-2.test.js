@@ -326,20 +326,20 @@ describe('renderDrillTabList()', () => {
     expect(doc.getElementById('dtl_prio_0').classList.contains('active')).toBe(false);
   });
 
-  it('has numeric inputMode on einheit and duenger inputs', () => {
+  it('has decimal inputMode on einheit and duenger inputs', () => {
     w.state.reiter = [{ name: 'A', hektar: 10, koerner: 50000, duenger: 0, entries: [] }];
     w.renderDrillTabList();
-    expect(doc.getElementById('dtl_e_0').inputMode).toBe('numeric');
-    expect(doc.getElementById('dtl_d_0').inputMode).toBe('numeric');
+    expect(doc.getElementById('dtl_e_0').inputMode).toBe('decimal');
+    expect(doc.getElementById('dtl_d_0').inputMode).toBe('decimal');
   });
 
-  it('all main decimal inputs have no inputMode (let onInputFormat control formatting)', () => {
-    // inputmode removed — it caused browser auto-formatting that inserted commas
-    // between digits on some Android keyboards. onInputFormat handles everything now.
+  it('all main decimal inputs have inputmode=decimal for mobile keyboard + keydown-based auto-comma detection', () => {
+    // inputmode=decimal shows mobile decimal keyboard; auto-comma detection
+    // uses keydown tracking to distinguish user-typed vs browser-auto-inserted commas.
     const mainInputs = ['hektar', 'ist_hektar', 'duenger', 'fahrgassen_breite', 'drill_einheit', 'drill_duenger', 'drill_hektar'];
     for (const id of mainInputs) {
       const el = doc.getElementById(id);
-      expect(el.inputMode).toBe('');
+      expect(el.inputMode).toBe('decimal');
     }
   });
 

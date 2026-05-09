@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'mais-rechner-v6';
+const CACHE_VERSION = 'mais-rechner-v7';
 const STATIC_ASSETS = ['/', '/index.html', '/icon.svg', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', e => {
