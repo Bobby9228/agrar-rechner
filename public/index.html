@@ -2246,6 +2246,7 @@ font-size: 0.75rem;
     //                  '12,5,5' → '12,5' (nur erstes Komma bleibt)
     function onInputFormat(el, mode) {
       var val = el.value;
+      var newVal = val;  // Originalwert vor jeglicher Modifikation (für dot→comma-Erkennung)
       if (!val) { el.dataset.prev = ''; el.dataset.cleaned = ''; return; }
       var prev = el.dataset.prev || '';
       var cleaned;
@@ -2265,10 +2266,31 @@ font-size: 0.75rem;
           }
         }
         // Auto-Format-Erkennung: Manche Handy-Tastaturen fügen automatisch ein
-        // Komma ein (z.B. "2" + "5" → "2,5" statt "25"). Wenn der vorherige Wert
-        // kein Komma hatte und der neue eins hat, aber nach Entfernen des Kommas
-        // genau 1 Zeichen hinzukam, war das Komma auto-eingefügt → entfernen.
-        if (prev.indexOf(',') === -1 && val.indexOf(',') > 0) {
+        // Komma ein (z.B. "2" + "5" → "2,5" statt "25"). Erkennung in zwei Fällen:
+        //
+        // Fall 1: prev hatte kein Komma, val hat Komma (zwischen Ziffern), und nach
+        //         Entfernen des Kommas ist genau 1 Zeichen hinzugekommen → Auto-Komma.
+// Fall 2: prev hatte schon ein Komma (das wir nicht entfernen konnten, weil
+        //         es zwischen zwei Ziffern stand, z.B. "2," auto-inserted auf dem ersten
+        //         Tastendruck), und jetzt kommt genau eine Ziffer dazu.
+        //         Erkennung: prev ist "X," (genau 1 Ziffer + Komma), val ist "X,Y"
+        //         (dieselbe Ziffer + Komma + genau 1 neue Ziffer).
+        //         WICHTIG: Nicht auslösen wenn das Komma gerade aus einem '.' konvertiert
+        //         wurde (iOS dot→comma Fall), da das Komma dann absichtlich ist.
+        if (prev.indexOf(',') !== -1 && val.indexOf(',') > 0) {
+          // Prüfe ob das Komma gerade aus '.' konvertiert wurde (iOS dot→comma)
+          var hadDotConversion = (val.indexOf('.') === -1 && newVal !== val);
+          if (!hadDotConversion) {
+            // Fall 2: prev hatte schon ein Komma, val hat auch eins. Wenn val genau
+            // eine weitere Ziffer nach dem Komma hat und prev nur die Ziffern davor,
+            // war das Komma auto-inserted → entfernen.
+            var parts2 = val.split(',');
+            if (parts2.length === 2 && parts2[1].match(/^\d$/)) {
+              // Genau 1 Ziffer nach Komma → wahrscheinlich Auto-Insert
+              val = val.replace(',', '');
+            }
+          }
+        } else if (prev.indexOf(',') === -1 && val.indexOf(',') > 0) {
           var withoutComma = val.replace(',', '');
           if (withoutComma.length === prev.length + 1) {
             val = withoutComma;
