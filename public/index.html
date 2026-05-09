@@ -2296,18 +2296,6 @@ font-size: 0.75rem;
         }
         el.setSelectionRange(newPos, newPos);
       }
-      // Fallback: Manche Android-Tastaturen/IME re-formatieren den Wert
-      // ASYNCHRON nach dem input-Event (z.B. "25" → "2,5"). Der Timeout
-      // prüft ob der Browser unseren bereinigten Wert überschrieben hat.
-      if (mode !== 'integer') {
-        var ref = el;
-        if (ref._afTimer) clearTimeout(ref._afTimer);
-        ref._afTimer = setTimeout(function() {
-          if (ref.value !== ref.dataset.cleaned && ref.dataset.cleaned) {
-            ref.value = ref.dataset.cleaned;
-          }
-        }, 80);
-      }
     }
 
     // ==========================================================================
