@@ -2382,14 +2382,14 @@ font-size: 0.75rem;
         eInput.type = 'text';
         eInput.id = 'dtl_e_' + i;
         eInput.placeholder = 'Einheiten';
-        eInput.inputMode = 'decimal';
+        eInput.inputMode = 'numeric';
         eInput.oninput = function() { onInputFormat(eInput, 'decimal'); };
 
         var dInput = document.createElement('input');
         dInput.type = 'text';
         dInput.id = 'dtl_d_' + i;
         dInput.placeholder = 'kg Dünger';
-        dInput.inputMode = 'decimal';
+        dInput.inputMode = 'numeric';
         dInput.oninput = function() { onInputFormat(dInput, 'decimal'); };
 
         values.appendChild(eInput);

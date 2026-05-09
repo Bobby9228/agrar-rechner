@@ -326,11 +326,20 @@ describe('renderDrillTabList()', () => {
     expect(doc.getElementById('dtl_prio_0').classList.contains('active')).toBe(false);
   });
 
-  it('has decimal inputMode on einheit and duenger inputs', () => {
+  it('has numeric inputMode on einheit and duenger inputs', () => {
     w.state.reiter = [{ name: 'A', hektar: 10, koerner: 50000, duenger: 0, entries: [] }];
     w.renderDrillTabList();
-    expect(doc.getElementById('dtl_e_0').inputMode).toBe('decimal');
-    expect(doc.getElementById('dtl_d_0').inputMode).toBe('decimal');
+    expect(doc.getElementById('dtl_e_0').inputMode).toBe('numeric');
+    expect(doc.getElementById('dtl_d_0').inputMode).toBe('numeric');
+  });
+
+  it('all main decimal inputs have numeric inputMode (not decimal)', () => {
+    // decimal inputs should use numeric to avoid automatic comma insertion on some devices
+    const mainInputs = ['hektar', 'ist_hektar', 'duenger', 'fahrgassen_breite', 'drill_einheit', 'drill_duenger', 'drill_hektar'];
+    for (const id of mainInputs) {
+      const el = doc.getElementById(id);
+      expect(el.inputMode).toBe('numeric');
+    }
   });
 
   it('calls drillCalcAll when priority button is clicked', () => {
