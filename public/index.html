@@ -1526,10 +1526,18 @@ font-size: 0.75rem;
     // Wird aufgerufen NACH dem Wechseln von Tabs oder dem Laden aus dem localStorage.
     function syncInputsFromState() {
       var r = getActiveReiter();
-      document.getElementById('hektar').value    = r.hektar > 0    ? toInputValue(r.hektar)    : '';
-      document.getElementById('ist_hektar').value = r.istHektar > 0 ? toInputValue(r.istHektar) : '';
-      document.getElementById('koerner').value    = r.koerner > 0   ? toInputValue(r.koerner)   : '';
-      document.getElementById('duenger').value   = r.duenger > 0   ? toInputValue(r.duenger)   : '';
+      var h = document.getElementById('hektar');
+      var ih = document.getElementById('ist_hektar');
+      var k = document.getElementById('koerner');
+      var d = document.getElementById('duenger');
+      var hVal = r.hektar > 0    ? toInputValue(r.hektar)    : '';
+      var ihVal = r.istHektar > 0 ? toInputValue(r.istHektar) : '';
+      var kVal = r.koerner > 0   ? toInputValue(r.koerner)   : '';
+      var dVal = r.duenger > 0   ? toInputValue(r.duenger)   : '';
+      h.value = hVal;  h.dataset.prev = hVal;  h.dataset.cleaned = hVal;
+      ih.value = ihVal; ih.dataset.prev = ihVal; ih.dataset.cleaned = ihVal;
+      k.value = kVal;  k.dataset.prev = kVal;  k.dataset.cleaned = kVal;
+      d.value = dVal;  d.dataset.prev = dVal;  d.dataset.cleaned = dVal;
     }
 
     // ==========================================================================
@@ -2238,7 +2246,7 @@ font-size: 0.75rem;
     //                  '12,5,5' → '12,5' (nur erstes Komma bleibt)
     function onInputFormat(el, mode) {
       var val = el.value;
-      if (!val) { el.dataset.prev = ''; return; }
+      if (!val) { el.dataset.prev = ''; el.dataset.cleaned = ''; return; }
       var prev = el.dataset.prev || '';
       var cleaned;
       if (mode === 'integer') {
@@ -2272,6 +2280,7 @@ font-size: 0.75rem;
         cleaned = parts[0] + (parts[1] !== undefined ? ',' + parts[1] : '');
       }
       el.dataset.prev = cleaned;
+      el.dataset.cleaned = cleaned;
       if (el.value !== cleaned) {
         // Cursorposition proportional merken, damit Editierung in der Mitte nicht ans Ende springt
         var oldLen = el.value.length;
@@ -2286,6 +2295,18 @@ font-size: 0.75rem;
           newPos = Math.round(selStart * cleaned.length / oldLen);
         }
         el.setSelectionRange(newPos, newPos);
+      }
+      // Fallback: Manche Android-Tastaturen/IME re-formatieren den Wert
+      // ASYNCHRON nach dem input-Event (z.B. "25" → "2,5"). Der Timeout
+      // prüft ob der Browser unseren bereinigten Wert überschrieben hat.
+      if (mode !== 'integer') {
+        var ref = el;
+        if (ref._afTimer) clearTimeout(ref._afTimer);
+        ref._afTimer = setTimeout(function() {
+          if (ref.value !== ref.dataset.cleaned && ref.dataset.cleaned) {
+            ref.value = ref.dataset.cleaned;
+          }
+        }, 80);
       }
     }
 
