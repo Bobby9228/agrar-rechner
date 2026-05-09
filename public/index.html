@@ -1164,16 +1164,16 @@ font-size: 0.75rem;
       <h2>📐 Fläche & Aussaatstärke</h2>
       <div class="field">
         <label for="hektar">Hektar (SOLL)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="hektar" placeholder="z.B. 12,5" oninput="onInputFormat(this, 'decimal')">
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="hektar" placeholder="z.B. 12,5" oninput="onInputFormat(this, 'decimal', event)">
         <div class="error-msg" id="err_hektar"></div>
       </div>
       <div class="field">
         <label for="ist_hektar">IST-Fläche (ha)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal')">
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal', event)">
       </div>
       <div class="field">
         <label for="koerner">Körner pro Hektar</label>
-        <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" oninput="onInputFormat(this, 'integer')">
+        <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" oninput="onInputFormat(this, 'integer', event)">
         <div class="unit">üblich: 80.000 – 100.000</div>
         <div class="error-msg" id="err_koerner"></div>
       </div>
@@ -1185,7 +1185,7 @@ font-size: 0.75rem;
       <div class="fahrgassen-settings" id="einheit_groesse_settings">
         <div class="field" style="margin-bottom:8px">
           <label for="koerner_pro_einheit">Körner pro Einheit</label>
-          <input type="text" inputmode="numeric" id="koerner_pro_einheit" placeholder="z.B. 50000" oninput="onInputFormat(this, 'integer')" onchange="einheitGroesseUpdate()" onblur="einheitGroesseUpdate()">
+          <input type="text" inputmode="numeric" id="koerner_pro_einheit" placeholder="z.B. 50000" oninput="onInputFormat(this, 'integer', event)" onchange="einheitGroesseUpdate()" onblur="einheitGroesseUpdate()">
         </div>
         <div class="fahrgassen-saved" id="einheit_groesse_saved"></div>
         <div class="fahrgassen-info">Wie viele Körner eine "Einheit" Saatgut entsprechen (üblich: 50.000).</div>
@@ -1196,7 +1196,7 @@ font-size: 0.75rem;
       <h2>🧪 Dünger</h2>
       <div class="field">
         <label for="duenger">Dünger (kg/ha)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal')">
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal', event)">
       </div>
 
       <div class="fahrgassen-toggle">
@@ -1206,7 +1206,7 @@ font-size: 0.75rem;
       <div class="fahrgassen-settings" id="fahrgassen_settings">
         <div class="field" style="margin-bottom:8px">
           <label for="fahrgassen_breite">Fahrgassenbreite (m)</label>
-          <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="fahrgassen_breite" placeholder="z.B. 24" oninput="onInputFormat(this, 'decimal')" onchange="fahrgassenUpdate()" onblur="fahrgassenUpdate()">
+          <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="fahrgassen_breite" placeholder="z.B. 24" oninput="onInputFormat(this, 'decimal', event)" onchange="fahrgassenUpdate()" onblur="fahrgassenUpdate()">
         </div>
         <div class="fahrgassen-saved" id="fahrgassen_saved"></div>
         <div class="fahrgassen-info">Die Körnerzahl wird um ca. 1/Fahrgassenbreite × 100 % reduziert.</div>
@@ -1275,16 +1275,16 @@ font-size: 0.75rem;
         <div class="drill-machine-row">
           <div class="field">
             <label for="drill_einheit">Maschine eingefüllt (Einheiten)</label>
-            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_einheit" placeholder="z.B. 4" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal')">
+            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_einheit" placeholder="z.B. 4" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal', event)">
           </div>
           <div class="field">
             <label for="drill_duenger">Maschine eingefüllt (Dünger kg)</label>
-            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_duenger" placeholder="z.B. 200" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal')">
+            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_duenger" placeholder="z.B. 200" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal', event)">
           </div>
         </div>
         <div class="field">
           <label for="drill_hektar">Zählerstand (ha)</label>
-          <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal')">
+          <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal', event)">
         </div>
         <div class="drill-tabs-section">
           <div class="drill-tabs-header">Aufteilen auf (Klick = Prio: 1 → 2 → 3 → aus):</div>
@@ -2233,15 +2233,51 @@ font-size: 0.75rem;
       return isNaN(result) ? 0 : result;
     }
 
+    // keydown-Tracking: Merkt sich die zuletzt gedrückte Taste.
+    // Wird genutzt um zu unterscheiden, ob ein aufgetauchtes Komma vom User
+    // (Taste ',' oder '.') oder vom Browser/Keyboard auto-inserted wurde.
+    // Hinweis: Auf Android Soft-Keyboards liefert keydown oft 'Unidentified'.
+    // Deshalb wird InputEvent.data als primäres Signal verwendet (siehe onInputFormat).
+    var _pendingKey = null;
+    document.addEventListener('keydown', function(e) {
+      _pendingKey = e.key;
+    });
+    document.addEventListener('input', function() {
+      _pendingKey = null; // Nach jedem Input zurücksetzen, damit kein veralteter Wert hängt
+    });
+
     // Bereinigt Benutzereingaben während des Tippens.
     //
     // Modus 'integer': Nur Ziffern erlaubt (für Körner/ha).
     // Modus 'decimal': Ziffern + maximal ein Komma (für Hektar, Dünger).
     //
-    // Beispiel decimal: '12..5' → '12,' (Punkt→Komma, zweiter Punkt entfernt)
+    // Auto-Komma-Erkennung: Manche Handy-Tastaturen (besonders Android)
+    // fügen automatisch ein Komma ein (z.B. "2"+"5" → "2,5" statt "25").
+    // Die Erkennung basiert auf keydown-Tracking: wenn der User KEINE
+    // Komma/Dot-Taste gedrückt hat, ist jedes neue Komma auto-inserted.
+    //
+    // Beispiel decimal: '12..5' → '12.' (zweiter Punkt wird entfernt)
     //                  '1.500' → '1500' (Tausenderpunkte entfernt)
     //                  '12,5,5' → '12,5' (nur erstes Komma bleibt)
-    function onInputFormat(el, mode) {
+    // Bereinigt Benutzereingaben während des Tippens.
+    //
+    // Modus 'integer': Nur Ziffern erlaubt (für Körner/ha).
+    // Modus 'decimal': Ziffern + maximal ein Komma (für Hektar, Dünger).
+    //
+    // Auto-Komma-Erkennung: Manche Android-Tastaturen fügen automatisch
+    // ein Komma ein – teils im selben input-Event wie die Ziffer, teils
+    // in einem zweiten separaten Reformatierungs-Event (2-Pass-Verhalten).
+    // Das keydown-Zähler-Heuristik scheitert beim 2-Pass-Fall, weil `prev`
+    // nach dem ersten Event bereits die Ziffer enthält.
+    //
+    // Lösung: InputEvent.data als primäres Signal nutzen.
+    //   e.data === ',' oder '.'  → User hat Dezimaltaste gedrückt → Komma behalten
+    //   e.data = Ziffer / null   → Auto-Insert oder Reformatierung   → Komma entfernen
+    //   Kein e / kein e.data     → Fallback auf _pendingKey (physische Tastatur)
+    //
+    // Beispiel decimal: '12..5' → '12,5' (Punkt→Komma, zweiter Punkt entfernt)
+    //                  '12,5,5' → '12,5' (nur erstes Komma bleibt)
+    function onInputFormat(el, mode, e) {
       var val = el.value;
       if (!val) { el.dataset.prev = ''; el.dataset.cleaned = ''; return; }
       var prev = el.dataset.prev || '';
@@ -2261,17 +2297,42 @@ font-size: 0.75rem;
             val = val.substring(0, firstDot) + ',' + val.substring(firstDot + 1);
           }
         }
-        // Automatisch eingefügte Kommata entfernen.
-        // Manche Handy-Tastaturen fügen ein Komma ein (z.B. "2"+"5" → "2,5").
-        // Erkennung: Wenn ein neues Komma auftaucht und ohne das Komma genau
-        // 1 Zeichen mehr als prev da ist → Komma kam mit der Ziffer zusammen
-        // → war auto-inserted → entfernen.
-        // User tippt wirklich Komma: prev="2", val="2," → withoutComma="2"
-        // → Länge 1 ≠ 2 → Komma bleibt.
+        // Auto-Komma-Erkennung:
+        // Wenn ein neues Komma auftaucht, prüfen ob der User es absichtlich
+        // getippt hat.
+        //
+        // Strategie (Priorität absteigend):
+        // 1. InputEvent.data vorhanden und nicht leer → zuverlässigstes Signal:
+        //    data === ',' oder '.'  → User-Dezimaltaste        → Komma behalten
+        //    data = Ziffer o.Ä.    → Auto-Insert (Android)     → Komma entfernen
+        // 2. e.inputType = Komposition/Ersetzung → Android 2-Pass-Reformatierung → entfernen
+        // 3. Kein e.data (Tests, ältere Browser): Fallback _pendingKey + Ziffernvergleich
         if (prev.indexOf(',') === -1 && val.indexOf(',') > 0) {
-          var withoutComma = val.replace(',', '');
-          if (withoutComma.length === prev.length + 1) {
-            val = withoutComma;
+          var eventData = e ? e.data : undefined;
+          var isDecimalInput;
+          if (eventData !== null && eventData !== undefined && eventData !== '') {
+            // InputEvent.data vorhanden: Dezimalseparator = User-Absicht, sonst Auto-Insert
+            isDecimalInput = (eventData === ',' || eventData === '.');
+          } else if (e && (e.inputType === 'insertCompositionText' || e.inputType === 'insertReplacementText')) {
+            // Android 2-Pass-Reformatierung: Komma wurde nachträglich eingefügt → entfernen
+            isDecimalInput = false;
+          } else {
+            // Kein e.data (Testumgebung, alte Browser): Fallback auf _pendingKey + Ziffernvergleich
+            var key = _pendingKey;
+            var isDecimalKey = (key === ',' || key === '.' || key === 'Decimal' || key === 'Comma');
+            if (isDecimalKey) {
+              isDecimalInput = true;
+            } else if (key !== null && key !== 'Unidentified') {
+              // Bekannte Nicht-Komma-Taste → Auto-Insert → entfernen
+              isDecimalInput = false;
+            } else {
+              // null oder Unidentified: wenn genau 1 neue Ziffer + Komma im selben Event → Auto-Insert
+              var withoutComma = val.replace(',', '');
+              isDecimalInput = (withoutComma.length !== prev.length + 1);
+            }
+          }
+          if (!isDecimalInput) {
+            val = val.replace(',', '');
           }
         }
         cleaned = val.replace(/[^\d,]/g, '');
@@ -2407,7 +2468,7 @@ font-size: 0.75rem;
         eInput.setAttribute('autocomplete', 'off');
         eInput.setAttribute('autocorrect', 'off');
         eInput.setAttribute('spellcheck', 'false');
-        eInput.oninput = function() { onInputFormat(eInput, 'decimal'); };
+        eInput.oninput = function(e) { onInputFormat(eInput, 'decimal', e); };
 
         var dInput = document.createElement('input');
         dInput.type = 'text';
@@ -2417,7 +2478,7 @@ font-size: 0.75rem;
         dInput.setAttribute('autocomplete', 'off');
         dInput.setAttribute('autocorrect', 'off');
         dInput.setAttribute('spellcheck', 'false');
-        dInput.oninput = function() { onInputFormat(dInput, 'decimal'); };
+        dInput.oninput = function(e) { onInputFormat(dInput, 'decimal', e); };
 
         values.appendChild(eInput);
         values.appendChild(dInput);
