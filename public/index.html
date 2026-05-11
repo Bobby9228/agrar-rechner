@@ -1169,6 +1169,55 @@ font-size: 0.75rem;
       background: rgba(255,255,255,0.3);
     }
 
+    /* Update Banner ("What's New") */
+    .update-banner {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      background: #2d5016;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      z-index: 1000;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      animation: slideDown 0.25s ease;
+    }
+    .update-banner.show {
+      display: flex;
+    }
+    .update-banner .update-icon {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    .update-banner .update-text {
+      flex: 1;
+    }
+    .update-banner .update-text strong {
+      color: #a5d6a7;
+    }
+    .update-banner .update-dismiss {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: white;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 1rem;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .update-banner .update-dismiss:active {
+      background: rgba(255,255,255,0.3);
+    }
+
     html.dark .version-footer { color: #8a9480; }
 
     /* Dark mode toggle button dark state */
@@ -1387,7 +1436,7 @@ font-size: 0.75rem;
     </div><!-- end .scrollable-content -->
   </div><!-- end .app-layout -->
 
-  <!-- iOS Install Hint Banner -->
+<!-- iOS Install Hint Banner -->
   <div class="ios-install-banner" id="ios_install_banner">
     <div class="ios-install-text">
       <strong>App installieren:</strong> Teile-Taste → <strong>Zum Home-Bildschirm</strong>
@@ -1395,6 +1444,17 @@ font-size: 0.75rem;
     <button class="ios-install-dismiss" onclick="dismissIosInstallHint()" aria-label="Hinweis schließen">✕</button>
   </div>
 
+  <!-- Update Banner ("What's New") -->
+  <div class="update-banner" id="update_banner">
+    <div class="update-icon">✨</div>
+    <div class="update-text">
+      <strong>Neues in Version <span id="update_version"></span>:</strong>
+      <span id="update_changelog"></span>
+    </div>
+    <button class="update-dismiss" onclick="dismissUpdateHint()" aria-label="Schließen">✕</button>
+  </div>
+
+  <!-- Main content start -->
   <script>
     // ============================================================================
     // STATE — Zentrales Zustandsobjekt der gesamten App
@@ -1443,6 +1503,29 @@ font-size: 0.75rem;
     function dismissIosInstallHint() {
       localStorage.setItem('mais_rechner_ios_install_seen', '1');
       var banner = document.getElementById('ios_install_banner');
+      if (banner) banner.classList.remove('show');
+    }
+
+    // --- "What's New" Update Banner ---
+    // Zeigt einmalig einen Hinweis nach App-Updates (neue SW-Version).
+    // currentVersion muss bei jedem Release manuell aktualisiert werden.
+    var APP_VERSION = 'v1.1.0';
+    var UPDATE_CHANGELOG = 'Was ist neu? Jetzt neu: "Was ist neu"-Banner nach Updates.';
+    function maybeShowUpdateHint() {
+      var seenVersion = localStorage.getItem('mais_rechner_version_seen');
+      if (seenVersion === APP_VERSION) return;
+      var banner = document.getElementById('update_banner');
+      var verEl = document.getElementById('update_version');
+      var changelogEl = document.getElementById('update_changelog');
+      if (banner) {
+        if (verEl) verEl.textContent = APP_VERSION;
+        if (changelogEl) changelogEl.textContent = UPDATE_CHANGELOG;
+        banner.classList.add('show');
+      }
+    }
+    function dismissUpdateHint() {
+      localStorage.setItem('mais_rechner_version_seen', APP_VERSION);
+      var banner = document.getElementById('update_banner');
       if (banner) banner.classList.remove('show');
     }
 
@@ -3224,6 +3307,9 @@ font-size: 0.75rem;
     // ==========================================================================
     function initUI() {
       loadState();                          // 1. State laden
+      maybeShowUpdateHint();               // 1b. "Was ist neu"-Banner falls Version neu
+      var vf = document.getElementById('version_footer');
+      if (vf) vf.textContent = APP_VERSION; // Version im Footer anzeigen
       syncInputsFromState();          // 2. Inputs beschreiben
       renderTabs();                   // 3. Tab-Leiste
       renderView();                   // 4. Ansicht (Feld/Protokoll)
@@ -3517,7 +3603,7 @@ font-size: 0.75rem;
       });
     }
   </script>
-  <div class="version-footer">v0.0.1</div>
+  <div class="version-footer" id="version_footer"></div>
 
   <!-- Dashboard overlay + sheet -->
   <div class="dashboard-overlay" id="dashboard_overlay" onclick="closeDashboard()"></div>
