@@ -55,6 +55,10 @@ describe('formatEinheit', () => {
     expect(w.formatEinheit(1.049)).toBe('1,0 Einheit'));
   it('1.05 => 1,1 Einheiten (Plural)', () =>
     expect(w.formatEinheit(1.05)).toBe('1,1 Einheiten'));
+  // Issue #143 — Infinity guard
+  it('Infinity => "—" (no crash)', () => expect(w.formatEinheit(Infinity)).toBe('—'));
+  it('-Infinity => "—" (no crash)', () => expect(w.formatEinheit(-Infinity)).toBe('—'));
+  it('NaN => "—" (no crash)', () => expect(w.formatEinheit(NaN)).toBe('—'));
   // Hinweis: 0.95 → 1.0 Einheit (Singular), Math.round(0.95*10)/10 = 1.0
 });
 

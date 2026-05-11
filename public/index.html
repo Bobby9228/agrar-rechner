@@ -1257,7 +1257,7 @@ font-size: 0.75rem;
       <h2>📐 Fläche & Aussaatstärke</h2>
       <div class="field">
         <label for="hektar">Hektar (SOLL)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="hektar" placeholder="z.B. 12,5" oninput="onInputFormat(this, 'decimal', event)">
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="hektar" placeholder="z.B. 12,5" maxlength="8" oninput="onInputFormat(this, 'decimal', event)">
         <div class="error-msg" id="err_hektar"></div>
       </div>
       <div class="field">
@@ -1266,7 +1266,7 @@ font-size: 0.75rem;
       </div>
       <div class="field">
         <label for="koerner">Körner pro Hektar</label>
-        <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" oninput="onInputFormat(this, 'integer', event)">
+        <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" maxlength="8" oninput="onInputFormat(this, 'integer', event)">
         <div class="unit">üblich: 80.000 – 100.000</div>
         <div class="error-msg" id="err_koerner"></div>
       </div>
@@ -2024,8 +2024,18 @@ font-size: 0.75rem;
         document.getElementById('hektar').style.borderColor = '#d32f2f';
         return;
       }
+      if (h > 10000) {
+        document.getElementById('err_hektar').textContent = 'Hektar-Wert ungewöhnlich hoch (max. 10.000)';
+        document.getElementById('hektar').style.borderColor = '#d32f2f';
+        return;
+      }
       if (k <= 0) {
         document.getElementById('err_koerner').textContent = 'Bitte Körner pro ha eingeben';
+        document.getElementById('koerner').style.borderColor = '#d32f2f';
+        return;
+      }
+      if (k > 1000000) {
+        document.getElementById('err_koerner').textContent = 'Körner-Wert ungewöhnlich hoch (max. 1.000.000)';
         document.getElementById('koerner').style.borderColor = '#d32f2f';
         return;
       }
@@ -2325,6 +2335,7 @@ font-size: 0.75rem;
     // Formatiert eine Einheitenanzahl mit Einheiten-Text.
     // Beispiele: 1.0 → "1,0 Einheit" | 4.5 → "4,5 Einheiten"
     function formatEinheit(n) {
+      if (!isFinite(n)) return '—';
       var rounded = Math.round(n * 10) / 10;  // DE Rundung: ab .5 aufrunden
       return rounded.toFixed(1).replace('.', ',') + (rounded === 1.0 ? ' Einheit' : ' Einheiten');
     }
