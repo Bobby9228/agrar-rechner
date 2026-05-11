@@ -45,4 +45,21 @@ describe('Cloudflare deploy sanity', () => {
     expect(match).not.toBeNull();
     expect(match[1].length).toBeGreaterThan(0);
   });
+
+  // Issue #144: SW ohne Offline-Fallback + Registration ohne Error-Handling
+  it('sw.js returns offline Response when both cache miss AND network fail', () => {
+    const swPath = resolve(publicDir, 'sw.js');
+    const content = readFileSync(swPath, 'utf-8');
+    // Cache-First-Pfad muss bei Netzwerkfehler eine Response mit Status 503 und 'Offline' body liefern
+    expect(content).toMatch(/new Response\s*\(\s*['"]Offline['"]/);
+    expect(content).toMatch(/status:\s*503/);
+  });
+
+  it('index.html SW registration has .catch() for error handling', () => {
+    const indexPath = resolve(publicDir, 'index.html');
+    const content = readFileSync(indexPath, 'utf-8');
+    // navigator.serviceWorker.register muss .catch() mit console.warn haben
+    expect(content).toMatch(/serviceWorker\.register\s*\(\s*['"]sw\.js['"]\s*\)\s*\.catch\s*\(/);
+    expect(content).toMatch(/console\.warn\s*\(\s*['"]SW-Registrierung fehlgeschlagen:/);
+  });
 });

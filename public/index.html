@@ -3400,7 +3400,9 @@ font-size: 0.75rem;
 
     if ('serviceWorker' in navigator) {
       try {
-        var swReg = navigator.serviceWorker.register('sw.js');
+        var swReg = navigator.serviceWorker.register('sw.js').catch(function(err) {
+          console.warn('SW-Registrierung fehlgeschlagen:', err);
+        });
         if (swReg && swReg.then) {
           swReg.then(function(reg) { reg.update(); });
         }
