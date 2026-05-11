@@ -1509,8 +1509,9 @@ font-size: 0.75rem;
     // --- "What's New" Update Banner ---
     // Zeigt einmalig einen Hinweis nach App-Updates (neue SW-Version).
     // currentVersion muss bei jedem Release manuell aktualisiert werden.
-    var APP_VERSION = 'v1.1.0';
-    var UPDATE_CHANGELOG = 'Was ist neu? Jetzt neu: "Was ist neu"-Banner nach Updates.';
+    var APP_VERSION = 'v1.0.0';
+    var APP_BUILD_DATE = 'Mai 2025';
+    var UPDATE_CHANGELOG = 'Erste Veröffentlichung der App.';
     function maybeShowUpdateHint() {
       var seenVersion = localStorage.getItem('mais_rechner_version_seen');
       if (seenVersion === APP_VERSION) return;
@@ -3320,7 +3321,7 @@ font-size: 0.75rem;
       loadState();                          // 1. State laden
       maybeShowUpdateHint();               // 1b. "Was ist neu"-Banner falls Version neu
       var vf = document.getElementById('version_footer');
-      if (vf) vf.textContent = APP_VERSION; // Version im Footer anzeigen
+      if (vf) vf.textContent = APP_VERSION + ' · ' + APP_BUILD_DATE; // Version + Build-Datum im Footer anzeigen
       syncInputsFromState();          // 2. Inputs beschreiben
       renderTabs();                   // 3. Tab-Leiste
       renderView();                   // 4. Ansicht (Feld/Protokoll)
