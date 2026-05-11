@@ -22,7 +22,11 @@
       if (state.reiter.length <= 1) return;
       syncStateFromInputs();
       state.reiter.splice(idx, 1);
-      if (state.activeReiter >= state.reiter.length) state.activeReiter = state.reiter.length - 1;
+      if (idx < state.activeReiter) {
+        state.activeReiter -= 1; // Tab before active was removed — shift active left
+      } else if (state.activeReiter >= state.reiter.length) {
+        state.activeReiter = state.reiter.length - 1; // Active tab removed — clamp to last
+      }
       var newPriorities = {};
       Object.keys(state.drillPriorities).forEach(function(key) {
         var k = parseInt(key, 10);
