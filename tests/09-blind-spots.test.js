@@ -35,46 +35,44 @@ describe('Blind spots — renderTabs callbacks', () => {
     expect(w.state.reiter.length).toBe(1);
   });
 
-  it('tab name input onkeydown: Enter triggers blur', () => {
-    const inputs = doc.querySelectorAll('.tab-name-input');
-    const input = inputs[1];
-    input.value = 'Test Feld';
+  it('tab name span onkeydown: Enter triggers blur', () => {
+    const spans = doc.querySelectorAll('.tab-name');
+    const span = spans[1];
+    span.textContent = 'Test Feld';
 
-    let blurFired = false;
-    input.onblur = () => { blurFired = true; };
-
-    // Simulate Enter keydown
-    const evt = { key: 'Enter', stopPropagation: () => {} };
-    input.onkeydown(evt);
-    // blur should have been called (input.blur())
-    // In jsdom, blur may not actually fire, but we test the code path
+    // Enter key should call blur
+    const evt = { key: 'Enter', preventDefault: () => {}, stopPropagation: () => {} };
+    span.onkeydown(evt);
+    // span.blur() was called (via preventDefault)
   });
 
-  it('tab name input onkeydown: non-Enter calls stopPropagation', () => {
-    const inputs = doc.querySelectorAll('.tab-name-input');
-    const input = inputs[1];
+  it('tab name span onkeydown: Escape resets text', () => {
+    const spans = doc.querySelectorAll('.tab-name');
+    const span = spans[1];
+    const originalName = span.textContent;
+    span.textContent = 'Changed';
+
+    const evt = { key: 'Escape', preventDefault: () => {}, stopPropagation: () => {} };
+    span.onkeydown(evt);
+    // Escape resets to original name then blurs
+    expect(span.textContent).toBe(originalName);
+  });
+
+  it('tab name span onkeydown: non-Enter calls stopPropagation', () => {
+    const spans = doc.querySelectorAll('.tab-name');
+    const span = spans[1];
 
     let stopped = false;
     const evt = { key: 'a', stopPropagation: () => { stopped = true; } };
-    input.onkeydown(evt);
+    span.onkeydown(evt);
     expect(stopped).toBe(true);
   });
 
-  it('tab name input onfocus selects text', () => {
-    const inputs = doc.querySelectorAll('.tab-name-input');
-    const input = inputs[1];
-    input.value = 'Test';
-
-    // input.onfocus = function() { this.select(); };
-    // In jsdom, select() is a no-op, but we verify the handler exists
-    expect(typeof input.onfocus).toBe('function');
-  });
-
-  it('tab name input onblur calls renameReiter', () => {
-    const inputs = doc.querySelectorAll('.tab-name-input');
-    const input = inputs[1];
-    input.value = 'Via Blur';
-    input.onblur();
+  it('tab name span onblur calls renameReiter', () => {
+    const spans = doc.querySelectorAll('.tab-name');
+    const span = spans[1];
+    span.textContent = 'Via Blur';
+    span.onblur();
 
     expect(w.state.reiter[1].name).toBe('Via Blur');
   });

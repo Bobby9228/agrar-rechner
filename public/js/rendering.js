@@ -1,0 +1,542 @@
+// ============================================================================
+// RENDERING — Alle DOM-Aktualisierungsfunktionen
+//
+// Prinzip: Diese Funktionen LESEN state und schreiben ins DOM.
+// Keine state-Änderungen hier (dafür gibt es ui-handlers.js).
+// Keine berechnungen hier (dafür gibt es calculations.js).
+// ============================================================================
+
+    // --- Render: Tabs ---
+
+    function renderTabs() {
+      var bar = document.getElementById('tab_bar_left');
+      bar.innerHTML = '';
+      state.reiter.forEach(function(r, i) {
+        var isActive = i === state.activeReiter && state.activeView !== 'protokoll';
+        var btn = document.createElement('button');
+        btn.className = 'tab-btn field-tab' + (isActive ? ' active' : '');
+        btn.setAttribute('aria-label', 'Tab ' + (i+1));
+        btn.onclick = function() { switchReiter(i); };
+        var span = document.createElement('span');
+        span.className = 'tab-name';
+        span.setAttribute('aria-label', 'Tab-Name');
+        span.setAttribute('role', 'textbox');
+        span.setAttribute('tabindex', '0');
+        span.setAttribute('contenteditable', 'true');
+        span.textContent = r.name;
+        span.onfocus = function() {
+          var range = document.createRange();
+          range.selectNodeContents(span);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        };
+        span.onblur = function() {
+          var newName = span.textContent.replace(/\n/g, ' ').trim();
+          renameReiter(i, newName);
+        };
+        span.onkeydown = function(evt) {
+          if (evt.key === 'Enter') { evt.preventDefault(); span.blur(); }
+          else if (evt.key === 'Escape') { evt.preventDefault(); span.textContent = r.name; span.blur(); }
+          else { evt.stopPropagation(); }
+        };
+        span.onmousedown = function(evt) { evt.stopPropagation(); };
+
+        if (state.reiter.length > 1) {
+          var close = document.createElement('span');
+          close.className = 'tab-close';
+          close.setAttribute('role', 'button');
+          close.setAttribute('aria-label', 'Tab schließen');
+          close.onclick = function(evt) { evt.stopPropagation(); confirmRemoveReiter(i); };
+          close.textContent = '✕';
+          btn.appendChild(close);
+        }
+
+        btn.appendChild(span);
+        bar.appendChild(btn);
+      });
+      var addBtn = document.createElement('button');
+      addBtn.className = 'tab-add';
+      addBtn.textContent = '+ Tab';
+      addBtn.onclick = function() { addReiter(); };
+      bar.appendChild(addBtn);
+      var protokollBtn = document.getElementById('protokoll_tab_btn');
+      if (protokollBtn) protokollBtn.classList.toggle('active', state.activeView === 'protokoll');
+    }
+
+    // --- Render: View (Feld vs. Protokoll) ---
+
+    function renderView() {
+      var r = getActiveReiter();
+      var hasData = r.hektar > 0 && r.koerner > 0;
+      var isProtokoll = state.activeView === 'protokoll';
+      var skipIds = { r_soll_ist_section: true };
+      var cards = document.querySelectorAll('.card');
+      cards.forEach(function(c) {
+        if (skipIds[c.id]) return;
+        c.style.display = isProtokoll ? 'none' : 'block';
+      });
+      var resultsEl = document.getElementById('results');
+      if (resultsEl) resultsEl.style.display = (hasData && !isProtokoll) ? 'block' : 'none';
+      var drillSection = document.getElementById('drill_section');
+      if (drillSection) drillSection.style.display = isProtokoll ? 'block' : 'none';
+      var drillMask = document.getElementById('drill_mask');
+      if (drillMask) drillMask.style.display = isProtokoll ? '' : 'none';
+      var berechnenBtn = document.getElementById('berechnen_btn');
+      if (berechnenBtn) berechnenBtn.style.display = isProtokoll ? 'none' : '';
+      var resetBtn = document.getElementById('reset_btn');
+      if (resetBtn) resetBtn.style.display = isProtokoll ? 'none' : '';
+      var resetAllBtn = document.getElementById('reset_all_btn');
+      if (resetAllBtn) resetAllBtn.style.display = isProtokoll ? 'none' : '';
+      var stickyFooter = document.getElementById('sticky_footer');
+      if (stickyFooter) stickyFooter.style.display = isProtokoll ? 'none' : '';
+    }
+
+    // --- Render: Drill Tab List ---
+
+    function renderDrillTabList() {
+      var container = document.getElementById('drill_tab_list');
+      if (!container) return;
+      container.innerHTML = '';
+      state.reiter.forEach(function(r, i) {
+        var row = document.createElement('div');
+        row.className = 'drill-tab-row';
+        var prioBtn = document.createElement('button');
+        prioBtn.className = 'drill-prio-btn';
+        prioBtn.id = 'dtl_prio_' + i;
+        var initPrio = Object.prototype.hasOwnProperty.call(state.drillPriorities, String(i)) ? state.drillPriorities[i] : 0;
+        prioBtn.textContent = initPrio === 0 ? '—' : String(initPrio);
+        prioBtn.setAttribute('data-prio', String(initPrio));
+        prioBtn.classList.toggle('active', initPrio > 0);
+        prioBtn.onclick = function() {
+          var current = parseInt(prioBtn.getAttribute('data-prio')) || 0;
+          var maxPrio = state.reiter.length;
+          var next = current >= maxPrio ? 0 : current + 1;
+          prioBtn.setAttribute('data-prio', String(next));
+          prioBtn.textContent = next === 0 ? '—' : String(next);
+          prioBtn.classList.toggle('active', next > 0);
+          state.drillPriorities[i] = next;
+          saveState();
+          drillCalcAll();
+        };
+        row.appendChild(prioBtn);
+        var nameWrap = document.createElement('div');
+        nameWrap.style.flex = '1';
+        nameWrap.style.minWidth = '0';
+        var label = document.createElement('div');
+        label.className = 'drill-tab-name';
+        label.textContent = r.name || ('Tab ' + (i + 1));
+        nameWrap.appendChild(label);
+        if (r.hektar > 0 && r.koerner > 0) {
+          var istSum = getTabIstHektar(r);
+          var totalE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
+          var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+          var totalD = istSum > 0 ? getTabIstDuenger(r) : getTabTotalDuenger(r);
+          var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+          var co = getCarryover(i);
+          var remaining = totalE - usedE + co.savedEinheit - co.excessEinheit;
+          var remainingD = totalD - usedD + co.savedDuenger - co.excessDuenger;
+          var statusEl = document.createElement('div');
+          statusEl.style.fontSize = '0.75rem';
+          statusEl.style.color = '#666';
+          if (remaining <= 0.05 && remainingD <= 0.05) {
+            statusEl.textContent = '✓ fertig';
+            statusEl.style.color = '#2a9d4a';
+          } else {
+            statusEl.textContent = 'braucht ' + fmt(Math.max(0, remaining)) + ' Einheiten, ' + fmt(Math.max(0, remainingD)) + ' kg Dünger';
+          }
+          nameWrap.appendChild(statusEl);
+        }
+        row.appendChild(nameWrap);
+        var einheitIn = document.createElement('input');
+        einheitIn.type = 'text';
+        einheitIn.inputMode = 'decimal';
+        einheitIn.placeholder = 'Einheiten';
+        einheitIn.style.width = '70px';
+        einheitIn.dataset.tabIdx = String(i);
+        einheitIn.oninput = function() {
+          var ti = parseInt(this.dataset.tabIdx);
+          var v = parseDE(this.value);
+          if (ti >= 0 && ti < state.reiter.length) {
+            state.reiter[ti].tempEinheit = v;
+          }
+          drillCalcDebounced();
+        };
+        row.appendChild(einheitIn);
+        var duengerIn = document.createElement('input');
+        duengerIn.type = 'text';
+        duengerIn.inputMode = 'decimal';
+        duengerIn.placeholder = 'kg Dünger';
+        duengerIn.style.width = '70px';
+        duengerIn.dataset.tabIdx = String(i);
+        duengerIn.oninput = function() {
+          var ti = parseInt(this.dataset.tabIdx);
+          var v = parseDE(this.value);
+          if (ti >= 0 && ti < state.reiter.length) {
+            state.reiter[ti].tempDuenger = v;
+          }
+          drillCalcDebounced();
+        };
+        row.appendChild(duengerIn);
+        container.appendChild(row);
+      });
+    }
+
+    // --- Render: Result Card ---
+
+    function renderResultCard() {
+      var r = getActiveReiter();
+      var kornerGesamt = getKornerGesamt();
+      var einheiten = getTotalEinheiten();
+      var duengerTotal = getTotalDuenger();
+      var rkEl = document.getElementById('r_korner');
+      if (rkEl) rkEl.textContent = Math.round(kornerGesamt).toLocaleString('de-DE');
+      var reEl = document.getElementById('r_einheiten');
+      if (reEl) reEl.textContent = formatEinheit(einheiten);
+      var rdEl = document.getElementById('r_duenger');
+      if (rdEl) rdEl.textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
+      var riEl = document.getElementById('r_info');
+      if (riEl) {
+        if (duengerTotal > 0) {
+          riEl.textContent = duengerTotal.toLocaleString('de-DE') + ' kg Dünger, ' + formatEinheit(einheiten) + ' Saat';
+        } else {
+          riEl.textContent = formatEinheit(einheiten) + ' Saat (ohne Dünger)';
+        }
+      }
+      var sollHa = r.hektar;
+      var istHa = getTabIstHektar(r);
+      var diff = istHa - sollHa;
+      var sollIstSection = document.getElementById('r_soll_ist_section');
+      if (sollIstSection) {
+        if (sollHa > 0 && istHa > 0) {
+          var rshEl = document.getElementById('r_soll_ha');
+          if (rshEl) rshEl.textContent = fmt(sollHa) + ' ha';
+          var rihEl = document.getElementById('r_ist_ha');
+          if (rihEl) rihEl.textContent = fmt(istHa) + ' ha';
+          var rDiffEl = document.getElementById('r_diff_ha');
+          if (rDiffEl) {
+            if (diff >= 0) {
+              rDiffEl.textContent = '+' + fmt(diff) + ' ha';
+              rDiffEl.className = 'value small positive';
+            } else {
+              rDiffEl.textContent = fmt(diff) + ' ha';
+              rDiffEl.className = 'value small negative';
+            }
+          }
+          sollIstSection.style.display = 'block';
+        } else {
+          sollIstSection.style.display = 'none';
+        }
+      }
+      var carryoverHint = document.getElementById('r_carryover_hint');
+      if (!carryoverHint) {
+        carryoverHint = document.createElement('div');
+        carryoverHint.id = 'r_carryover_hint';
+        carryoverHint.style.cssText = 'font-size:0.85rem;padding:4px 0;';
+        if (sollIstSection && sollIstSection.parentNode) {
+          sollIstSection.parentNode.insertBefore(carryoverHint, sollIstSection.nextSibling);
+        }
+      }
+      if (carryoverHint) {
+        carryoverHint.innerHTML = '';
+        var activeIdx = state.activeReiter || 0;
+        var co = getCarryover(activeIdx);
+        var coHtml = '';
+        if (co.savedEinheit > 0.05 || co.savedDuenger > 0.05) {
+          var parts = [];
+          if (co.savedEinheit > 0.05) parts.push(fmt(co.savedEinheit) + ' Einheiten');
+          if (co.savedDuenger > 0.05) parts.push(fmt(co.savedDuenger) + ' kg Dünger');
+          coHtml += '<span class="carryover-hint">Übertrag aus ersparten Flächen: +' + parts.join(', ') + '</span>';
+        }
+        if (co.excessEinheit > 0.05 || co.excessDuenger > 0.05) {
+          var eparts = [];
+          if (co.excessEinheit > 0.05) eparts.push(fmt(co.excessEinheit) + ' Einheiten');
+          if (co.excessDuenger > 0.05) eparts.push(fmt(co.excessDuenger) + ' kg Dünger');
+          if (coHtml) coHtml += '<br>';
+          coHtml += '<span class="excess-hint">Mehrbedarf aus überschrittenen Flächen: -' + eparts.join(', ') + '</span>';
+        }
+        carryoverHint.innerHTML = coHtml;
+      }
+    }
+
+    // --- Render: Mini Footer ---
+
+    function renderMiniFooter() {
+      var mf = document.getElementById('mini_footer');
+      if (!mf) return;
+      var activeR = state.reiter[state.activeReiter];
+      if (!activeR) return;
+      if (activeR.hektar > 0 && activeR.koerner > 0) {
+        var einheiten = getTotalEinheiten();
+        var kornerGesamt = getKornerGesamt();
+        var kornerStr = Math.round(kornerGesamt).toLocaleString('de-DE');
+        var miniResult = mf.querySelector('.mini-result') || mf;
+        miniResult.textContent = 'Bedarf: ' + formatEinheit(einheiten) + ' / ' + kornerStr + ' Körner';
+        miniResult.classList.remove('mini-result-empty');
+      } else {
+        var miniResult = mf.querySelector('.mini-result') || mf;
+        miniResult.textContent = 'Bitte Hektar und Körner eingeben';
+        miniResult.classList.add('mini-result-empty');
+      }
+    }
+
+    // --- Render: Drill Summary ---
+
+    function renderDrillSummary() {
+      var r = getActiveReiter();
+      var einheiten = getTotalEinheiten();
+      var duengerTotal = getTotalDuenger();
+      var usedEinheit = (r && r.entries) ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
+      var usedDuenger = (r && r.entries) ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
+      var co = getCarryover(state.activeReiter || 0);
+      var effectiveUsedE = usedEinheit + co.savedEinheit + co.excessEinheit;
+      var effectiveUsedD = usedDuenger + co.savedDuenger + co.excessDuenger;
+      var istSum = getTabIstHektar(r);
+      var istEinheiten = istSum > 0 ? getTabIstEinheiten(r) : einheiten;
+      var istDuenger = istSum > 0 ? getTabIstDuenger(r) : duengerTotal;
+      var remEinheit = Math.max(0, istEinheiten - effectiveUsedE);
+      var remDuenger = Math.max(0, istDuenger - effectiveUsedD);
+      var dsollE = document.getElementById('dsoll_einheit');
+      if (dsollE) dsollE.textContent = formatEinheit(einheiten);
+      var dusedE = document.getElementById('dused_einheit');
+      if (dusedE) dusedE.textContent = formatEinheit(effectiveUsedE);
+      var dremE = document.getElementById('drem_einheit');
+      if (dremE) dremE.textContent = formatEinheit(remEinheit);
+      var dsollD = document.getElementById('dsoll_duenger');
+      if (dsollD) dsollD.textContent = duengerTotal > 0 ? fmt(duengerTotal) + ' kg' : '—';
+      var dusedD = document.getElementById('dused_duenger');
+      if (dusedD) dusedD.textContent = effectiveUsedD > 0 ? fmt(effectiveUsedD) + ' kg' : '—';
+      var dremD = document.getElementById('drem_duenger');
+      if (dremD) dremD.textContent = remDuenger > 0 ? fmt(remDuenger) + ' kg' : '—';
+      var remainingUnits = einheiten - effectiveUsedE;
+      var progressEl = document.getElementById('d_progress');
+      if (progressEl && einheiten > 0) {
+        var pct = Math.min(100, Math.max(0, (effectiveUsedE / einheiten) * 100));
+        progressEl.style.width = pct + '%';
+        progressEl.textContent = Math.round(pct) + '%';
+      }
+    }
+
+    // --- Render: Drill Log ---
+
+    function renderDrillLog() {
+      var container = document.getElementById('drill_log_entries');
+      if (!container) return;
+      container.innerHTML = '';
+      var activeTab = state.reiter[state.activeReiter];
+      if (!activeTab || !activeTab.entries || activeTab.entries.length === 0) return;
+      activeTab.entries.slice().reverse().forEach(function(entry, revIdx) {
+        var actualIdx = activeTab.entries.length - 1 - revIdx;
+        var row = document.createElement('div');
+        row.className = 'drill-log-entry';
+        var time = entry.time ? new Date(entry.time).toLocaleString('de-DE') : '—';
+        row.innerHTML = '<span class="dl-time">' + time + '</span>' +
+          '<span class="dl-data">' + fmt(entry.einheit || 0) + ' Einheiten, ' + fmt(entry.duenger || 0) + ' kg Dünger</span>';
+        var removeBtn = document.createElement('button');
+        removeBtn.className = 'dl-remove';
+        removeBtn.textContent = '✕';
+        removeBtn.onclick = function() { drillRemove(state.activeReiter, actualIdx); };
+        row.appendChild(removeBtn);
+        container.appendChild(row);
+      });
+    }
+
+    // --- Render: Results (Hauptergebnis) ---
+
+    function renderResults() {
+      var r = getActiveReiter();
+      renderResultCard();
+      renderDrillSummary();
+      renderDrillLog();
+      renderMiniFooter();
+      var errHektar = document.getElementById('err_hektar');
+      var errKoerner = document.getElementById('err_koerner');
+      var hektarEl = document.getElementById('hektar');
+      var koernerEl = document.getElementById('koerner');
+      if (errHektar) errHektar.textContent = '';
+      if (errKoerner) errKoerner.textContent = '';
+      if (hektarEl) hektarEl.style.borderColor = '';
+      if (koernerEl) koernerEl.style.borderColor = '';
+      if (!r.hektar && r.hektar !== 0 && r.koerner === 0) return;
+      if (!r.koerner && r.koerner !== 0) {
+        if (errKoerner) errKoerner.textContent = 'Bitte Körner/ha eingeben';
+        if (koernerEl) koernerEl.style.borderColor = '#c00';
+        return;
+      }
+      if (state.activeView !== 'protokoll') {
+        var resultsEl = document.getElementById('results');
+        if (resultsEl) resultsEl.style.display = 'block';
+      }
+    }
+
+    // --- Render: Dashboard ---
+
+    function renderDashboard() {
+      var container = document.getElementById('dashboard_stats');
+      if (!container) return;
+      container.innerHTML = '';
+      var totalHa = 0, totalEinheiten = 0, totalDuenger = 0, totalEntries = 0;
+      state.reiter.forEach(function(r) {
+        if (r.hektar > 0) totalHa += r.hektar;
+        if (r.koerner > 0) totalEinheiten += getTabTotalEinheiten(r);
+        if (r.duenger > 0) totalDuenger += getTabTotalDuenger(r);
+        if (r.entries) totalEntries += r.entries.length;
+      });
+      var stats = [
+        { label: 'Fläche gesamt', value: fmt(totalHa) + ' ha' },
+        { label: 'Tabs', value: String(state.reiter.length) },
+        { label: 'Einheiten gesamt', value: formatEinheit(totalEinheiten) },
+        { label: 'Dünger gesamt', value: totalDuenger > 0 ? fmt(totalDuenger) + ' kg' : '—' },
+        { label: 'Einträge', value: String(totalEntries) },
+        { label: 'Maschinen-Befüllungen', value: String(state.machineLog.length) }
+      ];
+      stats.forEach(function(s) {
+        var el = document.createElement('div');
+        el.className = 'dash-stat';
+        el.innerHTML = '<span class="dash-label">' + s.label + '</span>' +
+                       '<span class="dash-value">' + s.value + '</span>';
+        container.appendChild(el);
+      });
+    }
+
+    // --- Init: UI (nach DOMContentLoaded) ---
+
+    function initUI() {
+      loadState();
+      var migrated = loadState();
+      if (migrated) saveState();
+      showIOSInstallHint();
+      syncInputsFromState();
+      renderTabs();
+      if (state.reiter[state.activeReiter] && state.reiter[state.activeReiter].hektar > 0 && state.reiter[state.activeReiter].koerner > 0) {
+        renderResults();
+        if (state.activeView !== 'protokoll') {
+          var resultsEl = document.getElementById('results');
+          if (resultsEl) resultsEl.style.display = 'block';
+        }
+      }
+      renderView();
+      renderDashboard();
+      var vf = document.getElementById('version_footer');
+      if (vf) vf.textContent = APP_VERSION + ' · ' + APP_BUILD_DATE;
+      appOnStateChange(function(type, data) {
+        switch (type) {
+          case 'TAB_CHANGED':
+            syncInputsFromState();
+            renderTabs();
+            saveState();
+            renderResults();
+            break;
+          case 'ENTRY_ADDED':
+          case 'ENTRY_REMOVED':
+          case 'ENTRY_CHANGED':
+          case 'CALCULATION_DONE':
+            saveState();
+            renderTabs();
+            renderResults();
+            renderView();
+            if (type === 'ENTRY_CHANGED' && state.reiter[state.activeReiter].hektar > 0 && state.reiter[state.activeReiter].koerner > 0) {
+              var re = document.getElementById('results');
+              if (re) re.style.display = 'block';
+            } else if (type !== 'ENTRY_CHANGED') {
+              var re2 = document.getElementById('results');
+              if (re2) re2.style.display = 'block';
+            }
+            break;
+          case 'STATE_LOADED':
+            syncInputsFromState();
+            renderTabs();
+            renderView();
+            renderResults();
+            renderDashboard();
+            break;
+          case 'SETTINGS_CHANGED':
+            saveState();
+            renderResults();
+            break;
+          case 'TAB_RENAMED':
+            saveState();
+            renderTabs();
+            break;
+          case 'TAB_RESET':
+            saveState();
+            renderTabs();
+            renderResults();
+            var re3 = document.getElementById('results');
+            if (re3) re3.style.display = 'none';
+            var ds = document.getElementById('drill_section');
+            if (ds) ds.style.display = 'none';
+            var eh = document.getElementById('err_hektar');
+            if (eh) eh.textContent = '';
+            var ek = document.getElementById('err_koerner');
+            if (ek) ek.textContent = '';
+            var he = document.getElementById('hektar');
+            if (he) he.style.borderColor = '';
+            var ke = document.getElementById('koerner');
+            if (ke) ke.style.borderColor = '';
+            break;
+          case 'TAB_ADDED':
+            syncInputsFromState();
+            saveState();
+            renderTabs();
+            break;
+          case 'TAB_REMOVED':
+            syncInputsFromState();
+            saveState();
+            renderTabs();
+            renderResults();
+            break;
+          case 'VIEW_CHANGED':
+            saveState();
+            renderTabs();
+            renderView();
+            if (state.activeView === 'protokoll') renderDrillTabList();
+            renderResults();
+            break;
+          case 'DRILL_ENTRY_ADDED':
+            saveState();
+            renderDrillTabList();
+            renderResults();
+            drillCalcAll();
+            break;
+          case 'DRILL_ENTRY_REMOVED':
+            saveState();
+            renderDrillTabList();
+            renderResults();
+            break;
+        }
+      });
+    }
+
+    // --- Init: Theme (Dark/Light) ---
+
+    function initTheme() {
+      var savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'dark') {
+        document.body.classList.add('dark');
+      } else if (savedTheme === 'light') {
+        document.body.classList.remove('dark');
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+      }
+      var toggleBtn = document.getElementById('theme_toggle');
+      if (toggleBtn) {
+        toggleBtn.onclick = function() {
+          document.body.classList.toggle('dark');
+          localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+        };
+      }
+    }
+
+    // --- Confirm Remove Tab ---
+
+    function confirmRemoveReiter(idx) {
+      var tab = state.reiter[idx];
+      if (!tab) return;
+      var hasEntries = tab.entries && tab.entries.length > 0;
+      var hasData = tab.hektar > 0 || tab.koerner > 0 || tab.duenger > 0 || tab.istHektar > 0;
+      if (hasEntries || hasData) {
+        if (!confirm('Tab "' + tab.name + '" wirklich löschen?')) return;
+      }
+      removeReiter(idx);
+    }
