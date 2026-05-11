@@ -35,7 +35,7 @@ describe('Update Banner ("What\'s New")', () => {
       delete store['mais_rechner_version_seen'];
       w.initUI();
       const verEl = doc.getElementById('update_version');
-      expect(verEl.textContent).toBe('v1.1.0');
+      expect(verEl.textContent).toBe('v1.0.0');
     });
 
     it('fills changelog text correctly', () => {
@@ -46,7 +46,7 @@ describe('Update Banner ("What\'s New")', () => {
     });
 
     it('shows banner when older version was seen', () => {
-      store['mais_rechner_version_seen'] = 'v1.0.0';
+      store['mais_rechner_version_seen'] = 'v0.9.0';
       w.initUI();
       const banner = doc.getElementById('update_banner');
       expect(banner).toBeTruthy();
@@ -66,7 +66,7 @@ describe('Update Banner ("What\'s New")', () => {
     it('saves current version to localStorage after dismiss', () => {
       delete store['mais_rechner_version_seen'];
       w.dismissUpdateHint();
-      expect(store['mais_rechner_version_seen']).toBe('v1.1.0');
+      expect(store['mais_rechner_version_seen']).toBe('v1.0.0');
     });
 
     it('second initUI does not re-show banner after dismiss', () => {
@@ -80,8 +80,13 @@ describe('Update Banner ("What\'s New")', () => {
   });
 
   describe('APP_VERSION constant', () => {
-    it('APP_VERSION is defined as v1.1.0', () => {
-      expect(w.APP_VERSION).toBe('v1.1.0');
+    it('APP_VERSION is defined as v1.0.0', () => {
+      expect(w.APP_VERSION).toBe('v1.0.0');
+    });
+
+    it('APP_BUILD_DATE is a non-empty string', () => {
+      expect(typeof w.APP_BUILD_DATE).toBe('string');
+      expect(w.APP_BUILD_DATE.length).toBeGreaterThan(0);
     });
 
     it('UPDATE_CHANGELOG is a non-empty string', () => {
@@ -91,12 +96,12 @@ describe('Update Banner ("What\'s New")', () => {
   });
 
   describe('version footer', () => {
-    it('version footer shows APP_VERSION after initUI', () => {
+    it('version footer shows APP_VERSION and APP_BUILD_DATE after initUI', () => {
       delete store['mais_rechner_version_seen'];
       w.initUI();
       const footer = doc.getElementById('version_footer');
       expect(footer).toBeTruthy();
-      expect(footer.textContent).toBe('v1.1.0');
+      expect(footer.textContent).toBe('v1.0.0 · Mai 2025');
     });
   });
 });

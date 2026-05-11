@@ -719,3 +719,12 @@ Für reine statische Sites wird `wrangler pages deploy` empfohlen.
 | `/*.html` | `no-cache` |
 | `/*.png`, `/*.svg` | `public, max-age=604800` (7 Tage) |
 | `/manifest.json` | `no-cache` |
+
+### Service Worker Cache-Version
+
+Der Service Worker nutzt `CACHE_VERSION` (`sw.js` Zeile 2) um alte Caches zu löschen und neue Assets zu cachen.
+**Nach jedem Deployment muss dieser String manuell gebumpet werden** — sonst bekommen Nutzer die alte Version aus dem Browser-Cache.
+
+Im Code ist ein Kommentar (`// ⚠️ CACHE_VERSION muss bei jedem Release manuell gebumpet werden!`) der daran erinnert.
+
+alternative: Ein Build-Script, das den Hash oder Zeitstempel automatisch injiziert — PRs welcome.
