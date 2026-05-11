@@ -239,7 +239,7 @@
     .tab-btn.field-tab:not(.active):hover {
       background: #d0e8b8;
     }
-    .tab-name-input {
+    .tab-name {
       background: transparent;
       border: none;
       font-size: 0.8rem;
@@ -252,15 +252,16 @@
       pointer-events: auto;
       cursor: pointer;
       min-height: 48px;
+      display: inline-block;
     }
-    .tab-name-input:focus {
+    .tab-name:focus {
       cursor: text;
       background: rgba(255,255,255,0.15);
     }
-    .tab-btn:not(.active) .tab-name-input:focus {
+    .tab-btn:not(.active) .tab-name:focus {
       background: #f0f4e8;
     }
-    .tab-btn.active .tab-name-input {
+    .tab-btn.active .tab-name {
       color: white;
     }
     /* Remove the separate .tab-edit stift icon — tap input directly to edit */
@@ -1005,7 +1006,7 @@ font-size: 0.75rem;
       color: white;
     }
     html.dark .tab-btn.field-tab:not(.active):hover { background: #333d28; }
-    html.dark .tab-btn:not(.active) .tab-name-input:focus { background: #333d28; }
+    html.dark .tab-btn:not(.active) .tab-name:focus { background: #333d28; }
     html.dark .tab-add {
       background: #2a3320;
       border-color: #3a4030;
@@ -1701,7 +1702,7 @@ font-size: 0.75rem;
     // TAB-VERWALTUNG — Reiter (Tabs) für mehrere Felder
     //
     // Jeder Tab repräsentiert ein Feld mit eigenen SOLL/IST-Werten und Protokoll.
-    // UI: Custom Tab-Leiste mit eingebettetem Input-Feld für den Tab-Namen.
+    // UI: Custom Tab-Leiste mit contenteditable span für den Tab-Namen.
     //
     // WICHTIG: Vor jedem Tab-Wechsel syncStateFromInputs() aufrufen,
     //          damit aktuelle Eingaben nicht verloren gehen!
@@ -1709,7 +1710,7 @@ font-size: 0.75rem;
 
     // Baut die gesamte Tab-Leiste neu auf (Button pro Tab + "+ Tab" + Protokoll).
     // Der aktive Tab hat einen grünen Hintergrund.
-    // Jeder Tab-Button enthält ein unsichtbares <input> für den umbenennen.
+    // Jeder Tab-Button enthält ein <span contenteditable> für den Tab-Namen.
     function renderTabs() {
       var bar = document.getElementById('tab_bar_left');
       bar.innerHTML = '';
@@ -1724,31 +1725,47 @@ font-size: 0.75rem;
         btn.setAttribute('aria-label', 'Tab ' + (i+1));
         btn.onclick = function() { switchReiter(i); };
 
-        // --- Eingebettetes Namensfeld (direkt im Button) ---
-        // Besonderheit: Klick auf den Tab wechselt den Tab,
-        //               Klick auf das Namensfeld editiert den Namen
-        var input = document.createElement('input');
-        input.className = 'tab-name-input';
-        input.type = 'text';
-        input.value = r.name;
-        input.setAttribute('aria-label', 'Tab-Name');
-        input.onfocus = function() { this.select(); };
-        input.onblur  = function() { renameReiter(i, input.value); };
-        input.onkeydown = function(evt) {
-          if (evt.key === 'Enter') { input.blur(); }        // Enter = bestätigen
-          else { evt.stopPropagation(); }                    // Sonstige Keys nicht an App durchreichen
+        // --- Tab-Name (span mit contenteditable) ---
+        // Struktur: <button> <span> <span.close> — kein nested interactive
+        var span = document.createElement('span');
+        span.className = 'tab-name';
+        span.setAttribute('aria-label', 'Tab-Name');
+        span.setAttribute('role', 'textbox');
+        span.setAttribute('tabindex', '0');
+        span.setAttribute('contenteditable', 'true');
+        span.textContent = r.name;
+        span.onfocus = function() {
+          // Select all text on focus for consistent UX
+          var range = document.createRange();
+          range.selectNodeContents(span);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
         };
+        span.onblur = function() {
+          var newName = span.textContent.replace(/\n/g, ' ').trim();
+          renameReiter(i, newName);
+        };
+        span.onkeydown = function(evt) {
+          if (evt.key === 'Enter') { evt.preventDefault(); span.blur(); }
+          else if (evt.key === 'Escape') { evt.preventDefault(); span.textContent = r.name; span.blur(); }
+          else { evt.stopPropagation(); }
+        };
+        // mousedown auf span: verhindere, dass button onclick fired (nur editieren)
+        span.onmousedown = function(evt) { evt.stopPropagation(); };
 
         // --- Schließen-Button (nur anzeigen wenn mehr als 1 Tab existiert) ---
         if (state.reiter.length > 1) {
           var close = document.createElement('span');
           close.className = 'tab-close';
+          close.setAttribute('role', 'button');
+          close.setAttribute('aria-label', 'Tab schließen');
           close.onclick = function(evt) { evt.stopPropagation(); confirmRemoveReiter(i); };
           close.textContent = '✕';
           btn.appendChild(close);
         }
 
-        btn.appendChild(input);
+        btn.appendChild(span);
         bar.appendChild(btn);
       });
 

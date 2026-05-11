@@ -235,23 +235,23 @@ describe('Tab management', () => {
       expect(closes.length).toBe(2);
     });
 
-    it('tab name input is visible and editable with only 1 tab', () => {
+    it('tab name span is visible and editable with only 1 tab', () => {
       w.renderTabs();
-      const inputs = doc.querySelectorAll('.tab-name-input');
-      expect(inputs.length).toBe(1);
-      expect(inputs[0].value).toBe('Tab 1');
-      // Simulate renaming
-      inputs[0].value = 'Mein Feld';
-      inputs[0].onblur();
+      const spans = doc.querySelectorAll('.tab-name');
+      expect(spans.length).toBe(1);
+      expect(spans[0].textContent).toBe('Tab 1');
+      // Simulate renaming by setting textContent and triggering blur
+      spans[0].textContent = 'Mein Feld';
+      spans[0].onblur();
       expect(w.state.reiter[0].name).toBe('Mein Feld');
     });
 
-    it('tab name input shows correct name', () => {
+    it('tab name span shows correct name', () => {
       w.addReiter();
       w.renameReiter(1, 'Test');
       w.renderTabs();
-      const inputs = doc.querySelectorAll('.tab-name-input');
-      expect(inputs[1].value).toBe('Test');
+      const spans = doc.querySelectorAll('.tab-name');
+      expect(spans[1].textContent).toBe('Test');
     });
   });
 });
