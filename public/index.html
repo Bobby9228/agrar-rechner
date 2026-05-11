@@ -1125,6 +1125,50 @@ font-size: 0.75rem;
     html.dark .drill-prognose .prog-label { color: #9aa88a; }
     html.dark .drill-prognose .prog-val { color: #8bc34a; }
 
+    /* iOS Install Banner */
+    .ios-install-banner {
+      position: fixed;
+      bottom: 80px;
+      left: 12px;
+      right: 12px;
+      background: #1a1a1a;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      z-index: 999;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    }
+    .ios-install-banner.show {
+      display: flex;
+    }
+    .ios-install-banner .ios-install-text {
+      flex: 1;
+    }
+    .ios-install-banner .ios-install-text strong {
+      color: #8bc34a;
+    }
+    .ios-install-banner .ios-install-dismiss {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: white;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 1rem;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ios-install-banner .ios-install-dismiss:active {
+      background: rgba(255,255,255,0.3);
+    }
+
     html.dark .version-footer { color: #8a9480; }
 
     /* Dark mode toggle button dark state */
@@ -1343,7 +1387,15 @@ font-size: 0.75rem;
     </div><!-- end .scrollable-content -->
   </div><!-- end .app-layout -->
 
-    <script>
+  <!-- iOS Install Hint Banner -->
+  <div class="ios-install-banner" id="ios_install_banner">
+    <div class="ios-install-text">
+      <strong>App installieren:</strong> Teile-Taste → <strong>Zum Home-Bildschirm</strong>
+    </div>
+    <button class="ios-install-dismiss" onclick="dismissIosInstallHint()" aria-label="Hinweis schließen">✕</button>
+  </div>
+
+  <script>
     // ============================================================================
     // STATE — Zentrales Zustandsobjekt der gesamten App
     // Wird nach jeder Änderung via saveState() in localStorage geschrieben (JSON).
@@ -1371,8 +1423,28 @@ font-size: 0.75rem;
       einheitGroesseEnabled: false, // Benutzerdefinierte Einheiten-Größe aktiviert
       koernerProEinheit:  50000, // Körner pro Saatgut-Einheit (Standard 50.000)
       machineLog:    [],        // Globales Maschinen-Protokoll (alle Befüllungen)
-      drillPriorities: {}       // Tab-Prioritäten für Multi-Tab-Verteilung (persistiert)
+      drillPriorities: {},       // Tab-Prioritäten für Multi-Tab-Verteilung (persistiert)
+      iosInstallHintShown: false // iOS-Install-Banner wurde angezeigt
     };
+
+    // --- iOS Safari Detection ---
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    var isStandalone = window.navigator.standalone === true;
+
+    // --- iOS Install Hint ---
+    // Zeigt einmalig einen Hinweis zum Installieren der PWA auf iOS Safari.
+    // Nur auf iOS/Safari, nur wenn noch nicht installiert und noch nicht dismissed.
+    function maybeShowIosInstallHint() {
+      var hintSeen = localStorage.getItem('mais_rechner_ios_install_seen');
+      if (!isIOS || isStandalone || hintSeen) return;
+      var banner = document.getElementById('ios_install_banner');
+      if (banner) banner.classList.add('show');
+    }
+    function dismissIosInstallHint() {
+      localStorage.setItem('mais_rechner_ios_install_seen', '1');
+      var banner = document.getElementById('ios_install_banner');
+      if (banner) banner.classList.remove('show');
+    }
 
     // ==========================================================================
     // HEKTARZÄHLER — Manuelle Zählerstand-Eingabe
@@ -1907,6 +1979,9 @@ font-size: 0.75rem;
       renderResults();
       renderView();
       document.getElementById('results').style.display = 'block';
+
+      // --- iOS-Install-Hinweis nach erster erfolgreicher Berechnung ---
+      maybeShowIosInstallHint();
     }
 
     // ==========================================================================
