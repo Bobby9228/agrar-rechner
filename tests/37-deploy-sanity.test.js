@@ -62,4 +62,23 @@ describe('Cloudflare deploy sanity', () => {
     expect(content).toMatch(/serviceWorker\.register\s*\(\s*['"]sw\.js['"]\s*\)\s*\.catch\s*\(/);
     expect(content).toMatch(/console\.warn\s*\(\s*['"]SW-Registrierung fehlgeschlagen:/);
   });
+
+  // Issue #130: apple-touch-icon zeigt auf SVG statt 180×180 PNG
+  it('icon-180.png exists in public directory', () => {
+    const iconPath = resolve(publicDir, 'icon-180.png');
+    expect(existsSync(iconPath)).toBe(true);
+  });
+
+  it('index.html apple-touch-icon href points to icon-180.png', () => {
+    const indexPath = resolve(publicDir, 'index.html');
+    const content = readFileSync(indexPath, 'utf-8');
+    expect(content).toMatch(/<link\s+rel=["']apple-touch-icon["']\s+href=["']icon-180\.png["']/);
+  });
+
+  it('manifest.json contains 180x180 icon entry', () => {
+    const manifestPath = resolve(publicDir, 'manifest.json');
+    const content = readFileSync(manifestPath, 'utf-8');
+    expect(content).toMatch(/"sizes"\s*:\s*"180x180"/);
+    expect(content).toMatch(/"src"\s*:\s*"icon-180\.png"/);
+  });
 });
