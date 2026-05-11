@@ -503,6 +503,7 @@
             saveState();
             renderDrillTabList();
             renderResults();
+            drillCalcAll();
             break;
         }
       });
