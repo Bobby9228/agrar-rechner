@@ -6,7 +6,22 @@ import { describe, it, expect } from 'vitest';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = resolve(__dirname, '..', 'public');
 
+// Issue #129: PWA sw.js ohne Cache-Control — Update-Pfade nicht abgesichert
+// - sw.js muss skipWaiting() in install handler haben → neue Version sofort aktivieren
+// - index.html muss reg.update() nach registration aufrufen → Browser prüft neue Version bei jedem Laden
 describe('Cloudflare deploy sanity', () => {
+  it('sw.js calls skipWaiting() to activate new version immediately', () => {
+    const swPath = resolve(publicDir, 'sw.js');
+    const content = readFileSync(swPath, 'utf-8');
+    expect(content).toMatch(/self\.skipWaiting\s*\(\s*\)/);
+  });
+
+  it('index.html calls reg.update() after SW registration to check for updates', () => {
+    const indexPath = resolve(publicDir, 'index.html');
+    const content = readFileSync(indexPath, 'utf-8');
+    expect(content).toMatch(/reg\.update\s*\(\s*\)/);
+  });
+
   it('_redirects does not exist (causes infinite loop on Workers Static Assets)', () => {
     // /* → /index.html erzeugt einen Infinite Loop weil /index.html selbst auf /* matched.
     // Workers Static Assets serviert index.html automatisch als Fallback.
