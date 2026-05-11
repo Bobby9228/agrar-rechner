@@ -17,7 +17,7 @@ describe('State persistence', () => {
   describe('sv() — save state', () => {
     it('saves state to localStorage', () => {
       w.state.reiter[0].hektar = 10;
-      w.sv();
+      w.saveState();
       const raw = store['mais_rechner'];
       expect(raw).toBeTruthy();
       const parsed = JSON.parse(raw);
@@ -25,7 +25,7 @@ describe('State persistence', () => {
     });
 
     it('saves complete state structure', () => {
-      w.sv();
+      w.saveState();
       const parsed = JSON.parse(store['mais_rechner']);
       expect(parsed.reiter).toBeDefined();
       expect(parsed.activeReiter).toBeDefined();
@@ -37,7 +37,7 @@ describe('State persistence', () => {
       // Override localStorage to throw
       const orig = w.localStorage.setItem;
       w.localStorage.setItem = () => { throw new Error('QuotaExceeded'); };
-      expect(() => w.sv()).not.toThrow();
+      expect(() => w.saveState()).not.toThrow();
       w.localStorage.setItem = orig;
     });
   });
@@ -50,13 +50,13 @@ describe('State persistence', () => {
         fahrgassenEnabled: false,
         fahrgassenBreite: 0,
       });
-      w.lv();
+      w.loadState();
       expect(w.state.reiter[0].name).toBe('Test');
       expect(w.state.reiter[0].hektar).toBe(15);
     });
 
     it('does nothing when localStorage is empty', () => {
-      w.lv();
+      w.loadState();
       // State should remain at default
       expect(w.state.reiter.length).toBe(1);
       expect(w.state.activeReiter).toBe(0);
@@ -64,12 +64,40 @@ describe('State persistence', () => {
 
     it('handles corrupted JSON gracefully', () => {
       store['mais_rechner'] = 'not-valid-json{{{';
-      expect(() => w.lv()).not.toThrow();
+      expect(() => w.loadState()).not.toThrow();
     });
 
     it('handles localStorage errors gracefully', () => {
       w.localStorage.getItem = () => { throw new Error('Access denied'); };
-      expect(() => w.lv()).not.toThrow();
+      expect(() => w.loadState()).not.toThrow();
+    });
+
+    it('uses default state when localStorage contains empty object {}', () => {
+      store['mais_rechner'] = '{}';
+      w.loadState();
+      expect(w.state.reiter.length).toBe(1);
+      expect(w.state.activeReiter).toBe(0);
+    });
+
+    it('uses default state when localStorage contains empty array []', () => {
+      store['mais_rechner'] = '[]';
+      w.loadState();
+      expect(w.state.reiter.length).toBe(1);
+      expect(w.state.activeReiter).toBe(0);
+    });
+
+    it('uses default state when reiter is present but empty', () => {
+      store['mais_rechner'] = JSON.stringify({ reiter: [] });
+      w.loadState();
+      expect(w.state.reiter.length).toBe(1);
+      expect(w.state.activeReiter).toBe(0);
+    });
+
+    it('uses default state when reiter is null', () => {
+      store['mais_rechner'] = JSON.stringify({ reiter: null });
+      w.loadState();
+      expect(w.state.reiter.length).toBe(1);
+      expect(w.state.activeReiter).toBe(0);
     });
   });
 
@@ -81,7 +109,7 @@ describe('State persistence', () => {
         duenger: 150,
         entries: [{ einheit: 5, hektar: 3, duenger: 200, time: '10:00' }],
       });
-      w.lv();
+      w.loadState();
 
       expect(w.state.reiter).toBeDefined();
       expect(w.state.reiter.length).toBe(1);
@@ -102,7 +130,7 @@ describe('State persistence', () => {
         fahrgassenEnabled: false,
         fahrgassenBreite: 0,
       });
-      w.lv();
+      w.loadState();
 
       expect(w.state.reiter[0].entries).toBeDefined();
       expect(w.state.reiter[0].entries.length).toBe(1);
@@ -117,7 +145,7 @@ describe('State persistence', () => {
         fahrgassenEnabled: false,
         fahrgassenBreite: 0,
       });
-      w.lv();
+      w.loadState();
 
       // Should keep existing tab entries, not overwrite with global
       expect(w.state.reiter[0].entries.length).toBe(1);
@@ -133,7 +161,7 @@ describe('State persistence', () => {
       w.state.fahrgassenEnabled = true;
       w.state.fahrgassenBreite = 24;
       w.state.reiter[0].entries = [{ einheit: 2, hektar: 3.5, duenger: 500, time: '14:30' }];
-      w.sv();
+      w.saveState();
 
       // Reset state
       w.state = {
@@ -143,7 +171,7 @@ describe('State persistence', () => {
         fahrgassenBreite: 0,
       };
 
-      w.lv();
+      w.loadState();
       expect(w.state.reiter[0].hektar).toBeCloseTo(12.5);
       expect(w.state.reiter[0].koerner).toBe(85000);
       expect(w.state.reiter[0].duenger).toBe(175);

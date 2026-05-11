@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'mais-rechner-v3';
+const CACHE_VERSION = 'mais-rechner-v11';
 const STATIC_ASSETS = ['/', '/index.html', '/icon.svg', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -17,11 +17,19 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = e.request.url;
+  // sw.js NIEMALS cachen — sonst bekommt der Browser nie Updates
+  if (url.endsWith('/sw.js')) {
+    e.respondWith(fetch(e.request).then(response => {
+      // Neuen SW sofort aktivieren wenn sich CACHE_VERSION geändert hat
+      return response;
+    }).catch(() => caches.match(e.request)));
+    return;
+  }
   if (url.endsWith('.html') || url.endsWith('/')) {
     // Network-First für HTML → User bekommt Updates
     e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
   } else {
     // Cache-First für statische Assets
-    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).catch(() => new Response('Offline', { status: 503 }))));
   }
 });

@@ -56,14 +56,15 @@ describe('Fahrgassen', () => {
       w.fahrgassenUpdate();
       const text = doc.getElementById('fahrgassen_saved').textContent;
       expect(text).toContain('24 m');
-      expect(text).toContain('~4.2%');
+      // (24-1)/24 * 100 = 95.8%
+      expect(text).toContain('~95.8%');
     });
 
     it('calculates percentage correctly for breite=10', () => {
       doc.getElementById('fahrgassen_breite').value = '10';
       w.fahrgassenUpdate();
-      // 1/10 * 100 = 10.0%
-      expect(doc.getElementById('fahrgassen_saved').textContent).toContain('~10.0%');
+      // (10-1)/10 * 100 = 90.0%
+      expect(doc.getElementById('fahrgassen_saved').textContent).toContain('~90.0%');
     });
 
     it('clears info for breite=0', () => {
@@ -86,6 +87,49 @@ describe('Fahrgassen', () => {
       doc.getElementById('fahrgassen_breite').value = '24,5';
       w.fahrgassenUpdate();
       expect(w.state.fahrgassenBreite).toBeCloseTo(24.5);
+    });
+
+    it('does not store breite < 2 — state unchanged, field restored', () => {
+      doc.getElementById('fahrgassen_breite').value = '24';
+      w.fahrgassenUpdate();
+      expect(w.state.fahrgassenBreite).toBe(24);
+
+      doc.getElementById('fahrgassen_breite').value = '0,5';
+      w.fahrgassenUpdate();
+      expect(w.state.fahrgassenBreite).toBe(24); // unchanged
+      expect(doc.getElementById('fahrgassen_saved').textContent).toBe(
+        'Fahrgassenbreite muss mindestens 2m betragen'
+      );
+      // field restored to previous valid value
+      expect(doc.getElementById('fahrgassen_breite').value).toBe('24');
+    });
+
+    it('does not store breite=1 — state unchanged, field restored', () => {
+      doc.getElementById('fahrgassen_breite').value = '10';
+      w.fahrgassenUpdate();
+      expect(w.state.fahrgassenBreite).toBe(10);
+
+      doc.getElementById('fahrgassen_breite').value = '1';
+      w.fahrgassenUpdate();
+      expect(w.state.fahrgassenBreite).toBe(10); // unchanged
+      expect(doc.getElementById('fahrgassen_saved').textContent).toBe(
+        'Fahrgassenbreite muss mindestens 2m betragen'
+      );
+      expect(doc.getElementById('fahrgassen_breite').value).toBe('10');
+    });
+
+    it('restores empty field when previous valid state is 0', () => {
+      doc.getElementById('fahrgassen_breite').value = '';
+      w.fahrgassenUpdate();
+      expect(w.state.fahrgassenBreite).toBe(0);
+
+      doc.getElementById('fahrgassen_breite').value = '0,5';
+      w.fahrgassenUpdate();
+      expect(w.state.fahrgassenBreite).toBe(0); // unchanged
+      expect(doc.getElementById('fahrgassen_saved').textContent).toBe(
+        'Fahrgassenbreite muss mindestens 2m betragen'
+      );
+      expect(doc.getElementById('fahrgassen_breite').value).toBe('');
     });
   });
 

@@ -20,17 +20,16 @@ describe('Drill-Protokoll', () => {
   });
 
   describe('drillAdd()', () => {
-    it('adds an entry with einheit and hektar', () => {
+    it('adds an entry with einheit and duenger', () => {
       doc.getElementById('drill_einheit').value = '1,5';
-      doc.getElementById('drill_hektar').value = '5,0';
       doc.getElementById('drill_duenger').value = '200';
       w.drillAdd();
 
       const entries = w.getActiveReiter().entries;
       expect(entries.length).toBe(1);
       expect(entries[0].einheit).toBeCloseTo(1.5);
-      expect(entries[0].hektar).toBeCloseTo(5.0);
       expect(entries[0].duenger).toBe(200);
+      expect(entries[0].zaehlerStand).toBe(0); // Zählerstand not set
       expect(entries[0].time).toBeTruthy();
     });
 
@@ -44,7 +43,7 @@ describe('Drill-Protokoll', () => {
       expect(entries.length).toBe(1);
       expect(entries[0].einheit).toBe(2);
       expect(entries[0].duenger).toBe(0);
-      expect(entries[0].hektar).toBe(0);
+      expect(entries[0].zaehlerStand).toBe(0);
     });
 
     it('adds entry with duenger only (no einheit)', () => {
@@ -79,12 +78,10 @@ describe('Drill-Protokoll', () => {
 
     it('clears input fields after adding', () => {
       doc.getElementById('drill_einheit').value = '2';
-      doc.getElementById('drill_hektar').value = '5';
       doc.getElementById('drill_duenger').value = '300';
       w.drillAdd();
 
       expect(doc.getElementById('drill_einheit').value).toBe('');
-      expect(doc.getElementById('drill_hektar').value).toBe('');
       expect(doc.getElementById('drill_duenger').value).toBe('');
     });
 
@@ -100,12 +97,10 @@ describe('Drill-Protokoll', () => {
 
     it('adds multiple entries in sequence', () => {
       doc.getElementById('drill_einheit').value = '2';
-      doc.getElementById('drill_hektar').value = '3';
       doc.getElementById('drill_duenger').value = '100';
       w.drillAdd();
 
       doc.getElementById('drill_einheit').value = '3';
-      doc.getElementById('drill_hektar').value = '4';
       doc.getElementById('drill_duenger').value = '200';
       w.drillAdd();
 
@@ -121,34 +116,32 @@ describe('Drill-Protokoll', () => {
       w.drillAdd();
 
       const entry = w.getActiveReiter().entries[0];
-      // Time should be a string in HH:MM format
-      expect(entry.time).toMatch(/^\d{2}:\d{2}$/);
+      // Time should be a string in HH:MM or HH:MM:SS format
+      expect(entry.time).toMatch(/^\d{2}:\d{2}(:\d{2})?$/);
     });
   });
 
   describe('drillRemove()', () => {
-    it('removes an entry by index', () => {
-      doc.getElementById('drill_einheit').value = '2';
-      doc.getElementById('drill_duenger').value = '100';
+    it('removes an entry by tab+index', () => {
+      doc.getElementById('drill_einheit').value = '1';
+      doc.getElementById('drill_duenger').value = '0';
       w.drillAdd();
-
-      doc.getElementById('drill_einheit').value = '3';
-      doc.getElementById('drill_duenger').value = '200';
+      doc.getElementById('drill_einheit').value = '2';
       w.drillAdd();
 
       expect(w.getActiveReiter().entries.length).toBe(2);
 
-      w.drillRemove(0);
+      // Remove first entry: tabIdx=0, entryIdx=0
+      w.drillRemove(0, 0);
       expect(w.getActiveReiter().entries.length).toBe(1);
-      expect(w.getActiveReiter().entries[0].einheit).toBe(3);
+      expect(w.getActiveReiter().entries[0].einheit).toBe(2);
     });
 
     it('removes the last entry', () => {
-      doc.getElementById('drill_einheit').value = '2';
-      doc.getElementById('drill_duenger').value = '100';
+      doc.getElementById('drill_einheit').value = '1';
       w.drillAdd();
 
-      w.drillRemove(0);
+      w.drillRemove(0, 0);
       expect(w.getActiveReiter().entries.length).toBe(0);
     });
   });
@@ -156,16 +149,14 @@ describe('Drill-Protokoll', () => {
   describe('renderResults() — drill summary', () => {
     it('shows correct summary after adding entries', () => {
       doc.getElementById('drill_einheit').value = '5';
-      doc.getElementById('drill_hektar').value = '3,5';
       doc.getElementById('drill_duenger').value = '500';
       w.drillAdd();
 
-      // Check drill summary
+      // Check drill summary (aggregated across all tabs)
       // Total einheiten = 18 (10ha * 90000 / 50000)
       expect(doc.getElementById('ds_saat_total').textContent).toBe('18,0 Einheiten');
       // Used einheit = 5
-      expect(doc.getElementById('ds_saat_used').textContent).toContain('5,0 Einheiten');
-      expect(doc.getElementById('ds_saat_used').textContent).toContain('3,5 ha');
+      expect(doc.getElementById('ds_saat_used').textContent).toContain('5,0');
       // Remaining = 18 - 5 = 13
       expect(doc.getElementById('ds_saat_remaining').textContent).toBe('13,0 Einheiten');
       // Duenger total = 1500
@@ -194,22 +185,31 @@ describe('Drill-Protokoll', () => {
       expect(entries.length).toBe(1);
     });
 
-    it('shows total summary line', () => {
+    it('shows total summary in drill_entries after adding entry', () => {
       doc.getElementById('drill_einheit').value = '5';
-      doc.getElementById('drill_hektar').value = '3,5';
       doc.getElementById('drill_duenger').value = '500';
       w.drillAdd();
 
-      const summary = doc.getElementById('ds_total_summary').textContent;
-      expect(summary).toContain('3,5 ha');
-      expect(summary).toContain('5,0 Einheiten');
-      expect(summary).toContain('500');
-      expect(summary).toContain('Dünger');
-      expect(summary).toContain('eingefüllt');
+      const entries = doc.getElementById('drill_entries').querySelectorAll('.drill-entry');
+      expect(entries.length).toBe(1);
+      expect(entries[0].textContent).toContain('5,0 Einheiten');
+      expect(entries[0].textContent).toContain('500 kg');
     });
 
-    it('shows "—" total summary when no entries', () => {
-      expect(doc.getElementById('ds_total_summary').textContent).toBe('—');
+    it('shows empty state when no entries', () => {
+      const empty = doc.getElementById('drill_entries').querySelector('.drill-empty');
+      expect(empty).not.toBeNull();
+      expect(empty.textContent).toBe('Noch nichts eingefüllt');
+    });
+
+    it('remaining einheit is clamped to 0 (no negative)', () => {
+      doc.getElementById('drill_einheit').value = '20';
+      doc.getElementById('drill_duenger').value = '0';
+      w.drillAdd();
+
+      const rem = doc.getElementById('ds_saat_remaining').textContent;
+      // Math.max(0, 18 - 20) = 0
+      expect(rem).toBe('0,0 Einheiten');
     });
 
     it('remaining duenger is clamped to 0 (no negative)', () => {
@@ -221,16 +221,6 @@ describe('Drill-Protokoll', () => {
       const rem = doc.getElementById('ds_duenger_remaining').textContent;
       // Math.max(0, 1500 - 2000) = 0
       expect(rem).toContain('0');
-    });
-
-    it('remaining einheit is clamped to 0 (no negative)', () => {
-      doc.getElementById('drill_einheit').value = '20';
-      doc.getElementById('drill_duenger').value = '0';
-      w.drillAdd();
-
-      const rem = doc.getElementById('ds_saat_remaining').textContent;
-      // Math.max(0, 18 - 20) = 0
-      expect(rem).toBe('0,0 Einheiten');
     });
   });
 });

@@ -136,6 +136,8 @@ describe('Tab management', () => {
     it('loads inputs from target tab', () => {
       w.state.reiter[0].hektar = 15;
       w.state.reiter[0].koerner = 80000;
+      w.state.activeReiter = 0; // ensure we're on tab 0 first
+      w.syncInputsFromState();
       w.addReiter();
       // Now on tab 1 (empty)
       expect(doc.getElementById('hektar').value).toBe('');
@@ -146,6 +148,8 @@ describe('Tab management', () => {
     it('shows results if target tab has data', () => {
       w.state.reiter[0].hektar = 10;
       w.state.reiter[0].koerner = 90000;
+      w.state.activeReiter = 0; // ensure we're on tab 0
+      w.syncInputsFromState();
       w.addReiter();
       w.switchReiter(0);
       expect(doc.getElementById('results').style.display).toBe('block');
@@ -189,16 +193,28 @@ describe('Tab management', () => {
   });
 
   describe('renderTabs()', () => {
-    it('shows no tab buttons when only 1 reiter', () => {
+    it('shows single tab button when only 1 reiter (for rename)', () => {
       w.renderTabs();
-      const btns = doc.querySelectorAll('.tab-btn');
-      expect(btns.length).toBe(0);
+      const btns = doc.querySelectorAll('.field-tab');
+      expect(btns.length).toBe(1);
     });
 
     it('shows tab buttons when 2+ reiter', () => {
       w.addReiter();
-      const btns = doc.querySelectorAll('.tab-btn');
+      const btns = doc.querySelectorAll('.field-tab');
       expect(btns.length).toBe(2);
+    });
+
+    it('hides close button when only 1 tab', () => {
+      w.renderTabs();
+      const closes = doc.querySelectorAll('.tab-close');
+      expect(closes.length).toBe(0);
+    });
+
+    it('shows close buttons when 2+ tabs', () => {
+      w.addReiter();
+      const closes = doc.querySelectorAll('.tab-close');
+      expect(closes.length).toBe(2);
     });
 
     it('marks active tab with "active" class', () => {
@@ -217,6 +233,17 @@ describe('Tab management', () => {
       w.addReiter();
       const closes = doc.querySelectorAll('.tab-close');
       expect(closes.length).toBe(2);
+    });
+
+    it('tab name input is visible and editable with only 1 tab', () => {
+      w.renderTabs();
+      const inputs = doc.querySelectorAll('.tab-name-input');
+      expect(inputs.length).toBe(1);
+      expect(inputs[0].value).toBe('Tab 1');
+      // Simulate renaming
+      inputs[0].value = 'Mein Feld';
+      inputs[0].onblur();
+      expect(w.state.reiter[0].name).toBe('Mein Feld');
     });
 
     it('tab name input shows correct name', () => {
