@@ -50,6 +50,32 @@ describe('berechne()', () => {
     expect(doc.getElementById('err_koerner').textContent).toBe('Bitte Körner pro ha eingeben');
   });
 
+  it('shows error when hektar exceeds 10000 (plausibility check)', () => {
+    doc.getElementById('hektar').value = '99999999999999999999';
+    doc.getElementById('koerner').value = '90000';
+    w.berechne();
+    expect(doc.getElementById('err_hektar').textContent).toBe('Hektar-Wert ungewöhnlich hoch (max. 10.000)');
+    expect(doc.getElementById('results').style.display).toBe('none');
+  });
+
+  it('shows error when koerner exceeds 1000000 (plausibility check)', () => {
+    doc.getElementById('hektar').value = '10';
+    doc.getElementById('koerner').value = '99999999999999999999';
+    w.berechne();
+    expect(doc.getElementById('err_koerner').textContent).toBe('Körner-Wert ungewöhnlich hoch (max. 1.000.000)');
+    expect(doc.getElementById('results').style.display).toBe('none');
+  });
+
+  it('accepts valid upper-bound values (hektar=10000, koerner=1000000)', () => {
+    doc.getElementById('hektar').value = '10000';
+    doc.getElementById('koerner').value = '1000000';
+    doc.getElementById('duenger').value = '200';
+    w.berechne();
+    expect(doc.getElementById('err_hektar').textContent).toBe('');
+    expect(doc.getElementById('err_koerner').textContent).toBe('');
+    expect(doc.getElementById('results').style.display).toBe('block');
+  });
+
   it('shows error when hektar is negative', () => {
     doc.getElementById('hektar').value = '-5';
     doc.getElementById('koerner').value = '90000';
