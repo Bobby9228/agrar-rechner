@@ -3523,9 +3523,9 @@ font-size: 0.75rem;
           var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
           var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
           var tabCo = getCarryover(idx);
-          // Per-tab remaining = basis - used - saved (same logic as renderDrillSummary)
-          totalEinheitRem += Math.max(0, basisE - usedE - tabCo.savedEinheit);
-          totalDuengerRem += Math.max(0, basisD - usedD - tabCo.savedDuenger);
+          // remaining = max(0, basis - used) — no carryover subtraction
+          totalEinheitRem += Math.max(0, basisE - usedE);
+          totalDuengerRem += Math.max(0, basisD - usedD);
           totalEinheitenBasis += basisE;
           totalEinheitenUsed += usedE;
           totalDuengerBasis += basisD;
