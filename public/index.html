@@ -1725,16 +1725,34 @@ font-size: 0.75rem;
         btn.setAttribute('aria-label', 'Tab ' + (i+1));
         btn.onclick = function() { switchReiter(i); };
 
-        // --- Tab-Name (span mit contenteditable) ---
+        // --- Tab-Name (span mit contenteditable, nur editierbar bei Doppelklick) ---
         // Struktur: <button> <span> <span.close> — kein nested interactive
         var span = document.createElement('span');
         span.className = 'tab-name';
         span.setAttribute('aria-label', 'Tab-Name');
         span.setAttribute('role', 'textbox');
         span.setAttribute('tabindex', '0');
-        span.setAttribute('contenteditable', 'true');
         span.textContent = r.name;
+
+        // Doppelklick auf den Button → editierbar machen + Text markieren
+        btn.ondblclick = function(evt) {
+          if (evt.target.classList.contains('tab-close')) return;
+          span.setAttribute('contenteditable', 'true');
+          span.focus();
+          // Text markieren
+          var range = document.createRange();
+          range.selectNodeContents(span);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        };
+
         span.onfocus = function() {
+          // Nur bei echtem Focus (nicht bei Programmatic) editierbar machen
+          if (!span.hasAttribute('contenteditable')) {
+            span.blur();
+            return;
+          }
           // Select all text on focus for consistent UX
           var range = document.createRange();
           range.selectNodeContents(span);
@@ -1744,6 +1762,7 @@ font-size: 0.75rem;
         };
         span.onblur = function() {
           var newName = span.textContent.replace(/\n/g, ' ').trim();
+          span.removeAttribute('contenteditable');
           renameReiter(i, newName);
         };
         span.onkeydown = function(evt) {
