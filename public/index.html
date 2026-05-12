@@ -3528,8 +3528,8 @@ font-size: 0.75rem;
           totalUsedEinheit += r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
           totalUsedDuenger += r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
           var tabCo = getCarryover(idx);
-          totalCarryoverEinheit += tabCo.savedEinheit + tabCo.excessEinheit;
-          totalCarryoverDuenger += tabCo.savedDuenger + tabCo.excessDuenger;
+          totalCarryoverEinheit += tabCo.savedEinheit;
+          totalCarryoverDuenger += tabCo.savedDuenger;
         }
       });
       // Apply carryover: remaining = max(0, total - used - carryover)
