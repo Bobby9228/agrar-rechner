@@ -3517,8 +3517,8 @@ font-size: 0.75rem;
       var totalCarryoverEinheit = 0, totalCarryoverDuenger = 0;
       reiter.forEach(function(r, idx) {
         if (r.hektar > 0 && r.koerner > 0) {
-          totalHa += r.hektar;
           var istSum = getTabIstHektar(r);
+          totalHa += istSum > 0 ? istSum : r.hektar;
           var tabSollE = getTabTotalEinheiten(r);
           var tabSollD = r.hektar * r.duenger;
           var tabIstE = istSum > 0 ? getTabIstEinheiten(r) : 0;
@@ -3588,7 +3588,7 @@ font-size: 0.75rem;
         var stats = document.createElement('div');
         stats.className = 'dashboard-reiter-stats';
 
-        // Hektar
+        // Hektar (SOLL + IST if different)
         var haDiv = document.createElement('div');
         haDiv.className = 'dashboard-stat';
         var haDivLabel = document.createElement('div');
@@ -3596,7 +3596,12 @@ font-size: 0.75rem;
         haDivLabel.textContent = 'Hektar';
         var haDivVal = document.createElement('div');
         haDivVal.className = 'dashboard-stat-value';
-        haDivVal.textContent = r.hektar > 0 ? fmt(r.hektar) + ' ha' : '—';
+        var istH = getTabIstHektar(r);
+        if (istH > 0 && istH !== r.hektar) {
+          haDivVal.textContent = fmt(r.hektar) + ' / ' + fmt(istH) + ' ha';
+        } else {
+          haDivVal.textContent = r.hektar > 0 ? fmt(r.hektar) + ' ha' : '—';
+        }
         haDiv.appendChild(haDivLabel);
         haDiv.appendChild(haDivVal);
         stats.appendChild(haDiv);
