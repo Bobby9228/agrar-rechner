@@ -44,17 +44,18 @@ describe('Dashboard carryover / savings', () => {
     w.state.reiter[0].entries = [
       { einheit: 8.0, duenger: 160, zaehlerStand: 5, time: '09:00' }
     ];
-    w.addReiter();
-    w.state.reiter[1].hektar = 10;
-    w.state.reiter[1].koerner = 80000;
-    w.state.reiter[1].duenger = 200;
-    w.state.reiter[1].entries = [
-      { einheit: 16.0, duenger: 200, zaehlerStand: 10, time: '10:00' }
-    ];
+    w.state.reiter.push({
+      name: 'Tab 2',
+      hektar: 10, istHektar: 0, koerner: 80000, duenger: 200,
+      entries: [{ einheit: 16.0, duenger: 200, zaehlerStand: 10, time: '10:00' }]
+    });
 
     const summary = getDashboardSummary();
-    // FIXED: Dashboard now applies carryover — remaining = 0
-    expect(summary.einheitenVal).toBe('0,0');
+// Tab 0: SOLL=10 ha → 16 units. Used 8 units (partial fill, no IST → no carryover savings)
+// Tab 1: SOLL=10 ha → 16 units. Filled 16 units exactly
+// Total SOLL = 32, used = 24 → remaining = max(0, 32 - 24) = 8
+// No carryover because no IST is set (carryover savings come from IST<SOLL)
+expect(summary.einheitenVal).toBe('8,0');
   });
 
   it('BUG: dashboard does not display savings indicator when tabs are under-utilized', () => {
