@@ -3282,6 +3282,7 @@ font-size: 0.75rem;
       document.getElementById('drill_section').style.display = 'none';
       syncInputsFromState();
       renderTabs();
+      renderDrillSummary();
       saveState();
     }
 
@@ -3319,6 +3320,7 @@ font-size: 0.75rem;
       document.getElementById('einheit_groesse_saved').textContent = '';
       state.drillPriorities = {};
       renderTabs();
+      renderDrillSummary();
       saveState();
     }
 
