@@ -3629,8 +3629,8 @@ font-size: 0.75rem;
           duengerTotal = istSum > 0 ? getTabIstDuenger(r) : r.hektar * r.duenger;
           usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
           var tabCo = getCarryover(idx);
-          var einheitRem = Math.max(0, einheiten - usedEinheit - tabCo.savedEinheit);
-          var duengerRem = Math.max(0, duengerTotal - usedDuenger - tabCo.savedDuenger);
+          var einheitRem = Math.max(0, einheiten - usedEinheit);
+          var duengerRem = Math.max(0, duengerTotal - usedDuenger);
           var minFilled = Math.min(
             einheiten > 0 ? usedEinheit / einheiten : 1,
             duengerTotal > 0 ? usedDuenger / duengerTotal : 1
