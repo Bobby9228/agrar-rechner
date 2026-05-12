@@ -253,10 +253,17 @@
       cursor: pointer;
       min-height: 48px;
       display: inline-block;
+      /* Prevent mobile copy/cut/paste menu on tap — edit only via double-click/tap */
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
     }
     .tab-name:focus {
       cursor: text;
       background: rgba(255,255,255,0.15);
+      /* Allow text selection when editing */
+      user-select: text;
+      -webkit-user-select: text;
     }
     .tab-btn:not(.active) .tab-name:focus {
       background: #f0f4e8;
@@ -3025,13 +3032,18 @@ font-size: 0.75rem;
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       var co = getCarryover(state.activeReiter || 0);
-      var effectiveUsedE = usedEinheit + co.savedEinheit + co.excessEinheit;
-      var effectiveUsedD = usedDuenger + co.savedDuenger + co.excessDuenger;
+      var effectiveUsedE = usedEinheit + co.savedEinheit;
+      var effectiveUsedD = usedDuenger + co.savedDuenger;
       var istSum = getTabIstHektar(r);
-      var istEinheiten = istSum > 0 ? getTabIstEinheiten(r) : einheiten;
-      var istDuenger = istSum > 0 ? getTabIstDuenger(r) : duengerTotal;
-      var remEinheit = Math.max(0, istEinheiten - effectiveUsedE);
-      var remDuenger = Math.max(0, istDuenger - effectiveUsedD);
+      // If IST is set, use IST as the basis (the actual seeded area determines what was needed)
+      var sollE = einheiten;
+      var sollD = duengerTotal;
+      var istE = istSum > 0 ? getTabIstEinheiten(r) : 0;
+      var istD = istSum > 0 ? getTabIstDuenger(r) : 0;
+      var basisE = istSum > 0 ? istE : sollE;
+      var basisD = istSum > 0 ? istD : sollD;
+      var remEinheit = Math.max(0, basisE - effectiveUsedE);
+      var remDuenger = Math.max(0, basisD - effectiveUsedD);
 
       var drillSection = document.getElementById('r_drill_section');
       if (drillSection) {
@@ -3506,8 +3518,13 @@ font-size: 0.75rem;
       reiter.forEach(function(r, idx) {
         if (r.hektar > 0 && r.koerner > 0) {
           totalHa += r.hektar;
-          totalEinheiten += getTabTotalEinheiten(r);
-          totalDuenger += r.hektar * r.duenger;
+          var istSum = getTabIstHektar(r);
+          var tabSollE = getTabTotalEinheiten(r);
+          var tabSollD = r.hektar * r.duenger;
+          var tabIstE = istSum > 0 ? getTabIstEinheiten(r) : 0;
+          var tabIstD = istSum > 0 ? getTabIstDuenger(r) : 0;
+          totalEinheiten += istSum > 0 ? tabIstE : tabSollE;
+          totalDuenger += istSum > 0 ? tabIstD : tabSollD;
           totalUsedEinheit += r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
           totalUsedDuenger += r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
           var tabCo = getCarryover(idx);
@@ -3515,7 +3532,7 @@ font-size: 0.75rem;
           totalCarryoverDuenger += tabCo.savedDuenger + tabCo.excessDuenger;
         }
       });
-      // Apply carryover: remaining = max(0, SOLL - used - carryover)
+      // Apply carryover: remaining = max(0, total - used - carryover)
       var totalEinheitRem = Math.max(0, totalEinheiten - totalUsedEinheit - totalCarryoverEinheit);
       var totalDuengerRem = Math.max(0, totalDuenger - totalUsedDuenger - totalCarryoverDuenger);
       // Use carryover-adjusted used for percentage
@@ -3605,13 +3622,15 @@ font-size: 0.75rem;
         var pct = 0;
         var statusClass = 'na';
         if (r.hektar > 0 && r.koerner > 0) {
-          einheiten = getTabTotalEinheiten(r);
+          var istSum = getTabIstHektar(r);
+          // If IST is set, use IST as the basis (the actual seeded area determines what was needed)
+          einheiten = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
           usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-          duengerTotal = r.hektar * r.duenger;
+          duengerTotal = istSum > 0 ? getTabIstDuenger(r) : r.hektar * r.duenger;
           usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
           var tabCo = getCarryover(idx);
-          var einheitRem = Math.max(0, einheiten - usedEinheit - tabCo.savedEinheit - tabCo.excessEinheit);
-          var duengerRem = Math.max(0, duengerTotal - usedDuenger - tabCo.savedDuenger - tabCo.excessDuenger);
+          var einheitRem = Math.max(0, einheiten - usedEinheit - tabCo.savedEinheit);
+          var duengerRem = Math.max(0, duengerTotal - usedDuenger - tabCo.savedDuenger);
           var minFilled = Math.min(
             einheiten > 0 ? usedEinheit / einheiten : 1,
             duengerTotal > 0 ? usedDuenger / duengerTotal : 1

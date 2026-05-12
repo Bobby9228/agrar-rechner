@@ -133,13 +133,11 @@ describe('IST<SOLL remaining display', () => {
   });
 
   /**
-   * SOLL=10, IST=12 → SOLL_units=16.0, IST_units=19.2
+   * SOLL=10, IST=12 → SOLL_units=16.0, IST_units=19.2, max=19.2
    * Entry: 16.0 → remaining = max(0, 19.2 - 16.0) = 3.2
+   * (IST bigger field needs more units; only 16 used, 3.2 still needed)
    */
-  it('remaining = 0 when IST>SOLL (excess covers SOLL shortfall)', () => {
-    // SOLL=10, IST=12, koerner=80000 → SOLL_units=16, IST_units=19.2, excess=3.2
-    // Entry: 16.0 → effectiveUsed = 16.0 + 3.2 (excess) = 19.2
-    // remaining = max(0, 19.2 - 19.2) = 0
+  it('remaining = 3.2 when IST>SOLL (bigger field needs more units)', () => {
     doc.getElementById('hektar').value = '10';
     doc.getElementById('ist_hektar').value = '12';
     doc.getElementById('koerner').value = '80000';
@@ -147,7 +145,7 @@ describe('IST<SOLL remaining display', () => {
     w.berechne();
     w.getActiveReiter().entries.push({ einheit: 16.0, zaehlerStand: 10, duenger: 0, time: '10:00' });
     w.renderResults();
-    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('0,0 Einheiten');
+    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('3,2 Einheiten');
   });
 
   /**
