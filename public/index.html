@@ -3032,8 +3032,8 @@ font-size: 0.75rem;
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       var co = getCarryover(state.activeReiter || 0);
-      var effectiveUsedE = usedEinheit + co.savedEinheit;
-      var effectiveUsedD = usedDuenger + co.savedDuenger;
+      var effectiveUsedE = usedEinheit;
+      var effectiveUsedD = usedDuenger;
       var istSum = getTabIstHektar(r);
       // If IST is set, use IST as the basis (the actual seeded area determines what was needed)
       var sollE = einheiten;
@@ -3514,7 +3514,6 @@ font-size: 0.75rem;
       // --- Summary across all tabs ---
       var totalHa = 0, totalEinheiten = 0, totalUsedEinheit = 0;
       var totalDuenger = 0, totalUsedDuenger = 0;
-      var totalCarryoverEinheit = 0, totalCarryoverDuenger = 0;
       reiter.forEach(function(r, idx) {
         if (r.hektar > 0 && r.koerner > 0) {
           var istSum = getTabIstHektar(r);
@@ -3527,19 +3526,16 @@ font-size: 0.75rem;
           totalDuenger += istSum > 0 ? tabIstD : tabSollD;
           totalUsedEinheit += r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
           totalUsedDuenger += r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-          var tabCo = getCarryover(idx);
-          totalCarryoverEinheit += tabCo.savedEinheit;
-          totalCarryoverDuenger += tabCo.savedDuenger;
         }
       });
       // Apply carryover: remaining = max(0, total - used - carryover)
-      var totalEinheitRem = Math.max(0, totalEinheiten - totalUsedEinheit - totalCarryoverEinheit);
-      var totalDuengerRem = Math.max(0, totalDuenger - totalUsedDuenger - totalCarryoverDuenger);
+      var totalEinheitRem = Math.max(0, totalEinheiten - totalUsedEinheit);
+      var totalDuengerRem = Math.max(0, totalDuenger - totalUsedDuenger);
       // Use carryover-adjusted used for percentage
       var totalPct = totalEinheiten > 0 || totalDuenger > 0
         ? Math.min(100, Math.round(Math.max(
-            totalEinheiten > 0 ? (totalUsedEinheit + totalCarryoverEinheit) / totalEinheiten : 0,
-            totalDuenger > 0 ? (totalUsedDuenger + totalCarryoverDuenger) / totalDuenger : 0
+            totalEinheiten > 0 ? totalUsedEinheit / totalEinheiten : 0,
+            totalDuenger > 0 ? totalUsedDuenger / totalDuenger : 0
           ) * 100))
         : 0;
 
@@ -3557,14 +3553,12 @@ font-size: 0.75rem;
             '<div class="dashboard-summary-value ' + (totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '') + '">' +
               (totalEinheiten > 0 ? fmt(totalEinheitRem) : '—') +
             '</div>' +
-            (totalCarryoverEinheit > 0 ? '<div class="dashboard-summary-excess">+ ' + fmt(totalCarryoverEinheit) + ' Überschuss</div>' : '') +
           '</div>' +
           '<div class="dashboard-summary-stat">' +
             '<div class="dashboard-summary-label">Dünger verbl.</div>' +
             '<div class="dashboard-summary-value ' + (totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '') + '">' +
               (totalDuenger > 0 ? totalDuengerRem.toLocaleString('de-DE') + ' kg' : '—') +
             '</div>' +
-            (totalCarryoverDuenger > 0 ? '<div class="dashboard-summary-excess">+ ' + totalCarryoverDuenger.toLocaleString('de-DE') + ' kg Überschuss</div>' : '') +
           '</div>' +
         '</div>' +
         '<div class="dashboard-progress-bar">' +
@@ -3634,8 +3628,8 @@ font-size: 0.75rem;
           duengerTotal = istSum > 0 ? getTabIstDuenger(r) : r.hektar * r.duenger;
           usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
           var tabCo = getCarryover(idx);
-          var einheitRem = Math.max(0, einheiten - usedEinheit - tabCo.savedEinheit);
-          var duengerRem = Math.max(0, duengerTotal - usedDuenger - tabCo.savedDuenger);
+          var einheitRem = Math.max(0, einheiten - usedEinheit);
+          var duengerRem = Math.max(0, duengerTotal - usedDuenger);
           var minFilled = Math.min(
             einheiten > 0 ? usedEinheit / einheiten : 1,
             duengerTotal > 0 ? usedDuenger / duengerTotal : 1
