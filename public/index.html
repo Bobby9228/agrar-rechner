@@ -3535,17 +3535,19 @@ font-size: 0.75rem;
             '<div class="dashboard-summary-label">Fläche</div>' +
             '<div class="dashboard-summary-value">' + (totalHa > 0 ? fmt(totalHa) + ' ha' : '—') + '</div>' +
           '</div>' +
-          '<div class="dashboard-summary-stat">' +
+'<div class="dashboard-summary-stat">' +
             '<div class="dashboard-summary-label">Einheiten verbl.</div>' +
             '<div class="dashboard-summary-value ' + (totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '') + '">' +
               (totalEinheiten > 0 ? fmt(totalEinheitRem) : '—') +
             '</div>' +
+            (totalCarryoverEinheit > 0 ? '<div class="dashboard-summary-excess">+ ' + fmt(totalCarryoverEinheit) + ' Überschuss</div>' : '') +
           '</div>' +
           '<div class="dashboard-summary-stat">' +
             '<div class="dashboard-summary-label">Dünger verbl.</div>' +
             '<div class="dashboard-summary-value ' + (totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '') + '">' +
               (totalDuenger > 0 ? totalDuengerRem.toLocaleString('de-DE') + ' kg' : '—') +
             '</div>' +
+            (totalCarryoverDuenger > 0 ? '<div class="dashboard-summary-excess">+ ' + totalCarryoverDuenger.toLocaleString('de-DE') + ' kg Überschuss</div>' : '') +
           '</div>' +
         '</div>' +
         '<div class="dashboard-progress-bar">' +
