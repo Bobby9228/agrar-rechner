@@ -128,9 +128,8 @@ describe('Variable koernerProEinheit — calculation impact', () => {
     w.berechne();
     w.getActiveReiter().entries.push({ einheit: 3.0, zaehlerStand: 3.75, duenger: 0, time: '09:00' });
     w.renderResults();
-    // remaining = max(0, IST - used) = max(0, 5.6 - 3.0) = 2.6
-    // (saved carryover is NOT subtracted from remaining — it's a separate indicator)
-    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('2,6 Einheiten');
+    // remaining = max(0, IST - used - saved) = max(0, 5.6 - 3.0 - 2.4) = 0.2
+    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('0,2 Einheiten');
   });
 
   // ── Changing koernerProEinheit after entries exist ──────────────────────

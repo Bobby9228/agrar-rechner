@@ -3032,8 +3032,8 @@ font-size: 0.75rem;
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       var co = getCarryover(state.activeReiter || 0);
-      var effectiveUsedE = usedEinheit;
-      var effectiveUsedD = usedDuenger;
+      var effectiveUsedE = usedEinheit + co.savedEinheit;
+      var effectiveUsedD = usedDuenger + co.savedDuenger;
       var istSum = getTabIstHektar(r);
       // If IST is set, use IST as the basis (the actual seeded area determines what was needed)
       var sollE = einheiten;
@@ -3512,30 +3512,33 @@ font-size: 0.75rem;
       container.innerHTML = '';
 
       // --- Summary across all tabs ---
-      var totalHa = 0, totalEinheiten = 0, totalUsedEinheit = 0;
-      var totalDuenger = 0, totalUsedDuenger = 0;
+      var totalHa = 0;
+      var totalEinheitRem = 0, totalDuengerRem = 0;
+      var totalEinheitenBasis = 0, totalEinheitenUsed = 0;
+      var totalDuengerBasis = 0, totalDuengerUsed = 0;
       reiter.forEach(function(r, idx) {
         if (r.hektar > 0 && r.koerner > 0) {
           var istSum = getTabIstHektar(r);
           totalHa += istSum > 0 ? istSum : r.hektar;
-          var tabSollE = getTabTotalEinheiten(r);
-          var tabSollD = r.hektar * r.duenger;
-          var tabIstE = istSum > 0 ? getTabIstEinheiten(r) : 0;
-          var tabIstD = istSum > 0 ? getTabIstDuenger(r) : 0;
-          totalEinheiten += istSum > 0 ? tabIstE : tabSollE;
-          totalDuenger += istSum > 0 ? tabIstD : tabSollD;
-          totalUsedEinheit += r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-          totalUsedDuenger += r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+          var basisE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
+          var basisD = istSum > 0 ? getTabIstDuenger(r) : r.hektar * r.duenger;
+          var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
+          var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
+          var tabCo = getCarryover(idx);
+          // Per-tab remaining = basis - used - saved (same logic as renderDrillSummary)
+          totalEinheitRem += Math.max(0, basisE - usedE - tabCo.savedEinheit);
+          totalDuengerRem += Math.max(0, basisD - usedD - tabCo.savedDuenger);
+          totalEinheitenBasis += basisE;
+          totalEinheitenUsed += usedE;
+          totalDuengerBasis += basisD;
+          totalDuengerUsed += usedD;
         }
       });
-      // Apply carryover: remaining = max(0, total - used - carryover)
-      var totalEinheitRem = Math.max(0, totalEinheiten - totalUsedEinheit);
-      var totalDuengerRem = Math.max(0, totalDuenger - totalUsedDuenger);
       // Use carryover-adjusted used for percentage
-      var totalPct = totalEinheiten > 0 || totalDuenger > 0
+      var totalPct = totalEinheitenBasis > 0 || totalDuengerBasis > 0
         ? Math.min(100, Math.round(Math.max(
-            totalEinheiten > 0 ? totalUsedEinheit / totalEinheiten : 0,
-            totalDuenger > 0 ? totalUsedDuenger / totalDuenger : 0
+            totalEinheitenBasis > 0 ? totalEinheitenUsed / totalEinheitenBasis : 0,
+            totalDuengerBasis > 0 ? totalDuengerUsed / totalDuengerBasis : 0
           ) * 100))
         : 0;
 
@@ -3551,13 +3554,13 @@ font-size: 0.75rem;
 '<div class="dashboard-summary-stat">' +
             '<div class="dashboard-summary-label">Einheiten verbl.</div>' +
             '<div class="dashboard-summary-value ' + (totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '') + '">' +
-              (totalEinheiten > 0 ? fmt(totalEinheitRem) : '—') +
+              (totalEinheitenBasis > 0 ? fmt(totalEinheitRem) : '—') +
             '</div>' +
           '</div>' +
           '<div class="dashboard-summary-stat">' +
             '<div class="dashboard-summary-label">Dünger verbl.</div>' +
             '<div class="dashboard-summary-value ' + (totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '') + '">' +
-              (totalDuenger > 0 ? totalDuengerRem.toLocaleString('de-DE') + ' kg' : '—') +
+              (totalDuengerBasis > 0 ? totalDuengerRem.toLocaleString('de-DE') + ' kg' : '—') +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -3628,8 +3631,8 @@ font-size: 0.75rem;
           duengerTotal = istSum > 0 ? getTabIstDuenger(r) : r.hektar * r.duenger;
           usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
           var tabCo = getCarryover(idx);
-          var einheitRem = Math.max(0, einheiten - usedEinheit);
-          var duengerRem = Math.max(0, duengerTotal - usedDuenger);
+          var einheitRem = Math.max(0, einheiten - usedEinheit - tabCo.savedEinheit);
+          var duengerRem = Math.max(0, duengerTotal - usedDuenger - tabCo.savedDuenger);
           var minFilled = Math.min(
             einheiten > 0 ? usedEinheit / einheiten : 1,
             duengerTotal > 0 ? usedDuenger / duengerTotal : 1
