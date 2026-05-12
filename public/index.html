@@ -3032,16 +3032,12 @@ font-size: 0.75rem;
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
       var co = getCarryover(state.activeReiter || 0);
-      var effectiveUsedE = usedEinheit + co.savedEinheit;
-      var effectiveUsedD = usedDuenger + co.savedDuenger;
+      var effectiveUsedE = usedEinheit;
+      var effectiveUsedD = usedDuenger;
       var istSum = getTabIstHektar(r);
       // If IST is set, use IST as the basis (the actual seeded area determines what was needed)
-      var sollE = einheiten;
-      var sollD = duengerTotal;
-      var istE = istSum > 0 ? getTabIstEinheiten(r) : 0;
-      var istD = istSum > 0 ? getTabIstDuenger(r) : 0;
-      var basisE = istSum > 0 ? istE : sollE;
-      var basisD = istSum > 0 ? istD : sollD;
+      var basisE = istSum > 0 ? getTabIstEinheiten(r) : einheiten;
+      var basisD = istSum > 0 ? getTabIstDuenger(r) : duengerTotal;
       var remEinheit = Math.max(0, basisE - effectiveUsedE);
       var remDuenger = Math.max(0, basisD - effectiveUsedD);
 
@@ -3525,9 +3521,9 @@ font-size: 0.75rem;
           var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
           var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
           var tabCo = getCarryover(idx);
-          // Per-tab remaining = basis - used - saved (same logic as renderDrillSummary)
-          totalEinheitRem += Math.max(0, basisE - usedE - tabCo.savedEinheit);
-          totalDuengerRem += Math.max(0, basisD - usedD - tabCo.savedDuenger);
+          // remaining = basis - used (no carryover subtraction — IST basis already reflects actual field size)
+          totalEinheitRem += Math.max(0, basisE - usedE);
+          totalDuengerRem += Math.max(0, basisD - usedD);
           totalEinheitenBasis += basisE;
           totalEinheitenUsed += usedE;
           totalDuengerBasis += basisD;
@@ -3631,8 +3627,8 @@ font-size: 0.75rem;
           duengerTotal = istSum > 0 ? getTabIstDuenger(r) : r.hektar * r.duenger;
           usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
           var tabCo = getCarryover(idx);
-          var einheitRem = Math.max(0, einheiten - usedEinheit - tabCo.savedEinheit);
-          var duengerRem = Math.max(0, duengerTotal - usedDuenger - tabCo.savedDuenger);
+          var einheitRem = Math.max(0, einheiten - usedEinheit);
+          var duengerRem = Math.max(0, duengerTotal - usedDuenger);
           var minFilled = Math.min(
             einheiten > 0 ? usedEinheit / einheiten : 1,
             duengerTotal > 0 ? usedDuenger / duengerTotal : 1
