@@ -3632,6 +3632,12 @@ font-size: 0.75rem;
         eStatVal.textContent = r.hektar > 0 && r.koerner > 0 ? fmt(einheitRem) : '—';
         eStat.appendChild(eStatLabel);
         eStat.appendChild(eStatVal);
+        if (tabCo && (tabCo.savedEinheit + tabCo.excessEinheit) > 0) {
+          var eExcess = document.createElement('div');
+          eExcess.className = 'dashboard-stat-excess';
+          eExcess.textContent = '+ ' + fmt(tabCo.savedEinheit + tabCo.excessEinheit) + ' Überschuss';
+          eStat.appendChild(eExcess);
+        }
         stats.appendChild(eStat);
 
         // Dünger verbleibend
@@ -3645,6 +3651,12 @@ font-size: 0.75rem;
         dStatVal.textContent = duengerTotal > 0 ? duengerRem.toLocaleString('de-DE') + ' kg' : '—';
         dStat.appendChild(dStatLabel);
         dStat.appendChild(dStatVal);
+        if (tabCo && (tabCo.savedDuenger + tabCo.excessDuenger) > 0) {
+          var dExcess = document.createElement('div');
+          dExcess.className = 'dashboard-stat-excess';
+          dExcess.textContent = '+ ' + (tabCo.savedDuenger + tabCo.excessDuenger).toLocaleString('de-DE') + ' kg Überschuss';
+          dStat.appendChild(dExcess);
+        }
         stats.appendChild(dStat);
 
         // Progress bar
