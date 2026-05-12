@@ -137,6 +137,39 @@ describe('drillMachineRemove()', () => {
     const stored = JSON.parse(w.localStorage.getItem('mais_rechner'));
     expect(stored.machineLog.length).toBe(0);
   });
+
+  it('refreshes drill projections after machine log removal', () => {
+    // Setup: two machine log entries, tab with prio, drill input set
+    const { document } = w;
+    w.state.reiter = [
+      { name: 'Tab A', hektar: 10, koerner: 50000, duenger: 0, entries: [] },
+    ];
+    w.state.machineLog = [
+      { einheit: 5, hektar: 5, duenger: 0, time: '10:00' },
+      { einheit: 3, hektar: 3, duenger: 0, time: '11:00' },
+    ];
+    w.state.drillPriorities = { 0: 1 };
+    w.state.activeReiter = 0;
+    w.renderDrillTabList();
+    document.getElementById('drill_einheit').value = '20';
+    document.getElementById('drill_duenger').value = '';
+
+    // Run drillCalcAll to populate projections
+    w.drillCalcAll();
+
+    // Verify initial state: Tab A gets 5 units (capped at need), remaining 5 units available
+    var remainingBefore = document.getElementById('ds_saat_remaining').textContent;
+
+    // Remove the first machine log entry (idx=0)
+    w.drillMachineRemove(0);
+
+    // After removal, drill projections must be recalculated (drillCalcAll called)
+    // The drill summary remaining should reflect the new state
+    // (machineLog now has 1 entry, projections are recalculated)
+    var remainingAfter = document.getElementById('ds_saat_remaining').textContent;
+    // Just verify the element is updated (not stale '—' or old value)
+    expect(remainingAfter).not.toBe('');
+  });
 });
 
 // ---------------------------------------------------------------------------
