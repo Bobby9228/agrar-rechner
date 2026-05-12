@@ -3031,9 +3031,6 @@ font-size: 0.75rem;
 
       var usedEinheit = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
       var usedDuenger = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-      var co = getCarryover(state.activeReiter || 0);
-      var effectiveUsedE = usedEinheit + co.savedEinheit;
-      var effectiveUsedD = usedDuenger + co.savedDuenger;
       var istSum = getTabIstHektar(r);
       // If IST is set, use IST as the basis (the actual seeded area determines what was needed)
       var sollE = einheiten;
@@ -3042,15 +3039,16 @@ font-size: 0.75rem;
       var istD = istSum > 0 ? getTabIstDuenger(r) : 0;
       var basisE = istSum > 0 ? istE : sollE;
       var basisD = istSum > 0 ? istD : sollD;
-      var remEinheit = Math.max(0, basisE - effectiveUsedE);
-      var remDuenger = Math.max(0, basisD - effectiveUsedD);
+      // remaining = max(0, basis - used) — no carryover subtraction
+      var remEinheit = Math.max(0, basisE - usedEinheit);
+      var remDuenger = Math.max(0, basisD - usedDuenger);
 
       var drillSection = document.getElementById('r_drill_section');
       if (drillSection) {
         var showDrill = einheiten > 0;
         drillSection.style.display = showDrill ? 'block' : 'none';
         if (showDrill) {
-          document.getElementById('r_drill_e_used').textContent = formatEinheit(effectiveUsedE);
+          document.getElementById('r_drill_e_used').textContent = formatEinheit(usedEinheit);
           var eRemRow = document.getElementById('r_drill_e_rem_row');
           var eRemVal = document.getElementById('r_drill_e_rem');
           eRemVal.textContent = formatEinheit(remEinheit);
@@ -3061,7 +3059,7 @@ font-size: 0.75rem;
           if (duengerTotal > 0) {
             dUsedRow.style.display = '';
             dRemRow.style.display = '';
-            document.getElementById('r_drill_d_used').textContent = fmt(effectiveUsedD) + ' kg';
+            document.getElementById('r_drill_d_used').textContent = fmt(usedDuenger) + ' kg';
             document.getElementById('r_drill_d_rem').textContent = fmt(remDuenger) + ' kg';
             dRemRow.className = 'result-row ' + (remDuenger <= 0.05 ? 'done' : 'remaining');
           } else {
