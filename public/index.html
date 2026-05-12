@@ -1731,7 +1731,6 @@ font-size: 0.75rem;
         span.className = 'tab-name';
         span.setAttribute('aria-label', 'Tab-Name');
         span.setAttribute('role', 'textbox');
-        span.setAttribute('tabindex', '0');
         span.textContent = r.name;
 
         // Doppelklick auf den Button → editierbar machen + Text markieren
@@ -1770,8 +1769,6 @@ font-size: 0.75rem;
           else if (evt.key === 'Escape') { evt.preventDefault(); span.textContent = r.name; span.blur(); }
           else { evt.stopPropagation(); }
         };
-        // mousedown auf span: verhindere, dass button onclick fired (nur editieren)
-        span.onmousedown = function(evt) { evt.stopPropagation(); };
 
         // --- Schließen-Button (nur anzeigen wenn mehr als 1 Tab existiert) ---
         if (state.reiter.length > 1) {
