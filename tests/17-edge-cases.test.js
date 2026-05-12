@@ -289,6 +289,41 @@ describe('resetActiveTab', () => {
   });
 });
 
+describe('resetActiveTab — UI state after reset', () => {
+  let w, doc;
+
+  beforeEach(() => {
+    var env = createDom();
+    w = env.window;
+    doc = w.document;
+  });
+
+  it('calls renderDrillSummary to clear stale drill summary', () => {
+    var callCount = 0;
+    var originalFn = w.renderDrillSummary;
+    w.renderDrillSummary = function() { callCount++; originalFn.call(w); };
+
+    w.state.reiter[0] = {
+      name: 'Tab 1', hektar: 10, koerner: 90000, duenger: 500, entries: []
+    };
+    w.state.drillPriorities = {};
+
+    w.resetActiveTab();
+
+    expect(callCount).toBe(1);
+    w.renderDrillSummary = originalFn;
+  });
+
+  it('clears drill section display after reset', () => {
+    doc.getElementById('drill_section').style.display = 'block';
+    expect(doc.getElementById('drill_section').style.display).toBe('block');
+
+    w.resetActiveTab();
+
+    expect(doc.getElementById('drill_section').style.display).toBe('none');
+  });
+});
+
 describe('confirmRemoveReiter', () => {
   let w;
   beforeEach(() => { w = createDom().window; });
