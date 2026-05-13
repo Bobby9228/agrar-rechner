@@ -1466,35 +1466,26 @@ font-size: 0.75rem;
   <!-- Main content start -->
   <script>
     // ============================================================================
-    // STATE — Zentrales Zustandsobjekt der gesamten App
-    // Wird nach jeder Änderung via saveState() in localStorage geschrieben (JSON).
-    // Struktur:
-    //   reiter[]     — Array von Feld-Tabs (jeder Tab = ein Feld mit eigenen Werten)
-    //   activeReiter — Index des aktuell ausgewählten Tabs
-    //   activeView   — 'protokoll' = Drill-Protokoll-Ansicht, sonst null (Feld-Ansicht)
-    //   fahrgassen*  — Fahrgassen-Korrektur (weniger Saatgut weil Gassen befahren)
-    //   einheitGroesse* — Anpassung der Körner-pro-Einheit (Standard: 50.000)
-    //   machineLog[] — Jede Maschinen-Befüllung (roh, unverteilt) für Prognose
+    // agrar-rechner — Modulare Architektur
+    //
+    // Früher: ~2172 Zeilen inline JS in index.html
+    // Jetzt: 4 Module + main.js
+    //
+    // Lade-Reihenfolge (wichtig!):
+    //   state.js → calculations.js → ui-handlers.js → rendering.js → main.js
+    //   state.js definiert: state, saveState(), loadState()
+    //   calculations.js braucht: state, _internal (von state.js)
+    //   ui-handlers.js braucht: state, calculations.js (getActiveReiter, etc.)
+    //   rendering.js braucht: state, ui-handlers.js (switchReiter, etc.), calculations.js
+    //   main.js: APP_VERSION, Event-Emitter, initTheme, initUI
     // ============================================================================
-    var state = {
-      reiter: [{
-        name:       'Tab 1',   // Anzeigename des Tabs (vom Nutzer änderbar)
-        hektar:     0,          // SOLL-Fläche in Hektar (geplant)
-        istHektar:  0,          // IST-Fläche in Hektar (tatsächlich bearbeitet)
-        koerner:    0,          // Aussaatstärke: Körner pro Hektar
-        duenger:    0,          // Düngermenge in kg/ha
-        entries:    []          // Drill-Protokoll-Einträge für diesen Tab
-      }],
-      activeReiter:   0,        // Welcher Tab gerade aktiv ist (Index in reiter[])
-      activeView:     null,     // 'protokoll' = Protokoll-Ansicht, sonst 'field'
-      fahrgassenEnabled: false, // Fahrgassen-Korrektur ein (true) / aus (false)
-      fahrgassenBreite:   0,   // Breite der Fahrgasse in Metern (z.B. 24 m)
-      einheitGroesseEnabled: false, // Benutzerdefinierte Einheiten-Größe aktiviert
-      koernerProEinheit:  50000, // Körner pro Saatgut-Einheit (Standard 50.000)
-      machineLog:    [],        // Globales Maschinen-Protokoll (alle Befüllungen)
-      drillPriorities: {},       // Tab-Prioritäten für Multi-Tab-Verteilung (persistiert)
-      iosInstallHintShown: false // iOS-Install-Banner wurde angezeigt
-    };
+  </script>
+  <script src="js/state.js"></script>
+  <script src="js/calculations.js"></script>
+  <script src="js/ui-handlers.js"></script>
+  <script src="js/rendering.js"></script>
+  <script src="js/main.js"></script>
+  <div class="version-footer" id="version_footer"></div>
 
     // --- iOS Safari Detection ---
     var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -3692,8 +3683,6 @@ font-size: 0.75rem;
       });
     }
   </script>
-  <div class="version-footer" id="version_footer"></div>
-
   <!-- Dashboard overlay + sheet -->
   <div class="dashboard-overlay" id="dashboard_overlay" onclick="closeDashboard()"></div>
   <div class="dashboard-sheet" id="dashboard_sheet">

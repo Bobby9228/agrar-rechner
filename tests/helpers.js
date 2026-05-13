@@ -1,5 +1,6 @@
 /**
  * Shared test helper — loads the Mais-Rechner JS into a jsdom instance.
+ * Works with the modular architecture: state.js, calculations.js, ui-handlers.js, rendering.js, main.js
  */
 import { JSDOM } from 'jsdom';
 import { readFileSync } from 'fs';
@@ -9,6 +10,12 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const htmlPath = resolve(__dirname, '../public/index.html');
 const htmlContent = readFileSync(htmlPath, 'utf-8');
+const jsDir = resolve(__dirname, '../public/js');
+
+function loadModule(name) {
+  try { return readFileSync(resolve(jsDir, name), 'utf-8'); }
+  catch { return ''; }
+}
 
 /**
  * Creates a fresh jsdom instance with the app's JS loaded.
@@ -17,12 +24,6 @@ const htmlContent = readFileSync(htmlPath, 'utf-8');
  * The DOMContentLoaded auto-init is removed so tests control init manually.
  */
 export function createDom() {
-  // Robust: case-insensitive + letztes <script>-Element (ignoriert HTML-Parsing-Edge-Cases)
-  const scriptAll = htmlContent.match(/<script>[\s\S]*?<\/script>/gi) || [];
-  const scriptBlock = scriptAll[scriptAll.length - 1] || '';
-  const scriptContent = scriptBlock.replace(/<\/?script>/gi, '');
-  if (!scriptContent) throw new Error('No <script> block found in index.html');
-
   const dom = new JSDOM(htmlContent, {
     runScripts: 'dangerously',
     pretendToBeVisual: true,
@@ -38,8 +39,19 @@ export function createDom() {
     clear: () => Object.keys(store).forEach(k => delete store[k]),
     get length() { return Object.keys(store).length; },
     key: (i) => Object.keys(store)[i] ?? null,
+    setItemListener: null,
   };
   Object.defineProperty(dom.window, 'localStorage', { value: ls, writable: true });
+  Object.defineProperty(dom.window, 'sessionStorage', { value: ls, writable: true });
+
+  // Mock window.matchMedia (MUST be set before eval — showIOSInstallHint uses it during initUI)
+  Object.defineProperty(dom.window, 'matchMedia', {
+    value: (q) => ({ matches: false, media: q, onchange: null, addListener: () => {}, removeListener: () => {} }),
+    writable: true,
+  });
+
+  // Mock window.navigator.standalone (iOS PWA detection)
+  Object.defineProperty(dom.window.navigator, 'standalone', { value: undefined, writable: true });
 
   // Mock serviceWorker
   Object.defineProperty(dom.window.navigator, 'serviceWorker', {
@@ -52,37 +64,35 @@ export function createDom() {
   tabAddBtn.className = 'tab-add';
   tabAddBtn.textContent = '+ Reiter';
   tabAddBtn.onclick = () => dom.window.addReiter();
-  dom.window.document.getElementById('tab_bar').appendChild(tabAddBtn);
+  const tabBar = dom.window.document.getElementById('tab_bar');
+  if (tabBar) tabBar.appendChild(tabAddBtn);
 
-  // Load the app JS (without DOMContentLoaded auto-init and without immediate initTheme call)
-  const script = scriptContent
-    .replace("document.addEventListener('DOMContentLoaded', initUI);", "")
-    .replace("initTheme();", "// initTheme() stubbed in tests");
-  dom.window.eval(script);
+  // Build combined script from modular JS files (skip the placeholder <script> comment block)
+  const moduleScript = [
+    'var _internal = { carryoverCache: null, drillCalcTimer: null, pendingKey: null };',
+    loadModule('state.js'),
+    loadModule('calculations.js'),
+    loadModule('ui-handlers.js'),
+    loadModule('rendering.js'),
+    // Remove DOMContentLoaded from main.js (auto-init doesn't work in jsdom)
+    loadModule('main.js').replace(
+      "document.addEventListener('DOMContentLoaded', initUI);",
+      ''
+    ),
+  ].join('\n');
 
-  // -------------------------------------------------------------------------
-  // Add DOM elements referenced by app code but absent from the static HTML.
-  // These enable tests that exercise those code paths to run correctly.
-  // -------------------------------------------------------------------------
-  const doc = dom.window.document;
-  const body = doc.body;
+  // Load the app JS
+  dom.window.eval(moduleScript);
 
-  function el(id, tag, attrs = {}) {
-    if (!doc.getElementById(id)) {
-      const e = doc.createElement(tag);
-      e.id = id;
-      Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
-      body.appendChild(e);
-    }
+  // Call initUI so the Core Subscriber is registered (app.onStateChange subscribers)
+  // This is safe since DOMContentLoaded never fires in jsdom
+  if (typeof dom.window.initUI === 'function') {
+    dom.window.initUI();
   }
 
-  // Theme elements
-  el('theme_toggle', 'button', { id: 'theme_toggle' });
-  if (doc.getElementById('theme_toggle')) doc.getElementById('theme_toggle').textContent = '🌙';
-
-  // Drill tab list (referenced by renderDrillTabList when switching to protokoll)
-  el('drill_tab_list', 'div', { id: 'drill_tab_list' });
-  el('drill_mask', 'div', { id: 'drill_mask' });
-
   return { dom, window: dom.window, store };
+}
+
+export function cleanup() {
+  // No-op — jsdom instances are garbage collected when references drop
 }
