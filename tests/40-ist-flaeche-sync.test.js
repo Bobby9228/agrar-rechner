@@ -183,4 +183,63 @@ describe('Issue #186: Ist-Fläche-Änderung synchronisiert Dashboard und Tab-Erg
       expect(r_einheiten.textContent).toContain('8');
     });
   });
+
+  // --- Issue #191: SOLL-Pfad (kein IST) muss Dünger in kg anzeigen ---
+
+  describe('Issue #191: SOLL-Pfad ohne IST zeigt Dünger in kg', () => {
+    it('r_duenger zeigt 1.500 kg für 10 ha × 150 kg/ha ohne IST', () => {
+      // Setup: 10 ha, 50000 Körner, 150 kg/ha Duenger, KEIN IST
+      var r0 = w.state.reiter[0];
+      r0.hektar = 10;
+      r0.koerner = 50000;
+      r0.duenger = 150;
+      r0.istHektar = 0;
+      r0.entries = [];
+      w.renderResults();
+      // 10 × 150 = 1500 kg (nicht 30, nicht 50)
+      var r_duenger = doc.getElementById('r_duenger');
+      expect(r_duenger.textContent).toContain('1.500 kg');
+      expect(r_duenger.textContent).not.toContain('30 kg');
+    });
+
+    it('r_info zeigt kg-Dünger korrekt im SOLL-Pfad', () => {
+      var r0 = w.state.reiter[0];
+      r0.hektar = 10;
+      r0.koerner = 50000;
+      r0.duenger = 150;
+      r0.istHektar = 0;
+      r0.entries = [];
+      w.renderResults();
+      var r_info = doc.getElementById('r_info');
+      expect(r_info.textContent).toContain('1.500 kg Dünger');
+    });
+
+    it('Dashboard Per-Tab-Karte zeigt 1.500 kg Dünger im SOLL-Pfad', () => {
+      var r0 = w.state.reiter[0];
+      r0.hektar = 10;
+      r0.koerner = 50000;
+      r0.duenger = 150;
+      r0.istHektar = 0;
+      r0.entries = [];
+      w.openDashboard();
+      var cards = doc.querySelectorAll('.dashboard-reiter-card');
+      var values = cards[0].querySelectorAll('.dashboard-stat-value');
+      // 0: Hektar, 1: Körner/ha, 2: Einheiten verbl., 3: Dünger verbl.
+      expect(values[3].textContent).toContain('1.500 kg');
+    });
+
+    it('Dashboard Summary zeigt aggregierte 1.500 kg Dünger im SOLL-Pfad', () => {
+      var r0 = w.state.reiter[0];
+      r0.hektar = 10;
+      r0.koerner = 50000;
+      r0.duenger = 150;
+      r0.istHektar = 0;
+      r0.entries = [];
+      w.openDashboard();
+      var dashContent = doc.getElementById('dashboard_content');
+      var stats = dashContent.querySelectorAll('.dashboard-summary-stat .dashboard-summary-value');
+      // 0: Fläche, 1: Einheiten verbl., 2: Dünger verbl.
+      expect(stats[2].textContent).toContain('1.500 kg');
+    });
+  });
 });

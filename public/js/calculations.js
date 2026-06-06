@@ -49,11 +49,15 @@
 
     // --- Dünger-Berechnung (SOLL) ---
 
-    // Berechnet Düngermenge in Einheiten (1 Einheit = 50kg).
-    // Formel: duenger (kg/ha) × hektar / 50
+    // Berechnet Düngermenge in kg (kg/ha × ha = kg).
+    // Formel: r.hektar * r.duenger
+    // Issue #191: Vorherige Version dividierte fälschlich durch 50
+    // (aus der "1 Einheit = 50 kg" Annahme), was zu 50× zu kleinen kg-Werten
+    // im SOLL-Pfad führte. Aufrufer hängen ' kg' an den Wert — die Funktion
+    // muss kg liefern. Konsistent mit getTabIstDuenger (PR #190).
     function getTotalDuenger(r) {
       if (!r || !r.hektar || !r.duenger) return 0;
-      return Math.max(0, (r.hektar * r.duenger) / 50);
+      return Math.max(0, r.hektar * r.duenger);
     }
 
     function getTabTotalDuenger(r) {
