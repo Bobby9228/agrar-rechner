@@ -371,6 +371,19 @@
       return getTabKornerGesamt(getActiveReiter());
     }
 
+    // Issue #186: Diese Wrapper schließen die Lücke zwischen calculations.js
+    // (das nur getTabTotalEinheiten(r) etc. exportiert) und rendering.js
+    // (das getTotalEinheiten() ohne Argument aufruft).
+    // WICHTIG: Andere Namen als in calculations.js, um die Funktion
+    // getTotalEinheiten(r, koernerProEinheit) dort nicht zu überschreiben.
+    function getActiveTotalEinheiten() {
+      return getTabTotalEinheiten(getActiveReiter());
+    }
+
+    function getActiveTotalDuenger() {
+      return getTabTotalDuenger(getActiveReiter());
+    }
+
     // --- Helpers ---
 
     function getActiveReiter() {

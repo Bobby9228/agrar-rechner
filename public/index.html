@@ -1266,16 +1266,16 @@ font-size: 0.75rem;
       <h2>📐 Fläche & Aussaatstärke</h2>
       <div class="field">
         <label for="hektar">Hektar (SOLL)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="hektar" placeholder="z.B. 12,5" maxlength="8" oninput="onInputFormat(this, 'decimal', event)">
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="hektar" placeholder="z.B. 12,5" maxlength="8" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputHektar(this)" onblur="onInputHektar(this)">
         <div class="error-msg" id="err_hektar"></div>
       </div>
       <div class="field">
         <label for="ist_hektar">IST-Fläche (ha)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal', event)">
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputIstHektar(this)" onblur="onInputIstHektar(this)">
       </div>
       <div class="field">
         <label for="koerner">Körner pro Hektar</label>
-        <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" maxlength="8" oninput="onInputFormat(this, 'integer', event)">
+        <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" maxlength="8" oninput="onInputFormat(this, 'integer', event)" onchange="onInputKoerner(this)" onblur="onInputKoerner(this)">
         <div class="unit">üblich: 80.000 – 100.000</div>
         <div class="error-msg" id="err_koerner"></div>
       </div>
@@ -1298,7 +1298,7 @@ font-size: 0.75rem;
       <h2>🧪 Dünger</h2>
       <div class="field">
         <label for="duenger">Dünger (kg/ha)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal', event)">
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputDuenger(this)" onblur="onInputDuenger(this)">
       </div>
 
       <div class="fahrgassen-toggle">
