@@ -60,10 +60,13 @@
       return getTotalDuenger(r);
     }
 
-    // Berechnet IST-Dünger basierend auf istHektar.
+    // Berechnet IST-Dünger (kg) basierend auf istHektar.
+    // Formel: r.istHektar * r.duenger (kg/ha) → kg total.
+    // Issue #186: Vorherige Version dividierte fälschlich durch 50
+    // (aus der "1 Einheit = 50 kg" Annahme), was zu falschen kg-Werten führte.
     function getTabIstDuenger(r) {
       if (!r || !r.istHektar || !r.duenger) return 0;
-      return Math.max(0, (r.istHektar * r.duenger) / 50);
+      return Math.max(0, r.istHektar * r.duenger);
     }
 
     // --- Carryover-Berechnung ---
@@ -244,10 +247,15 @@
       return last ? (last.time || 0) : 0;
     }
 
-    // Liefert die IST-Hektar-Summe aus allen Entries (oder 0 wenn keine IST-Einträge).
-    // Nur Entries mit expliziter istHektar werden gezählt.
+    // Liefert die IST-Hektar-Summe für einen Tab.
+    // Priorität: Direktes r.istHektar (vom Input-Feld) > Summe aus Entries.
+    // Issue #186: Das Input-Feld #ist_hektar schreibt via onInputIstHektar in
+    // r.istHektar. Wenn das gesetzt ist, IST es die maßgebliche Quelle — nicht
+    // die Summe aus entries[].istHektar (die nur ein Legacy-Snapshot ist).
     function getTabIstHektar(r) {
-      if (!r || !r.entries) return 0;
+      if (!r) return 0;
+      if (r.istHektar && r.istHektar > 0) return r.istHektar;
+      if (!r.entries) return 0;
       return r.entries.reduce(function(s, e) { return s + (e.istHektar || 0); }, 0);
     }
 
