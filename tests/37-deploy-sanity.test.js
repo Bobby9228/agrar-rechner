@@ -85,17 +85,19 @@ describe('Cloudflare deploy sanity', () => {
   });
 
   // Issue #176: user-select: none prevents native selection context menu on tap/long-press
-  it('index.html applies user-select: none to prevent text selection on mobile', () => {
-    const indexPath = resolve(publicDir, 'index.html');
-    const content = readFileSync(indexPath, 'utf-8');
+  it('styles.css applies user-select: none to prevent text selection on mobile', () => {
+    // Seit Issue #208: CSS ist nach public/css/styles.css extrahiert.
+    const cssPath = resolve(publicDir, 'css', 'styles.css');
+    const content = readFileSync(cssPath, 'utf-8');
     // Global * selector must include -webkit-user-select: none and user-select: none
     expect(content).toMatch(/\*\s*\{[^}]*-webkit-user-select:\s*none/);
     expect(content).toMatch(/\*\s*\{[^}]*user-select:\s*none/);
   });
 
-  it('index.html re-enables user-select: auto on input and textarea', () => {
-    const indexPath = resolve(publicDir, 'index.html');
-    const content = readFileSync(indexPath, 'utf-8');
+  it('styles.css re-enables user-select: auto on input and textarea', () => {
+    // Seit Issue #208: CSS ist nach public/css/styles.css extrahiert.
+    const cssPath = resolve(publicDir, 'css', 'styles.css');
+    const content = readFileSync(cssPath, 'utf-8');
     // Inputs must re-enable user-select so users can edit values
     expect(content).toMatch(/input\s*,\s*textarea\s*\{[^}]*-webkit-user-select:\s*auto/);
     expect(content).toMatch(/input\s*,\s*textarea\s*\{[^}]*user-select:\s*auto/);
