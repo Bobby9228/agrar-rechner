@@ -232,24 +232,28 @@
         }
       }
       if (carryoverHint) {
-        carryoverHint.innerHTML = '';
+        while (carryoverHint.firstChild) carryoverHint.removeChild(carryoverHint.firstChild);
         var activeIdx = state.activeReiter || 0;
         var co = getCarryover(activeIdx);
-        var coHtml = '';
         if (co.savedEinheit > 0.05 || co.savedDuenger > 0.05) {
           var parts = [];
           if (co.savedEinheit > 0.05) parts.push(fmt(co.savedEinheit) + ' Einheiten');
           if (co.savedDuenger > 0.05) parts.push(fmt(co.savedDuenger) + ' kg Dünger');
-          coHtml += '<span class="carryover-hint">Übertrag aus ersparten Flächen: +' + parts.join(', ') + '</span>';
+          var savedSpan = document.createElement('span');
+          savedSpan.className = 'carryover-hint';
+          savedSpan.textContent = 'Übertrag aus ersparten Flächen: +' + parts.join(', ');
+          carryoverHint.appendChild(savedSpan);
         }
         if (co.excessEinheit > 0.05 || co.excessDuenger > 0.05) {
           var eparts = [];
           if (co.excessEinheit > 0.05) eparts.push(fmt(co.excessEinheit) + ' Einheiten');
           if (co.excessDuenger > 0.05) eparts.push(fmt(co.excessDuenger) + ' kg Dünger');
-          if (coHtml) coHtml += '<br>';
-          coHtml += '<span class="excess-hint">Mehrbedarf aus überschrittenen Flächen: -' + eparts.join(', ') + '</span>';
+          if (carryoverHint.firstChild) carryoverHint.appendChild(document.createElement('br'));
+          var excessSpan = document.createElement('span');
+          excessSpan.className = 'excess-hint';
+          excessSpan.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eparts.join(', ');
+          carryoverHint.appendChild(excessSpan);
         }
-        carryoverHint.innerHTML = coHtml;
       }
     }
 
@@ -315,8 +319,14 @@
         var row = document.createElement('div');
         row.className = 'drill-log-entry';
         var time = entry.time ? new Date(entry.time).toLocaleString('de-DE') : '—';
-        row.innerHTML = '<span class="dl-time">' + time + '</span>' +
-          '<span class="dl-data">' + fmt(entry.einheit || 0) + ' Einheiten, ' + fmt(entry.duenger || 0) + ' kg Dünger</span>';
+        var timeSpan = document.createElement('span');
+        timeSpan.className = 'dl-time';
+        timeSpan.textContent = time;
+        row.appendChild(timeSpan);
+        var dataSpan = document.createElement('span');
+        dataSpan.className = 'dl-data';
+        dataSpan.textContent = fmt(entry.einheit || 0) + ' Einheiten, ' + fmt(entry.duenger || 0) + ' kg Dünger';
+        row.appendChild(dataSpan);
         var removeBtn = document.createElement('button');
         removeBtn.className = 'dl-remove';
         removeBtn.textContent = '✕';
@@ -364,7 +374,10 @@
       if (!container) return;
       var reiter = state.reiter;
       if (reiter.length === 0) {
-        container.innerHTML = '<div class="dashboard-empty">Keine Tabs vorhanden</div>';
+        var emptyDiv = document.createElement('div');
+        emptyDiv.className = 'dashboard-empty';
+        emptyDiv.textContent = 'Keine Tabs vorhanden';
+        container.appendChild(emptyDiv);
         return;
       }
       container.innerHTML = '';
@@ -400,29 +413,42 @@
 
       var summaryCard = document.createElement('div');
       summaryCard.className = 'dashboard-summary';
-      summaryCard.innerHTML =
-        '<div class="dashboard-summary-title">📊 Zusammenfassung</div>' +
-        '<div class="dashboard-summary-stats">' +
-          '<div class="dashboard-summary-stat">' +
-            '<div class="dashboard-summary-label">Fläche</div>' +
-            '<div class="dashboard-summary-value">' + (totalHa > 0 ? fmt(totalHa) + ' ha' : '—') + '</div>' +
-          '</div>' +
-          '<div class="dashboard-summary-stat">' +
-            '<div class="dashboard-summary-label">Einheiten verbl.</div>' +
-            '<div class="dashboard-summary-value ' + (totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '') + '">' +
-              (totalEinheitenBasis > 0 ? fmt(totalEinheitRem) : '—') +
-            '</div>' +
-          '</div>' +
-          '<div class="dashboard-summary-stat">' +
-            '<div class="dashboard-summary-label">Dünger verbl.</div>' +
-            '<div class="dashboard-summary-value ' + (totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '') + '">' +
-              (totalDuengerBasis > 0 ? totalDuengerRem.toLocaleString('de-DE') + ' kg' : '—') +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="dashboard-progress-bar">' +
-          '<div class="dashboard-progress-fill" style="width:' + totalPct + '%"></div>' +
-        '</div>';
+
+      var sTitle = document.createElement('div');
+      sTitle.className = 'dashboard-summary-title';
+      sTitle.textContent = '📊 Zusammenfassung';
+      summaryCard.appendChild(sTitle);
+
+      var sStats = document.createElement('div');
+      sStats.className = 'dashboard-summary-stats';
+
+      function makeSummaryStat(label, value, valueClass) {
+        var stat = document.createElement('div');
+        stat.className = 'dashboard-summary-stat';
+        var lbl = document.createElement('div');
+        lbl.className = 'dashboard-summary-label';
+        lbl.textContent = label;
+        var val = document.createElement('div');
+        val.className = 'dashboard-summary-value' + (valueClass ? ' ' + valueClass : '');
+        val.textContent = value;
+        stat.appendChild(lbl);
+        stat.appendChild(val);
+        return stat;
+      }
+
+      var pctClass = totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '';
+      sStats.appendChild(makeSummaryStat('Fläche', totalHa > 0 ? fmt(totalHa) + ' ha' : '—'));
+      sStats.appendChild(makeSummaryStat('Einheiten verbl.', totalEinheitenBasis > 0 ? fmt(totalEinheitRem) : '—', pctClass));
+      sStats.appendChild(makeSummaryStat('Dünger verbl.', totalDuengerBasis > 0 ? totalDuengerRem.toLocaleString('de-DE') + ' kg' : '—', pctClass));
+      summaryCard.appendChild(sStats);
+
+      var pBar = document.createElement('div');
+      pBar.className = 'dashboard-progress-bar';
+      var pFill = document.createElement('div');
+      pFill.className = 'dashboard-progress-fill';
+      pFill.style.width = totalPct + '%';
+      pBar.appendChild(pFill);
+      summaryCard.appendChild(pBar);
       container.appendChild(summaryCard);
 
       // --- Per-tab cards ---
