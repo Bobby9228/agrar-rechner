@@ -64,12 +64,15 @@
 
     function fahrgassenToggle() {
       state.fahrgassenEnabled = !state.fahrgassenEnabled;
+      var btn = document.getElementById('fahrgassen_toggle');
       if (state.fahrgassenEnabled) {
         document.getElementById('fahrgassen_settings').classList.add('open');
-        document.getElementById('fahrgassen_toggle').classList.add('active');
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
       } else {
         document.getElementById('fahrgassen_settings').classList.remove('open');
-        document.getElementById('fahrgassen_toggle').classList.remove('active');
+        btn.classList.remove('active');
+        btn.setAttribute('aria-pressed', 'false');
         state.fahrgassenBreite = 0;
       }
       appEmit('SETTINGS_CHANGED', { setting: 'fahrgassenEnabled' });
@@ -94,12 +97,15 @@
 
     function einheitGroesseToggle() {
       state.einheitGroesseEnabled = !state.einheitGroesseEnabled;
+      var btn = document.getElementById('einheit_groesse_toggle');
       if (state.einheitGroesseEnabled) {
         document.getElementById('einheit_groesse_settings').classList.add('open');
-        document.getElementById('einheit_groesse_toggle').classList.add('active');
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
       } else {
         document.getElementById('einheit_groesse_settings').classList.remove('open');
-        document.getElementById('einheit_groesse_toggle').classList.remove('active');
+        btn.classList.remove('active');
+        btn.setAttribute('aria-pressed', 'false');
         state.koernerProEinheit = 50000;
       }
       appEmit('SETTINGS_CHANGED', { setting: 'einheitGroesseEnabled' });
@@ -155,10 +161,12 @@
       document.getElementById('results').style.display = 'none';
       document.getElementById('drill_section').style.display = 'none';
       document.getElementById('fahrgassen_toggle').classList.remove('active');
+      document.getElementById('fahrgassen_toggle').setAttribute('aria-pressed', 'false');
       document.getElementById('fahrgassen_settings').classList.remove('open');
       document.getElementById('fahrgassen_breite').value = '';
       document.getElementById('fahrgassen_saved').textContent = '';
       document.getElementById('einheit_groesse_toggle').classList.remove('active');
+      document.getElementById('einheit_groesse_toggle').setAttribute('aria-pressed', 'false');
       document.getElementById('einheit_groesse_settings').classList.remove('open');
       document.getElementById('koerner_pro_einheit').value = '';
       document.getElementById('einheit_groesse_saved').textContent = '';
