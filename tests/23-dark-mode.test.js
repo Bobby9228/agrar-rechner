@@ -1,5 +1,6 @@
 /**
  * Test 23: Dark mode — getStoredTheme, setStoredTheme, applyTheme, toggleTheme, initTheme
+ * Hinweis: Theme-Key ist 'theme' (Phase 3 Migration _lv:4 vereinheitlicht den Key).
  */
 import { describe, it, expect, vi } from 'vitest';
 import { createDom } from './helpers.js';
@@ -12,13 +13,13 @@ describe('getStoredTheme', () => {
 
   it('returns stored theme value', () => {
     const { window: w, store } = createDom();
-    store['mais_rechner_theme'] = 'dark';
+    store['theme'] = 'dark';
     expect(w.getStoredTheme()).toBe('dark');
   });
 
   it('returns light theme when stored', () => {
     const { window: w, store } = createDom();
-    store['mais_rechner_theme'] = 'light';
+    store['theme'] = 'light';
     expect(w.getStoredTheme()).toBe('light');
   });
 });
@@ -27,20 +28,20 @@ describe('setStoredTheme', () => {
   it('stores dark theme in localStorage', () => {
     const { window: w, store } = createDom();
     w.setStoredTheme('dark');
-    expect(store['mais_rechner_theme']).toBe('dark');
+    expect(store['theme']).toBe('dark');
   });
 
   it('stores light theme in localStorage', () => {
     const { window: w, store } = createDom();
     w.setStoredTheme('light');
-    expect(store['mais_rechner_theme']).toBe('light');
+    expect(store['theme']).toBe('light');
   });
 
   it('overwrites previous theme', () => {
     const { window: w, store } = createDom();
     w.setStoredTheme('dark');
     w.setStoredTheme('light');
-    expect(store['mais_rechner_theme']).toBe('light');
+    expect(store['theme']).toBe('light');
   });
 });
 
@@ -93,7 +94,7 @@ describe('toggleTheme', () => {
     w.toggleTheme();
 
     expect(w.document.documentElement.classList.contains('dark')).toBe(true);
-    expect(store['mais_rechner_theme']).toBe('dark');
+    expect(store['theme']).toBe('dark');
   });
 
   it('switches from dark to light', () => {
@@ -102,21 +103,21 @@ describe('toggleTheme', () => {
     w.toggleTheme();
 
     expect(w.document.documentElement.classList.contains('dark')).toBe(false);
-    expect(store['mais_rechner_theme']).toBe('light');
+    expect(store['theme']).toBe('light');
   });
 });
 
 describe('initTheme', () => {
   it('applies dark when stored theme is dark', () => {
     const { window: w, store } = createDom();
-    store['mais_rechner_theme'] = 'dark';
+    store['theme'] = 'dark';
     w.initTheme();
     expect(w.document.documentElement.classList.contains('dark')).toBe(true);
   });
 
   it('applies light when stored theme is light', () => {
     const { window: w, store } = createDom();
-    store['mais_rechner_theme'] = 'light';
+    store['theme'] = 'light';
     w.initTheme();
     expect(w.document.documentElement.classList.contains('dark')).toBe(false);
   });

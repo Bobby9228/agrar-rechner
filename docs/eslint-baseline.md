@@ -27,7 +27,8 @@ pnpm test  →  345 fail / 358 pass (703 Tests)
 | `no-useless-assignment` |  4 | warn    | nein      |
 | `no-console`       |     3  | warn     | nein      |
 | `no-alert`         |     1  | warn     | nein      |
-| **Gesamt**         | **5 091** (841 Errors / 4 250 Warnings) | | 4 651 auto-fixbar |
+| **Gesamt**         | **5 203** (887 Errors / 4 316 Warnings) | | 4 735 auto-fixbar |
+| _Phase 2 Baseline_ | _5 091 (841 / 4 250) — Phase 3 fügte +46 Errors / +66 Warnings durch neue Module_ | | |
 
 ## Beobachtungen
 

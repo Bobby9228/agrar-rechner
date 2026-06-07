@@ -285,3 +285,20 @@ function getTabNextTime(r) {
       }
       return k * (1 - fahrgassenFaktor);
     }
+
+    // Berechnet Verbrauchsraten (Einheiten/ha, Dünger/ha) für einen bestimmten Tab.
+    // (portiert aus Inline-Code Z. 2349-2359)
+    // Argumente:
+    //   tabIdx — Index in state.reiter
+    // Rückgabe: { unitsPerHa, duengerPerHa }
+    function getTabRates(tabIdx) {
+      var r = state.reiter[tabIdx];
+      if (!r) return { unitsPerHa: 0, duengerPerHa: 0 };
+      var fgFactor = 1;
+      if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
+        fgFactor = (state.fahrgassenBreite - 1) / state.fahrgassenBreite;
+      }
+      var unitsPerHa = r.koerner * fgFactor / state.koernerProEinheit;
+      var duengerPerHa = r.duenger || 0;
+      return { unitsPerHa: unitsPerHa, duengerPerHa: duengerPerHa };
+    }

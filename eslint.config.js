@@ -60,6 +60,13 @@ export default [
                 process: "readonly",
                 global: "readonly",
                 globalThis: "readonly",
+                // Modul-globals (Phase 3 — in js und tests sichtbar)
+                APP_VERSION: "readonly",
+                APP_BUILD_DATE: "readonly",
+                UPDATE_CHANGELOG: "readonly",
+                isIOS: "writable",
+                isStandalone: "writable",
+                _pendingKey: "writable",
             },
         },
         rules: {
