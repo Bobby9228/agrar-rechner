@@ -167,6 +167,21 @@
       saveState();
     }
 
+    // confirmResetAll(fullReset) — Bestätigungsdialog, ruft resetActiveTab() oder resetAll()
+    // fullReset=false → nur aktuellen Tab zurücksetzen
+    // fullReset=true  → ALLE Daten zurücksetzen (alle Tabs, Einstellungen, machineLog)
+    // Portiert aus Inline-Code Z. 3266-3276 (vor Phase 5 Inline-Entfernung).
+    function confirmResetAll(fullReset) {
+      var tabName = state.reiter[state.activeReiter].name;
+      if (fullReset) {
+        if (!confirm('Wirklich ALLE Daten zurücksetzen?\n\nAlle Tabs, Einträge und Einstellungen werden gelöscht.')) return;
+        resetAll();
+      } else {
+        if (!confirm('Wirklich zurücksetzen?\n\nAlle Eingaben für "' + tabName + '" werden gelöscht.')) return;
+        resetActiveTab();
+      }
+    }
+
     // --- Drill Protocol ---
 
     function drillAdd() {
@@ -261,7 +276,6 @@
     }
 
     function drillCalcAll() {
-      invalidateCarryoverCache();
       renderDrillTabList();
       renderDrillSummary();
       renderResults();
@@ -369,6 +383,121 @@
     // getTabKornerGesamt is in calculations.js; getActiveReiter is in ui-handlers.js
     function getKornerGesamt() {
       return getTabKornerGesamt(getActiveReiter());
+    }
+
+    // Issue #186: Diese Wrapper schließen die Lücke zwischen calculations.js
+    // (das nur getTabTotalEinheiten(r) etc. exportiert) und rendering.js
+    // (das getTotalEinheiten() ohne Argument aufruft).
+    // WICHTIG: Andere Namen als in calculations.js, um die Funktion
+    // getTotalEinheiten(r, koernerProEinheit) dort nicht zu überschreiben.
+    function getActiveTotalEinheiten() {
+      return getTabTotalEinheiten(getActiveReiter());
+    }
+
+    function getActiveTotalDuenger() {
+      return getTabTotalDuenger(getActiveReiter());
+    }
+
+    // --- Input Formatierung (portiert aus Inline-Code Z. 2438-2546) ---
+    //
+    // Bereinigt Benutzereingaben während des Tippens.
+    //
+    // Modus 'integer': Nur Ziffern erlaubt (für Körner/ha).
+    // Modus 'decimal': Ziffern + maximal ein Komma (für Hektar, Dünger).
+    //
+    // Auto-Komma-Erkennung: Manche Android-Tastaturen fügen automatisch
+    // ein Komma ein – teils im selben input-Event wie die Ziffer, teils
+    // in einem zweiten separaten Reformatierungs-Event (2-Pass-Verhalten).
+    // Das keydown-Zähler-Heuristik scheitert beim 2-Pass-Fall, weil `prev`
+    // nach dem ersten Event bereits die Ziffer enthält.
+    //
+    // Lösung: InputEvent.data als primäres Signal nutzen.
+    //   e.data === ',' oder '.'  → User hat Dezimaltaste gedrückt → Komma behalten
+    //   e.data = Ziffer / null   → Auto-Insert oder Reformatierung   → Komma entfernen
+    //   Kein e / kein e.data     → Fallback auf _pendingKey (physische Tastatur)
+    //
+    // Beispiel decimal: '12..5' → '12,5' (Punkt→Komma, zweiter Punkt entfernt)
+    //                  '12,5,5' → '12,5' (nur erstes Komma bleibt)
+    function onInputFormat(el, mode, e) {
+      var val = el.value;
+      if (!val) { el.dataset.prev = ''; el.dataset.cleaned = ''; return; }
+      var prev = el.dataset.prev || '';
+      var cleaned;
+      if (mode === 'integer') {
+        // Nur Ziffern
+        cleaned = val.replace(/[^\d]/g, '');
+      } else {
+        // Dezimal: Ziffern + ein Komma maximal
+        // iOS mit englischer Tastatur: inputmode="decimal" liefert '.' statt ','.
+        // Nur den ersten Punkt in ein Komma umwandeln, wenn noch kein Komma
+        // vorhanden ist (sonst wäre es ein Tausenderpunkt in "1.234,5").
+        var hasComma = val.indexOf(',') !== -1;
+        if (!hasComma) {
+          var firstDot = val.indexOf('.');
+          if (firstDot > -1) {
+            val = val.substring(0, firstDot) + ',' + val.substring(firstDot + 1);
+          }
+        }
+        // Auto-Komma-Erkennung:
+        // Wenn ein neues Komma auftaucht, prüfen ob der User es absichtlich
+        // getippt hat.
+        //
+        // Strategie (Priorität absteigend):
+        // 1. InputEvent.data vorhanden und nicht leer → zuverlässigstes Signal:
+        //    data === ',' oder '.'  → User-Dezimaltaste        → Komma behalten
+        //    data = Ziffer o.Ä.    → Auto-Insert (Android)     → Komma entfernen
+        // 2. e.inputType = Komposition/Ersetzung → Android 2-Pass-Reformatierung → entfernen
+        // 3. Kein e.data (Tests, ältere Browser): Fallback _pendingKey + Ziffernvergleich
+        if (prev.indexOf(',') === -1 && val.indexOf(',') > 0) {
+          var eventData = e ? e.data : undefined;
+          var isDecimalInput;
+          if (eventData !== null && eventData !== undefined && eventData !== '') {
+            // InputEvent.data vorhanden: Dezimalseparator = User-Absicht, sonst Auto-Insert
+            isDecimalInput = (eventData === ',' || eventData === '.');
+          } else if (e && (e.inputType === 'insertCompositionText' || e.inputType === 'insertReplacementText')) {
+            // Android 2-Pass-Reformatierung: Komma wurde nachträglich eingefügt → entfernen
+            isDecimalInput = false;
+          } else {
+            // Kein e.data (Testumgebung, alte Browser): Fallback auf _pendingKey + Ziffernvergleich
+            var key = _pendingKey;
+            var isDecimalKey = (key === ',' || key === '.' || key === 'Decimal' || key === 'Comma');
+            if (isDecimalKey) {
+              isDecimalInput = true;
+            } else if (key !== null && key !== 'Unidentified') {
+              // Bekannte Nicht-Komma-Taste → Auto-Insert → entfernen
+              isDecimalInput = false;
+            } else {
+              // null oder Unidentified: wenn genau 1 neue Ziffer + Komma im selben Event → Auto-Insert
+              var withoutComma = val.replace(',', '');
+              isDecimalInput = (withoutComma.length !== prev.length + 1);
+            }
+          }
+          if (!isDecimalInput) {
+            val = val.replace(',', '');
+          }
+        }
+        cleaned = val.replace(/[^\d,]/g, '');
+        // Nur das erste Komma behalten, Rest abschneiden
+        var parts = cleaned.split(',');
+        cleaned = parts[0] + (parts[1] !== undefined ? ',' + parts[1] : '');
+      }
+      el.dataset.prev = cleaned;
+      el.dataset.cleaned = cleaned;
+      if (el.value !== cleaned) {
+        // Cursorposition proportional merken, damit Editierung in der Mitte nicht ans Ende springt
+        var oldLen = el.value.length;
+        var selStart = el.selectionStart;
+        el.value = cleaned;
+        var newPos;
+        if (selStart === oldLen) {
+          // Cursor war am Ende → am Ende bleiben
+          newPos = cleaned.length;
+        } else {
+          // Cursor war in der Mitte → proportional anpassen
+          newPos = Math.round(selStart * cleaned.length / oldLen);
+        }
+        el.setSelectionRange(newPos, newPos);
+      }
     }
 
     // --- Helpers ---

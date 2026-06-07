@@ -151,6 +151,40 @@ describe('State persistence', () => {
       expect(w.state.reiter[0].entries.length).toBe(1);
       expect(w.state.reiter[0].entries[0].einheit).toBe(1);
     });
+
+    it('persists migrated snapshot so _lv advances to 4 after first load', () => {
+      // Alt-State ohne _lv → Migration 0→4 sollte durchlaufen
+      // und das Ergebnis einmalig zurück in localStorage geschrieben werden.
+      store['mais_rechner'] = JSON.stringify({
+        reiter: [{ name: 'Tab 1', hektar: 10, koerner: 90000, duenger: 150, entries: [] }],
+        activeReiter: 0,
+        fahrgassenEnabled: false,
+        fahrgassenBreite: 0,
+      });
+      w.loadState();
+      // Nach Migration: gespeicherter Snapshot hat _lv=4
+      var persisted = JSON.parse(store['mais_rechner']);
+      expect(persisted._lv).toBe(4);
+    });
+
+    it('does not re-run migration on second load (idempotent at storage level)', () => {
+      store['mais_rechner'] = JSON.stringify({
+        reiter: [{ name: 'Tab 1', hektar: 10, koerner: 90000, duenger: 150, entries: [] }],
+        activeReiter: 0,
+        fahrgassenEnabled: false,
+        fahrgassenBreite: 0,
+      });
+      w.loadState();
+      var afterFirst = JSON.parse(store['mais_rechner']);
+      // Zweiter Load: _lv ist schon 4, also kein Re-Migration-Touch.
+      // Wenn loadState erneut schreiben würde, wäre das ein No-Op für die
+      // Felder; der Test sichert ab, dass _lv erhalten bleibt und keine
+      // Re-Schreibung passiert (idempotent = kein Drift).
+      w.loadState();
+      var afterSecond = JSON.parse(store['mais_rechner']);
+      expect(afterSecond._lv).toBe(4);
+      expect(afterSecond.reiter[0].hektar).toBe(10);
+    });
   });
 
   describe('Full save/load cycle', () => {

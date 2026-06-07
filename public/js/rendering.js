@@ -155,11 +155,6 @@
         einheitIn.style.width = '70px';
         einheitIn.dataset.tabIdx = String(i);
         einheitIn.oninput = function() {
-          var ti = parseInt(this.dataset.tabIdx);
-          var v = parseDE(this.value);
-          if (ti >= 0 && ti < state.reiter.length) {
-            state.reiter[ti].tempEinheit = v;
-          }
           drillCalcDebounced();
         };
         row.appendChild(einheitIn);
@@ -170,11 +165,6 @@
         duengerIn.style.width = '70px';
         duengerIn.dataset.tabIdx = String(i);
         duengerIn.oninput = function() {
-          var ti = parseInt(this.dataset.tabIdx);
-          var v = parseDE(this.value);
-          if (ti >= 0 && ti < state.reiter.length) {
-            state.reiter[ti].tempDuenger = v;
-          }
           drillCalcDebounced();
         };
         row.appendChild(duengerIn);
@@ -187,8 +177,12 @@
     function renderResultCard() {
       var r = getActiveReiter();
       var kornerGesamt = getKornerGesamt();
-      var einheiten = getTotalEinheiten();
-      var duengerTotal = getTotalDuenger();
+      // Issue #186: IST-Fläche (vom Input-Feld) hat Vorrang vor SOLL.
+      // r_einheiten/r_duenger zeigen die tatsächlichen IST-Bedarfe, wenn
+      // r.istHektar > 0 — konsistent mit Dashboard, Drill-Summary, etc.
+      var istSum = getTabIstHektar(r);
+      var einheiten = istSum > 0 ? getTabIstEinheiten(r) : getActiveTotalEinheiten();
+      var duengerTotal = istSum > 0 ? getTabIstDuenger(r) : getActiveTotalDuenger();
       var rkEl = document.getElementById('r_korner');
       if (rkEl) rkEl.textContent = Math.round(kornerGesamt).toLocaleString('de-DE');
       var reEl = document.getElementById('r_einheiten');
@@ -267,7 +261,7 @@
       var activeR = state.reiter[state.activeReiter];
       if (!activeR) return;
       if (activeR.hektar > 0 && activeR.koerner > 0) {
-        var einheiten = getTotalEinheiten();
+        var einheiten = getActiveTotalEinheiten();
         var kornerGesamt = getKornerGesamt();
         var kornerStr = Math.round(kornerGesamt).toLocaleString('de-DE');
         var miniResult = mf.querySelector('.mini-result') || mf;
@@ -284,37 +278,28 @@
 
     function renderDrillSummary() {
       var r = getActiveReiter();
-      var einheiten = getTotalEinheiten();
-      var duengerTotal = getTotalDuenger();
+      // Issue #186: IST-Fläche (vom Input-Feld) hat Vorrang vor SOLL.
+      var istSum = getTabIstHektar(r);
+      var einheiten = istSum > 0 ? getTabIstEinheiten(r) : getActiveTotalEinheiten();
+      var duengerTotal = istSum > 0 ? getTabIstDuenger(r) : getActiveTotalDuenger();
       var usedEinheit = (r && r.entries) ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
       var usedDuenger = (r && r.entries) ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
-      var co = getCarryover(state.activeReiter || 0);
-      var effectiveUsedE = usedEinheit;
-      var effectiveUsedD = usedDuenger;
-      var istSum = getTabIstHektar(r);
       var istEinheiten = istSum > 0 ? getTabIstEinheiten(r) : einheiten;
       var istDuenger = istSum > 0 ? getTabIstDuenger(r) : duengerTotal;
       var remEinheit = Math.max(0, istEinheiten - usedEinheit);
       var remDuenger = Math.max(0, istDuenger - usedDuenger);
-      var dsollE = document.getElementById('dsoll_einheit');
-      if (dsollE) dsollE.textContent = formatEinheit(einheiten);
-      var dusedE = document.getElementById('dused_einheit');
-      if (dusedE) dusedE.textContent = formatEinheit(effectiveUsedE);
-      var dremE = document.getElementById('drem_einheit');
-      if (dremE) dremE.textContent = formatEinheit(remEinheit);
-      var dsollD = document.getElementById('dsoll_duenger');
-      if (dsollD) dsollD.textContent = duengerTotal > 0 ? fmt(duengerTotal) + ' kg' : '—';
-      var dusedD = document.getElementById('dused_duenger');
-      if (dusedD) dusedD.textContent = effectiveUsedD > 0 ? fmt(effectiveUsedD) + ' kg' : '—';
-      var dremD = document.getElementById('drem_duenger');
-      if (dremD) dremD.textContent = remDuenger > 0 ? fmt(remDuenger) + ' kg' : '—';
-      var remainingUnits = einheiten - effectiveUsedE;
-      var progressEl = document.getElementById('d_progress');
-      if (progressEl && einheiten > 0) {
-        var pct = Math.min(100, Math.max(0, (effectiveUsedE / einheiten) * 100));
-        progressEl.style.width = pct + '%';
-        progressEl.textContent = Math.round(pct) + '%';
-      }
+      var dsSollE = document.getElementById('ds_saat_total');
+      if (dsSollE) dsSollE.textContent = formatEinheit(einheiten);
+      var dsUsedE = document.getElementById('ds_saat_used');
+      if (dsUsedE) dsUsedE.textContent = formatEinheit(usedEinheit);
+      var dsRemE = document.getElementById('ds_saat_remaining');
+      if (dsRemE) dsRemE.textContent = formatEinheit(remEinheit);
+      var dsSollD = document.getElementById('ds_duenger_total');
+      if (dsSollD) dsSollD.textContent = duengerTotal > 0 ? fmt(duengerTotal) + ' kg' : '—';
+      var dsUsedD = document.getElementById('ds_duenger_used');
+      if (dsUsedD) dsUsedD.textContent = usedDuenger > 0 ? fmt(usedDuenger) + ' kg' : '—';
+      var dsRemD = document.getElementById('ds_duenger_remaining');
+      if (dsRemD) dsRemD.textContent = remDuenger > 0 ? fmt(remDuenger) + ' kg' : '—';
     }
 
     // --- Render: Drill Log ---
@@ -370,42 +355,234 @@
     }
 
     // --- Render: Dashboard ---
+    // Issue #186: Dashboard muss bei Ist-Fläche-Änderungen live aktualisiert werden.
+    // Verwendet IST-Fläche (wenn gesetzt) als Basis für "verbleibend"-Berechnung,
+    // konsistent mit renderResultCard() und renderDrillSummary().
 
     function renderDashboard() {
-      var container = document.getElementById('dashboard_stats');
+      var container = document.getElementById('dashboard_content');
       if (!container) return;
+      var reiter = state.reiter;
+      if (reiter.length === 0) {
+        container.innerHTML = '<div class="dashboard-empty">Keine Tabs vorhanden</div>';
+        return;
+      }
       container.innerHTML = '';
-      var totalHa = 0, totalEinheiten = 0, totalDuenger = 0, totalEntries = 0;
-      state.reiter.forEach(function(r) {
-        if (r.hektar > 0) totalHa += r.hektar;
-        if (r.koerner > 0) totalEinheiten += getTabTotalEinheiten(r);
-        if (r.duenger > 0) totalDuenger += getTabTotalDuenger(r);
-        if (r.entries) totalEntries += r.entries.length;
+
+      // --- Summary across all tabs (IST-basiert wenn verfügbar) ---
+      var totalHa = 0;
+      var totalEinheitRem = 0, totalDuengerRem = 0;
+      var totalEinheitenBasis = 0, totalEinheitenUsed = 0;
+      var totalDuengerBasis = 0, totalDuengerUsed = 0;
+      reiter.forEach(function(r, idx) {
+        if (r.hektar > 0 && r.koerner > 0) {
+          var istSum = getTabIstHektar(r);
+          totalHa += istSum > 0 ? istSum : r.hektar;
+          var basisE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
+          var basisD = istSum > 0 ? getTabIstDuenger(r) : r.hektar * r.duenger;
+          var usedE = r.entries ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
+          var usedD = r.entries ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
+          // remaining = max(0, basis - used) — no carryover subtraction
+          totalEinheitRem += Math.max(0, basisE - usedE);
+          totalDuengerRem += Math.max(0, basisD - usedD);
+          totalEinheitenBasis += basisE;
+          totalEinheitenUsed += usedE;
+          totalDuengerBasis += basisD;
+          totalDuengerUsed += usedD;
+        }
       });
-      var stats = [
-        { label: 'Fläche gesamt', value: fmt(totalHa) + ' ha' },
-        { label: 'Tabs', value: String(state.reiter.length) },
-        { label: 'Einheiten gesamt', value: formatEinheit(totalEinheiten) },
-        { label: 'Dünger gesamt', value: totalDuenger > 0 ? fmt(totalDuenger) + ' kg' : '—' },
-        { label: 'Einträge', value: String(totalEntries) },
-        { label: 'Maschinen-Befüllungen', value: String(state.machineLog.length) }
-      ];
-      stats.forEach(function(s) {
-        var el = document.createElement('div');
-        el.className = 'dash-stat';
-        el.innerHTML = '<span class="dash-label">' + s.label + '</span>' +
-                       '<span class="dash-value">' + s.value + '</span>';
-        container.appendChild(el);
+      var totalPct = totalEinheitenBasis > 0 || totalDuengerBasis > 0
+        ? Math.min(100, Math.round(Math.max(
+            totalEinheitenBasis > 0 ? totalEinheitenUsed / totalEinheitenBasis : 0,
+            totalDuengerBasis > 0 ? totalDuengerUsed / totalDuengerBasis : 0
+          ) * 100))
+        : 0;
+
+      var summaryCard = document.createElement('div');
+      summaryCard.className = 'dashboard-summary';
+      summaryCard.innerHTML =
+        '<div class="dashboard-summary-title">📊 Zusammenfassung</div>' +
+        '<div class="dashboard-summary-stats">' +
+          '<div class="dashboard-summary-stat">' +
+            '<div class="dashboard-summary-label">Fläche</div>' +
+            '<div class="dashboard-summary-value">' + (totalHa > 0 ? fmt(totalHa) + ' ha' : '—') + '</div>' +
+          '</div>' +
+          '<div class="dashboard-summary-stat">' +
+            '<div class="dashboard-summary-label">Einheiten verbl.</div>' +
+            '<div class="dashboard-summary-value ' + (totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '') + '">' +
+              (totalEinheitenBasis > 0 ? fmt(totalEinheitRem) : '—') +
+            '</div>' +
+          '</div>' +
+          '<div class="dashboard-summary-stat">' +
+            '<div class="dashboard-summary-label">Dünger verbl.</div>' +
+            '<div class="dashboard-summary-value ' + (totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '') + '">' +
+              (totalDuengerBasis > 0 ? totalDuengerRem.toLocaleString('de-DE') + ' kg' : '—') +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="dashboard-progress-bar">' +
+          '<div class="dashboard-progress-fill" style="width:' + totalPct + '%"></div>' +
+        '</div>';
+      container.appendChild(summaryCard);
+
+      // --- Per-tab cards ---
+      reiter.forEach(function(r, idx) {
+        var card = document.createElement('div');
+        card.className = 'dashboard-reiter-card';
+
+        var nameEl = document.createElement('div');
+        nameEl.className = 'dashboard-reiter-name';
+        nameEl.textContent = r.name || ('Reiter ' + (idx + 1));
+        if (idx === state.activeReiter) {
+          nameEl.textContent += ' (aktiv)';
+        }
+        card.appendChild(nameEl);
+
+        var stats = document.createElement('div');
+        stats.className = 'dashboard-reiter-stats';
+
+        // Hektar (SOLL + IST if different)
+        var haDiv = document.createElement('div');
+        haDiv.className = 'dashboard-stat';
+        var haDivLabel = document.createElement('div');
+        haDivLabel.className = 'dashboard-stat-label';
+        haDivLabel.textContent = 'Hektar';
+        var haDivVal = document.createElement('div');
+        haDivVal.className = 'dashboard-stat-value';
+        var istH = getTabIstHektar(r);
+        if (istH > 0 && istH !== r.hektar) {
+          haDivVal.textContent = fmt(r.hektar) + ' / ' + fmt(istH) + ' ha';
+        } else {
+          haDivVal.textContent = r.hektar > 0 ? fmt(r.hektar) + ' ha' : '—';
+        }
+        haDiv.appendChild(haDivLabel);
+        haDiv.appendChild(haDivVal);
+        stats.appendChild(haDiv);
+
+        // Körner/ha
+        var kDiv = document.createElement('div');
+        kDiv.className = 'dashboard-stat';
+        var kDivLabel = document.createElement('div');
+        kDivLabel.className = 'dashboard-stat-label';
+        kDivLabel.textContent = 'Körner/ha';
+        var kDivVal = document.createElement('div');
+        kDivVal.className = 'dashboard-stat-value';
+        kDivVal.textContent = r.koerner > 0 ? r.koerner.toLocaleString('de-DE') : '—';
+        kDiv.appendChild(kDivLabel);
+        kDiv.appendChild(kDivVal);
+        stats.appendChild(kDiv);
+
+        // IST-basierte Berechnung (wenn IST-Fläche gesetzt, sonst SOLL)
+        var einheiten = 0;
+        var usedEinheit = 0;
+        var duengerTotal = 0;
+        var usedDuenger = 0;
+        var einheitRem = 0;
+        var duengerRem = 0;
+        var pct = 0;
+        var statusClass = 'na';
+        if (r.hektar > 0 && r.koerner > 0) {
+          var istSum = getTabIstHektar(r);
+          einheiten = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
+          usedEinheit = r.entries ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
+          duengerTotal = istSum > 0 ? getTabIstDuenger(r) : r.hektar * r.duenger;
+          usedDuenger = r.entries ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
+          einheitRem = Math.max(0, einheiten - usedEinheit);
+          duengerRem = Math.max(0, duengerTotal - usedDuenger);
+          var minFilled = Math.min(
+            einheiten > 0 ? usedEinheit / einheiten : 1,
+            duengerTotal > 0 ? usedDuenger / duengerTotal : 1
+          );
+          pct = Math.min(100, Math.round(minFilled * 100));
+          if (pct >= 100) statusClass = 'done';
+          else if (pct > 0) statusClass = 'remaining';
+        }
+
+        // Einheiten verbleibend
+        var eStat = document.createElement('div');
+        eStat.className = 'dashboard-stat';
+        var eStatLabel = document.createElement('div');
+        eStatLabel.className = 'dashboard-stat-label';
+        eStatLabel.textContent = 'Einheiten verbl.';
+        var eStatVal = document.createElement('div');
+        eStatVal.className = 'dashboard-stat-value ' + statusClass;
+        eStatVal.textContent = r.hektar > 0 && r.koerner > 0 ? fmt(einheitRem) : '—';
+        eStat.appendChild(eStatLabel);
+        eStat.appendChild(eStatVal);
+        stats.appendChild(eStat);
+
+        // Dünger verbleibend
+        var dStat = document.createElement('div');
+        dStat.className = 'dashboard-stat';
+        var dStatLabel = document.createElement('div');
+        dStatLabel.className = 'dashboard-stat-label';
+        dStatLabel.textContent = 'Dünger verbl.';
+        var dStatVal = document.createElement('div');
+        dStatVal.className = 'dashboard-stat-value ' + statusClass;
+        dStatVal.textContent = duengerTotal > 0 ? duengerRem.toLocaleString('de-DE') + ' kg' : '—';
+        dStat.appendChild(dStatLabel);
+        dStat.appendChild(dStatVal);
+        stats.appendChild(dStat);
+
+        // Progress bar
+        var progressWrap = document.createElement('div');
+        progressWrap.className = 'dashboard-progress-bar';
+        var progressFill = document.createElement('div');
+        progressFill.className = 'dashboard-progress-fill';
+        progressFill.style.width = (r.hektar > 0 && r.koerner > 0) ? pct + '%' : '0%';
+        progressWrap.appendChild(progressFill);
+        stats.appendChild(progressWrap);
+
+        card.appendChild(stats);
+        container.appendChild(card);
       });
+    }
+
+    // Öffnet das Dashboard-Sheet und ruft renderDashboard() auf.
+    // Issue #186: muss auch nach ENTRY_CHANGED-Events den State korrekt widerspiegeln.
+    function openDashboard() {
+      var sheet = document.getElementById('dashboard_sheet');
+      var overlay = document.getElementById('dashboard_overlay');
+      if (sheet) sheet.classList.add('open');
+      if (overlay) overlay.classList.add('open');
+      document.body.style.overflow = 'hidden';
+      renderDashboard();
+    }
+
+    // Schließt das Dashboard-Sheet.
+    function closeDashboard() {
+      var sheet = document.getElementById('dashboard_sheet');
+      var overlay = document.getElementById('dashboard_overlay');
+      if (sheet) sheet.classList.remove('open');
+      if (overlay) overlay.classList.remove('open');
+      document.body.style.overflow = '';
     }
 
     // --- Init: UI (nach DOMContentLoaded) ---
 
     function initUI() {
       loadState();
-      var migrated = loadState();
-      if (migrated) saveState();
-      showIOSInstallHint();
+      maybeShowIosInstallHint();
+      maybeShowUpdateHint();
+      // --- Cross-Tab-Synchronisation (portiert aus Inline-Code Z. 3394-3412) ---
+      // Lauscht auf localStorage-Änderungen von anderen Tabs/Fenstern.
+      // Der storage-Event feuert nur in Tabs, die den Wert NICHT selbst gesetzt haben.
+      window.addEventListener('storage', function(e) {
+        if (e.key === 'mais_rechner' && e.newValue) {
+          try {
+            var remote = JSON.parse(e.newValue);
+            if (JSON.stringify(remote) !== JSON.stringify(state)) {
+              state = remote;
+              syncInputsFromState();
+              renderTabs();
+              renderView();
+              renderResults();
+            }
+          } catch(err) {
+            console.warn('Cross-tab sync: ungültiger State ignoriert', err);
+          }
+        }
+      });
       syncInputsFromState();
       renderTabs();
       if (state.reiter[state.activeReiter] && state.reiter[state.activeReiter].hektar > 0 && state.reiter[state.activeReiter].koerner > 0) {
@@ -435,6 +612,13 @@
             renderTabs();
             renderResults();
             renderView();
+            // Issue #186: Dashboard muss bei State-Änderungen mit-synchronisieren.
+            // Wenn das Dashboard-Sheet offen ist, sofort neu rendern, damit
+            // verbleibende Einheiten/Dünger konsistent mit Tab-Ergebnis sind.
+            var dashSheet = document.getElementById('dashboard_sheet');
+            if (dashSheet && dashSheet.classList.contains('open')) {
+              renderDashboard();
+            }
             if (type === 'ENTRY_CHANGED' && state.reiter[state.activeReiter].hektar > 0 && state.reiter[state.activeReiter].koerner > 0) {
               var re = document.getElementById('results');
               if (re) re.style.display = 'block';
@@ -507,26 +691,6 @@
             break;
         }
       });
-    }
-
-    // --- Init: Theme (Dark/Light) ---
-
-    function initTheme() {
-      var savedTheme = localStorage.getItem('theme');
-      if (savedTheme === 'dark') {
-        document.body.classList.add('dark');
-      } else if (savedTheme === 'light') {
-        document.body.classList.remove('dark');
-      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.body.classList.add('dark');
-      }
-      var toggleBtn = document.getElementById('theme_toggle');
-      if (toggleBtn) {
-        toggleBtn.onclick = function() {
-          document.body.classList.toggle('dark');
-          localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
-        };
-      }
     }
 
     // --- Confirm Remove Tab ---

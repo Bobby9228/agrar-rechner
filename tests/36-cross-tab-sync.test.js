@@ -53,7 +53,7 @@ describe('Cross-Tab-Synchronisation (#128)', () => {
     const { w } = setup();
     const origHektar = w.state.reiter[0].hektar;
 
-    fireStorageEvent(w, 'mais_rechner_theme', '"dark"');
+    fireStorageEvent(w, 'theme', '"dark"');
 
     expect(w.state.reiter[0].hektar).toBe(origHektar);
   });
