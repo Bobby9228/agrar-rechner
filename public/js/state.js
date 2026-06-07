@@ -62,7 +62,8 @@
         var saved = localStorage.getItem('mais_rechner');
         if (!saved) return false;
         var data = JSON.parse(saved);
-        var lv = data._lv || 0;
+        var originalLv = data._lv || 0;
+        var lv = originalLv;
         // Migration 0→1: Einzelne Felder → Tab-Array
         if (!data.reiter && (data.hektar !== undefined || data.koerner !== undefined)) {
           data = { reiter: [{ name: 'Tab 1', hektar: data.hektar || 0, istHektar: data.istHektar || 0, koerner: data.koerner || 0, duenger: data.duenger || 0, entries: data.entries || [] }], activeReiter: 0, activeView: null, fahrgassenEnabled: false, fahrgassenBreite: 0, einheitGroesseEnabled: false, koernerProEinheit: 50000, machineLog: data.machineLog || [], drillPriorities: {}, iosInstallHintShown: false, _lv: 1 };
@@ -110,6 +111,18 @@
         });
         data._lv = 4;
         state = data;
+        // Migration-Persistenz: Wenn die Daten nicht bereits _lv=4 waren,
+        // schreibe den migrierten Snapshot einmalig zurück, damit nachfolgende
+        // Page-Loads die Migration überspringen können.
+        if (originalLv < 4) {
+          try {
+            localStorage.setItem('mais_rechner', JSON.stringify(state));
+          } catch(e) {
+            // Nicht kritisch — Migration war erfolgreich im Memory, beim
+            // nächsten Load wird sie einfach erneut durchgeführt (idempotent).
+            console.warn('loadState: migrated snapshot could not be persisted:', e);
+          }
+        }
         return true;
       } catch(e) {
         console.error('loadState failed:', e);
