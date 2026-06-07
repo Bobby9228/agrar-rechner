@@ -601,7 +601,7 @@ font-size: 0.75rem;
     }
     .toggle-btn {
       width: 52px;
-      height: 28px;
+      min-height: 44px;
       border-radius: 14px;
       background: #ccc;
       border: none;
@@ -609,6 +609,7 @@ font-size: 0.75rem;
       position: relative;
       transition: background 0.2s;
       flex-shrink: 0;
+      padding: 8px 0;
     }
     .toggle-btn::after {
       content: '';
@@ -1220,4 +1221,14 @@ font-size: 0.75rem;
     html.dark .theme-toggle {
       background: #2a3320;
       border-color: #3a4030;
+    }
+
+    /* Accessibility: prefers-reduced-motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
     }

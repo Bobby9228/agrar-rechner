@@ -43,8 +43,8 @@
       <h2>📐 Fläche & Aussaatstärke</h2>
       <div class="field">
         <label for="hektar">Hektar (SOLL)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="hektar" placeholder="z.B. 12,5" maxlength="8" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputHektar(this)" onblur="onInputHektar(this)">
-        <div class="error-msg" id="err_hektar"></div>
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="hektar" placeholder="z.B. 12,5" maxlength="8" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputHektar(this)" onblur="onInputHektar(this)" aria-describedby="err_hektar">
+        <div class="error-msg" id="err_hektar" role="alert"></div>
       </div>
       <div class="field">
         <label for="ist_hektar">IST-Fläche (ha)</label>
@@ -52,14 +52,14 @@
       </div>
       <div class="field">
         <label for="koerner">Körner pro Hektar</label>
-        <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" maxlength="8" oninput="onInputFormat(this, 'integer', event)" onchange="onInputKoerner(this)" onblur="onInputKoerner(this)">
+        <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" maxlength="8" oninput="onInputFormat(this, 'integer', event)" onchange="onInputKoerner(this)" onblur="onInputKoerner(this)" aria-describedby="err_koerner">
         <div class="unit">üblich: 80.000 – 100.000</div>
-        <div class="error-msg" id="err_koerner"></div>
+        <div class="error-msg" id="err_koerner" role="alert"></div>
       </div>
 
       <div class="fahrgassen-toggle">
         <label for="einheit_groesse_toggle">Einheiten-Größe anpassen</label>
-        <button class="toggle-btn" id="einheit_groesse_toggle" onclick="einheitGroesseToggle()" aria-label="Einheiten-Größe"></button>
+        <button class="toggle-btn" id="einheit_groesse_toggle" onclick="einheitGroesseToggle()" aria-label="Einheiten-Größe" aria-pressed="false"></button>
       </div>
       <div class="fahrgassen-settings" id="einheit_groesse_settings">
         <div class="field" style="margin-bottom:8px">
@@ -80,7 +80,7 @@
 
       <div class="fahrgassen-toggle">
         <label for="fahrgassen_toggle">Fahrgassen berücksichtigen</label>
-        <button class="toggle-btn" id="fahrgassen_toggle" onclick="fahrgassenToggle()" aria-label="Fahrgassen"></button>
+        <button class="toggle-btn" id="fahrgassen_toggle" onclick="fahrgassenToggle()" aria-label="Fahrgassen" aria-pressed="false"></button>
       </div>
       <div class="fahrgassen-settings" id="fahrgassen_settings">
         <div class="field" style="margin-bottom:8px">
@@ -275,7 +275,7 @@
   <div class="version-footer" id="version_footer"></div>
   <!-- Dashboard overlay + sheet -->
   <div class="dashboard-overlay" id="dashboard_overlay" onclick="closeDashboard()"></div>
-  <div class="dashboard-sheet" id="dashboard_sheet">
+  <div class="dashboard-sheet" id="dashboard_sheet" role="dialog" aria-modal="true" aria-label="Dashboard — Alle Tabs Übersicht">
     <div class="dashboard-header">
       <h2>📊 Alle Tabs</h2>
       <button class="dashboard-close" onclick="closeDashboard()" aria-label="Schließen">✕</button>

@@ -212,13 +212,47 @@
 
     // Öffnet das Dashboard-Sheet und ruft renderDashboard() auf.
     // Issue #186: muss auch nach ENTRY_CHANGED-Events den State korrekt widerspiegeln.
+    // Issue #211: Fokus-Falle und Dialog-Semantik für Accessibility.
+    var _dashboardPrevFocus = null;
+
+    // Trap Tab/Shift+Tab inside the dashboard dialog (Issue #211)
+    function _dashboardKeyHandler(e) {
+      if (e.key === 'Escape') {
+        closeDashboard();
+        e.preventDefault();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      var sheet = document.getElementById('dashboard_sheet');
+      if (!sheet) return;
+      var focusable = sheet.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (focusable.length === 0) return;
+      var first = focusable[0];
+      var last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { last.focus(); e.preventDefault(); }
+      } else {
+        if (document.activeElement === last) { first.focus(); e.preventDefault(); }
+      }
+    }
+
     function openDashboard() {
       var sheet = document.getElementById('dashboard_sheet');
       var overlay = document.getElementById('dashboard_overlay');
+      _dashboardPrevFocus = document.activeElement;
       if (sheet) sheet.classList.add('open');
       if (overlay) overlay.classList.add('open');
       document.body.style.overflow = 'hidden';
       renderDashboard();
+      // Move focus into the dialog for accessibility (Issue #211)
+      // Use setTimeout to avoid jsdom focus-event side effects
+      if (sheet) {
+        setTimeout(function() {
+          var closeBtn = sheet.querySelector('.dashboard-close');
+          if (closeBtn) closeBtn.focus();
+        }, 0);
+      }
+      document.addEventListener('keydown', _dashboardKeyHandler);
     }
 
     // Schließt das Dashboard-Sheet.
@@ -228,4 +262,10 @@
       if (sheet) sheet.classList.remove('open');
       if (overlay) overlay.classList.remove('open');
       document.body.style.overflow = '';
+      document.removeEventListener('keydown', _dashboardKeyHandler);
+      // Restore focus to the element that opened the dashboard
+      if (_dashboardPrevFocus && _dashboardPrevFocus.focus) {
+        _dashboardPrevFocus.focus();
+        _dashboardPrevFocus = null;
+      }
     }
