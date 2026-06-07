@@ -167,6 +167,21 @@
       saveState();
     }
 
+    // confirmResetAll(fullReset) — Bestätigungsdialog, ruft resetActiveTab() oder resetAll()
+    // fullReset=false → nur aktuellen Tab zurücksetzen
+    // fullReset=true  → ALLE Daten zurücksetzen (alle Tabs, Einstellungen, machineLog)
+    // Portiert aus Inline-Code Z. 3266-3276 (vor Phase 5 Inline-Entfernung).
+    function confirmResetAll(fullReset) {
+      var tabName = state.reiter[state.activeReiter].name;
+      if (fullReset) {
+        if (!confirm('Wirklich ALLE Daten zurücksetzen?\n\nAlle Tabs, Einträge und Einstellungen werden gelöscht.')) return;
+        resetAll();
+      } else {
+        if (!confirm('Wirklich zurücksetzen?\n\nAlle Eingaben für "' + tabName + '" werden gelöscht.')) return;
+        resetActiveTab();
+      }
+    }
+
     // --- Drill Protocol ---
 
     function drillAdd() {
