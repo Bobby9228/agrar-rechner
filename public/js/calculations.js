@@ -316,8 +316,8 @@ function getTabNextTime(r) {
       var r = state.reiter[tabIdx];
       if (!r) return { unitsPerHa: 0, duengerPerHa: 0 };
       var fgFactor = 1;
-      if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
-        fgFactor = computeFahrgassenFaktor(state.fahrgassenBreite);
+      if (r.fahrgassenEnabled && r.fahrgassenBreite > 0) {
+        fgFactor = computeFahrgassenFaktor(r.fahrgassenBreite);
       }
       var unitsPerHa = r.koerner * fgFactor / state.koernerProEinheit;
       var duengerPerHa = r.duenger || 0;

@@ -77,13 +77,40 @@ describe('computeFahrgassenFaktor', () => {
   });
 
   it('getTabRates uses same factor as computeFahrgassenFaktor', () => {
-    w.state.fahrgassenEnabled = true;
-    w.state.fahrgassenBreite = 24;
     w.state.koernerProEinheit = 50000;
     w.state.reiter[0].koerner = 90000;
+    w.state.reiter[0].fahrgassenEnabled = true;
+    w.state.reiter[0].fahrgassenBreite = 24;
     var faktor = w.computeFahrgassenFaktor(24);
     var rates = w.getTabRates(0);
     expect(rates.unitsPerHa).toBeCloseTo(90000 * faktor / 50000, 5);
+  });
+
+  // --- Per-tab independence (Issue #222) ---
+
+  it('getTabRates uses per-tab fahrgassenBreite, not global', () => {
+    w.state.koernerProEinheit = 50000;
+    w.state.reiter[0].koerner = 80000;
+    // Global says breite=24, per-tab says breite=4 → should use per-tab
+    w.state.fahrgassenEnabled = true;
+    w.state.fahrgassenBreite = 24;
+    w.state.reiter[0].fahrgassenEnabled = true;
+    w.state.reiter[0].fahrgassenBreite = 4;
+    var faktor = w.computeFahrgassenFaktor(4); // 0.75
+    var rates = w.getTabRates(0);
+    expect(rates.unitsPerHa).toBeCloseTo(80000 * faktor / 50000, 5);
+  });
+
+  it('getTabRates ignores global fahrgassen when per-tab disabled', () => {
+    w.state.koernerProEinheit = 50000;
+    w.state.reiter[0].koerner = 80000;
+    // Global enabled, per-tab disabled → no correction
+    w.state.fahrgassenEnabled = true;
+    w.state.fahrgassenBreite = 24;
+    w.state.reiter[0].fahrgassenEnabled = false;
+    w.state.reiter[0].fahrgassenBreite = 0;
+    var rates = w.getTabRates(0);
+    expect(rates.unitsPerHa).toBe(80000 / 50000);
   });
 
   // --- No Fahrgassen = no correction ---
