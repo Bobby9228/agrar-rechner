@@ -589,7 +589,27 @@
       loadState();
       var migrated = loadState();
       if (migrated) saveState();
-      showIOSInstallHint();
+      maybeShowIosInstallHint();
+      maybeShowUpdateHint();
+      // --- Cross-Tab-Synchronisation (portiert aus Inline-Code Z. 3394-3412) ---
+      // Lauscht auf localStorage-Änderungen von anderen Tabs/Fenstern.
+      // Der storage-Event feuert nur in Tabs, die den Wert NICHT selbst gesetzt haben.
+      window.addEventListener('storage', function(e) {
+        if (e.key === 'mais_rechner' && e.newValue) {
+          try {
+            var remote = JSON.parse(e.newValue);
+            if (JSON.stringify(remote) !== JSON.stringify(state)) {
+              state = remote;
+              syncInputsFromState();
+              renderTabs();
+              renderView();
+              renderResults();
+            }
+          } catch(err) {
+            console.warn('Cross-tab sync: ungültiger State ignoriert', err);
+          }
+        }
+      });
       syncInputsFromState();
       renderTabs();
       if (state.reiter[state.activeReiter] && state.reiter[state.activeReiter].hektar > 0 && state.reiter[state.activeReiter].koerner > 0) {

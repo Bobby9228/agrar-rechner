@@ -37,9 +37,9 @@ describe('toggleTheme', () => {
 
   it('persists theme to localStorage', () => {
     w.toggleTheme();
-    expect(w.localStorage.getItem('mais_rechner_theme')).toBe('dark');
+    expect(w.localStorage.getItem('theme')).toBe('dark');
     w.toggleTheme();
-    expect(w.localStorage.getItem('mais_rechner_theme')).toBe('light');
+    expect(w.localStorage.getItem('theme')).toBe('light');
   });
 
   it('updates theme-color meta tag to dark', () => {
@@ -148,14 +148,14 @@ describe('initTheme', () => {
   it('applies dark when system prefers dark and no stored theme', () => {
     // jsdom doesn't support matchMedia by default, so we mock it
     w.matchMedia = (query) => ({ matches: query === '(prefers-color-scheme: dark)' });
-    w.localStorage.removeItem('mais_rechner_theme');
+    w.localStorage.removeItem('theme');
     w.initTheme();
     expect(w.document.documentElement.classList.contains('dark')).toBe(true);
   });
 
   it('applies light when system prefers light and no stored theme', () => {
     w.matchMedia = () => ({ matches: false });
-    w.localStorage.removeItem('mais_rechner_theme');
+    w.localStorage.removeItem('theme');
     w.initTheme();
     expect(w.document.documentElement.classList.contains('dark')).toBe(false);
   });

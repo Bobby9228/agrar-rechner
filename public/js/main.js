@@ -66,35 +66,69 @@ window.app = {
   _internal: _internal
 };
 
-// --- initTheme (runs immediately, before DOMContentLoaded) ---
+// --- Dark Mode (portiert aus Inline-Code Z. 3415-3448) ---
+// Key: 'theme' in localStorage (Wert: 'dark' oder 'light', null wenn nicht gesetzt).
+// Migration 3→4 in state.js vereinheitlicht 'mais_rechner_theme' → 'theme'.
+// initTheme(): Stored Preference → System-Präferenz als Fallback.
+// applyTheme(dark): Setzt CSS-Klasse .dark auf <html>, Button-Icon, Meta-Theme-Color.
+// toggleTheme(): Liest aktuellen Zustand → toggled → speichert + anwendet.
+function getStoredTheme() {
+  try { return localStorage.getItem('theme'); } catch(e) { return null; }
+}
+function setStoredTheme(theme) {
+  try { localStorage.setItem('theme', theme); } catch(e) {}
+}
+function applyTheme(dark) {
+  document.documentElement.classList.toggle('dark', dark);       // CSS .dark Klasse
+  var btn = document.getElementById('theme_toggle');
+  if (btn) btn.textContent = dark ? '☀️' : '🌙';                 // Icon: Hell=Dunkel-Modus, Dunkel=Hell-Modus
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', dark ? '#1a1f16' : '#2d5016');  // Android Status Bar
+}
+function toggleTheme() {
+  var isDark = document.documentElement.classList.contains('dark');
+  var next = !isDark;
+  setStoredTheme(next ? 'dark' : 'light');
+  applyTheme(next);
+}
+// initTheme — Lädt das gespeicherte Theme oder fällt auf die System-Einstellung zurück.
+// Wird einmalig vor DOMContentLoaded aufgerufen (kein async/await, also synchron).
+function initTheme() {
+  var stored = getStoredTheme();
+  if (stored === 'dark') { applyTheme(true); return; }
+  if (stored === 'light') { applyTheme(false); return; }
+  // Keine gespeicherte Präferenz → Systemeinstellung verwenden
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(prefersDark);
+}
 
-(function() {
-  var savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'dark') {
-    document.body.classList.add('dark');
-  } else if (savedTheme === 'light') {
-    document.body.classList.remove('dark');
-  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    document.body.classList.add('dark');
-  }
-  var toggleBtn = document.getElementById('theme_toggle');
-  if (toggleBtn) {
-    toggleBtn.onclick = function() {
-      document.body.classList.toggle('dark');
-      localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
-    };
-  }
-})();
+// --- Service Worker Registration (portiert aus Inline-Code Z. 3450-3459) ---
+if ('serviceWorker' in navigator) {
+  try {
+    var swReg = navigator.serviceWorker.register('sw.js').catch(function(err) {
+      console.warn('SW-Registrierung fehlgeschlagen:', err);
+    });
+    if (swReg && swReg.then) {
+      swReg.then(function(reg) { reg.update(); });
+    }
+  } catch(swErr) {}
+}
 
-// --- initUI (after DOMContentLoaded) ---
+// --- initTheme (Inline-Code Z. 3461) ---
+// Wird einmalig beim Modul-Load ausgeführt, damit das Theme vor dem ersten
+// Render sichtbar ist (kein Flash of Unstyled Theme).
+initTheme();
+
+// --- Input keydown tracking für onInputFormat (physische Tastaturen) ---
+// (portiert aus Inline-Code Z. 2441-2446). Tests nutzen diese globalen Vars.
+var _pendingKey = null;
+document.addEventListener('keydown', function(e) {
+  _pendingKey = e.key;
+});
+document.addEventListener('input', function() {
+  _pendingKey = null; // Nach jedem Input zurücksetzen, damit kein veralteter Wert hängt
+});
 
 document.addEventListener('DOMContentLoaded', function() {
   initUI();
-  // Input keydown tracking für onInputFormat (physische Tastaturen)
-  document.addEventListener('keydown', function(e) {
-    _internal.pendingKey = e.key;
-  });
-  document.addEventListener('input', function() {
-    _internal.pendingKey = null;
-  });
 });

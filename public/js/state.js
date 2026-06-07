@@ -81,6 +81,23 @@
           if (!data.machineLog) data.machineLog = [];
           lv = 3;
         }
+        // Migration 3→4: Theme-Key vereinheitlichen, neue Defaults
+        if (lv < 4) {
+          // Theme: alten Key 'mais_rechner_theme' → neuen Key 'theme'
+          try {
+            var oldTheme = localStorage.getItem('mais_rechner_theme');
+            if (oldTheme && !localStorage.getItem('theme')) {
+              localStorage.setItem('theme', oldTheme);
+            }
+            if (oldTheme) localStorage.removeItem('mais_rechner_theme');
+          } catch(e) {}
+          // koernerProEinheit Default (falls noch aus alter Migration fehlend)
+          if (data.koernerProEinheit === undefined) data.koernerProEinheit = 50000;
+          // einheitGroesseEnabled Default
+          if (data.einheitGroesseEnabled === undefined) data.einheitGroesseEnabled = false;
+          // drillPriorities Default
+          if (!data.drillPriorities) data.drillPriorities = {};
+        }
         // Validate und übernehmen
         if (!Array.isArray(data.reiter) || data.reiter.length === 0) return false;
         data.reiter.forEach(function(r) {
@@ -91,7 +108,7 @@
           if (r.duenger === undefined) r.duenger = 0;
           if (!r.name) r.name = 'Tab';
         });
-        data._lv = 3;
+        data._lv = 4;
         state = data;
         return true;
       } catch(e) {
@@ -100,17 +117,48 @@
       }
     }
 
-    // --- iOS Install Hint ---
-    function showIOSInstallHint() {
-      var standalone = window.matchMedia('(display-mode: standalone)').matches;
-      var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      if (iOS && !standalone && !state.iosInstallHintShown) {
-        var el = document.getElementById('ios_install_hint');
-        if (el) { el.style.display = 'block'; state.iosInstallHintShown = true; }
-      }
+    // --- iOS Safari Detection (portiert aus Inline-Code Z. 1490-1492) ---
+    // Wird einmalig beim Modul-Load ausgewertet; Tests können isIOS/isStandalone
+    // per window.isIOS = true überschreiben.
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    var isStandalone = window.navigator.standalone === true;
+
+    // --- iOS Install Hint (portiert aus Inline-Code Z. 1494-1507) ---
+    // Zeigt einmalig einen Hinweis zum Installieren der PWA auf iOS Safari.
+    // Nur auf iOS/Safari, nur wenn noch nicht installiert und noch nicht dismissed.
+    function maybeShowIosInstallHint() {
+      var hintSeen = null;
+      try { hintSeen = localStorage.getItem('mais_rechner_ios_install_seen'); } catch(e) {}
+      if (!isIOS || isStandalone || hintSeen) return;
+      var banner = document.getElementById('ios_install_banner');
+      if (banner) banner.classList.add('show');
+    }
+    function dismissIosInstallHint() {
+      try { localStorage.setItem('mais_rechner_ios_install_seen', '1'); } catch(e) {}
+      var banner = document.getElementById('ios_install_banner');
+      if (banner) banner.classList.remove('show');
     }
 
-    function dismissIOSInstallHint() {
-      var el = document.getElementById('ios_install_hint');
-      if (el) el.style.display = 'none';
+    // --- "What's New" Update Banner (portiert aus Inline-Code Z. 1509-1531) ---
+    // Zeigt einmalig einen Hinweis nach App-Updates (neue SW-Version).
+    // currentVersion muss bei jedem Release manuell aktualisiert werden.
+    // (APP_VERSION + APP_BUILD_DATE sind in main.js definiert.)
+    var UPDATE_CHANGELOG = 'Erste Veröffentlichung der App.';
+    function maybeShowUpdateHint() {
+      var seenVersion = null;
+      try { seenVersion = localStorage.getItem('mais_rechner_version_seen'); } catch(e) {}
+      if (seenVersion === APP_VERSION) return;
+      var banner = document.getElementById('update_banner');
+      var verEl = document.getElementById('update_version');
+      var changelogEl = document.getElementById('update_changelog');
+      if (banner) {
+        if (verEl) verEl.textContent = APP_VERSION;
+        if (changelogEl) changelogEl.textContent = UPDATE_CHANGELOG;
+        banner.classList.add('show');
+      }
+    }
+    function dismissUpdateHint() {
+      try { localStorage.setItem('mais_rechner_version_seen', APP_VERSION); } catch(e) {}
+      var banner = document.getElementById('update_banner');
+      if (banner) banner.classList.remove('show');
     }
