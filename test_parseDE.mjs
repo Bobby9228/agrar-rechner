@@ -31,7 +31,10 @@ const moduleScript = [
     load('state.js'),
     load('calculations.js'),
     load('ui-handlers.js'),
-    load('rendering.js'),
+    load('render-tabs.js'),
+    load('render-results.js'),
+    load('render-drill.js'),
+    load('render-dashboard.js'),
     load('main.js').replace("document.addEventListener('DOMContentLoaded', initUI);", ''),
 ].join('\n');
 

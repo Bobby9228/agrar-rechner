@@ -2,7 +2,8 @@
 // MAIN.JS — Einstiegspunkt für agrar-rechner
 //
 // Lädt alle Module und initialisiert die App.
-// Reihenfolge: state.js → calculations.js → ui-handlers.js → rendering.js
+// Reihenfolge: state.js → calculations.js → ui-handlers.js → render-tabs.js
+//   → render-results.js → render-drill.js → render-dashboard.js → main.js
 // ============================================================================
 
 // --- App Constants ---

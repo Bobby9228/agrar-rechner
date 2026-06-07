@@ -1470,21 +1470,31 @@ font-size: 0.75rem;
     // agrar-rechner — Modulare Architektur
     //
     // Früher: ~2172 Zeilen inline JS in index.html
-    // Jetzt: 4 Module + main.js
+    // Dann: 5 Module (state/calculations/ui-handlers/rendering/main)
+    // Jetzt: 8 Module (rendering aufgeteilt in 4: Issue #212)
     //
     // Lade-Reihenfolge (wichtig!):
-    //   state.js → calculations.js → ui-handlers.js → rendering.js → main.js
+    //   state.js → calculations.js → ui-handlers.js
+    //     → render-tabs.js → render-results.js → render-drill.js → render-dashboard.js
+    //     → main.js
+    //
     //   state.js definiert: state, saveState(), loadState()
     //   calculations.js braucht: state, _internal (von state.js)
     //   ui-handlers.js braucht: state, calculations.js (getActiveReiter, etc.)
-    //   rendering.js braucht: state, ui-handlers.js (switchReiter, etc.), calculations.js
-    //   main.js: APP_VERSION, Event-Emitter, initTheme, initUI
+    //   render-tabs.js braucht: state, ui-handlers.js, calculations.js
+    //   render-results.js braucht: state, render-tabs.js, render-drill.js, calculations.js
+    //   render-drill.js braucht: state, ui-handlers.js, calculations.js
+    //   render-dashboard.js braucht: state, calculations.js
+    //   main.js: APP_VERSION, Event-Emitter, initTheme
     // ============================================================================
   </script>
   <script src="js/state.js"></script>
   <script src="js/calculations.js"></script>
   <script src="js/ui-handlers.js"></script>
-  <script src="js/rendering.js"></script>
+  <script src="js/render-tabs.js"></script>
+  <script src="js/render-results.js"></script>
+  <script src="js/render-drill.js"></script>
+  <script src="js/render-dashboard.js"></script>
   <script src="js/main.js"></script>
   <div class="version-footer" id="version_footer"></div>
   <!-- Dashboard overlay + sheet -->

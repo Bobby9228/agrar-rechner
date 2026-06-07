@@ -1,6 +1,8 @@
 /**
  * Shared test helper — loads the Mais-Rechner JS into a jsdom instance.
- * Works with the modular architecture: state.js, calculations.js, ui-handlers.js, rendering.js, main.js
+ * Works with the modular architecture: state.js, calculations.js, ui-handlers.js,
+ * render-tabs.js, render-results.js, render-drill.js, render-dashboard.js, main.js
+ * (Issue #212: rendering.js was split into 4 modules in June 2026.)
  */
 import { JSDOM } from 'jsdom';
 import { readFileSync } from 'fs';
@@ -73,7 +75,10 @@ export function createDom() {
     loadModule('state.js'),
     loadModule('calculations.js'),
     loadModule('ui-handlers.js'),
-    loadModule('rendering.js'),
+    loadModule('render-tabs.js'),
+    loadModule('render-results.js'),
+    loadModule('render-drill.js'),
+    loadModule('render-dashboard.js'),
     // Remove DOMContentLoaded from main.js (auto-init doesn't work in jsdom)
     loadModule('main.js').replace(
       "document.addEventListener('DOMContentLoaded', initUI);",
