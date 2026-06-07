@@ -1,0 +1,231 @@
+// ============================================================================
+// RENDER-DASHBOARD — Dashboard-Übersicht (Sheet) + openDashboard/closeDashboard
+//
+// Lade-Reihenfolge: state.js → calculations.js → ui-handlers.js → render-tabs.js
+//   → render-results.js → render-drill.js → render-dashboard.js (DIESE DATEI)
+//   → main.js
+//
+// render-dashboard.js braucht: state, calculations.js (getTabIstHektar,
+//   getTabTotalEinheiten, getTabIstEinheiten, getTabIstDuenger, fmt)
+// Funktionen werden im globalen Scope definiert (Vanilla-JS / <script>-Tags).
+// ============================================================================
+
+    // --- Render: Dashboard ---
+    // Issue #186: Dashboard muss bei Ist-Fläche-Änderungen live aktualisiert werden.
+    // Verwendet IST-Fläche (wenn gesetzt) als Basis für "verbleibend"-Berechnung,
+    // konsistent mit renderResultCard() und renderDrillSummary().
+
+    function renderDashboard() {
+      var container = document.getElementById('dashboard_content');
+      if (!container) return;
+      var reiter = state.reiter;
+      if (reiter.length === 0) {
+        var emptyDiv = document.createElement('div');
+        emptyDiv.className = 'dashboard-empty';
+        emptyDiv.textContent = 'Keine Tabs vorhanden';
+        container.appendChild(emptyDiv);
+        return;
+      }
+      container.innerHTML = '';
+
+      // --- Summary across all tabs (IST-basiert wenn verfügbar) ---
+      var totalHa = 0;
+      var totalEinheitRem = 0, totalDuengerRem = 0;
+      var totalEinheitenBasis = 0, totalEinheitenUsed = 0;
+      var totalDuengerBasis = 0, totalDuengerUsed = 0;
+      reiter.forEach(function(r, idx) {
+        if (r.hektar > 0 && r.koerner > 0) {
+          var istSum = getTabIstHektar(r);
+          totalHa += istSum > 0 ? istSum : r.hektar;
+          var basisE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
+          var basisD = istSum > 0 ? getTabIstDuenger(r) : r.hektar * r.duenger;
+          var usedE = r.entries ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
+          var usedD = r.entries ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
+          // remaining = max(0, basis - used) — no carryover subtraction
+          totalEinheitRem += Math.max(0, basisE - usedE);
+          totalDuengerRem += Math.max(0, basisD - usedD);
+          totalEinheitenBasis += basisE;
+          totalEinheitenUsed += usedE;
+          totalDuengerBasis += basisD;
+          totalDuengerUsed += usedD;
+        }
+      });
+      var totalPct = totalEinheitenBasis > 0 || totalDuengerBasis > 0
+        ? Math.min(100, Math.round(Math.max(
+            totalEinheitenBasis > 0 ? totalEinheitenUsed / totalEinheitenBasis : 0,
+            totalDuengerBasis > 0 ? totalDuengerUsed / totalDuengerBasis : 0
+          ) * 100))
+        : 0;
+
+      var summaryCard = document.createElement('div');
+      summaryCard.className = 'dashboard-summary';
+
+      var sTitle = document.createElement('div');
+      sTitle.className = 'dashboard-summary-title';
+      sTitle.textContent = '📊 Zusammenfassung';
+      summaryCard.appendChild(sTitle);
+
+      var sStats = document.createElement('div');
+      sStats.className = 'dashboard-summary-stats';
+
+      function makeSummaryStat(label, value, valueClass) {
+        var stat = document.createElement('div');
+        stat.className = 'dashboard-summary-stat';
+        var lbl = document.createElement('div');
+        lbl.className = 'dashboard-summary-label';
+        lbl.textContent = label;
+        var val = document.createElement('div');
+        val.className = 'dashboard-summary-value' + (valueClass ? ' ' + valueClass : '');
+        val.textContent = value;
+        stat.appendChild(lbl);
+        stat.appendChild(val);
+        return stat;
+      }
+
+      var pctClass = totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '';
+      sStats.appendChild(makeSummaryStat('Fläche', totalHa > 0 ? fmt(totalHa) + ' ha' : '—'));
+      sStats.appendChild(makeSummaryStat('Einheiten verbl.', totalEinheitenBasis > 0 ? fmt(totalEinheitRem) : '—', pctClass));
+      sStats.appendChild(makeSummaryStat('Dünger verbl.', totalDuengerBasis > 0 ? totalDuengerRem.toLocaleString('de-DE') + ' kg' : '—', pctClass));
+      summaryCard.appendChild(sStats);
+
+      var pBar = document.createElement('div');
+      pBar.className = 'dashboard-progress-bar';
+      var pFill = document.createElement('div');
+      pFill.className = 'dashboard-progress-fill';
+      pFill.style.width = totalPct + '%';
+      pBar.appendChild(pFill);
+      summaryCard.appendChild(pBar);
+      container.appendChild(summaryCard);
+
+      // --- Per-tab cards ---
+      reiter.forEach(function(r, idx) {
+        var card = document.createElement('div');
+        card.className = 'dashboard-reiter-card';
+
+        var nameEl = document.createElement('div');
+        nameEl.className = 'dashboard-reiter-name';
+        nameEl.textContent = r.name || ('Reiter ' + (idx + 1));
+        if (idx === state.activeReiter) {
+          nameEl.textContent += ' (aktiv)';
+        }
+        card.appendChild(nameEl);
+
+        var stats = document.createElement('div');
+        stats.className = 'dashboard-reiter-stats';
+
+        // Hektar (SOLL + IST if different)
+        var haDiv = document.createElement('div');
+        haDiv.className = 'dashboard-stat';
+        var haDivLabel = document.createElement('div');
+        haDivLabel.className = 'dashboard-stat-label';
+        haDivLabel.textContent = 'Hektar';
+        var haDivVal = document.createElement('div');
+        haDivVal.className = 'dashboard-stat-value';
+        var istH = getTabIstHektar(r);
+        if (istH > 0 && istH !== r.hektar) {
+          haDivVal.textContent = fmt(r.hektar) + ' / ' + fmt(istH) + ' ha';
+        } else {
+          haDivVal.textContent = r.hektar > 0 ? fmt(r.hektar) + ' ha' : '—';
+        }
+        haDiv.appendChild(haDivLabel);
+        haDiv.appendChild(haDivVal);
+        stats.appendChild(haDiv);
+
+        // Körner/ha
+        var kDiv = document.createElement('div');
+        kDiv.className = 'dashboard-stat';
+        var kDivLabel = document.createElement('div');
+        kDivLabel.className = 'dashboard-stat-label';
+        kDivLabel.textContent = 'Körner/ha';
+        var kDivVal = document.createElement('div');
+        kDivVal.className = 'dashboard-stat-value';
+        kDivVal.textContent = r.koerner > 0 ? r.koerner.toLocaleString('de-DE') : '—';
+        kDiv.appendChild(kDivLabel);
+        kDiv.appendChild(kDivVal);
+        stats.appendChild(kDiv);
+
+        // IST-basierte Berechnung (wenn IST-Fläche gesetzt, sonst SOLL)
+        var einheiten = 0;
+        var usedEinheit = 0;
+        var duengerTotal = 0;
+        var usedDuenger = 0;
+        var einheitRem = 0;
+        var duengerRem = 0;
+        var pct = 0;
+        var statusClass = 'na';
+        if (r.hektar > 0 && r.koerner > 0) {
+          var istSum = getTabIstHektar(r);
+          einheiten = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
+          usedEinheit = r.entries ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
+          duengerTotal = istSum > 0 ? getTabIstDuenger(r) : r.hektar * r.duenger;
+          usedDuenger = r.entries ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
+          einheitRem = Math.max(0, einheiten - usedEinheit);
+          duengerRem = Math.max(0, duengerTotal - usedDuenger);
+          var minFilled = Math.min(
+            einheiten > 0 ? usedEinheit / einheiten : 1,
+            duengerTotal > 0 ? usedDuenger / duengerTotal : 1
+          );
+          pct = Math.min(100, Math.round(minFilled * 100));
+          if (pct >= 100) statusClass = 'done';
+          else if (pct > 0) statusClass = 'remaining';
+        }
+
+        // Einheiten verbleibend
+        var eStat = document.createElement('div');
+        eStat.className = 'dashboard-stat';
+        var eStatLabel = document.createElement('div');
+        eStatLabel.className = 'dashboard-stat-label';
+        eStatLabel.textContent = 'Einheiten verbl.';
+        var eStatVal = document.createElement('div');
+        eStatVal.className = 'dashboard-stat-value ' + statusClass;
+        eStatVal.textContent = r.hektar > 0 && r.koerner > 0 ? fmt(einheitRem) : '—';
+        eStat.appendChild(eStatLabel);
+        eStat.appendChild(eStatVal);
+        stats.appendChild(eStat);
+
+        // Dünger verbleibend
+        var dStat = document.createElement('div');
+        dStat.className = 'dashboard-stat';
+        var dStatLabel = document.createElement('div');
+        dStatLabel.className = 'dashboard-stat-label';
+        dStatLabel.textContent = 'Dünger verbl.';
+        var dStatVal = document.createElement('div');
+        dStatVal.className = 'dashboard-stat-value ' + statusClass;
+        dStatVal.textContent = duengerTotal > 0 ? duengerRem.toLocaleString('de-DE') + ' kg' : '—';
+        dStat.appendChild(dStatLabel);
+        dStat.appendChild(dStatVal);
+        stats.appendChild(dStat);
+
+        // Progress bar
+        var progressWrap = document.createElement('div');
+        progressWrap.className = 'dashboard-progress-bar';
+        var progressFill = document.createElement('div');
+        progressFill.className = 'dashboard-progress-fill';
+        progressFill.style.width = (r.hektar > 0 && r.koerner > 0) ? pct + '%' : '0%';
+        progressWrap.appendChild(progressFill);
+        stats.appendChild(progressWrap);
+
+        card.appendChild(stats);
+        container.appendChild(card);
+      });
+    }
+
+    // Öffnet das Dashboard-Sheet und ruft renderDashboard() auf.
+    // Issue #186: muss auch nach ENTRY_CHANGED-Events den State korrekt widerspiegeln.
+    function openDashboard() {
+      var sheet = document.getElementById('dashboard_sheet');
+      var overlay = document.getElementById('dashboard_overlay');
+      if (sheet) sheet.classList.add('open');
+      if (overlay) overlay.classList.add('open');
+      document.body.style.overflow = 'hidden';
+      renderDashboard();
+    }
+
+    // Schließt das Dashboard-Sheet.
+    function closeDashboard() {
+      var sheet = document.getElementById('dashboard_sheet');
+      var overlay = document.getElementById('dashboard_overlay');
+      if (sheet) sheet.classList.remove('open');
+      if (overlay) overlay.classList.remove('open');
+      document.body.style.overflow = '';
+    }
