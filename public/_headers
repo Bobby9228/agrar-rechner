@@ -15,3 +15,6 @@
 
 /manifest.json
   Cache-Control: no-cache
+
+/css/*.css
+  Cache-Control: public, max-age=604800
