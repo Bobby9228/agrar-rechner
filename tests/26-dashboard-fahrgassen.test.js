@@ -28,6 +28,8 @@ describe('Dashboard + Fahrgassen', () => {
     w.state.fahrgassenBreite = 4;
     w.state.reiter[0].hektar = 10;
     w.state.reiter[0].koerner = 80000;
+    w.state.reiter[0].fahrgassenEnabled = true;
+    w.state.reiter[0].fahrgassenBreite = 4;
     // No entries — 100% remaining
     w.state.reiter[0].entries = [];
 
@@ -36,8 +38,8 @@ describe('Dashboard + Fahrgassen', () => {
     const statsEls = content.querySelectorAll('.dashboard-summary-stat');
     const einheitenVal = statsEls[1]?.querySelector('.dashboard-summary-value')?.textContent || '';
 
-    // Correct: 12,0 (fahrgassen factor applied)
-    expect(einheitenVal).toBe('12,0');
+    // Correct: 12 (fahrgassen factor applied, fmt() omits trailing ,0 for whole numbers)
+    expect(einheitenVal).toBe('12');
   });
 
   it('per-tab card shows fahrgassen-adjusted units', () => {
@@ -45,6 +47,8 @@ describe('Dashboard + Fahrgassen', () => {
     w.state.fahrgassenBreite = 4;
     w.state.reiter[0].hektar = 10;
     w.state.reiter[0].koerner = 80000;
+    w.state.reiter[0].fahrgassenEnabled = true;
+    w.state.reiter[0].fahrgassenBreite = 4;
     w.state.reiter[0].entries = [];
 
     w.openDashboard();
@@ -53,8 +57,8 @@ describe('Dashboard + Fahrgassen', () => {
     const tab1Stats = cards[0].querySelectorAll('.dashboard-stat');
     const einheitenCardVal = tab1Stats[2]?.querySelector('.dashboard-stat-value')?.textContent || '';
 
-    // Correct: 12,0 (fahrgassen factor applied)
-    expect(einheitenCardVal).toBe('12,0');
+    // Correct: 12 (fahrgassen factor applied)
+    expect(einheitenCardVal).toBe('12');
   });
 
   it('dashboard summary flaeche is always correct (ha unaffected by fahrgassen)', () => {
@@ -62,32 +66,35 @@ describe('Dashboard + Fahrgassen', () => {
     w.state.fahrgassenBreite = 4;
     w.state.reiter[0].hektar = 10;
     w.state.reiter[0].koerner = 80000;
+    w.state.reiter[0].fahrgassenEnabled = true;
+    w.state.reiter[0].fahrgassenBreite = 4;
     w.state.reiter[0].entries = [];
 
     w.openDashboard();
     const content = doc.getElementById('dashboard_content');
     const statsEls = content.querySelectorAll('.dashboard-summary-stat');
     const flaecheVal = statsEls[0]?.querySelector('.dashboard-summary-value')?.textContent || '';
-    expect(flaecheVal).toBe('10,0 ha');
+    expect(flaecheVal).toBe('10 ha');
   });
 
-  it('dashboard shows 0 remaining when tab is fully used (bug not visible)', () => {
-    // When all SOLL units are used, bug doesn't matter (0 remaining)
-    // SOLL = 10 * 80000 / 50000 = 16 units
+  it('dashboard shows 0 remaining when tab is fully used', () => {
+    // SOLL = 10 * 80000 / 50000 * 0.75 = 12.0 units
     w.state.fahrgassenEnabled = true;
     w.state.fahrgassenBreite = 4;
     w.state.reiter[0].hektar = 10;
     w.state.reiter[0].koerner = 80000;
-    // Fill exactly 16 SOLL units (but the bug formula also gives 16)
+    w.state.reiter[0].fahrgassenEnabled = true;
+    w.state.reiter[0].fahrgassenBreite = 4;
+    // Fill exactly 12.0 fahrgassen-adjusted units
     w.state.reiter[0].entries = [
-      { einheit: 16.0, duenger: 0, zaehlerStand: 10, time: '10:00' }
+      { einheit: 12.0, duenger: 0, zaehlerStand: 10, time: '10:00' }
     ];
 
     w.openDashboard();
     const content = doc.getElementById('dashboard_content');
     const statsEls = content.querySelectorAll('.dashboard-summary-stat');
     const einheitenVal = statsEls[1]?.querySelector('.dashboard-summary-value')?.textContent || '';
-    expect(einheitenVal).toBe('0,0');
+    expect(einheitenVal).toBe('0');
   });
 
   it('BUG: dashboard duenger is always correct (duenger unaffected by fahrgassen)', () => {
@@ -96,6 +103,8 @@ describe('Dashboard + Fahrgassen', () => {
     w.state.reiter[0].hektar = 10;
     w.state.reiter[0].koerner = 80000;
     w.state.reiter[0].duenger = 200;
+    w.state.reiter[0].fahrgassenEnabled = true;
+    w.state.reiter[0].fahrgassenBreite = 4;
     w.state.reiter[0].entries = [];
 
     w.openDashboard();
@@ -111,12 +120,15 @@ describe('Dashboard + Fahrgassen', () => {
     // Tab 1: 5 ha, 80000 k — faktor=0.75 → 5*80000/50000*0.75 = 6.0
     w.state.reiter[0].hektar = 5;
     w.state.reiter[0].koerner = 80000;
+    w.state.reiter[0].fahrgassenEnabled = true;
+    w.state.reiter[0].fahrgassenBreite = 4;
     w.state.reiter[0].entries = [];
     // Tab 2: 10 ha, 90000 k — faktor=0.75 → 10*90000/50000*0.75 = 13.5
     // (push directly to avoid addReiter's syncStateFromInputs overwriting tab 0)
     // Push directly to avoid addReiter's syncStateFromInputs overwriting tab 0
     w.state.reiter.push({
-      name: 'Tab 2', hektar: 10, koerner: 90000, duenger: 0, entries: []
+      name: 'Tab 2', hektar: 10, koerner: 90000, duenger: 0, entries: [],
+      fahrgassenEnabled: true, fahrgassenBreite: 4
     });
 
     w.openDashboard();
@@ -126,7 +138,7 @@ describe('Dashboard + Fahrgassen', () => {
     // Tab 1 card — 3rd stat = Einheiten verbl.
     const tab1Stats = cards[0].querySelectorAll('.dashboard-stat');
     const tab1Units = tab1Stats[2]?.querySelector('.dashboard-stat-value')?.textContent || '';
-    expect(tab1Units).toBe('6,0'); // fahrgassen-corrected
+    expect(tab1Units).toBe('6'); // fahrgassen-corrected
 
     // Tab 2 card
     const tab2Stats = cards[1].querySelectorAll('.dashboard-stat');

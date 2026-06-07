@@ -6,6 +6,28 @@
     // Keine Seiteneffekte, keine DOM-Manipulation.
     // ============================================================================
 
+    // --- Fahrgassen-Faktor (zentrale Berechnung) ---
+
+    // Berechnet den Produktivitätsfaktor für Fahrgassen.
+    //
+    // Physikalische Grundlage:
+    //   Fahrgassen sind 1m breite Fahrspuren, die alle `breite` Meter
+    //   (Arbeitsbreite des Geräts) im Feld wiederkehren.
+    //   Der produktive Anteil der Fläche ist somit:
+    //     (breite - 1) / breite
+    //
+    //   Beispiel: Arbeitsbreite = 24m → (24-1)/24 = 0.9583 → ~4.2% Verlust
+    //             Arbeitsbreite = 4m  → (4-1)/4   = 0.75   → 25% Verlust
+    //
+    //   Guard: breite < 2 → kein sinnvoller Wert → Faktor 1.0 (keine Korrektur)
+    //
+    // @param {number} breite — Arbeitsbreite in Metern (≥ 2)
+    // @returns {number} Produktivitätsfaktor (0..1); 1 = keine Korrektur
+    function computeFahrgassenFaktor(breite) {
+      if (!breite || breite < 2) return 1;
+      return (breite - 1) / breite;
+    }
+
     // --- Einheiten-Berechnung (SOLL) ---
 
     // Berechnet die Anzahl Einheiten für ein gegebenes Feld.
@@ -13,7 +35,7 @@
     //
     // Formel:
     //   einheiten = (hektar × koerner) / koernerProEinheit
-    //   einheiten × (1 - fahrgassenKorrektur)  falls fahrgassenEnabled
+    //   einheiten × computeFahrgassenFaktor(breite)  falls fahrgassenEnabled
     //
     // Argumente:
     //   r           — Tab-Objekt mit hektar, koerner, fahrgassenEnabled, fahrgassenBreite, etc.
@@ -22,12 +44,12 @@
     // Rückgabe: number (Einheiten, immer ≥ 0)
     function getTotalEinheiten(r, koernerProEinheit) {
       if (!r || !r.hektar || !r.koerner || koernerProEinheit <= 0) return 0;
-      var fahrgassenKorrektur = 0;
-      if (r.fahrgassenEnabled && r.fahrgassenBreite > 0 && r.fahrgassenBreite < 100) {
-        fahrgassenKorrektur = Math.min(r.fahrgassenBreite / 1000, 0.15); // Max. 15% Korrektur
+      var faktor = 1;
+      if (r.fahrgassenEnabled && r.fahrgassenBreite > 0) {
+        faktor = computeFahrgassenFaktor(r.fahrgassenBreite);
       }
       var einheiten = (r.hektar * r.koerner) / koernerProEinheit;
-      return Math.max(0, einheiten * (1 - fahrgassenKorrektur));
+      return Math.max(0, einheiten * faktor);
     }
 
     // Berechnet die Gesamteinheiten für ein Tab-Objekt (SOLL), mit globalen Einstellungen.
@@ -39,12 +61,12 @@
     // Nur wenn istHektar > 0 gesetzt ist, wird die IST-Fläche für die Berechnung verwendet.
     function getTabIstEinheiten(r) {
       if (!r || !r.istHektar || !r.koerner || state.koernerProEinheit <= 0) return 0;
-      var fahrgassenKorrektur = 0;
-      if (r.fahrgassenEnabled && r.fahrgassenBreite > 0 && r.fahrgassenBreite < 100) {
-        fahrgassenKorrektur = Math.min(r.fahrgassenBreite / 1000, 0.15);
+      var faktor = 1;
+      if (r.fahrgassenEnabled && r.fahrgassenBreite > 0) {
+        faktor = computeFahrgassenFaktor(r.fahrgassenBreite);
       }
       var einheiten = (r.istHektar * r.koerner) / state.koernerProEinheit;
-      return Math.max(0, einheiten * (1 - fahrgassenKorrektur));
+      return Math.max(0, einheiten * faktor);
     }
 
     // --- Dünger-Berechnung (SOLL) ---
@@ -274,16 +296,15 @@ function getTabNextTime(r) {
     // These use getActiveReiter() so they are NOT pure — they live in ui-handlers.js
 
     // Körner gesamt für Tab r (inkl. Fahrgassen-Korrektur)
-    // Formel: hektar × koerner × fahrgassenFaktor
+    // Formel: hektar × koerner × computeFahrgassenFaktor(breite)
     function getTabKornerGesamt(r) {
       if (!r || !r.hektar || !r.koerner) return 0;
       var k = r.hektar * r.koerner;
-      var fahrgassenFaktor = 0;
-      if (r.fahrgassenEnabled && r.fahrgassenBreite > 0 && r.hektar > 0) {
-        fahrgassenFaktor = (r.fahrgassenBreite * 3) / (r.hektar * 10000);
-        if (fahrgassenFaktor > 0.15) fahrgassenFaktor = 0.15;
+      var faktor = 1;
+      if (r.fahrgassenEnabled && r.fahrgassenBreite > 0) {
+        faktor = computeFahrgassenFaktor(r.fahrgassenBreite);
       }
-      return k * (1 - fahrgassenFaktor);
+      return k * faktor;
     }
 
     // Berechnet Verbrauchsraten (Einheiten/ha, Dünger/ha) für einen bestimmten Tab.
@@ -295,8 +316,8 @@ function getTabNextTime(r) {
       var r = state.reiter[tabIdx];
       if (!r) return { unitsPerHa: 0, duengerPerHa: 0 };
       var fgFactor = 1;
-      if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
-        fgFactor = (state.fahrgassenBreite - 1) / state.fahrgassenBreite;
+      if (r.fahrgassenEnabled && r.fahrgassenBreite > 0) {
+        fgFactor = computeFahrgassenFaktor(r.fahrgassenBreite);
       }
       var unitsPerHa = r.koerner * fgFactor / state.koernerProEinheit;
       var duengerPerHa = r.duenger || 0;
