@@ -261,7 +261,6 @@
     }
 
     function drillCalcAll() {
-      invalidateCarryoverCache();
       renderDrillTabList();
       renderDrillSummary();
       renderResults();

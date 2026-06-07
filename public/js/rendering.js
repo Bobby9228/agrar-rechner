@@ -155,11 +155,6 @@
         einheitIn.style.width = '70px';
         einheitIn.dataset.tabIdx = String(i);
         einheitIn.oninput = function() {
-          var ti = parseInt(this.dataset.tabIdx);
-          var v = parseDE(this.value);
-          if (ti >= 0 && ti < state.reiter.length) {
-            state.reiter[ti].tempEinheit = v;
-          }
           drillCalcDebounced();
         };
         row.appendChild(einheitIn);
@@ -170,11 +165,6 @@
         duengerIn.style.width = '70px';
         duengerIn.dataset.tabIdx = String(i);
         duengerIn.oninput = function() {
-          var ti = parseInt(this.dataset.tabIdx);
-          var v = parseDE(this.value);
-          if (ti >= 0 && ti < state.reiter.length) {
-            state.reiter[ti].tempDuenger = v;
-          }
           drillCalcDebounced();
         };
         row.appendChild(duengerIn);
@@ -294,33 +284,22 @@
       var duengerTotal = istSum > 0 ? getTabIstDuenger(r) : getActiveTotalDuenger();
       var usedEinheit = (r && r.entries) ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
       var usedDuenger = (r && r.entries) ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
-      var co = getCarryover(state.activeReiter || 0);
-      var effectiveUsedE = usedEinheit;
-      var effectiveUsedD = usedDuenger;
-      var istSum = getTabIstHektar(r);
       var istEinheiten = istSum > 0 ? getTabIstEinheiten(r) : einheiten;
       var istDuenger = istSum > 0 ? getTabIstDuenger(r) : duengerTotal;
       var remEinheit = Math.max(0, istEinheiten - usedEinheit);
       var remDuenger = Math.max(0, istDuenger - usedDuenger);
-      var dsollE = document.getElementById('dsoll_einheit');
-      if (dsollE) dsollE.textContent = formatEinheit(einheiten);
-      var dusedE = document.getElementById('dused_einheit');
-      if (dusedE) dusedE.textContent = formatEinheit(effectiveUsedE);
-      var dremE = document.getElementById('drem_einheit');
-      if (dremE) dremE.textContent = formatEinheit(remEinheit);
-      var dsollD = document.getElementById('dsoll_duenger');
-      if (dsollD) dsollD.textContent = duengerTotal > 0 ? fmt(duengerTotal) + ' kg' : '—';
-      var dusedD = document.getElementById('dused_duenger');
-      if (dusedD) dusedD.textContent = effectiveUsedD > 0 ? fmt(effectiveUsedD) + ' kg' : '—';
-      var dremD = document.getElementById('drem_duenger');
-      if (dremD) dremD.textContent = remDuenger > 0 ? fmt(remDuenger) + ' kg' : '—';
-      var remainingUnits = einheiten - effectiveUsedE;
-      var progressEl = document.getElementById('d_progress');
-      if (progressEl && einheiten > 0) {
-        var pct = Math.min(100, Math.max(0, (effectiveUsedE / einheiten) * 100));
-        progressEl.style.width = pct + '%';
-        progressEl.textContent = Math.round(pct) + '%';
-      }
+      var dsSollE = document.getElementById('ds_saat_total');
+      if (dsSollE) dsSollE.textContent = formatEinheit(einheiten);
+      var dsUsedE = document.getElementById('ds_saat_used');
+      if (dsUsedE) dsUsedE.textContent = formatEinheit(usedEinheit);
+      var dsRemE = document.getElementById('ds_saat_remaining');
+      if (dsRemE) dsRemE.textContent = formatEinheit(remEinheit);
+      var dsSollD = document.getElementById('ds_duenger_total');
+      if (dsSollD) dsSollD.textContent = duengerTotal > 0 ? fmt(duengerTotal) + ' kg' : '—';
+      var dsUsedD = document.getElementById('ds_duenger_used');
+      if (dsUsedD) dsUsedD.textContent = usedDuenger > 0 ? fmt(usedDuenger) + ' kg' : '—';
+      var dsRemD = document.getElementById('ds_duenger_remaining');
+      if (dsRemD) dsRemD.textContent = remDuenger > 0 ? fmt(remDuenger) + ' kg' : '—';
     }
 
     // --- Render: Drill Log ---
@@ -381,10 +360,6 @@
     // konsistent mit renderResultCard() und renderDrillSummary().
 
     function renderDashboard() {
-      // Issue #186: Carryover-Cache muss invalidiert werden, weil
-      // Dashboard-Berechnungen (IST-Basis, Ersparnisse) davon abhängen
-      // und der Cache sonst stale-Daten aus früheren Test-Renders liefert.
-      invalidateCarryoverCache();
       var container = document.getElementById('dashboard_content');
       if (!container) return;
       var reiter = state.reiter;
@@ -587,8 +562,6 @@
 
     function initUI() {
       loadState();
-      var migrated = loadState();
-      if (migrated) saveState();
       maybeShowIosInstallHint();
       maybeShowUpdateHint();
       // --- Cross-Tab-Synchronisation (portiert aus Inline-Code Z. 3394-3412) ---
@@ -718,26 +691,6 @@
             break;
         }
       });
-    }
-
-    // --- Init: Theme (Dark/Light) ---
-
-    function initTheme() {
-      var savedTheme = localStorage.getItem('theme');
-      if (savedTheme === 'dark') {
-        document.body.classList.add('dark');
-      } else if (savedTheme === 'light') {
-        document.body.classList.remove('dark');
-      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.body.classList.add('dark');
-      }
-      var toggleBtn = document.getElementById('theme_toggle');
-      if (toggleBtn) {
-        toggleBtn.onclick = function() {
-          document.body.classList.toggle('dark');
-          localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
-        };
-      }
     }
 
     // --- Confirm Remove Tab ---
