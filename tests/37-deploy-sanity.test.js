@@ -16,9 +16,10 @@ describe('Cloudflare deploy sanity', () => {
     expect(content).toMatch(/self\.skipWaiting\s*\(\s*\)/);
   });
 
-  it('index.html calls reg.update() after SW registration to check for updates', () => {
-    const indexPath = resolve(publicDir, 'index.html');
-    const content = readFileSync(indexPath, 'utf-8');
+  it('main.js calls reg.update() after SW registration to check for updates', () => {
+    // Seit Phase 5: SW-Registrierung lebt in js/main.js (Inline-Block entfernt).
+    const mainPath = resolve(publicDir, 'js', 'main.js');
+    const content = readFileSync(mainPath, 'utf-8');
     expect(content).toMatch(/reg\.update\s*\(\s*\)/);
   });
 
@@ -55,9 +56,10 @@ describe('Cloudflare deploy sanity', () => {
     expect(content).toMatch(/status:\s*503/);
   });
 
-  it('index.html SW registration has .catch() for error handling', () => {
-    const indexPath = resolve(publicDir, 'index.html');
-    const content = readFileSync(indexPath, 'utf-8');
+  it('main.js SW registration has .catch() for error handling', () => {
+    // Seit Phase 5: SW-Registrierung lebt in js/main.js (Inline-Block entfernt).
+    const mainPath = resolve(publicDir, 'js', 'main.js');
+    const content = readFileSync(mainPath, 'utf-8');
     // navigator.serviceWorker.register muss .catch() mit console.warn haben
     expect(content).toMatch(/serviceWorker\.register\s*\(\s*['"]sw\.js['"]\s*\)\s*\.catch\s*\(/);
     expect(content).toMatch(/console\.warn\s*\(\s*['"]SW-Registrierung fehlgeschlagen:/);
