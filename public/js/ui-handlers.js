@@ -193,7 +193,7 @@
           var used = getTabUsedEinheiten(r);
           var co = getCarryover(i);
           var remaining = total - used + co.savedEinheit - co.excessEinheit;
-          if (remaining > 0.05) totalNeed += remaining;
+          if (remaining > EPSILON_QUANTITY) totalNeed += remaining;
         }
       });
       if (totalNeed <= 0) {
@@ -228,7 +228,7 @@
         var remainingUnits = einheit;
         var remainingDuenger = duenger;
         var lastEntry = null;
-        for (var pi = 0; pi < priorities.length && (remainingUnits > 0.05 || remainingDuenger > 0.05); pi++) {
+        for (var pi = 0; pi < priorities.length && (remainingUnits > EPSILON_QUANTITY || remainingDuenger > EPSILON_QUANTITY); pi++) {
           var tabIdx = priorities[pi].idx;
           var tab = state.reiter[tabIdx];
           // Issue #240: Dimensionen korrigieren. Vorher teilte einheitPerHa
@@ -263,7 +263,7 @@
           lastEntry = entry;
           remainingUnits -= unitsForThisTab;
           remainingDuenger -= duengerForThisTab;
-          if (pi === priorities.length - 1 && (remainingUnits > 0.05 || remainingDuenger > 0.05)) {
+          if (pi === priorities.length - 1 && (remainingUnits > EPSILON_QUANTITY || remainingDuenger > EPSILON_QUANTITY)) {
             if (lastEntry) { lastEntry.einheit += remainingUnits; lastEntry.duenger += remainingDuenger; }
             remainingUnits = 0; remainingDuenger = 0;
           }
