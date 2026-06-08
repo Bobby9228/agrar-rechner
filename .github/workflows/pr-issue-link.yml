@@ -22,6 +22,8 @@ jobs:
     name: Issue reference found in PR
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Read PR title and body
         id: read
         env:
