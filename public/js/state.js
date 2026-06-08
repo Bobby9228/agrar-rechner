@@ -57,11 +57,156 @@
       if (el) el.style.display = 'none';
     }
 
+    // --- Schema-Validierung (Issue #237) ---
+    // Verteidigt loadState() gegen manipulierten localStorage-Inhalt (XSS auf
+    // gleicher Domain, andere App mit gleichem Origin, Man-in-the-Middle bei
+    // unsicherer Konfiguration). Stillschweigendes Verwerfen: ungültige Felder
+    // werden auf sinnvolle Defaults zurückgesetzt, sodass die App lauffähig
+    // bleibt statt zu crashen.
+    //
+    // Erlaubte Keys (Whitelist) — alles andere wird im Reviver verworfen.
+    // Hinzufügen neuer Felder erfordert eine bewusste Entscheidung.
+    var ALLOWED_TOP_KEYS = [
+      'reiter', 'activeReiter', 'activeView',
+      'fahrgassenEnabled', 'fahrgassenBreite',
+      'einheitGroesseEnabled', 'koernerProEinheit',
+      'machineLog', 'drillPriorities', 'iosInstallHintShown',
+      '_lv',
+      // Legacy-Keys (nur für Migration 0→1 lesend toleriert)
+      'hektar', 'istHektar', 'koerner', 'duenger', 'entries',
+      'name'
+    ];
+    var ALLOWED_TAB_KEYS = [
+      'name', 'hektar', 'istHektar', 'koerner', 'duenger',
+      'entries', 'fahrgassenEnabled', 'fahrgassenBreite'
+    ];
+    var ALLOWED_ENTRY_KEYS = [
+      'time', 'einheit', 'duenger', 'hektar', 'istHektar',
+      'koerner', 'duengerRate', 'mlIdx'
+    ];
+    var ALLOWED_MACHINE_LOG_KEYS = [
+      'time', 'einheit', 'duenger', 'hektar', 'istHektar',
+      'koerner', 'duengerRate'
+    ];
+
+    function isPlainObject(v) {
+      // Schließt null, Arrays, Klassen-Instanzen und speziell
+      // Objekte mit abweichendem Prototypen aus. Damit ist der einzige
+      // Weg, einen Plain Object zu erzeugen, die Literalschreibweise —
+      // also auch kein `Object.create(null)` mit Magic-Proto-Keys.
+      if (v === null || typeof v !== 'object') return false;
+      if (Array.isArray(v)) return false;
+      var proto = Object.getPrototypeOf(v);
+      return proto === Object.prototype || proto === null;
+    }
+
+    function sanitizeNumber(v, fallback) {
+      // Akzeptiert echte Number und number-konvertierbare Strings,
+      // verwirft NaN/Infinity/Objekte. Null/Undefined → fallback.
+      if (v === null || v === undefined) return fallback;
+      if (typeof v === 'number') return isFinite(v) ? v : fallback;
+      if (typeof v === 'string' && v.trim() !== '') {
+        var n = Number(v);
+        return isFinite(n) ? n : fallback;
+      }
+      return fallback;
+    }
+
+    function sanitizeString(v, fallback, maxLen) {
+      if (typeof v !== 'string') return fallback;
+      if (maxLen && v.length > maxLen) v = v.slice(0, maxLen);
+      return v;
+    }
+
+    function sanitizeBoolean(v, fallback) {
+      if (typeof v === 'boolean') return v;
+      return fallback;
+    }
+
+    function sanitizeEntry(raw) {
+      // Eintrag: Plain Object, nur erlaubte Keys, jede Property typgeprüft.
+      // Unbekannte Keys und falsche Typen → Default. Verwirft auch
+      // `__proto__`/`constructor`/`prototype` über den Reviver.
+      if (!isPlainObject(raw)) return null;
+      var out = {};
+      out.time        = sanitizeNumber(raw.time, 0);
+      out.einheit     = sanitizeNumber(raw.einheit, 0);
+      out.duenger     = sanitizeNumber(raw.duenger, 0);
+      out.hektar      = sanitizeNumber(raw.hektar, 0);
+      out.istHektar   = sanitizeNumber(raw.istHektar, 0);
+      out.koerner     = sanitizeNumber(raw.koerner, 0);
+      out.duengerRate = sanitizeNumber(raw.duengerRate, 0);
+      if (raw.mlIdx !== undefined) {
+        var ml = sanitizeNumber(raw.mlIdx, -1);
+        out.mlIdx = ml >= 0 ? Math.floor(ml) : -1;
+      }
+      return out;
+    }
+
+    function sanitizeMachineLogEntry(raw) {
+      if (!isPlainObject(raw)) return null;
+      var out = {};
+      out.time        = sanitizeNumber(raw.time, 0);
+      out.einheit     = sanitizeNumber(raw.einheit, 0);
+      out.duenger     = sanitizeNumber(raw.duenger, 0);
+      out.hektar      = sanitizeNumber(raw.hektar, 0);
+      out.istHektar   = sanitizeNumber(raw.istHektar, 0);
+      out.koerner     = sanitizeNumber(raw.koerner, 0);
+      out.duengerRate = sanitizeNumber(raw.duengerRate, 0);
+      return out;
+    }
+
+    function sanitizeTab(raw) {
+      if (!isPlainObject(raw)) {
+        return { name: 'Tab', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] };
+      }
+      var tab = {
+        name:      sanitizeString(raw.name, 'Tab', 64),
+        hektar:    sanitizeNumber(raw.hektar, 0),
+        istHektar: sanitizeNumber(raw.istHektar, 0),
+        koerner:   sanitizeNumber(raw.koerner, 0),
+        duenger:   sanitizeNumber(raw.duenger, 0),
+        entries:   []
+      };
+      // Per-Tab-Overrides (optional, mit globalen Defaults)
+      if (raw.fahrgassenEnabled !== undefined) {
+        tab.fahrgassenEnabled = sanitizeBoolean(raw.fahrgassenEnabled, false);
+      }
+      if (raw.fahrgassenBreite !== undefined) {
+        tab.fahrgassenBreite = sanitizeNumber(raw.fahrgassenBreite, 0);
+      }
+      if (Array.isArray(raw.entries)) {
+        for (var i = 0; i < raw.entries.length; i++) {
+          var e = sanitizeEntry(raw.entries[i]);
+          if (e !== null) tab.entries.push(e);
+        }
+      }
+      return tab;
+    }
+
+    function jsonReviver(key, value) {
+      // Defense-in-Depth gegen Prototype Pollution: blockiere die drei
+      // gefährlichen Keys auf jeder Verschachtelungsebene. JSON.parse
+      // ignoriert __proto__ zwar weitgehend, aber konsistentes Whitelisting
+      // ist robust und dokumentiert die erlaubte Form.
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+        return undefined; // Schlüssel wird aus dem Result entfernt
+      }
+      return value;
+    }
+
+    function parsePersistedState(raw) {
+      // Wrapper: nutzt jsonReviver, um gefährliche Keys auf jeder Ebene
+      // abzufangen, BEVOR die nachfolgende Sanitisierung läuft.
+      return JSON.parse(raw, jsonReviver);
+    }
+
     function loadState() {
       try {
         var saved = localStorage.getItem('mais_rechner');
         if (!saved) return false;
-        var data = JSON.parse(saved);
+        var data = parsePersistedState(saved);
+        if (!isPlainObject(data)) return false;
         var originalLv = data._lv || 0;
         var lv = originalLv;
         // Migration 0→1: Einzelne Felder → Tab-Array
@@ -99,17 +244,50 @@
           // drillPriorities Default
           if (!data.drillPriorities) data.drillPriorities = {};
         }
-        // Validate und übernehmen
+        // Validate und übernehmen — Schema-strict ab _lv=4
         if (!Array.isArray(data.reiter) || data.reiter.length === 0) return false;
-        data.reiter.forEach(function(r) {
-          if (!r.entries) r.entries = [];
-          if (r.hektar === undefined) r.hektar = 0;
-          if (r.istHektar === undefined) r.istHektar = 0;
-          if (r.koerner === undefined) r.koerner = 0;
-          if (r.duenger === undefined) r.duenger = 0;
-          if (!r.name) r.name = 'Tab';
-        });
-        data._lv = 4;
+        var sanitizedReiter = [];
+        for (var i = 0; i < data.reiter.length; i++) {
+          sanitizedReiter.push(sanitizeTab(data.reiter[i]));
+        }
+        // Globale Felder typgeprüft + Defaults
+        var activeReiterRaw = sanitizeNumber(data.activeReiter, 0);
+        data.activeReiter = activeReiterRaw >= 0 && activeReiterRaw < sanitizedReiter.length
+          ? Math.floor(activeReiterRaw)
+          : 0;
+        data.activeView = (data.activeView === 'protokoll') ? 'protokoll' : null;
+        if (data.fahrgassenEnabled === undefined) data.fahrgassenEnabled = false;
+        if (data.fahrgassenBreite === undefined) data.fahrgassenBreite = 0;
+        data.fahrgassenEnabled = sanitizeBoolean(data.fahrgassenEnabled, false);
+        data.fahrgassenBreite = sanitizeNumber(data.fahrgassenBreite, 0);
+        if (data.einheitGroesseEnabled === undefined) data.einheitGroesseEnabled = false;
+        data.einheitGroesseEnabled = sanitizeBoolean(data.einheitGroesseEnabled, false);
+        if (data.koernerProEinheit === undefined) data.koernerProEinheit = 50000;
+        data.koernerProEinheit = sanitizeNumber(data.koernerProEinheit, 50000);
+        // machineLog sanitizen
+        var machineLog = [];
+        if (Array.isArray(data.machineLog)) {
+          for (var mi = 0; mi < data.machineLog.length; mi++) {
+            var me = sanitizeMachineLogEntry(data.machineLog[mi]);
+            if (me !== null) machineLog.push(me);
+          }
+        }
+        data.machineLog = machineLog;
+        // drillPriorities muss Plain Object sein
+        if (!isPlainObject(data.drillPriorities)) data.drillPriorities = {};
+        // iosInstallHintShown
+        if (data.iosInstallHintShown === undefined) data.iosInstallHintShown = false;
+        data.iosInstallHintShown = sanitizeBoolean(data.iosInstallHintShown, false);
+        // Final: sanitisiertes reiter einsetzen
+        data.reiter = sanitizedReiter;
+        // Unbekannte Top-Level-Keys strippen (Whitelist)
+        var cleaned = {};
+        for (var ki = 0; ki < ALLOWED_TOP_KEYS.length; ki++) {
+            var k = ALLOWED_TOP_KEYS[ki];
+            if (data[k] !== undefined) cleaned[k] = data[k];
+        }
+        cleaned._lv = 4;
+        data = cleaned;
         state = data;
         // Migration-Persistenz: Wenn die Daten nicht bereits _lv=4 waren,
         // schreibe den migrierten Snapshot einmalig zurück, damit nachfolgende
