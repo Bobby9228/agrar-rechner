@@ -1,8 +1,24 @@
 // ⚠️ CACHE_VERSION muss bei jedem Release manuell gebumpet werden!
 // Bei Vergessen bekommen Nutzer die alte Version aus dem Cache.
 // alternativa: Build-Script das Hash/Zeitstempel injiziert.
-const CACHE_VERSION = 'mais-rechner-v12';
-const STATIC_ASSETS = ['/', '/index.html', '/css/styles.css', '/icon.svg', '/manifest.json', '/icon-192.png', '/icon-512.png'];
+const CACHE_VERSION = 'mais-rechner-v13';
+const STATIC_ASSETS = [
+    '/',
+    '/index.html',
+    '/css/styles.css',
+    '/js/state.js',
+    '/js/calculations.js',
+    '/js/ui-handlers.js',
+    '/js/render-tabs.js',
+    '/js/render-results.js',
+    '/js/render-drill.js',
+    '/js/render-dashboard.js',
+    '/js/main.js',
+    '/icon.svg',
+    '/manifest.json',
+    '/icon-192.png',
+    '/icon-512.png',
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE_VERSION).then(c => c.addAll(STATIC_ASSETS)));
