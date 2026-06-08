@@ -175,34 +175,6 @@
       saveState();
     }
 
-    // openResetModal() — öffnet das Reset-Confirmation-Modal (Issue #236).
-    // Die Auswahl (Tab zurücksetzen / Alle Daten löschen / Abbrechen) und die
-    // ggf. nötige Zwei-Stufen-Bestätigung lebt in js/reset-modal.js.
-    // Ersetzt die alte `confirm()`-basierte Variante, die im Footer zwei
-    // Buttons brauchte und Verwechslungsgefahr beim Klick erzeugte.
-    // Hinweis: Der `fullReset`-Parameter bleibt rückwärtskompatibel erhalten,
-    // wird aber ignoriert — die Auswahl trifft der User im Modal.
-    function confirmResetAll(fullReset) {
-      // Argument ist absichtlich unbenutzt (Rückwärtskompatibilität für
-      // inline onclick="confirmResetAll(true)"-Aufrufer in älteren Templates).
-      void fullReset;
-      if (typeof openResetModal === 'function') {
-        openResetModal();
-      } else if (typeof window.openResetModal === 'function') {
-        window.openResetModal();
-      } else {
-        // Fallback, falls reset-modal.js nicht geladen ist: kein nativer
-        // confirm()-Dialog mehr (Issue #236) — direkter Reset mit Minimal-
-        // Sicherheit. resetAll() wird nur bei explizitem fullReset=true
-        // ausgeführt; sonst Tab-Reset.
-        if (fullReset === true) {
-          if (typeof resetAll === 'function') resetAll();
-        } else {
-          if (typeof resetActiveTab === 'function') resetActiveTab();
-        }
-      }
-    }
-
     // --- Drill Protocol ---
 
     function drillAdd() {
