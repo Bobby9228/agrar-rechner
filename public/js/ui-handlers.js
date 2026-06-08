@@ -198,8 +198,6 @@
       var einheit = parseDE(einheitVal) || 0;
       var duenger = parseDE(duengerVal) || 0;
       if (einheit <= 0 && duenger <= 0) return;
-      var einheitPerHa = state.koernerProEinheit;
-      if (state.einheitGroesseEnabled && state.koernerProEinheit !== 50000) einheitPerHa = state.koernerProEinheit;
       var targetHektar = 0;
       var activeTab = state.reiter[state.activeReiter];
       if (activeTab && activeTab.hektar > 0) targetHektar = activeTab.hektar;
@@ -248,8 +246,17 @@
         for (var pi = 0; pi < priorities.length && (remainingUnits > 0.05 || remainingDuenger > 0.05); pi++) {
           var tabIdx = priorities[pi].idx;
           var tab = state.reiter[tabIdx];
-          var perUnit = (einheitPerHa / (tab.hektar || 1));
-          var maxUnitsThisTab = remainingUnits / perUnit;
+          // Issue #240: Dimensionen korrigieren. Vorher teilte einheitPerHa
+          // (eine Anzahl, kein "Einheiten/ha") durch tab.hektar und ergab
+          // "Einheiten/ha²" — maxUnitsThisTab wurde dadurch winzig, und die
+          // Verteilung über mehrere Tabs brach. Korrekt: perUnit in
+          // Einheiten/ha dieses Tabs, tab.hektar * perUnit = Aufnahmekapazität
+          // in Einheiten (= vergleichbar mit totalE des Tabs in #230).
+          var fgFactor = (tab.fahrgassenEnabled && tab.fahrgassenBreite >= 2)
+            ? computeFahrgassenFaktor(tab.fahrgassenBreite)
+            : 1;
+          var perUnit = (tab.koerner * fgFactor) / state.koernerProEinheit;
+          var maxUnitsThisTab = tab.hektar * perUnit;
           var unitsForThisTab = Math.min(remainingUnits, maxUnitsThisTab);
           // kg Dünger pro Einheit Saatgut für diesen Tab.
           // Issue #230: ersetzt die alte, falsche Formel
