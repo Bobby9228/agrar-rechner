@@ -54,7 +54,7 @@
 
     // Berechnet die Gesamteinheiten für ein Tab-Objekt (SOLL), mit globalen Einstellungen.
     function getTabTotalEinheiten(r) {
-      return getTotalEinheiten(r, 50000);
+      return getTotalEinheiten(r, state.koernerProEinheit);
     }
 
     // Berechnet die IST-Einheiten basierend auf der IST-Fläche.
