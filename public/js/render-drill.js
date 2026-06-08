@@ -57,11 +57,13 @@
           var remaining = totalE - usedE;
           var remainingD = totalD - usedD;
           var statusEl = document.createElement('div');
+          statusEl.id = 'dtl_need_' + i;
           statusEl.style.fontSize = '0.75rem';
           statusEl.style.color = '#666';
           if (remaining <= 0.05 && remainingD <= 0.05) {
             statusEl.textContent = '✓ fertig';
             statusEl.style.color = '#2a9d4a';
+            statusEl.classList.add('done');
           } else {
             statusEl.textContent = 'braucht ' + fmt(Math.max(0, remaining)) + ' Einheiten, ' + fmt(Math.max(0, remainingD)) + ' kg Dünger';
           }
@@ -71,6 +73,7 @@
         var einheitIn = document.createElement('input');
         einheitIn.type = 'text';
         einheitIn.inputMode = 'decimal';
+        einheitIn.id = 'dtl_e_' + i;
         einheitIn.placeholder = 'Einheiten';
         einheitIn.style.width = '70px';
         einheitIn.dataset.tabIdx = String(i);
@@ -81,6 +84,7 @@
         var duengerIn = document.createElement('input');
         duengerIn.type = 'text';
         duengerIn.inputMode = 'decimal';
+        duengerIn.id = 'dtl_d_' + i;
         duengerIn.placeholder = 'kg Dünger';
         duengerIn.style.width = '70px';
         duengerIn.dataset.tabIdx = String(i);
