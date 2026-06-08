@@ -119,6 +119,12 @@ export default [
             // Bestehender Code referenziert implizite Modul-Globals (z. B.
             // `state`), die in legacy-Dateien nicht importiert werden — diese
             // Regel war der Hauptverursacher der 348 Errors.
+            //
+            // Re-enabled per-file für `tests/` weiter unten (Issue #233
+            // Follow-up, Review-Kommentar t_7215b1de #25): Tests verwenden
+            // bereits ESM `import`, profitieren also von `no-undef` ohne
+            // Refactor-Aufwand. 306 Errors verbleiben in public/js/ bis
+            // Phase 3+ (Modul-Refactor in ESM-`import`-Form).
             "no-undef": "off",
             // Bestehender Code deklariert Schleifen-Variablen in
             // aufeinanderfolgenden Blöcken mehrfach — typisches Legacy-Pattern.
@@ -137,6 +143,11 @@ export default [
         rules: {
             "no-console": "off",
             "no-unused-vars": "off", // helper-Importe können ungenutzt sein
+            // Re-enabled no-undef für Tests: sie verwenden ESM `import`,
+            // also profitieren sie von der Regel ohne Refactor. 0 Errors
+            // verifiziert (Stand: 2026-06-08, t_ddd81e3a). public/js/*
+            // bleibt absichtlich aus, siehe Block oben.
+            "no-undef": ["error", { typeof: true }],
         },
     },
 
