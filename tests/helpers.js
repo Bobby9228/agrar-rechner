@@ -79,6 +79,7 @@ export function createDom() {
     loadModule('render-results.js'),
     loadModule('render-drill.js'),
     loadModule('render-dashboard.js'),
+    loadModule('reset-modal.js'),
     // Remove DOMContentLoaded from main.js (auto-init doesn't work in jsdom)
     loadModule('main.js').replace(
       "document.addEventListener('DOMContentLoaded', initUI);",

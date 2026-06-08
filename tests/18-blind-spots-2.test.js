@@ -436,56 +436,62 @@ describe('switchToProtokoll()', () => {
 });
 
 // ---------------------------------------------------------------------------
-// confirmResetAll(fullReset)
+// confirmResetAll(fullReset) — Issue #236: opens the reset modal instead
+// of native confirm() dialogs.
 // ---------------------------------------------------------------------------
 describe('confirmResetAll(fullReset)', () => {
-  let w;
+  let w, doc;
 
   beforeEach(() => {
-    const { window } = createDom();
+    const { window, document: d } = createDom();
     w = window;
+    doc = d || w.document;
   });
 
-  it('confirms with fullReset=true (prompts ALL Daten)', () => {
-    let lastMsg = '';
-    w.confirm = (msg) => { lastMsg = msg; return false; };
+  it('opens the modal (no native confirm dialog) — fullReset=true', () => {
+    let called = false;
+    w.confirm = () => { called = true; return false; };
     w.confirmResetAll(true);
-    expect(lastMsg).toContain('ALLE Daten');
+    expect(doc.getElementById('reset_modal').classList.contains('open')).toBe(true);
+    expect(called).toBe(false);
   });
 
-  it('confirms with fullReset=false (prompts single tab)', () => {
-    let lastMsg = '';
-    w.confirm = (msg) => { lastMsg = msg; return false; };
+  it('opens the modal (no native confirm dialog) — fullReset=false', () => {
+    let called = false;
+    w.confirm = () => { called = true; return false; };
     w.confirmResetAll(false);
-    expect(lastMsg).not.toContain('ALLE Daten');
+    expect(doc.getElementById('reset_modal').classList.contains('open')).toBe(true);
+    expect(called).toBe(false);
   });
 
-  it('resets all tabs when fullReset=true and confirmed', () => {
-    w.confirm = () => true;
+  it('resets all tabs when fullReset and "Alle Daten löschen" is double-clicked', () => {
     w.addReiter();
     w.state.reiter[0].hektar = 10;
     w.state.reiter[1].hektar = 20;
-    w.confirmResetAll(true);
+    w.openResetModal();
+    var btn = doc.getElementById('reset_modal_confirm_all');
+    btn.click(); // arm
+    btn.click(); // confirm
     expect(w.state.reiter.length).toBe(1);
     expect(w.state.reiter[0].hektar).toBe(0);
   });
 
-  it('resets only active tab when fullReset=false and confirmed', () => {
-    w.confirm = () => true;
+  it('resets only active tab when "Aktuellen Tab zurücksetzen" is clicked', () => {
     w.addReiter();
     w.state.reiter[0].hektar = 10;
     w.state.reiter[1].hektar = 20;
     w.state.activeReiter = 1;
-    w.confirmResetAll(false);
+    w.openResetModal();
+    doc.getElementById('reset_modal_tab').click();
     expect(w.state.reiter.length).toBe(2);
     expect(w.state.reiter[0].hektar).toBe(10);
     expect(w.state.reiter[1].hektar).toBe(0);
   });
 
-  it('does nothing when cancelled', () => {
-    w.confirm = () => false;
+  it('does nothing when modal is cancelled (Abbrechen button)', () => {
     w.state.reiter[0].hektar = 99;
-    w.confirmResetAll(true);
+    w.openResetModal();
+    doc.getElementById('reset_modal_cancel').click();
     expect(w.state.reiter[0].hektar).toBe(99);
   });
 });
@@ -518,12 +524,6 @@ describe('renderView()', () => {
     w.state.activeView = 'protokoll';
     w.renderView();
     expect(doc.getElementById('reset_btn').style.display).toBe('none');
-  });
-
-  it('reset_all_btn hidden in protokoll view', () => {
-    w.state.activeView = 'protokoll';
-    w.renderView();
-    expect(doc.getElementById('reset_all_btn').style.display).toBe('none');
   });
 
   it('drill_section shown in protokoll view', () => {
