@@ -41,8 +41,7 @@
         };
         row.appendChild(prioBtn);
         var nameWrap = document.createElement('div');
-        nameWrap.style.flex = '1';
-        nameWrap.style.minWidth = '0';
+        nameWrap.className = 'drill-tab-name-wrap';
         var label = document.createElement('div');
         label.className = 'drill-tab-name';
         label.textContent = r.name || ('Tab ' + (i + 1));
@@ -58,11 +57,9 @@
           var remainingD = totalD - usedD;
           var statusEl = document.createElement('div');
           statusEl.id = 'dtl_need_' + i;
-          statusEl.style.fontSize = '0.75rem';
-          statusEl.style.color = '#666';
+          statusEl.className = 'drill-tab-need';
           if (remaining <= 0.05 && remainingD <= 0.05) {
             statusEl.textContent = '✓ fertig';
-            statusEl.style.color = '#2a9d4a';
             statusEl.classList.add('done');
           } else {
             statusEl.textContent = 'braucht ' + fmt(Math.max(0, remaining)) + ' Einheiten, ' + fmt(Math.max(0, remainingD)) + ' kg Dünger';

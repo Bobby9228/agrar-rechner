@@ -635,8 +635,11 @@ font-size: 0.75rem;
     .drill-prio-btn:active {
       transform: scale(0.92);
     }
-    .drill-tab-row .drill-tab-name {
+    .drill-tab-row .drill-tab-name-wrap {
       flex: 1;
+      min-width: 0;
+    }
+    .drill-tab-row .drill-tab-name {
       font-size: 0.9rem;
       font-weight: 500;
     }
