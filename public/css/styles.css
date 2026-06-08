@@ -90,12 +90,14 @@
     --color-summary-muted: #b0b8a8;
     --color-text: #e0e8d6;
     --color-text-hint: #9ca896;
+    --color-text-hint-2: #9ca896;
     --color-text-label: #9aa88a;
     --color-text-label-darker: #c8d0b8;
     --color-text-muted: #9ca896;
     --color-text-placeholder: #8a9480;
     --color-text-strong: #c8d0b8;
     --color-text-subtle: #8a9480;
+    --color-text-success-strong: #a5d6a7;
     --color-update-banner-bg: #4a7c23;
     }
 
