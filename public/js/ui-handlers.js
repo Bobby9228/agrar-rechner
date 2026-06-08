@@ -251,7 +251,13 @@
           var perUnit = (einheitPerHa / (tab.hektar || 1));
           var maxUnitsThisTab = remainingUnits / perUnit;
           var unitsForThisTab = Math.min(remainingUnits, maxUnitsThisTab);
-          var duengerPerUnit = tab.duenger > 0 ? (tab.duenger / (tab.hektar || 1) * 50) : 0;
+          // kg Dünger pro Einheit Saatgut für diesen Tab.
+          // Issue #230: ersetzt die alte, falsche Formel
+          //   `tab.duenger / (tab.hektar || 1) * 50`
+          // (Überbleibsel der "1 Einheit = 50 kg"-Annahme aus #186/#191).
+          // Die neue Berechnung lebt in calculations.js/getDuengerProEinheit
+          // und ist dimensionsrein (kg/Einheit) — kein tab.hektar im Zähler.
+          var duengerPerUnit = getDuengerProEinheit(tab, state.koernerProEinheit);
           var duengerForThisTab = Math.min(remainingDuenger, duengerPerUnit * unitsForThisTab);
           var entry = {
             time: getTabNextTime(tab),
