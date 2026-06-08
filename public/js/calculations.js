@@ -6,6 +6,13 @@
     // Keine Seiteneffekte, keine DOM-Manipulation.
     // ============================================================================
 
+    // --- Konstanten ---
+
+    // Schwelle für "noch etwas vorhanden" (Einheiten / kg).
+    // Wird verwendet, um Floating-Point-Restwerte unterhalb der Darstellungs-
+    // genauigkeit als "nichts" zu behandeln. Refs: Issue #254.
+    var EPSILON_QUANTITY = 0.05;
+
     // --- Fahrgassen-Faktor (zentrale Berechnung) ---
 
     // Berechnet den Produktivitätsfaktor für Fahrgassen.
