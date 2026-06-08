@@ -656,7 +656,9 @@ font-size: 0.75rem;
       color: var(--color-text-muted);
     }
     .drill-tab-row .drill-tab-values input {
-      width: 55px;
+      width: 90px;
+      max-width: 22vw;
+      min-width: 70px;
       padding: 4px 6px;
       border: 1px solid var(--color-border-disabled);
       border-radius: 4px;
@@ -958,7 +960,7 @@ font-size: 0.75rem;
       position: fixed;
       inset: 0;
       background: rgba(0,0,0,0.4);
-      z-index: 100;
+      z-index: 150;
     }
     .dashboard-overlay.open {
       display: block;
@@ -973,7 +975,7 @@ font-size: 0.75rem;
       border-radius: 20px 20px 0 0;
       max-height: 80vh;
       overflow-y: auto;
-      z-index: 101;
+      z-index: 151;
       padding: 0 0 max(20px, env(safe-area-inset-bottom));
     }
     .dashboard-sheet.open {
