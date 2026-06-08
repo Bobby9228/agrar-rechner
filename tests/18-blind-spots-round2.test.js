@@ -352,7 +352,7 @@ describe('lv() migration: ensures entries array on all reiters', () => {
       activeReiter: 0,
       machineLog: []
     };
-    w.localStorage.setItem('mais_rechner', JSON.stringify(migratedState));
+    w.localStorage.setItem('agrar_rechner', JSON.stringify(migratedState));
     w.loadState();
     expect(w.state.reiter[0].entries).toEqual([]);
     expect(w.state.reiter[1].entries.length).toBe(1);
@@ -365,7 +365,7 @@ describe('lv() migration: ensures entries array on all reiters', () => {
       duenger: 150,
       machineLog: []
     };
-    w.localStorage.setItem('mais_rechner', JSON.stringify(migratedState));
+    w.localStorage.setItem('agrar_rechner', JSON.stringify(migratedState));
     w.loadState();
     expect(w.state.reiter).toBeTruthy();
     expect(w.state.reiter.length).toBe(1);

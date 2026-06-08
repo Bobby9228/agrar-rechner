@@ -1,5 +1,5 @@
 /**
- * Shared test helper — loads the Mais-Rechner JS into a jsdom instance.
+ * Shared test helper — loads the Agrar-Rechner JS into a jsdom instance.
  * Works with the modular architecture: state.js, calculations.js, ui-handlers.js,
  * render-tabs.js, render-results.js, render-drill.js, render-dashboard.js, main.js
  * (Issue #212: rendering.js was split into 4 modules in June 2026.)

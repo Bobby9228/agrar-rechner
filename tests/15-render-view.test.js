@@ -137,7 +137,7 @@ describe('switchToProtokoll', () => {
 
   it('saves state via sv()', () => {
     w.switchToProtokoll();
-    var stored = JSON.parse(w.localStorage.getItem('mais_rechner'));
+    var stored = JSON.parse(w.localStorage.getItem('agrar_rechner'));
     expect(stored.activeView).toBe('protokoll');
   });
 

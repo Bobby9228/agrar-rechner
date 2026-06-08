@@ -18,7 +18,7 @@ describe('loadState() schema validation (Issue #237)', () => {
 
     describe('Type injection on tab fields', () => {
         it('coerces string-typed number fields to numbers (rejected as invalid → 0)', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{
                     name: 'Injected',
                     hektar: '"<script>alert(1)</script>"',  // String statt Zahl
@@ -38,7 +38,7 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
 
         it('accepts finite numbers and number-coercible strings as tab fields', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{
                     name: 'OK',
                     hektar: 12.5,
@@ -57,7 +57,7 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
 
         it('rejects NaN and Infinity in number fields', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{
                     name: 'Bad',
                     hektar: null,
@@ -77,7 +77,7 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
 
         it('falls back to "Tab" when name is missing or non-string', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{ hektar: 0, koerner: 0, duenger: 0, entries: [] }],
                 _lv: 4
             });
@@ -87,7 +87,7 @@ describe('loadState() schema validation (Issue #237)', () => {
 
         it('truncates oversize name to 64 chars', () => {
             const longName = 'A'.repeat(200);
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{ name: longName, entries: [] }],
                 _lv: 4
             });
@@ -98,7 +98,7 @@ describe('loadState() schema validation (Issue #237)', () => {
 
     describe('Prototype pollution protection', () => {
         it('strips __proto__ from entries', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{
                     name: 'P',
                     entries: [{
@@ -120,7 +120,7 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
 
         it('strips constructor and prototype keys at any nesting level', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{
                     entries: [{
                         constructor: { polluted: true },
@@ -143,7 +143,7 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
 
         it('rejects non-plain entries (arrays, class instances, null)', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{
                     entries: [
                         [1, 2, 3],                       // Array statt Object
@@ -164,7 +164,7 @@ describe('loadState() schema validation (Issue #237)', () => {
             const sentinel = '__polluted_' + Date.now();
             // JSON.parse kann __proto__ per Spec nicht direkt setzen,
             // aber der Reviver entzieht ihm jeden Angriffsvektor.
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{ entries: [{ __proto__: { [sentinel]: true } }] }],
                 _lv: 4
             });
@@ -175,7 +175,7 @@ describe('loadState() schema validation (Issue #237)', () => {
 
     describe('Unknown / extra fields are stripped', () => {
         it('drops unknown keys from tab objects', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{
                     name: 'X',
                     hektar: 0,
@@ -198,7 +198,7 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
 
         it('drops unknown keys from entry objects', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{
                     entries: [{
                         einheit: 1,
@@ -222,7 +222,7 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
 
         it('strips unknown top-level state fields but keeps recognized ones', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{ name: 'Tab 1', entries: [] }],
                 _lv: 4,
                 xss: 'top-level',
@@ -239,7 +239,7 @@ describe('loadState() schema validation (Issue #237)', () => {
 
     describe('Missing / malformed fields use safe defaults', () => {
         it('fills missing tab fields with zero defaults', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{ entries: [] }],   // komplett leerer Tab
                 _lv: 4
             });
@@ -253,7 +253,7 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
 
         it('uses empty array for missing entries', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{ name: 'NoEntries' }],   // keine entries
                 _lv: 4
             });
@@ -262,7 +262,7 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
 
         it('uses empty array when entries is not an array', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{ name: 'X', entries: 'not-an-array' }],
                 _lv: 4
             });
@@ -271,7 +271,7 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
 
         it('clamps activeReiter into valid range', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{ name: 'A', entries: [] }],
                 activeReiter: 99,        // out of range
                 _lv: 4
@@ -279,7 +279,7 @@ describe('loadState() schema validation (Issue #237)', () => {
             w.loadState();
             expect(w.state.activeReiter).toBe(0);
 
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{ name: 'A', entries: [] }, { name: 'B', entries: [] }],
                 activeReiter: -1,        // negative
                 _lv: 4
@@ -287,7 +287,7 @@ describe('loadState() schema validation (Issue #237)', () => {
             w.loadState();
             expect(w.state.activeReiter).toBe(0);
 
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{ name: 'A', entries: [] }, { name: 'B', entries: [] }],
                 activeReiter: 1,         // valid
                 _lv: 4
@@ -297,7 +297,7 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
 
         it('coerces activeView to null unless literally "protokoll"', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{ entries: [] }],
                 activeView: '<script>',
                 _lv: 4
@@ -307,7 +307,7 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
 
         it('falls back to 50000 for invalid koernerProEinheit', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{ entries: [] }],
                 koernerProEinheit: 'pickle',
                 _lv: 4
@@ -317,7 +317,7 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
 
         it('uses defaults for falsy/empty machineLog and drillPriorities', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{ entries: [] }],
                 machineLog: 'not-an-array',
                 drillPriorities: [1, 2, 3],   // Array, kein Plain Object
@@ -329,7 +329,7 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
 
         it('sanitizes machineLog entries and drops invalid ones', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{ entries: [] }],
                 machineLog: [
                     { time: 1000, einheit: 5, duenger: 200 },                  // OK
@@ -348,7 +348,7 @@ describe('loadState() schema validation (Issue #237)', () => {
 
     describe('Manipulated state does not crash app', () => {
         it('loadState() returns true on partially malformed but recoverable state', () => {
-            store['mais_rechner'] = JSON.stringify({
+            store['agrar_rechner'] = JSON.stringify({
                 reiter: [{
                     name: 'T',
                     hektar: 'NaN-ish',
@@ -366,16 +366,16 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
 
         it('loadState() rejects completely malformed root (string, number, array)', () => {
-            store['mais_rechner'] = '"just a string"';
+            store['agrar_rechner'] = '"just a string"';
             expect(() => w.loadState()).not.toThrow();
             // State unverändert (Default bleibt)
             expect(w.state.reiter.length).toBe(1);
             expect(w.state.reiter[0].name).toBe('Tab 1');
 
-            store['mais_rechner'] = '42';
+            store['agrar_rechner'] = '42';
             expect(() => w.loadState()).not.toThrow();
 
-            store['mais_rechner'] = '[]';
+            store['agrar_rechner'] = '[]';
             expect(() => w.loadState()).not.toThrow();
             expect(w.state.reiter.length).toBe(1);
         });
@@ -408,10 +408,10 @@ describe('loadState() schema validation (Issue #237)', () => {
             w.saveState();
 
             // Direkt den gespeicherten String manipulieren
-            const raw = JSON.parse(store['mais_rechner']);
+            const raw = JSON.parse(store['agrar_rechner']);
             raw.reiter[0].hektar = '<script>';
             raw.reiter[0].entries = [{ einheit: 1, xss: 'evil', __proto__: { polluted: true } }];
-            store['mais_rechner'] = JSON.stringify(raw);
+            store['agrar_rechner'] = JSON.stringify(raw);
 
             w.loadState();
             expect(w.state.reiter[0].hektar).toBe(0);          // default

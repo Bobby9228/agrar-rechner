@@ -110,7 +110,7 @@ describe('initUI()', () => {
   });
 
   it('loads state from localStorage', () => {
-    store['mais_rechner'] = JSON.stringify({
+    store['agrar_rechner'] = JSON.stringify({
       reiter: [{ name: 'Test', hektar: 15, koerner: 80000, duenger: 200, entries: [] }],
       activeReiter: 0,
       fahrgassenEnabled: false,
@@ -122,7 +122,7 @@ describe('initUI()', () => {
   });
 
   it('shows results when state has valid data', () => {
-    store['mais_rechner'] = JSON.stringify({
+    store['agrar_rechner'] = JSON.stringify({
       reiter: [{ name: 'Reiter 1', hektar: 10, koerner: 90000, duenger: 150, entries: [] }],
       activeReiter: 0,
       fahrgassenEnabled: false,
@@ -133,7 +133,7 @@ describe('initUI()', () => {
   });
 
   it('hides results when state has no valid data', () => {
-    store['mais_rechner'] = JSON.stringify({
+    store['agrar_rechner'] = JSON.stringify({
       reiter: [{ name: 'Reiter 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
       activeReiter: 0,
       fahrgassenEnabled: false,
@@ -144,7 +144,7 @@ describe('initUI()', () => {
   });
 
   it('restores fahrgassen state', () => {
-    store['mais_rechner'] = JSON.stringify({
+    store['agrar_rechner'] = JSON.stringify({
       reiter: [{ name: 'Reiter 1', hektar: 10, koerner: 90000, duenger: 150, entries: [] }],
       activeReiter: 0,
       fahrgassenEnabled: true,
@@ -157,7 +157,7 @@ describe('initUI()', () => {
   });
 
   it('renders tabs from saved state', () => {
-    store['mais_rechner'] = JSON.stringify({
+    store['agrar_rechner'] = JSON.stringify({
       reiter: [
         { name: 'Feld A', hektar: 10, koerner: 90000, duenger: 150, entries: [] },
         { name: 'Feld B', hektar: 5, koerner: 80000, duenger: 100, entries: [] },

@@ -122,7 +122,7 @@ describe('lv() migration edge cases', () => {
       duenger: 150,
       entries: [{ einheit: 5, duenger: 100 }]
     };
-    w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
+    w.localStorage.setItem('agrar_rechner', JSON.stringify(oldState));
     w.loadState();
     expect(w.state.reiter).toBeTruthy();
     expect(w.state.reiter.length).toBe(1);
@@ -136,7 +136,7 @@ describe('lv() migration edge cases', () => {
       reiter: [{ name: 'Tab 1', hektar: 5, koerner: 80000 }],
       entries: [{ einheit: 3, duenger: 50 }]
     };
-    w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
+    w.localStorage.setItem('agrar_rechner', JSON.stringify(oldState));
     w.loadState();
     expect(w.state.reiter[0].entries.length).toBe(1);
     // Global entries should be removed
@@ -151,7 +151,7 @@ describe('lv() migration edge cases', () => {
       ],
       entries: [{ einheit: 3 }]
     };
-    w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
+    w.localStorage.setItem('agrar_rechner', JSON.stringify(oldState));
     w.loadState();
     // Tab 1 already has entries, should keep them
     expect(w.state.reiter[0].entries.length).toBe(1);
@@ -165,7 +165,7 @@ describe('lv() migration edge cases', () => {
       reiter: [{ name: 'Tab 1', hektar: 5, koerner: 80000, entries: [] }]
     };
     delete oldState.machineLog;
-    w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
+    w.localStorage.setItem('agrar_rechner', JSON.stringify(oldState));
     w.loadState();
     expect(w.state.machineLog).toEqual([]);
   });
@@ -441,7 +441,7 @@ describe('drillRemove cross-tab', () => {
   it('saves state after removal', () => {
     w.state.reiter[0].entries = [{ einheit: 5, duenger: 100 }];
     w.drillRemove(0, 0);
-    var stored = JSON.parse(w.localStorage.getItem('mais_rechner'));
+    var stored = JSON.parse(w.localStorage.getItem('agrar_rechner'));
     expect(stored.reiter[0].entries.length).toBe(0);
   });
 });

@@ -106,7 +106,7 @@
       // Lauscht auf localStorage-Änderungen von anderen Tabs/Fenstern.
       // Der storage-Event feuert nur in Tabs, die den Wert NICHT selbst gesetzt haben.
       window.addEventListener('storage', function(e) {
-        if (e.key === 'mais_rechner' && e.newValue) {
+        if (e.key === 'agrar_rechner' && e.newValue) {
           try {
             var remote = JSON.parse(e.newValue);
             if (JSON.stringify(remote) !== JSON.stringify(state)) {

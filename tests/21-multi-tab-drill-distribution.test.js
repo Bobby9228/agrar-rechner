@@ -488,7 +488,7 @@ describe('drillPriorities persistence', () => {
     expect(w.state.drillPriorities[0]).toBe(1);
 
     // Saved to localStorage
-    const saved = JSON.parse(store['mais_rechner']);
+    const saved = JSON.parse(store['agrar_rechner']);
     expect(saved.drillPriorities[0]).toBe(1);
   });
 
@@ -514,7 +514,7 @@ describe('drillPriorities persistence', () => {
   it('lv() initializes drillPriorities to {} if missing in saved state', () => {
     const { window: w, store } = createDom();
     // Manually put a state without drillPriorities in localStorage
-    store['mais_rechner'] = JSON.stringify({
+    store['agrar_rechner'] = JSON.stringify({
       reiter: [{ name: 'Tab 1', hektar: 10, koerner: 90000, duenger: 0, entries: [] }],
       activeReiter: 0,
       machineLog: [],

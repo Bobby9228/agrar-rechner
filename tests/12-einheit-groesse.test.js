@@ -41,7 +41,7 @@ describe('einheitGroesseToggle', () => {
 
   it('saves state via sv()', () => {
     w.einheitGroesseToggle();
-    var stored = JSON.parse(w.localStorage.getItem('mais_rechner'));
+    var stored = JSON.parse(w.localStorage.getItem('agrar_rechner'));
     expect(stored.einheitGroesseEnabled).toBe(true);
   });
 });
@@ -99,7 +99,7 @@ describe('einheitGroesseUpdate', () => {
   it('saves state via sv()', () => {
     w.document.getElementById('koerner_pro_einheit').value = '60000';
     w.einheitGroesseUpdate();
-    var stored = JSON.parse(w.localStorage.getItem('mais_rechner'));
+    var stored = JSON.parse(w.localStorage.getItem('agrar_rechner'));
     expect(stored.koernerProEinheit).toBe(60000);
   });
 
