@@ -172,62 +172,61 @@ describe('lv() migration edge cases', () => {
 });
 
 describe('confirmResetAll', () => {
-  let w;
-  beforeEach(() => { w = createDom().window; });
-
-  it('calls resetActiveTab when confirmed (partial reset)', () => {
-    // Mock confirm to return true
-    var originalConfirm = w.confirm;
-    w.confirm = () => true;
-
-    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
-    w.confirmResetAll();
-
-    expect(w.state.reiter[0].hektar).toBe(0);
-    expect(w.state.reiter[0].koerner).toBe(0);
-
-    w.confirm = originalConfirm;
+  let w, doc;
+  beforeEach(() => {
+    const result = createDom();
+    w = result.window;
+    doc = w.document;
   });
 
-  it('calls resetAll when fullReset=true', () => {
-    var originalConfirm = w.confirm;
-    w.confirm = () => true;
+  it('opens the reset modal (back-compat shim, no native confirm)', () => {
+    var called = false;
+    var orig = w.confirm;
+    w.confirm = () => { called = true; return true; };
 
+    w.confirmResetAll();
+    expect(doc.getElementById('reset_modal').classList.contains('open')).toBe(true);
+    expect(called).toBe(false);
+
+    w.confirm = orig;
+  });
+
+  it('clicking "Aktuellen Tab zurücksetzen" in modal resets active tab', () => {
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
+    w.openResetModal();
+    doc.getElementById('reset_modal_tab').click();
+    expect(w.state.reiter[0].hektar).toBe(0);
+    expect(w.state.reiter[0].koerner).toBe(0);
+  });
+
+  it('clicking "Alle Daten löschen" twice resets all tabs and machineLog', () => {
     w.addReiter();
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
     w.state.reiter[1] = { ...w.state.reiter[1], hektar: 5, koerner: 45000 };
     w.state.machineLog = [{ einheit: 5, hektar: 3, duenger: 100, time: '10:00' }];
-    w.confirmResetAll(true);  // full reset
-
-    expect(w.state.reiter.length).toBe(1);  // all tabs cleared
-    expect(w.state.machineLog).toEqual([]);   // machineLog cleared
-
-    w.confirm = originalConfirm;
+    w.openResetModal();
+    var btn = doc.getElementById('reset_modal_confirm_all');
+    btn.click(); // arm
+    btn.click(); // confirm
+    expect(w.state.reiter.length).toBe(1);
+    expect(w.state.machineLog).toEqual([]);
   });
 
-  it('does nothing when cancelled', () => {
-    var originalConfirm = w.confirm;
-    w.confirm = () => false;
-
+  it('clicking "Abbrechen" in modal does not modify state', () => {
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
-    w.confirmResetAll();
-
+    w.openResetModal();
+    doc.getElementById('reset_modal_cancel').click();
     expect(w.state.reiter[0].hektar).toBe(10);
-
-    w.confirm = originalConfirm;
   });
 
-  it('includes tab name in confirm message', () => {
-    var lastMsg = '';
-    var originalConfirm = w.confirm;
-    w.confirm = (msg) => { lastMsg = msg; return false; };
-
-    w.state.reiter[0].name = 'Feld A';
-    w.confirmResetAll();
-
-    expect(lastMsg).toContain('Feld A');
-
-    w.confirm = originalConfirm;
+  it('does not call native window.confirm()', () => {
+    var called = false;
+    var orig = w.confirm;
+    w.confirm = () => { called = true; return true; };
+    w.openResetModal();
+    doc.getElementById('reset_modal_tab').click();
+    expect(called).toBe(false);
+    w.confirm = orig;
   });
 });
 

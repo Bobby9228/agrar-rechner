@@ -90,8 +90,6 @@
       if (berechnenBtn) berechnenBtn.style.display = isProtokoll ? 'none' : '';
       var resetBtn = document.getElementById('reset_btn');
       if (resetBtn) resetBtn.style.display = isProtokoll ? 'none' : '';
-      var resetAllBtn = document.getElementById('reset_all_btn');
-      if (resetAllBtn) resetAllBtn.style.display = isProtokoll ? 'none' : '';
       var stickyFooter = document.getElementById('sticky_footer');
       if (stickyFooter) stickyFooter.style.display = isProtokoll ? 'none' : '';
     }
