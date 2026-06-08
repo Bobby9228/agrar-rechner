@@ -147,16 +147,6 @@ describe('Reset Confirmation Modal (#236)', () => {
     expect(doc.getElementById('reset_modal').classList.contains('open')).toBe(false);
   });
 
-  it('confirmResetAll() opens the modal (back-compat shim)', () => {
-    w.confirmResetAll();
-    expect(doc.getElementById('reset_modal').classList.contains('open')).toBe(true);
-  });
-
-  it('confirmResetAll(true) also opens the modal (parameter ignored)', () => {
-    w.confirmResetAll(true);
-    expect(doc.getElementById('reset_modal').classList.contains('open')).toBe(true);
-  });
-
   it('no confirm() call anywhere in app JS', () => {
     // Walk the module sources from the dom window (we already loaded them).
     // We can't reach the file content from the runtime, but we can verify

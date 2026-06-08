@@ -5,7 +5,7 @@
  * - getTabKornerGesamt / getTabTotalDuenger with various inputs
  * - getTabTotalEinheiten with fahrgassen
  * - lv() migration edge cases
- * - confirmResetAll / confirmRemoveReiter (confirm mock)
+ * - confirmRemoveReiter (confirm mock)
  * - resetAll clears machineLog
  */
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -171,24 +171,12 @@ describe('lv() migration edge cases', () => {
   });
 });
 
-describe('confirmResetAll', () => {
+describe('openResetModal', () => {
   let w, doc;
   beforeEach(() => {
     const result = createDom();
     w = result.window;
     doc = w.document;
-  });
-
-  it('opens the reset modal (back-compat shim, no native confirm)', () => {
-    var called = false;
-    var orig = w.confirm;
-    w.confirm = () => { called = true; return true; };
-
-    w.confirmResetAll();
-    expect(doc.getElementById('reset_modal').classList.contains('open')).toBe(true);
-    expect(called).toBe(false);
-
-    w.confirm = orig;
   });
 
   it('clicking "Aktuellen Tab zurücksetzen" in modal resets active tab', () => {
