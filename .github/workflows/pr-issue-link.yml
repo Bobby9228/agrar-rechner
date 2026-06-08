@@ -1,0 +1,83 @@
+name: PR must link to an Issue
+
+# Garantiert, dass GitHub die verknüpften Issues beim Merge automatisch
+# schließt. Prüft Title + Body auf eines der Schlüsselwörter:
+#   Closes #N | Fixes #N | Resolves #N
+# Plus: feat(#N) / fix(#N) / refactor(#N) / chore(#N) im PR-Title
+#       (Conventional Commits Prefix).
+# Bei Verstoß: Warn-Kommentar auf dem PR + fail check.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: write   # nötig für den Warn-Kommentar
+  contents: read
+
+jobs:
+  check-link:
+    name: Issue reference found in PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read PR title and body
+        id: read
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          {
+            echo "title<<EOF"
+            gh pr view "$PR_NUMBER" --json title --jq .title
+            echo "EOF"
+            echo "body<<EOF"
+            gh pr view "$PR_NUMBER" --json body --jq .body
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check for issue keyword
+        id: check
+        env:
+          TITLE: ${{ steps.read.outputs.title }}
+          BODY: ${{ steps.read.outputs.body }}
+        run: |
+          set +e
+          if echo "$TITLE $BODY" | grep -qiE '(closes|fixes|resolves|close|fix|resolve)\s+#?[0-9]+'; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Conventional-Commit-Titel mit Issue-Ref direkt im Titel:  fix(#232): ...
+          if echo "$TITLE" | grep -qiE '^(feat|fix|refactor|chore|dx|docs|test|perf|build|ci)\(#?[0-9]+(\s*,\s*#?[0-9]+)*\):'; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Conventional-Commit-Titel + Issue-Ref irgendwo im Body
+          if echo "$TITLE" | grep -qiE '^(feat|fix|refactor|chore|dx|docs|test|perf|build|ci)(\([^)]+\))?:\s*' \
+             && echo "$BODY" | grep -qE '#[0-9]+'; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ok=false" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Post warning comment
+        if: steps.check.outputs.ok != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr comment "$PR_NUMBER" --body "⚠️ **Issue-Verknüpfung fehlt.** Ohne \`Closes #N\` / \`Fixes #N\` / \`Resolves #N\` im PR-Body (oder \`fix(#N):\` im PR-Titel bei Squash-Merge) schließt GitHub das Issue beim Merge **nicht** automatisch.
+
+          Bitte ergänzen, z.B. am Ende des PR-Body:
+          \`\`\`
+          Closes #123
+          \`\`\`
+          oder den PR-Titel auf Conventional-Commit-Form bringen: \`fix(#123): …\`"
+
+      - name: Fail check
+        if: steps.check.outputs.ok != 'true'
+        run: |
+          echo "::error::PR verlinkt kein Issue mit Closes/Fixes/Resolves-Keyword. Siehe Kommentar."
+          exit 1
