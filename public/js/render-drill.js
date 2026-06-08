@@ -75,7 +75,6 @@
         einheitIn.inputMode = 'decimal';
         einheitIn.id = 'dtl_e_' + i;
         einheitIn.placeholder = 'Einheiten';
-        einheitIn.style.width = '70px';
         einheitIn.dataset.tabIdx = String(i);
         einheitIn.oninput = function() {
           drillCalcDebounced();
@@ -86,7 +85,6 @@
         duengerIn.inputMode = 'decimal';
         duengerIn.id = 'dtl_d_' + i;
         duengerIn.placeholder = 'kg Dünger';
-        duengerIn.style.width = '70px';
         duengerIn.dataset.tabIdx = String(i);
         duengerIn.oninput = function() {
           drillCalcDebounced();
