@@ -33,17 +33,17 @@ describe('Cross-Tab-Synchronisation (#128)', () => {
     // and checking that state changes
     const newState = JSON.parse(JSON.stringify(w.state));
     newState.reiter[0].hektar = 99.5;
-    fireStorageEvent(w, 'mais_rechner', JSON.stringify(newState));
+    fireStorageEvent(w, 'agrar_rechner', JSON.stringify(newState));
     expect(w.state.reiter[0].hektar).toBe(99.5);
   });
 
-  it('updates state when another tab saves to mais_rechner', () => {
+  it('updates state when another tab saves to agrar_rechner', () => {
     const { w } = setup();
     const remote = JSON.parse(JSON.stringify(w.state));
     remote.reiter[0].koerner = 42;
     remote.reiter[0].duenger = 123;
 
-    fireStorageEvent(w, 'mais_rechner', JSON.stringify(remote));
+    fireStorageEvent(w, 'agrar_rechner', JSON.stringify(remote));
 
     expect(w.state.reiter[0].koerner).toBe(42);
     expect(w.state.reiter[0].duenger).toBe(123);
@@ -63,7 +63,7 @@ describe('Cross-Tab-Synchronisation (#128)', () => {
     const origHektar = w.state.reiter[0].hektar;
 
     const event = new w.Event('storage');
-    event.key = 'mais_rechner';
+    event.key = 'agrar_rechner';
     event.newValue = null;
     w.dispatchEvent(event);
 
@@ -75,7 +75,7 @@ describe('Cross-Tab-Synchronisation (#128)', () => {
     const origHektar = w.state.reiter[0].hektar;
 
     // Should not throw
-    fireStorageEvent(w, 'mais_rechner', 'not-valid-json');
+    fireStorageEvent(w, 'agrar_rechner', 'not-valid-json');
 
     expect(w.state.reiter[0].hektar).toBe(origHektar);
   });
@@ -87,7 +87,7 @@ describe('Cross-Tab-Synchronisation (#128)', () => {
     const syncSpy = vi.spyOn(w, 'syncInputsFromState');
 
     // Fire event with the exact same state
-    fireStorageEvent(w, 'mais_rechner', JSON.stringify(w.state));
+    fireStorageEvent(w, 'agrar_rechner', JSON.stringify(w.state));
 
     expect(syncSpy).not.toHaveBeenCalled();
     syncSpy.mockRestore();
@@ -100,7 +100,7 @@ describe('Cross-Tab-Synchronisation (#128)', () => {
     const remote = JSON.parse(JSON.stringify(w.state));
     remote.reiter.push({ name: 'Tab 2', hektar: 5, koerner: 200, duenger: 50, istHektar: 0, entries: [] });
 
-    fireStorageEvent(w, 'mais_rechner', JSON.stringify(remote));
+    fireStorageEvent(w, 'agrar_rechner', JSON.stringify(remote));
 
     expect(w.state.reiter.length).toBe(2);
     expect(w.state.reiter[1].name).toBe('Tab 2');
@@ -117,7 +117,7 @@ describe('Cross-Tab-Synchronisation (#128)', () => {
     const remote = JSON.parse(JSON.stringify(w.state));
     remote.activeReiter = 1;
 
-    fireStorageEvent(w, 'mais_rechner', JSON.stringify(remote));
+    fireStorageEvent(w, 'agrar_rechner', JSON.stringify(remote));
 
     expect(w.state.activeReiter).toBe(1);
   });

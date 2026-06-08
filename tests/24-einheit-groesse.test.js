@@ -38,7 +38,7 @@ describe('einheitGroesseToggle', () => {
     const { window: w, store } = createDom();
     w.einheitGroesseToggle();
 
-    const saved = JSON.parse(store['mais_rechner']);
+    const saved = JSON.parse(store['agrar_rechner']);
     expect(saved.einheitGroesseEnabled).toBe(true);
   });
 });
@@ -120,7 +120,7 @@ describe('einheitGroesseUpdate', () => {
     w.document.getElementById('koerner_pro_einheit').value = '40000';
     w.einheitGroesseUpdate();
 
-    const saved = JSON.parse(store['mais_rechner']);
+    const saved = JSON.parse(store['agrar_rechner']);
     expect(saved.koernerProEinheit).toBe(40000);
   });
 });
@@ -140,7 +140,7 @@ describe('initUI einheitGroesse restoration', () => {
       machineLog: [],
       activeView: null,
     };
-    store['mais_rechner'] = JSON.stringify(savedState);
+    store['agrar_rechner'] = JSON.stringify(savedState);
 
     w.initUI();
 
@@ -164,7 +164,7 @@ describe('initUI einheitGroesse restoration', () => {
       machineLog: [],
       activeView: null,
     };
-    store['mais_rechner'] = JSON.stringify(savedState);
+    store['agrar_rechner'] = JSON.stringify(savedState);
 
     w.initUI();
 

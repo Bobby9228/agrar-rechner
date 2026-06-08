@@ -27,7 +27,7 @@ describe('Regression: entries undefined on reiter', () => {
 
   it('berechne() works when reiter has no entries field (loaded from old localStorage)', () => {
     // Simulate old localStorage where reiter objects had no entries field
-    store['mais_rechner'] = JSON.stringify({
+    store['agrar_rechner'] = JSON.stringify({
       reiter: [
         { name: 'Feld A', hektar: 10, koerner: 90000, duenger: 150 }
         // no entries field!
@@ -58,7 +58,7 @@ describe('Regression: entries undefined on reiter', () => {
   });
 
   it('berechne() works with multiple reiters where one has no entries', () => {
-    store['mais_rechner'] = JSON.stringify({
+    store['agrar_rechner'] = JSON.stringify({
       reiter: [
         { name: 'Feld A', hektar: 5, koerner: 80000, duenger: 100, entries: [{ einheit: 1, hektar: 2, duenger: 50, time: '10:00' }] },
         { name: 'Feld B', hektar: 8, koerner: 90000, duenger: 200 }  // no entries!
@@ -77,7 +77,7 @@ describe('Regression: entries undefined on reiter', () => {
   });
 
   it('lv() migration adds entries to ALL reiters, not just the first', () => {
-    store['mais_rechner'] = JSON.stringify({
+    store['agrar_rechner'] = JSON.stringify({
       reiter: [
         { name: 'A', hektar: 1, koerner: 80000, duenger: 0 },
         { name: 'B', hektar: 2, koerner: 90000, duenger: 0 },
@@ -276,7 +276,7 @@ describe('Regression: integration — old localStorage + tabs + decimals', () =>
 
   it('old localStorage with no entries → add tab → calculate with decimals', () => {
     // Simulate the exact state that caused the original crash
-    store['mais_rechner'] = JSON.stringify({
+    store['agrar_rechner'] = JSON.stringify({
       reiter: [
         { name: 'Feld A', hektar: 9.2, koerner: 90000, duenger: 150.5 }
       ],

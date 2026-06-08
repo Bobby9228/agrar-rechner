@@ -61,7 +61,7 @@ describe('switchToProtokoll', () => {
 
     w.switchToProtokoll();
 
-    const saved = JSON.parse(store['mais_rechner']);
+    const saved = JSON.parse(store['agrar_rechner']);
     expect(saved.activeView).toBe('protokoll');
   });
 });

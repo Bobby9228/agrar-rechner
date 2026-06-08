@@ -64,12 +64,15 @@ window.app = {
   emit:           appEmit,
   dispatch:       dispatch,
   invalidateCarryoverCache: function() { _internal.carryoverCache = null; },
+  migrateLegacyStorageKeys: migrateLegacyStorageKeys,
+  LEGACY_KEY_MAP:            LEGACY_KEY_MAP,
   _internal: _internal
 };
 
 // --- Dark Mode (portiert aus Inline-Code Z. 3415-3448) ---
 // Key: 'theme' in localStorage (Wert: 'dark' oder 'light', null wenn nicht gesetzt).
-// Migration 3→4 in state.js vereinheitlicht 'mais_rechner_theme' → 'theme'.
+// Migration 3→4 in state.js + migrateLegacyStorageKeys() (#235) vereinheitlicht
+// 'mais_rechner_theme' → 'theme'.
 // initTheme(): Stored Preference → System-Präferenz als Fallback.
 // applyTheme(dark): Setzt CSS-Klasse .dark auf <html>, Button-Icon, Meta-Theme-Color.
 // toggleTheme(): Liest aktuellen Zustand → toggled → speichert + anwendet.

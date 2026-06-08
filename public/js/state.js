@@ -35,10 +35,46 @@
 
     // --- Persistenz ---
 
+    // --- localStorage-Key-Migration (Issue #235) ---
+    // Frühere localStorage-Keys hießen `mais_rechner*`. Repo und Domain heißen
+    // `agrar-rechner`, daher wurden alle Keys auf `agrar_rechner*` umgestellt.
+    // Beim ersten Start lesen wir die alten Keys, schreiben den Wert in den
+    // neuen Key (falls dort noch nichts liegt) und löschen den alten Key.
+    // Migration läuft synchron, bevor loadState()/saveState() aufgerufen werden.
+    var LEGACY_KEY_MAP = {
+      'mais_rechner':              'agrar_rechner',
+      'mais_rechner_theme':        'theme', // bereits in Migration 3→4 erledigt — hier nur Defensiv-Remap
+      'mais_rechner_ios_install_seen': 'agrar_rechner_ios_install_seen',
+      'mais_rechner_version_seen': 'agrar_rechner_version_seen'
+    };
+
+    function migrateLegacyStorageKeys() {
+      try {
+        for (var oldKey in LEGACY_KEY_MAP) {
+          if (!Object.prototype.hasOwnProperty.call(LEGACY_KEY_MAP, oldKey)) continue;
+          var newKey = LEGACY_KEY_MAP[oldKey];
+          var oldVal;
+          try { oldVal = localStorage.getItem(oldKey); } catch(e) { continue; }
+          if (oldVal === null) continue;
+          try {
+            if (localStorage.getItem(newKey) === null) {
+              localStorage.setItem(newKey, oldVal);
+            }
+          } catch(e) { /* write-fehler → nicht kritisch */ }
+          try { localStorage.removeItem(oldKey); } catch(e) { /* egal */ }
+        }
+      } catch(e) {
+        // localStorage komplett nicht verfügbar — silently skip
+      }
+    }
+
+    // Migration frühestmöglich ausführen — vor dem ersten saveState()/loadState().
+    migrateLegacyStorageKeys();
+
     function saveState() {
       invalidateCarryoverCache();
       try {
-        localStorage.setItem('mais_rechner', JSON.stringify(state));
+        localStorage.setItem('agrar_rechner', JSON.stringify(state));
       } catch(e) {
         if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_FILE_CANT_CREATE') {
           showSaveError();
@@ -203,7 +239,7 @@
 
     function loadState() {
       try {
-        var saved = localStorage.getItem('mais_rechner');
+        var saved = localStorage.getItem('agrar_rechner');
         if (!saved) return false;
         var data = parsePersistedState(saved);
         if (!isPlainObject(data)) return false;
@@ -230,6 +266,8 @@
         // Migration 3→4: Theme-Key vereinheitlichen, neue Defaults
         if (lv < 4) {
           // Theme: alten Key 'mais_rechner_theme' → neuen Key 'theme'
+          // (durch migrateLegacyStorageKeys() oben meist schon erledigt —
+          //  hier nur Defensiv-Fallback für direkt migrierte Snapshots)
           try {
             var oldTheme = localStorage.getItem('mais_rechner_theme');
             if (oldTheme && !localStorage.getItem('theme')) {
@@ -294,7 +332,7 @@
         // Page-Loads die Migration überspringen können.
         if (originalLv < 4) {
           try {
-            localStorage.setItem('mais_rechner', JSON.stringify(state));
+            localStorage.setItem('agrar_rechner', JSON.stringify(state));
           } catch(e) {
             // Nicht kritisch — Migration war erfolgreich im Memory, beim
             // nächsten Load wird sie einfach erneut durchgeführt (idempotent).
@@ -319,13 +357,13 @@
     // Nur auf iOS/Safari, nur wenn noch nicht installiert und noch nicht dismissed.
     function maybeShowIosInstallHint() {
       var hintSeen = null;
-      try { hintSeen = localStorage.getItem('mais_rechner_ios_install_seen'); } catch(e) {}
+      try { hintSeen = localStorage.getItem('agrar_rechner_ios_install_seen'); } catch(e) {}
       if (!isIOS || isStandalone || hintSeen) return;
       var banner = document.getElementById('ios_install_banner');
       if (banner) banner.classList.add('show');
     }
     function dismissIosInstallHint() {
-      try { localStorage.setItem('mais_rechner_ios_install_seen', '1'); } catch(e) {}
+      try { localStorage.setItem('agrar_rechner_ios_install_seen', '1'); } catch(e) {}
       var banner = document.getElementById('ios_install_banner');
       if (banner) banner.classList.remove('show');
     }
@@ -337,7 +375,7 @@
     var UPDATE_CHANGELOG = 'Erste Veröffentlichung der App.';
     function maybeShowUpdateHint() {
       var seenVersion = null;
-      try { seenVersion = localStorage.getItem('mais_rechner_version_seen'); } catch(e) {}
+      try { seenVersion = localStorage.getItem('agrar_rechner_version_seen'); } catch(e) {}
       if (seenVersion === APP_VERSION) return;
       var banner = document.getElementById('update_banner');
       var verEl = document.getElementById('update_version');
@@ -349,7 +387,7 @@
       }
     }
     function dismissUpdateHint() {
-      try { localStorage.setItem('mais_rechner_version_seen', APP_VERSION); } catch(e) {}
+      try { localStorage.setItem('agrar_rechner_version_seen', APP_VERSION); } catch(e) {}
       var banner = document.getElementById('update_banner');
       if (banner) banner.classList.remove('show');
     }

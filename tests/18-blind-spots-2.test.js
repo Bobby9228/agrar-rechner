@@ -134,7 +134,7 @@ describe('drillMachineRemove()', () => {
   it('persists after removal', () => {
     w.state.machineLog = [{ einheit: 5 }];
     w.drillMachineRemove(0);
-    const stored = JSON.parse(w.localStorage.getItem('mais_rechner'));
+    const stored = JSON.parse(w.localStorage.getItem('agrar_rechner'));
     expect(stored.machineLog.length).toBe(0);
   });
 
@@ -422,7 +422,7 @@ describe('switchToProtokoll()', () => {
 
   it('persists state', () => {
     w.switchToProtokoll();
-    const stored = JSON.parse(w.localStorage.getItem('mais_rechner'));
+    const stored = JSON.parse(w.localStorage.getItem('agrar_rechner'));
     expect(stored.activeView).toBe('protokoll');
   });
 

@@ -18,7 +18,7 @@ describe('State persistence', () => {
     it('saves state to localStorage', () => {
       w.state.reiter[0].hektar = 10;
       w.saveState();
-      const raw = store['mais_rechner'];
+      const raw = store['agrar_rechner'];
       expect(raw).toBeTruthy();
       const parsed = JSON.parse(raw);
       expect(parsed.reiter[0].hektar).toBe(10);
@@ -26,7 +26,7 @@ describe('State persistence', () => {
 
     it('saves complete state structure', () => {
       w.saveState();
-      const parsed = JSON.parse(store['mais_rechner']);
+      const parsed = JSON.parse(store['agrar_rechner']);
       expect(parsed.reiter).toBeDefined();
       expect(parsed.activeReiter).toBeDefined();
       expect(parsed.fahrgassenEnabled).toBeDefined();
@@ -44,7 +44,7 @@ describe('State persistence', () => {
 
   describe('lv() — load state', () => {
     it('loads state from localStorage', () => {
-      store['mais_rechner'] = JSON.stringify({
+      store['agrar_rechner'] = JSON.stringify({
         reiter: [{ name: 'Test', hektar: 15, koerner: 80000, duenger: 200, entries: [] }],
         activeReiter: 0,
         fahrgassenEnabled: false,
@@ -63,7 +63,7 @@ describe('State persistence', () => {
     });
 
     it('handles corrupted JSON gracefully', () => {
-      store['mais_rechner'] = 'not-valid-json{{{';
+      store['agrar_rechner'] = 'not-valid-json{{{';
       expect(() => w.loadState()).not.toThrow();
     });
 
@@ -73,28 +73,28 @@ describe('State persistence', () => {
     });
 
     it('uses default state when localStorage contains empty object {}', () => {
-      store['mais_rechner'] = '{}';
+      store['agrar_rechner'] = '{}';
       w.loadState();
       expect(w.state.reiter.length).toBe(1);
       expect(w.state.activeReiter).toBe(0);
     });
 
     it('uses default state when localStorage contains empty array []', () => {
-      store['mais_rechner'] = '[]';
+      store['agrar_rechner'] = '[]';
       w.loadState();
       expect(w.state.reiter.length).toBe(1);
       expect(w.state.activeReiter).toBe(0);
     });
 
     it('uses default state when reiter is present but empty', () => {
-      store['mais_rechner'] = JSON.stringify({ reiter: [] });
+      store['agrar_rechner'] = JSON.stringify({ reiter: [] });
       w.loadState();
       expect(w.state.reiter.length).toBe(1);
       expect(w.state.activeReiter).toBe(0);
     });
 
     it('uses default state when reiter is null', () => {
-      store['mais_rechner'] = JSON.stringify({ reiter: null });
+      store['agrar_rechner'] = JSON.stringify({ reiter: null });
       w.loadState();
       expect(w.state.reiter.length).toBe(1);
       expect(w.state.activeReiter).toBe(0);
@@ -103,7 +103,7 @@ describe('State persistence', () => {
 
   describe('Migration: old flat state to tabbed state', () => {
     it('migrates flat state (no reiter) to tabbed format', () => {
-      store['mais_rechner'] = JSON.stringify({
+      store['agrar_rechner'] = JSON.stringify({
         hektar: 10,
         koerner: 90000,
         duenger: 150,
@@ -123,7 +123,7 @@ describe('State persistence', () => {
     });
 
     it('migrates global entries to first tab', () => {
-      store['mais_rechner'] = JSON.stringify({
+      store['agrar_rechner'] = JSON.stringify({
         reiter: [{ name: 'Reiter 1', hektar: 10, koerner: 90000, duenger: 150 }],
         entries: [{ einheit: 5, hektar: 3, duenger: 200, time: '10:00' }],
         activeReiter: 0,
@@ -138,7 +138,7 @@ describe('State persistence', () => {
     });
 
     it('does not overwrite existing tab entries during migration', () => {
-      store['mais_rechner'] = JSON.stringify({
+      store['agrar_rechner'] = JSON.stringify({
         reiter: [{ name: 'Reiter 1', hektar: 10, koerner: 90000, duenger: 150, entries: [{ einheit: 1, hektar: 1, duenger: 50, time: '09:00' }] }],
         entries: [{ einheit: 5, hektar: 3, duenger: 200, time: '10:00' }],
         activeReiter: 0,
@@ -155,7 +155,7 @@ describe('State persistence', () => {
     it('persists migrated snapshot so _lv advances to 4 after first load', () => {
       // Alt-State ohne _lv → Migration 0→4 sollte durchlaufen
       // und das Ergebnis einmalig zurück in localStorage geschrieben werden.
-      store['mais_rechner'] = JSON.stringify({
+      store['agrar_rechner'] = JSON.stringify({
         reiter: [{ name: 'Tab 1', hektar: 10, koerner: 90000, duenger: 150, entries: [] }],
         activeReiter: 0,
         fahrgassenEnabled: false,
@@ -163,25 +163,25 @@ describe('State persistence', () => {
       });
       w.loadState();
       // Nach Migration: gespeicherter Snapshot hat _lv=4
-      var persisted = JSON.parse(store['mais_rechner']);
+      var persisted = JSON.parse(store['agrar_rechner']);
       expect(persisted._lv).toBe(4);
     });
 
     it('does not re-run migration on second load (idempotent at storage level)', () => {
-      store['mais_rechner'] = JSON.stringify({
+      store['agrar_rechner'] = JSON.stringify({
         reiter: [{ name: 'Tab 1', hektar: 10, koerner: 90000, duenger: 150, entries: [] }],
         activeReiter: 0,
         fahrgassenEnabled: false,
         fahrgassenBreite: 0,
       });
       w.loadState();
-      var afterFirst = JSON.parse(store['mais_rechner']);
+      var afterFirst = JSON.parse(store['agrar_rechner']);
       // Zweiter Load: _lv ist schon 4, also kein Re-Migration-Touch.
       // Wenn loadState erneut schreiben würde, wäre das ein No-Op für die
       // Felder; der Test sichert ab, dass _lv erhalten bleibt und keine
       // Re-Schreibung passiert (idempotent = kein Drift).
       w.loadState();
-      var afterSecond = JSON.parse(store['mais_rechner']);
+      var afterSecond = JSON.parse(store['agrar_rechner']);
       expect(afterSecond._lv).toBe(4);
       expect(afterSecond.reiter[0].hektar).toBe(10);
     });
