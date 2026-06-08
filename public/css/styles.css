@@ -35,6 +35,7 @@
     --color-primary-dark: #2d5016;
     --color-primary-hover: #3a6318;
     --color-primary-light: #8bc34a;
+    --color-result-bg: #e8f4dc;
     --color-success-soft: #e8f4dc;
     --color-text: #1a1a1a;
     --color-text-hint: #616161;
@@ -85,6 +86,7 @@
     --color-primary-dark: #8bc34a;
     --color-primary-darker: #5a9a2a;
     --color-primary-hover: #3a6318;
+    --color-result-bg: #2a3320;
     --color-summary-muted: #b0b8a8;
     --color-text: #e0e8d6;
     --color-text-hint: #9ca896;
@@ -138,7 +140,7 @@
       margin-bottom: 0;
     }
     .card {
-      background: var(--color-ios-banner-text);
+      background: var(--color-card-bg);
       border-radius: 16px;
       padding: 20px;
       margin-bottom: 16px;
@@ -226,7 +228,7 @@
       background: var(--color-danger-dark);
     }
     .result {
-      background: var(--color-success-soft);
+      background: var(--color-result-bg);
       border: 2px solid var(--color-primary);
     }
     .result h2 {
@@ -747,8 +749,8 @@ font-size: 0.75rem;
       margin-top: 8px;
       text-align: center;
     }
-    .entry-diff.positive { color: var(--color-primary); font-weight: 600; }
-    .entry-diff.negative { color: var(--color-danger); font-weight: 600; }
+    .entry-diff.positive { color: var(--color-entry-diff-positive); font-weight: 600; }
+    .entry-diff.negative { color: var(--color-entry-diff-negative); font-weight: 600; }
     
     
     /* Sticky footer */
@@ -794,7 +796,7 @@ font-size: 0.75rem;
       bottom: 0;
       left: 0;
       right: 0;
-      background: var(--color-ios-banner-text);
+      background: var(--color-card-bg);
       border-top: 2px solid var(--color-border-soft);
       padding: 12px max(20px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
       box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
@@ -858,7 +860,7 @@ font-size: 0.75rem;
       bottom: 0;
       left: 0;
       right: 0;
-      background: var(--color-ios-banner-text);
+      background: var(--color-card-bg);
       border-radius: 20px 20px 0 0;
       max-height: 80vh;
       overflow-y: auto;
@@ -876,7 +878,7 @@ font-size: 0.75rem;
       border-bottom: 2px solid var(--color-border-soft);
       position: sticky;
       top: 0;
-      background: var(--color-ios-banner-text);
+      background: var(--color-card-bg);
       border-radius: 20px 20px 0 0;
     }
     .dashboard-header h2 {
@@ -978,7 +980,7 @@ font-size: 0.75rem;
       gap: 8px;
     }
     .dashboard-stat {
-      background: var(--color-ios-banner-text);
+      background: var(--color-card-bg);
       border-radius: 8px;
       padding: 8px 10px;
     }
@@ -1157,7 +1159,7 @@ font-size: 0.75rem;
       bottom: 80px;
       left: 12px;
       right: 12px;
-      background: var(--color-text);
+      background: var(--color-ios-banner-bg);
       color: var(--color-ios-banner-text);
       padding: 12px 16px;
       border-radius: 12px;
