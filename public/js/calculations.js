@@ -86,6 +86,31 @@
       return getTotalDuenger(r);
     }
 
+    // Dünger (kg) pro Einheit Saatgut für einen Tab.
+    //
+    // Physikalische Bedeutung: Wieviel kg Dünger zusammen mit einer Einheit
+    // Saatgut ausgebracht werden müssen, damit das Soll-Verhältnis
+    // (kg Dünger/ha ÷ Körner/ha × koernerProEinheit) eingehalten wird.
+    //
+    // Herleitung:
+    //   totalDuenger = r.hektar × r.duenger          (kg)
+    //   totalEinheit = r.hektar × r.koerner / kpe    (Einheiten)
+    //   kgProEinheit = totalDuenger / totalEinheit
+    //                = r.duenger × kpe / r.koerner
+    //
+    // Issue #230: Vorher stand hier `tab.duenger / (tab.hektar || 1) * 50` —
+    // ein Überbleibsel der falschen "1 Einheit = 50 kg" Annahme, die in
+    // #186/#191 bereits aus getTotalDuenger/getTabIstDuenger entfernt wurde.
+    // Die neue Formel ist dimensionsrein (kg/Einheit) und kpe-konsistent.
+    //
+    // @param {Object} r — Tab-Objekt mit .hektar, .koerner, .duenger
+    // @param {number} koernerProEinheit — Körner pro Einheit (Standard 50000)
+    // @returns {number} kg Dünger pro Einheit Saatgut (0 wenn r.koerner fehlt)
+    function getDuengerProEinheit(r, koernerProEinheit) {
+      if (!r || !r.duenger || !r.koerner || !koernerProEinheit) return 0;
+      return r.duenger * koernerProEinheit / r.koerner;
+    }
+
     // Berechnet IST-Dünger (kg) basierend auf istHektar.
     // Formel: r.istHektar * r.duenger (kg/ha) → kg total.
     // Issue #186: Vorherige Version dividierte fälschlich durch 50
