@@ -82,8 +82,8 @@ describe('drillCalcAll (priority distribution)', () => {
     w.state.activeReiter = 0;
     w.renderDrillTabList();
     // Priorities direkt setzen und DOM neu bauen
-    w.state.drillPriorities[0] = 2;
-    w.state.drillPriorities[1] = 1;
+    w.state.drillPriorities[0] = 1; // Tab A höchste Prio (Issue #264)
+    w.state.drillPriorities[1] = 2;
     w.renderDrillTabList(); // DOM mit korrekten data-prio Werten aktualisieren
   }
 
@@ -177,20 +177,19 @@ describe('drillAdd multi-tab mode', () => {
 
   it('adds entries to prioritized tabs', () => {
     setupMultiTabWithPrio();
-    // Tab B prio=2 (high), Tab A prio=1 (low)
-    // Total: 20 Einheiten, Tab B needs 8, Tab A needs 18
+    // Tab A prio=1 (high), Tab B prio=2 (low) — Issue #264: Prio 1 = höchste
+    // Total: 15 Einheiten, Tab A needs 18, Tab B needs 8
     w.document.getElementById('drill_einheit').value = '15';
     w.document.getElementById('drill_duenger').value = '0';
 
     w.drillCalcAll(); // distribute
     w.drillAdd();
 
-    // Tab B gets min(8, 15) = 8
-    expect(w.state.reiter[1].entries.length).toBe(1);
-    expect(w.state.reiter[1].entries[0].einheit).toBeCloseTo(8);
-    // Tab A gets min(18, 15-8=7) = 7
+    // Tab A (prio 1) gets min(18, 15) = 15
     expect(w.state.reiter[0].entries.length).toBe(1);
-    expect(w.state.reiter[0].entries[0].einheit).toBeCloseTo(7);
+    expect(w.state.reiter[0].entries[0].einheit).toBeCloseTo(15);
+    // Tab B (prio 2) gets min(8, 15-15=0) = 0 → keine Entry
+    expect(w.state.reiter[1].entries.length).toBe(0);
   });
 
   it('records machineLog entry', () => {
@@ -251,28 +250,30 @@ describe('drillAdd multi-tab mode', () => {
     setupMultiTabWithPrio();
     // Tab A: 10ha × 90000 / 50000 = 18 E Kapazität
     // Tab B: 5ha × 80000 / 50000  = 8  E Kapazität
-    // Mit genau 18 E reicht es nur für Tab B (prio 2); A (prio 1) bekommt
-    // die Reste 10 — cap auf 18 wäre verletzt, falls perUnit falsch wäre.
+    // Mit 18 E: A (prio 1, Kapazität 18) bekommt min(18, 18) = 18;
+    // B (prio 2) bekommt die Reste 0 — cap auf 18 wäre verletzt, falls
+    // perUnit falsch wäre.
     w.document.getElementById('drill_einheit').value = '18';
     w.document.getElementById('drill_duenger').value = '0';
 
     w.drillCalcAll();
     w.drillAdd();
 
-    var eB = w.state.reiter[1].entries[0].einheit;
+    var eB = w.state.reiter[1].entries[0] ? w.state.reiter[1].entries[0].einheit : 0;
     var eA = w.state.reiter[0].entries[0].einheit;
-    // Tab B (prio 2, Kapazität 8) → bekommt 8
-    expect(eB).toBeCloseTo(8, 5);
-    // Tab A (prio 1, Kapazität 18) → bekommt min(18, 18-8=10) = 10
-    expect(eA).toBeCloseTo(10, 5);
+    // Tab A (prio 1, Kapazität 18) → bekommt 18
+    expect(eA).toBeCloseTo(18, 5);
+    // Tab B (prio 2, Kapazität 8) → bekommt min(8, 18-18=0) = 0 → keine Entry
+    expect(w.state.reiter[1].entries.length).toBe(0);
   });
 
   it('Fahrgassen-Faktor reduziert die Kapazität pro Tab (Issue #240)', () => {
     setupMultiTabWithPrio();
     // Tab A mit FG (breite=24 → 0.9583): 10ha × 90000 × 23/24 / 50000 ≈ 17.25 E
     // Tab B ohne FG: 5ha × 80000 / 50000 = 8 E
-    // Mit 25 E: B bekommt 8, A bekommt min(17.25, 17) = 17 (nicht 17.25, da
-    // 25-8=17 < 17.25) — das beweist, dass FG-Faktor in A's cap eingeht.
+    // Mit 25 E: A (prio 1) bekommt min(17.25, 25) = 17.25; B (prio 2) bekommt
+    // 7.75. Wäre perUnit falsch (Tab A "Einheiten/ha²"), bekäme A statt der
+    // 17.25 nur eine winzige Zahl und B die 25 oder mehr.
     w.state.reiter[0].fahrgassenEnabled = true;
     w.state.reiter[0].fahrgassenBreite = 24;
     w.state.reiter[1].fahrgassenEnabled = false;
@@ -282,14 +283,14 @@ describe('drillAdd multi-tab mode', () => {
     w.drillCalcAll();
     w.drillAdd();
 
-    var eB = w.state.reiter[1].entries[0].einheit;
     var eA = w.state.reiter[0].entries[0].einheit;
+    var eB = w.state.reiter[1].entries[0].einheit;
     var fgFactor = w.computeFahrgassenFaktor(24); // 23/24 ≈ 0.9583
     var capA = 10 * 90000 * fgFactor / 50000;     // ≈ 17.25
-    expect(eB).toBeCloseTo(8, 5);
-    // A bekommt min(capA, 25-8=17) = 17. Wäre perUnit falsch, wäre eA
-    // entweder 17.25 (Cap ignoriert) oder eine Dimension-Müllzahl.
-    expect(eA).toBeCloseTo(Math.min(capA, 17), 5);
+    // A (prio 1) bekommt min(capA, 25) = capA ≈ 17.25.
+    expect(eA).toBeCloseTo(capA, 5);
+    // B (prio 2) bekommt min(8, 25-17.25) = 7.75
+    expect(eB).toBeCloseTo(25 - capA, 5);
     // Sanity: bei mehr input würde der FG-Faktor sichtbar:
     expect(capA).toBeLessThan(18);
   });
