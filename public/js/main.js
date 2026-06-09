@@ -19,18 +19,23 @@ function fmt(n) {
   return String(rounded).replace('.', ',');
 }
 
+// Issue #262: Rückgabe war 'null' für ungültige/leere Eingaben — hat 207 Tests rot
+// gemacht und Null-Werte in den State geschleust. Jetzt wieder 0 mit NaN-Guard.
 function parseDE(val) {
-  if (!val || typeof val !== 'string') return null;
-  // Deutsche Zahl: Komma = Dezimaltrennzeichen, Punkt = Tausender
-  var cleaned = val.replace(/\./g, '').replace(',', '.');
+  if (typeof val === 'number') return (isNaN(val) ? 0 : val);
+  if (!val) return 0;
+  var s = val.toString().trim();
+  var cleaned = s.replace(/\./g, '').replace(',', '.');
   var num = parseFloat(cleaned);
-  return isNaN(num) ? null : num;
+  return isNaN(num) ? 0 : num;
 }
 
+// Issue #262: Vorherige Version hat die Einheit-Label und den Infinity-Schutz
+// verloren. Restored to pre-Phase-3 (vor 398a6f9) Verhalten.
 function formatEinheit(n) {
-  if (!n || isNaN(n)) return '0';
-  var rounded = Math.round(n * 10) / 10;
-  return String(rounded).replace('.', ',');
+  if (!isFinite(n)) return '—';
+  var rounded = Math.round(n * 10) / 10;  // DE Rundung: ab .5 aufrunden
+  return rounded.toFixed(1).replace('.', ',') + (rounded === 1.0 ? ' Einheit' : ' Einheiten');
 }
 
 // --- Event Emitter ---
