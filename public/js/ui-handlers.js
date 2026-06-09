@@ -221,8 +221,11 @@
             })() });
           }
         });
+        // Issue #264: Prio 1 = höchste Priorität, aufsteigend sortieren.
+        // Vorher (b.prio - a.prio) ließ Tabs mit hoher Prio-Nummer zuerst
+        // Einheiten ziehen, was der UI-Konvention widerspricht.
         priorities.sort(function(a, b) {
-          if (b.prio !== a.prio) return b.prio - a.prio;
+          if (a.prio !== b.prio) return a.prio - b.prio;
           return a.remaining - b.remaining;
         });
         var remainingUnits = einheit;

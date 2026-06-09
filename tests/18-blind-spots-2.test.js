@@ -35,17 +35,20 @@ describe('drillCalcAll()', () => {
   });
 
   it('distributes to highest priority tab first', () => {
+    // Issue #264: Prio 1 = höchste. Tab 0 (prio 1) bekommt zuerst.
     w.state.drillPriorities = { 0: 1, 1: 2 };
     doc.getElementById('drill_einheit').value = '15';
     doc.getElementById('drill_duenger').value = '';
     w.drillCalcAll();
-    expect(doc.getElementById('dtl_e_0').value).toBe('5,0');
-    expect(doc.getElementById('dtl_e_1').value).toBe('10,0');
+    expect(doc.getElementById('dtl_e_0').value).toBe('10,0');
+    expect(doc.getElementById('dtl_e_1').value).toBe('5,0');
   });
 
   it('caps distribution at what tab needs', () => {
     // Both tabs: 10 ha × 50000 / 50000 = 10 units each
     // Tab A: 3 used → needE = 7; Tab B: 0 used → needE = 10
+    // Issue #264: Prio 1 = höchste. Tab A (prio 1) bekommt zuerst → 7,
+    // Tab B (prio 2) bekommt die Reste → 3 (gecappt auf 10).
     w.state.reiter[0].entries = [{ einheit: 3, hektar: 3 }];
     w.state.reiter[1].entries = [];
     w.state.drillPriorities = { 0: 1, 1: 2 };
@@ -53,7 +56,7 @@ describe('drillCalcAll()', () => {
     doc.getElementById('drill_duenger').value = '';
     w.drillCalcAll();
     expect(doc.getElementById('dtl_e_0').value).toBe('7,0');
-    expect(doc.getElementById('dtl_e_1').value).toBe('10,0');
+    expect(doc.getElementById('dtl_e_1').value).toBe('3,0');
   });
 
   it('distributes duenger separately from einheit', () => {

@@ -392,8 +392,8 @@ describe('drillCalcAll: remaining need calculation accounts for existing entries
     w.document.getElementById('drill_einheit').value = '20';
     w.document.getElementById('drill_duenger').value = '0';
 
-    w.state.drillPriorities[0] = 2; // Tab A highest
-    w.state.drillPriorities[1] = 1;
+    w.state.drillPriorities[0] = 1; // Tab A höchste Prio (Issue #264)
+    w.state.drillPriorities[1] = 2;
     w.drillCalcAll();
 
     var eA = w.document.getElementById('dtl_e_0');
