@@ -122,7 +122,7 @@
     // --- Render: Drill Log ---
 
     function renderDrillLog() {
-      var container = document.getElementById('drill_log_entries');
+      var container = document.getElementById('drill_entries');
       if (!container) return;
       container.innerHTML = '';
       var activeTab = state.reiter[state.activeReiter];
