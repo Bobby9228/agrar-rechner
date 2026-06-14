@@ -99,16 +99,20 @@
     // --- Render: Mini Footer ---
 
     function renderMiniFooter() {
-      var mf = document.getElementById('mini_footer');
+      var mf = document.getElementById('mini_result');
       if (!mf) return;
       var activeR = state.reiter[state.activeReiter];
       if (!activeR) return;
       if (activeR.hektar > 0 && activeR.koerner > 0) {
         var einheiten = getActiveTotalEinheiten();
+        var duengerTotal = getActiveTotalDuenger();
         var kornerGesamt = getKornerGesamt();
         var kornerStr = Math.round(kornerGesamt).toLocaleString('de-DE');
         var miniResult = mf.querySelector('.mini-result') || mf;
-        miniResult.textContent = 'Bedarf: ' + formatEinheit(einheiten) + ' / ' + kornerStr + ' Körner';
+        var duengerStr = duengerTotal > 0
+          ? ' / ' + duengerTotal.toLocaleString('de-DE') + ' kg'
+          : '';
+        miniResult.innerHTML = 'Bedarf: <span class="mr-einheiten">' + formatEinheit(einheiten) + '</span> / ' + kornerStr + ' Körner' + duengerStr;
         miniResult.classList.remove('mini-result-empty');
       } else {
         var miniResult = mf.querySelector('.mini-result') || mf;
