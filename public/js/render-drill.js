@@ -126,22 +126,55 @@
       if (!container) return;
       container.innerHTML = '';
       var activeTab = state.reiter[state.activeReiter];
-      if (!activeTab || !activeTab.entries || activeTab.entries.length === 0) return;
+      var totalSummary = document.getElementById('ds_total_summary');
+      if (!activeTab || !activeTab.entries || activeTab.entries.length === 0) {
+        if (totalSummary) totalSummary.textContent = '';
+        var empty = document.createElement('div');
+        empty.className = 'drill-empty';
+        empty.textContent = 'Noch nichts eingefüllt';
+        container.appendChild(empty);
+        return;
+      }
+      // Total-Summary (Hektar/Einheiten/Dünger über alle Entries)
+      if (totalSummary) {
+        var usedHa = activeTab.entries.reduce(function(s, e) { return s + (e.istHektar || e.hektar || 0); }, 0);
+        var usedE = activeTab.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
+        var usedD = activeTab.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
+        var parts = [];
+        if (usedHa > 0) parts.push(fmt(usedHa) + ' ha');
+        if (usedE > 0) parts.push(fmt(usedE) + ' Einheiten');
+        if (usedD > 0) parts.push(usedD.toLocaleString('de-DE') + ' kg Dünger');
+        totalSummary.textContent = parts.join(' · ');
+      }
       activeTab.entries.slice().reverse().forEach(function(entry, revIdx) {
         var actualIdx = activeTab.entries.length - 1 - revIdx;
         var row = document.createElement('div');
-        row.className = 'drill-log-entry';
-        var time = entry.time ? new Date(entry.time).toLocaleString('de-DE') : '—';
-        var timeSpan = document.createElement('span');
-        timeSpan.className = 'dl-time';
-        timeSpan.textContent = time;
-        row.appendChild(timeSpan);
-        var dataSpan = document.createElement('span');
-        dataSpan.className = 'dl-data';
-        dataSpan.textContent = fmt(entry.einheit || 0) + ' Einheiten, ' + fmt(entry.duenger || 0) + ' kg Dünger';
-        row.appendChild(dataSpan);
+        row.className = 'drill-entry';
+        // #number span
+        var numSpan = document.createElement('span');
+        numSpan.textContent = '#' + (actualIdx + 1) + ' ';
+        row.appendChild(numSpan);
+        var entryText = document.createElement('span');
+        entryText.className = 'entry-text';
+        var parts2 = [];
+        if (entry.time) {
+          var t = typeof entry.time === 'number' ? new Date(entry.time).toLocaleString('de-DE') : entry.time;
+          parts2.push(t + ' –');
+        }
+        if (entry.istHektar || entry.zaehlerStand) {
+          var ha = entry.istHektar || entry.zaehlerStand;
+          parts2.push(fmt(ha) + ' ha');
+        } else if (entry.hektar > 0) {
+          parts2.push('@' + fmt(entry.hektar) + 'ha');
+        }
+        parts2.push(formatEinheit(entry.einheit || 0));
+        if (entry.duenger > 0) {
+          parts2.push((entry.duenger).toLocaleString('de-DE') + ' kg Dünger');
+        }
+        entryText.textContent = parts2.join(' ');
+        row.appendChild(entryText);
         var removeBtn = document.createElement('button');
-        removeBtn.className = 'dl-remove';
+        removeBtn.className = 'btn-danger';
         removeBtn.textContent = '✕';
         removeBtn.onclick = function() { drillRemove(state.activeReiter, actualIdx); };
         row.appendChild(removeBtn);

@@ -121,6 +121,52 @@
       });
       syncInputsFromState();
       renderTabs();
+      // Fahrgassen-Toggle aus State restaurieren
+      var fgToggle = document.getElementById('fahrgassen_toggle');
+      var fgSettings = document.getElementById('fahrgassen_settings');
+      if (fgToggle) {
+        fgToggle.classList.toggle('active', !!state.fahrgassenEnabled);
+        fgToggle.setAttribute('aria-pressed', state.fahrgassenEnabled ? 'true' : 'false');
+      }
+      if (fgSettings) {
+        fgSettings.classList.toggle('open', !!state.fahrgassenEnabled);
+      }
+      var fgBreite = document.getElementById('fahrgassen_breite');
+      if (fgBreite) {
+        if (state.fahrgassenBreite > 0) {
+          // Tests 8: rohe Ganzzahl als Input-Wert, kein ",0" für ganze Zahlen.
+          // Nutze fmtCompact (Issue #266), das ",0" für ganze Zahlen weglässt.
+          fgBreite.value = fmtCompact(state.fahrgassenBreite);
+        } else {
+          fgBreite.value = '';
+        }
+        fgBreite.dataset.prev = fgBreite.value;
+        fgBreite.dataset.cleaned = fgBreite.value;
+      }
+      // Einheit-Größe-Toggle aus State restaurieren (Issue #266)
+      var egToggle = document.getElementById('einheit_groesse_toggle');
+      var egSettings = document.getElementById('einheit_groesse_settings');
+      if (egToggle) {
+        egToggle.classList.toggle('active', !!state.einheitGroesseEnabled);
+        egToggle.setAttribute('aria-pressed', state.einheitGroesseEnabled ? 'true' : 'false');
+      }
+      if (egSettings) {
+        egSettings.classList.toggle('open', !!state.einheitGroesseEnabled);
+      }
+      var kpEl = document.getElementById('koerner_pro_einheit');
+      if (kpEl && state.koernerProEinheit !== 50000) {
+        // Tests 18, 24: rohe Ganzzahl als Input-Wert (kein Tausender-Punkt),
+        // damit parseDE() in einheitGroesseUpdate() den Wert korrekt zurückschreibt.
+        kpEl.value = String(state.koernerProEinheit);
+        kpEl.dataset.prev = kpEl.value;
+        kpEl.dataset.cleaned = kpEl.value;
+      }
+      var egSaved = document.getElementById('einheit_groesse_saved');
+      if (egSaved) {
+        egSaved.textContent = state.koernerProEinheit !== 50000
+          ? state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit'
+          : '';
+      }
       if (state.reiter[state.activeReiter] && state.reiter[state.activeReiter].hektar > 0 && state.reiter[state.activeReiter].koerner > 0) {
         renderResults();
         if (state.activeView !== 'protokoll') {
@@ -237,7 +283,9 @@
       var hasEntries = tab.entries && tab.entries.length > 0;
       var hasData = tab.hektar > 0 || tab.koerner > 0 || tab.duenger > 0 || tab.istHektar > 0;
       if (hasEntries || hasData) {
-        if (!confirm('Tab "' + tab.name + '" wirklich löschen?')) return;
+        if (!confirm('Tab "' + tab.name + '" wirklich löschen? Daten vorhanden — alle Eingaben gehen verloren.')) return;
+      } else {
+        if (!confirm('Tab "' + tab.name + '" wirklich löschen? Alle Eingaben gehen verloren.')) return;
       }
       removeReiter(idx);
     }

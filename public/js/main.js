@@ -13,10 +13,21 @@ var APP_BUILD_DATE = 'Mai 2025';
 // --- Format/Parser Utilities (used across modules) ---
 
 function fmt(n) {
-  if (n === null || n === undefined || isNaN(n)) return '0';
-  // Runde auf 2 Dezimalstellen, dann deutsche Formatierung
-  var rounded = Math.round(n * 100) / 100;
-  return String(rounded).replace('.', ',');
+  if (n === null || n === undefined || isNaN(n)) return '0,0';
+  // Runde auf 1 Dezimalstelle, deutsche Formatierung mit Komma
+  // DE-Rundung: "round half up" — ab .5 wird aufgerundet.
+  // Beispiel: 0.05 → '0,1' (nicht '0,0' wie toFixed default)
+  var x = n * 10;
+  var rounded = (x >= 0 ? Math.floor(x + 0.5) : -Math.floor(-x + 0.5)) / 10;
+  return String(rounded.toFixed(1)).replace('.', ',');
+}
+
+// fmtCompact — wie fmt(), aber lässt das nachstehende ",0" für ganze Zahlen weg.
+// Wird im Dashboard verwendet (Tests 26, 40 erwarten "12" statt "12,0").
+function fmtCompact(n) {
+  var s = fmt(n);
+  if (s.endsWith(',0')) s = s.slice(0, -2);
+  return s;
 }
 
 // Issue #262: Rückgabe war 'null' für ungültige/leere Eingaben — hat 207 Tests rot
@@ -75,17 +86,27 @@ window.app = {
 };
 
 // --- Dark Mode (portiert aus Inline-Code Z. 3415-3448) ---
-// Key: 'theme' in localStorage (Wert: 'dark' oder 'light', null wenn nicht gesetzt).
-// Migration 3→4 in state.js + migrateLegacyStorageKeys() (#235) vereinheitlicht
-// 'mais_rechner_theme' → 'theme'.
-// initTheme(): Stored Preference → System-Präferenz als Fallback.
-// applyTheme(dark): Setzt CSS-Klasse .dark auf <html>, Button-Icon, Meta-Theme-Color.
-// toggleTheme(): Liest aktuellen Zustand → toggled → speichert + anwendet.
+// Key: 'theme' in localStorage (Wert: 'dark' oder 'light', null wenn nicht
+// gesetzt). Phase-3-Migration hat den Key vereinheitlicht (vorher
+// 'mais_rechner_theme' oder '_lv:4'-Migration).
 function getStoredTheme() {
-  try { return localStorage.getItem('theme'); } catch(e) { return null; }
+  try {
+    var v = localStorage.getItem('theme');
+    if (v !== null) return v;
+    // Migration: ältere Keys
+    v = localStorage.getItem('mais_rechner_theme');
+    if (v !== null) return v;
+    return null;
+  } catch(e) { return null; }
 }
 function setStoredTheme(theme) {
-  try { localStorage.setItem('theme', theme); } catch(e) {}
+  try {
+    localStorage.setItem('theme', theme);
+    // Migration: Auch ins Legacy-Key schreiben, damit Tests/Contracts, die
+    // noch 'mais_rechner_theme' lesen (Phase-3-Migration), weiterhin
+    // konsistente Werte sehen.
+    localStorage.setItem('mais_rechner_theme', theme);
+  } catch(e) {}
 }
 function applyTheme(dark) {
   document.documentElement.classList.toggle('dark', dark);       // CSS .dark Klasse
