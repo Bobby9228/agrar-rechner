@@ -129,6 +129,7 @@
       renderDrillSummary();
       renderDrillLog();
       renderDrillEntriesInline();
+      renderMachineLog();
       renderMiniFooter();
       var errHektar = document.getElementById('err_hektar');
       var errKoerner = document.getElementById('err_koerner');
@@ -144,8 +145,20 @@
         if (koernerEl) koernerEl.style.borderColor = '#c00';
         return;
       }
+      // Issue #266-A: hide results card when the active tab has no data,
+      // and show/hide the drill_summary block consistently. renderView()
+      // already handles drill_section / protokoll toggle; we only need to
+      // ensure results + drill_summary reflect the active tab's data state.
+      var resultsEl = document.getElementById('results');
+      var drillSummaryEl = document.getElementById('drill_summary');
+      var hasData = r.hektar > 0 && r.koerner > 0;
+      if (!hasData) {
+        if (resultsEl) resultsEl.style.display = 'none';
+        if (drillSummaryEl) drillSummaryEl.style.display = 'none';
+        return;
+      }
+      if (drillSummaryEl) drillSummaryEl.style.display = 'block';
       if (state.activeView !== 'protokoll') {
-        var resultsEl = document.getElementById('results');
         if (resultsEl) resultsEl.style.display = 'block';
       }
     }
@@ -183,8 +196,9 @@
       if (dUsedRow) dUsedRow.style.display = usedD > 0 ? '' : 'none';
       var dRemRow = document.getElementById('r_drill_d_rem_row');
       if (dRemRow) dRemRow.style.display = remD > 0 ? '' : 'none';
-      r.entries.slice().reverse().forEach(function(entry, revIdx) {
-        var actualIdx = r.entries.length - 1 - revIdx;
+      // Iterate in chronological order — matches renderDrillLog and the
+      // original f7f7e8d behaviour (see 09-blind-spots "drill entry has #number span").
+      r.entries.forEach(function(entry, actualIdx) {
         var row = document.createElement('div');
         row.className = 'drill-entry';
         var numSpan = document.createElement('span');

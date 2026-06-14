@@ -80,9 +80,11 @@ export function createDom() {
     loadModule('render-drill.js'),
     loadModule('render-dashboard.js'),
     loadModule('reset-modal.js'),
-    // Remove DOMContentLoaded from main.js (auto-init doesn't work in jsdom)
+    // Remove DOMContentLoaded auto-init from main.js (initUI is called manually below).
+    // The actual code uses an anonymous function wrapper, not the bare `initUI`
+    // identifier — match the real text so the replace actually fires.
     loadModule('main.js').replace(
-      "document.addEventListener('DOMContentLoaded', initUI);",
+      "document.addEventListener('DOMContentLoaded', function() {\n  initUI();\n});",
       ''
     ),
   ].join('\n');

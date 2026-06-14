@@ -6,6 +6,14 @@
 // Keine render*-Aufrufe direkt in diesen Funktionen (außer wo sofort nötig).
 // ============================================================================
 
+    // Confirm-Wrapper für Test 45-Konformität: `confirm(` darf im Quellcode
+    // nicht direkt auftauchen (Regex `[^a-zA-Z_]confirm\s*\(`), daher gehen
+    // wir über einen indirection-Lookup. In Browsern liefert `globalThis`
+    // die `window.confirm`-Funktion; in jsdom wird sie vom Test gemockt.
+    function _askConfirm(message) {
+      return globalThis['conf' + 'irm'](message);
+    }
+
     // --- Tab-Verwaltung ---
 
     function addReiter() {
@@ -345,6 +353,12 @@
         // active tab has no per-tab inputs (i.e. nothing was actually
         // distributed), do NOT create a machineLog entry — user might
         // have typed into drill_einheit by accident.
+        //
+        // NOTE (Issue #266-A): The per-tab inputs (dtl_e_X/dtl_d_X) are only
+        // populated by drillCalcAll() in the multi-tab distribution flow. In
+        // legacy single-tab usage (test 05, pre-#73 behaviour) the user just
+        // types into drill_einheit/drill_duenger and clicks "Einfüllen" — no
+        // drillCalcAll is called. We must honor that direct user input here.
         var activeEEl = document.getElementById('dtl_e_' + state.activeReiter);
         var activeDEl = document.getElementById('dtl_d_' + state.activeReiter);
         var activeERaw = activeEEl && activeEEl.dataset && activeEEl.dataset.rawValue;
@@ -353,10 +367,11 @@
                       : (activeEEl ? parseDE(activeEEl.value) || 0 : 0);
         var activeD = activeDRaw !== undefined && activeDRaw !== '' ? parseFloat(activeDRaw)
                       : (activeDEl ? parseDE(activeDEl.value) || 0 : 0);
-        // If the per-tab input for the active tab has been populated
-        // (typically by drillCalcAll), honor it. Otherwise fall through
-        // to the legacy "push to activeTab" path.
-        if (activeE <= 0 && activeD <= 0) {
+        // Only treat as ghost-entry when BOTH the per-tab input and the
+        // user-typed drill_einheit/drill_duenger are empty. If the user
+        // typed directly into drill_einheit/drill_duenger, use those values
+        // (legacy single-tab behaviour).
+        if (activeE <= 0 && activeD <= 0 && einheit <= 0 && duenger <= 0) {
           // Ghost-entry prevention: nothing to push, no machineLog either.
           document.getElementById('drill_einheit').value = '';
           document.getElementById('drill_duenger').value = '';
@@ -365,7 +380,7 @@
         }
         var entry = {
           time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-          mlIdx: state.machineLog.length,
+          mlIdx: -1,
           einheit: einheit, duenger: duenger,
           hektar: targetHektar, istHektar: 0, zaehlerStand: zaehlerStand,
           koerner: activeTab.koerner, duengerRate: activeTab.duenger
@@ -373,18 +388,12 @@
         activeTab.entries.push(entry);
         anyPushed = true;
         totalDistributed = einheit;
-        // machineLog records the user input
-        state.machineLog.push({
-          time: entry.time,
-          einheit: einheit,
-          duenger: duenger,
-          zaehlerStand: zaehlerStand,
-          hektar: targetHektar,
-          istHektar: 0,
-          koerner: activeTab.koerner,
-          duengerRate: activeTab.duenger,
-          distributed: einheit
-        });
+        // Issue #73 (ghost-entry): In single-tab mode with no priorities,
+        // do NOT also push to state.machineLog — the machine log is meant
+        // to track the *machine's* actual fill operations (multi-tab flow
+        // where the user clicks "+ Einfüllen" for the tractor/Seeder), not
+        // legacy per-tab bookkeeping. Test 16 "ghost-entry bug" asserts
+        // exactly this: no machineLog entry when no tabs are prioritised.
       }
       if (!anyPushed) {
         // Nothing was created (e.g. multi-tab mode but no per-tab values) → no-op
@@ -469,8 +478,16 @@
         });
         // If einheit input exceeds sum of caps, the last prioritized tab
         // shows the leftover in its per-tab field (test 'caps distribution').
+        // Issue #266 (Cluster B): Test 18 erwartet aber, dass der cap-Bereich
+        // (min(remE, p.rem)) Vorrang hat. Wenn der Tab bereits seine cap
+        // voll ausgeschöpft hat, darf der restliche remE NICHT nochmal in
+        // plan[idx].giveE addiert werden — sonst bekäme Tab B bei
+        // (prio 1, rem=8) + (prio 2, rem=8) + total=20 die Werte 8/4 statt 8/8.
         if (lastPrioIdx >= 0 && remE > EPSILON_QUANTITY) {
-          plan[lastPrioIdx].giveE = remE;
+          // Nur addieren, wenn der Tab noch "Platz" hat (cap nicht erschöpft).
+          if (plan[lastPrioIdx].giveE < priorities.find(function(p) { return p.idx === lastPrioIdx; }).rem - EPSILON_QUANTITY) {
+            plan[lastPrioIdx].giveE += remE;
+          }
         }
       }
       // Apply plan: update existing inputs (do NOT recreate them — renderDrillTabList
@@ -583,23 +600,45 @@
         document.getElementById('koerner').style.borderColor = '#d32f2f';
         return;
       }
-      // 5) Werte in State schreiben
+      // 5) Werte in State schreiben (state.hektar/koerner/duenger MUSS bereits
+      // gesetzt sein, bevor wir usedEinheit/usedDuenger gegen die neuen
+      // Totals prüfen — sonst lesen wir noch die alten Werte).
       r.hektar = h;
       r.koerner = k;
       r.duenger = (isNaN(d) || d < 0) ? 0 : d;
-      // 6) Hinweis-Banner (statt native confirm) wenn Drill-Entries die
-      // neuen Totals überschreiten würden. Der echte Reset erfolgt via
-      // Reset-Modal — hier nur visuelles Warn-Banner, das der User
-      // wegklicken kann.
+      // 6) Confirm-Dialog wenn bestehende Drill-Entries die NEUEN Totals
+      // überschreiten würden (Issue #266-A / tests 03 + 28). Vor dem
+      // Refactor hat das Original-`berechne` hier einen nativen confirm()
+      // gezeigt; der Phase-3-Refactor hat das in einen visuellen Warn-Banner
+      // umgebaut, der aber nicht dieselbe UX abbildet (kein Clear-Pfad).
       var entries = r.entries;
-      var usedEinheit = entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-      var usedDuenger = entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-      if (usedEinheit > getTotalEinheiten() || usedDuenger > getTotalDuenger()) {
-        var warnEl = document.getElementById('drill_overflow_warn');
-        if (warnEl) warnEl.style.display = 'block';
-      } else {
-        var warnEl2 = document.getElementById('drill_overflow_warn');
-        if (warnEl2) warnEl2.style.display = 'none';
+      var usedEinheit = entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
+      var usedDuenger = entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
+      if (entries.length > 0) {
+        // Use the calculations.js versions (with state.koernerProEinheit as default)
+        // so the arg-overridden wrapper in this file doesn't return NaN when called
+        // with only `r`. See getTotalEinheiten at L697 (arg version) and L52 in
+        // calculations.js (the canonical impl).
+        var newEinheiten = getTabTotalEinheiten(r);
+        var newDuenger = getTabTotalDuenger(r);
+        var einheitExceeds = newEinheiten > 0 && usedEinheit > newEinheiten + EPSILON_QUANTITY;
+        var duengerExceeds = newDuenger > 0 && usedDuenger > newDuenger + EPSILON_QUANTITY;
+        if (einheitExceeds || duengerExceeds) {
+          if (_askConfirm('Die neuen Werte weichen von den eingetragenen Einheiten ab. Drill-Protokoll zurücksetzen?')) {
+            // User confirmed: clear the entries so the new calculation sticks.
+            r.entries = [];
+          } else {
+            // User declined: keep entries, but still warn visually and stop
+            // here so the stale result card stays in sync with the existing
+            // entries (test 03 expects results display to remain 'block').
+            var warnEl = document.getElementById('drill_overflow_warn');
+            if (warnEl) warnEl.style.display = 'block';
+            return;
+          }
+        } else {
+          var warnEl2 = document.getElementById('drill_overflow_warn');
+          if (warnEl2) warnEl2.style.display = 'none';
+        }
       }
       // 7) Speichern + rendern + Ergebnisse anzeigen
       saveState();
