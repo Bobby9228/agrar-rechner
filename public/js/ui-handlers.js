@@ -574,6 +574,7 @@
       var h = parseDE(document.getElementById('hektar').value);
       var k = parseDE(document.getElementById('koerner').value);
       var d = parseDE(document.getElementById('duenger').value);
+      var ih = parseDE(document.getElementById('ist_hektar').value) || 0;
       // 2) Errors clearen
       document.getElementById('err_hektar').textContent = '';
       document.getElementById('err_koerner').textContent = '';
@@ -606,6 +607,7 @@
       r.hektar = h;
       r.koerner = k;
       r.duenger = (isNaN(d) || d < 0) ? 0 : d;
+      r.istHektar = ih;
       // 6) Confirm-Dialog wenn bestehende Drill-Entries die NEUEN Totals
       // überschreiten würden (Issue #266-A / tests 03 + 28). Vor dem
       // Refactor hat das Original-`berechne` hier einen nativen confirm()
