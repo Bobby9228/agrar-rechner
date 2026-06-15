@@ -79,10 +79,10 @@ window.app = {
   offStateChange: appOffStateChange,
   emit:           appEmit,
   dispatch:       dispatch,
-  invalidateCarryoverCache: function() { _internal.carryoverCache = null; },
-  migrateLegacyStorageKeys: migrateLegacyStorageKeys,
-  LEGACY_KEY_MAP:            LEGACY_KEY_MAP,
-  _internal: _internal
+  invalidateCarryoverCache: function() { AppGlobals._internal.carryoverCache = null; },
+  migrateLegacyStorageKeys: AppGlobals.migrateLegacyStorageKeys,
+  LEGACY_KEY_MAP:            AppGlobals.LEGACY_KEY_MAP,
+  _internal:                 AppGlobals._internal
 };
 
 // --- Dark Mode (portiert aus Inline-Code Z. 3415-3448) ---
@@ -160,5 +160,26 @@ document.addEventListener('input', function() {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-  initUI();
+  AppGlobals.initUI();
+});
+
+// Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
+Object.assign(window.AppGlobals, {
+  APP_VERSION: APP_VERSION,
+  APP_BUILD_DATE: APP_BUILD_DATE,
+  _stateListeners: _stateListeners,
+  _pendingKey: _pendingKey,
+  fmt: fmt,
+  fmtCompact: fmtCompact,
+  parseDE: parseDE,
+  formatEinheit: formatEinheit,
+  appOnStateChange: appOnStateChange,
+  appOffStateChange: appOffStateChange,
+  appEmit: appEmit,
+  dispatch: dispatch,
+  getStoredTheme: getStoredTheme,
+  setStoredTheme: setStoredTheme,
+  applyTheme: applyTheme,
+  toggleTheme: toggleTheme,
+  initTheme: initTheme,
 });

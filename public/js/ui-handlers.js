@@ -57,62 +57,62 @@
     function addReiter() {
       syncStateFromInputs();
       var maxIdx = 0;
-      state.reiter.forEach(function(r, i) { var m = parseInt(r.name.replace(/\D+/g, '')); if (!isNaN(m) && m > maxIdx) maxIdx = m; });
-      state.reiter.push({ name: 'Tab ' + (maxIdx + 1), hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], fahrgassenEnabled: state.fahrgassenEnabled, fahrgassenBreite: state.fahrgassenBreite });
-      state.activeReiter = state.reiter.length - 1;
-      appEmit('TAB_ADDED', { tabIdx: state.activeReiter });
+      AppGlobals.state.reiter.forEach(function(r, i) { var m = parseInt(r.name.replace(/\D+/g, '')); if (!isNaN(m) && m > maxIdx) maxIdx = m; });
+      AppGlobals.state.reiter.push({ name: 'Tab ' + (maxIdx + 1), hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled, fahrgassenBreite: AppGlobals.state.fahrgassenBreite });
+      AppGlobals.state.activeReiter = AppGlobals.state.reiter.length - 1;
+      AppGlobals.appEmit('TAB_ADDED', { tabIdx: AppGlobals.state.activeReiter });
       document.getElementById('hektar').focus();
     }
 
     function removeReiter(idx) {
-      if (state.reiter.length <= 1) return;
+      if (AppGlobals.state.reiter.length <= 1) return;
       syncStateFromInputs();
-      state.reiter.splice(idx, 1);
-      if (idx < state.activeReiter) {
-        state.activeReiter -= 1; // Tab before active was removed — shift active left
-      } else if (state.activeReiter >= state.reiter.length) {
-        state.activeReiter = state.reiter.length - 1; // Active tab removed — clamp to last
+      AppGlobals.state.reiter.splice(idx, 1);
+      if (idx < AppGlobals.state.activeReiter) {
+        AppGlobals.state.activeReiter -= 1; // Tab before active was removed — shift active left
+      } else if (AppGlobals.state.activeReiter >= AppGlobals.state.reiter.length) {
+        AppGlobals.state.activeReiter = AppGlobals.state.reiter.length - 1; // Active tab removed — clamp to last
       }
       var newPriorities = {};
-      Object.keys(state.drillPriorities).forEach(function(key) {
+      Object.keys(AppGlobals.state.drillPriorities).forEach(function(key) {
         var k = parseInt(key, 10);
-        if (k < idx) newPriorities[k] = state.drillPriorities[k];
-        else if (k > idx) newPriorities[k - 1] = state.drillPriorities[k];
+        if (k < idx) newPriorities[k] = AppGlobals.state.drillPriorities[k];
+        else if (k > idx) newPriorities[k - 1] = AppGlobals.state.drillPriorities[k];
       });
-      state.drillPriorities = newPriorities;
-      appEmit('TAB_REMOVED', { tabIdx: idx });
+      AppGlobals.state.drillPriorities = newPriorities;
+      AppGlobals.appEmit('TAB_REMOVED', { tabIdx: idx });
     }
 
     function switchReiter(idx) {
-      if (idx === state.activeReiter && state.activeView !== 'protokoll') return;
+      if (idx === AppGlobals.state.activeReiter && AppGlobals.state.activeView !== 'protokoll') return;
       syncStateFromInputs();
-      state.activeReiter = idx;
-      state.activeView = null;
-      appEmit('TAB_CHANGED', { tabIdx: idx });
+      AppGlobals.state.activeReiter = idx;
+      AppGlobals.state.activeView = null;
+      AppGlobals.appEmit('TAB_CHANGED', { tabIdx: idx });
     }
 
     function renameReiter(idx, name) {
-      state.reiter[idx].name = name.substring(0, 20);
-      appEmit('TAB_RENAMED', { tabIdx: idx });
+      AppGlobals.state.reiter[idx].name = name.substring(0, 20);
+      AppGlobals.appEmit('TAB_RENAMED', { tabIdx: idx });
     }
 
     function switchToProtokoll() {
       syncStateFromInputs();
-      if (state.activeView === 'protokoll') {
-        state.activeView = null;
+      if (AppGlobals.state.activeView === 'protokoll') {
+        AppGlobals.state.activeView = null;
       } else {
-        state.activeView = 'protokoll';
-        renderDrillTabList();
+        AppGlobals.state.activeView = 'protokoll';
+        AppGlobals.renderDrillTabList();
       }
-      appEmit('VIEW_CHANGED', { view: state.activeView });
+      AppGlobals.appEmit('VIEW_CHANGED', { view: AppGlobals.state.activeView });
     }
 
     // --- Fahrgassen ---
 
     function fahrgassenToggle() {
-      state.fahrgassenEnabled = !state.fahrgassenEnabled;
+      AppGlobals.state.fahrgassenEnabled = !AppGlobals.state.fahrgassenEnabled;
       var btn = document.getElementById('fahrgassen_toggle');
-      if (state.fahrgassenEnabled) {
+      if (AppGlobals.state.fahrgassenEnabled) {
         document.getElementById('fahrgassen_settings').classList.add('open');
         btn.classList.add('active');
         btn.setAttribute('aria-pressed', 'true');
@@ -120,31 +120,31 @@
         document.getElementById('fahrgassen_settings').classList.remove('open');
         btn.classList.remove('active');
         btn.setAttribute('aria-pressed', 'false');
-        state.fahrgassenBreite = 0;
+        AppGlobals.state.fahrgassenBreite = 0;
         document.getElementById('fahrgassen_saved').textContent = '';
       }
       // 5a: per-Tab-State synchronisieren — Berechnungen lesen r.fahrgassenEnabled
-      state.reiter.forEach(function(r) {
-        r.fahrgassenEnabled = state.fahrgassenEnabled;
-        r.fahrgassenBreite = state.fahrgassenBreite;
+      AppGlobals.state.reiter.forEach(function(r) {
+        r.fahrgassenEnabled = AppGlobals.state.fahrgassenEnabled;
+        r.fahrgassenBreite = AppGlobals.state.fahrgassenBreite;
       });
-      appEmit('SETTINGS_CHANGED', { setting: 'fahrgassenEnabled' });
+      AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'fahrgassenEnabled' });
     }
 
     function fahrgassenUpdate() {
       var raw = document.getElementById('fahrgassen_breite').value;
-      var val = parseDE(raw);
+      var val = AppGlobals.parseDE(raw);
       // 5d: breite < 2 → State unverändert, Feld zurücksetzen
       if (val >= 2) {
-        state.fahrgassenBreite = val;
+        AppGlobals.state.fahrgassenBreite = val;
         // 5c: Prozent-Info anzeigen
         // Anteil produktiv mit Fahrgassen: (breite-1)/breite → 23/24 = 95.83% für breite=24
         var pct = ((val - 1) / val) * 100;
         document.getElementById('fahrgassen_saved').textContent = val + ' m -> ~' + pct.toFixed(1) + '% bestellt';
         document.getElementById('fahrgassen_breite').style.borderColor = '';
         // 5a: per-Tab-State syncen
-        state.reiter.forEach(function(r) {
-          r.fahrgassenEnabled = state.fahrgassenEnabled;
+        AppGlobals.state.reiter.forEach(function(r) {
+          r.fahrgassenEnabled = AppGlobals.state.fahrgassenEnabled;
           r.fahrgassenBreite = val;
         });
       } else {
@@ -152,34 +152,34 @@
         document.getElementById('fahrgassen_saved').textContent = '';
         document.getElementById('fahrgassen_breite').style.borderColor = '';
         if (val === 0 || isNaN(val)) {
-          state.fahrgassenBreite = 0;
+          AppGlobals.state.fahrgassenBreite = 0;
         }
         // val < 2 (aber > 0): State bleibt auf letztem gültigen Wert
         // Feld wird nicht überschrieben — User sieht Eingabe, kann korrigieren
         if (val > 0 && val < 2) {
           document.getElementById('fahrgassen_saved').textContent = 'Fahrgassenbreite muss mindestens 2m betragen';
           // Feld auf vorherigen gültigen Wert zurücksetzen (oder leer wenn State 0)
-          document.getElementById('fahrgassen_breite').value = state.fahrgassenBreite > 0
-            ? String(state.fahrgassenBreite)
+          document.getElementById('fahrgassen_breite').value = AppGlobals.state.fahrgassenBreite > 0
+            ? String(AppGlobals.state.fahrgassenBreite)
             : '';
         }
         if (val === 0 || isNaN(val)) {
-          state.reiter.forEach(function(r) {
-            r.fahrgassenEnabled = state.fahrgassenEnabled;
+          AppGlobals.state.reiter.forEach(function(r) {
+            r.fahrgassenEnabled = AppGlobals.state.fahrgassenEnabled;
             r.fahrgassenBreite = 0;
           });
         }
       }
-      appEmit('SETTINGS_CHANGED', { setting: 'fahrgassenBreite' });
+      AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'fahrgassenBreite' });
     }
 
     // --- Einheiten-Groesse ---
 
     function einheitGroesseToggle() {
-      state.einheitGroesseEnabled = !state.einheitGroesseEnabled;
+      AppGlobals.state.einheitGroesseEnabled = !AppGlobals.state.einheitGroesseEnabled;
       var btn = document.getElementById('einheit_groesse_toggle');
       var saved = document.getElementById('einheit_groesse_saved');
-      if (state.einheitGroesseEnabled) {
+      if (AppGlobals.state.einheitGroesseEnabled) {
         document.getElementById('einheit_groesse_settings').classList.add('open');
         btn.classList.add('active');
         btn.setAttribute('aria-pressed', 'true');
@@ -187,46 +187,46 @@
         document.getElementById('einheit_groesse_settings').classList.remove('open');
         btn.classList.remove('active');
         btn.setAttribute('aria-pressed', 'false');
-        state.koernerProEinheit = 50000;
+        AppGlobals.state.koernerProEinheit = 50000;
         if (saved) saved.textContent = '';
         // Clear input
         var kpEl = document.getElementById('koerner_pro_einheit');
         if (kpEl) { kpEl.value = ''; kpEl.dataset.prev = ''; kpEl.dataset.cleaned = ''; }
       }
-      appEmit('SETTINGS_CHANGED', { setting: 'einheitGroesseEnabled' });
+      AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'einheitGroesseEnabled' });
     }
 
     function einheitGroesseUpdate() {
       var raw = document.getElementById('koerner_pro_einheit').value;
-      var val = parseDE(raw);
+      var val = AppGlobals.parseDE(raw);
       var savedEl = document.getElementById('einheit_groesse_saved');
       if (val !== null && val > 0 && val <= 999999) {
-        state.koernerProEinheit = Math.round(val);
+        AppGlobals.state.koernerProEinheit = Math.round(val);
         // Show info text only for non-default values
-        if (state.koernerProEinheit === 50000) {
+        if (AppGlobals.state.koernerProEinheit === 50000) {
           if (savedEl) savedEl.textContent = '';
         } else {
-          if (savedEl) savedEl.textContent = state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit';
+          if (savedEl) savedEl.textContent = AppGlobals.state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit';
         }
         document.getElementById('koerner_pro_einheit').style.borderColor = '';
       } else {
         document.getElementById('koerner_pro_einheit').style.borderColor = '#c00';
       }
-      appEmit('SETTINGS_CHANGED', { setting: 'koernerProEinheit' });
+      AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'koernerProEinheit' });
     }
 
     // --- Reset ---
 
     function resetActiveTab() {
-      var active = state.activeReiter;
-      state.reiter[active] = {
-        name: state.reiter[active].name,
+      var active = AppGlobals.state.activeReiter;
+      AppGlobals.state.reiter[active] = {
+        name: AppGlobals.state.reiter[active].name,
         hektar: 0, istHektar: 0, koerner: 0, duenger: 0,
         entries: [],
-        fahrgassenEnabled: state.fahrgassenEnabled,
-        fahrgassenBreite: state.fahrgassenBreite
+        fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled,
+        fahrgassenBreite: AppGlobals.state.fahrgassenBreite
       };
-      state.drillPriorities = {};
+      AppGlobals.state.drillPriorities = {};
       // Clear drill summary values (Issue #281: IDs aus DOM_IDS)
       for (var si = 0; si < DOM_IDS.drillSummary.length; si++) {
         var sEl = document.getElementById(DOM_IDS.drillSummary[si]);
@@ -250,11 +250,11 @@
       _resetInput(DOM_IDS.istHektar);
       _resetInput(DOM_IDS.koerner);
       _resetInput(DOM_IDS.duenger);
-      appEmit('TAB_RESET', { tabIdx: active });
+      AppGlobals.appEmit('TAB_RESET', { tabIdx: active });
     }
 
     function resetAll() {
-      state = {
+      AppGlobals.state = {
         reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] }],
         activeReiter: 0,
         activeView: null,
@@ -305,9 +305,9 @@
       if (kp) kp.value = '';
       var egSv = document.getElementById(DOM_IDS.einheitGroesseSaved);
       if (egSv) egSv.textContent = '';
-      state.drillPriorities = {};
-      renderTabs();
-      saveState();
+      AppGlobals.state.drillPriorities = {};
+      AppGlobals.renderTabs();
+      AppGlobals.saveState();
     }
 
     // --- Drill Protocol ---
@@ -319,9 +319,9 @@
       var duengerVal = document.getElementById('drill_duenger').value;
       var hektarVal = document.getElementById('drill_hektar').value;
       return {
-        einheit: parseDE(einheitVal) || 0,
-        duenger: parseDE(duengerVal) || 0,
-        zaehlerStand: parseDE(hektarVal) || 0
+        einheit: AppGlobals.parseDE(einheitVal) || 0,
+        duenger: AppGlobals.parseDE(duengerVal) || 0,
+        zaehlerStand: AppGlobals.parseDE(hektarVal) || 0
       };
     }
 
@@ -335,18 +335,18 @@
       var perTabE = [], perTabD = [];
       var hasPriority = false;
       var perTabHasAny = false;
-      for (var ii = 0; ii < state.reiter.length; ii++) {
+      for (var ii = 0; ii < AppGlobals.state.reiter.length; ii++) {
         var peEl = document.getElementById('dtl_e_' + ii);
         var pdEl = document.getElementById('dtl_d_' + ii);
         var peRaw = peEl && peEl.dataset && peEl.dataset.rawValue;
         var pdRaw = pdEl && pdEl.dataset && pdEl.dataset.rawValue;
         var pe = peRaw !== undefined && peRaw !== '' ? parseFloat(peRaw)
-                  : (peEl ? parseDE(peEl.value) || 0 : 0);
+                  : (peEl ? AppGlobals.parseDE(peEl.value) || 0 : 0);
         var pd = pdRaw !== undefined && pdRaw !== '' ? parseFloat(pdRaw)
-                  : (pdEl ? parseDE(pdEl.value) || 0 : 0);
+                  : (pdEl ? AppGlobals.parseDE(pdEl.value) || 0 : 0);
         perTabE.push(pe);
         perTabD.push(pd);
-        var prio = state.drillPriorities[ii] || 0;
+        var prio = AppGlobals.state.drillPriorities[ii] || 0;
         if (prio > 0) hasPriority = true;
         if (prio > 0 && (pe > 0 || pd > 0)) perTabHasAny = true;
       }
@@ -358,14 +358,14 @@
     // Push (mlIdx = -1). Berechnet die cap-bewerteten Mengen für ein Tab.
     function _buildDrillEntry(tab, unitsRaw, duengerRaw, zaehlerStand, mlIdx) {
       var fgFactor = (tab.fahrgassenEnabled && tab.fahrgassenBreite >= 2)
-        ? computeFahrgassenFaktor(tab.fahrgassenBreite) : 1;
-      var perUnit = (tab.koerner * fgFactor) / state.koernerProEinheit;
+        ? AppGlobals.computeFahrgassenFaktor(tab.fahrgassenBreite) : 1;
+      var perUnit = (tab.koerner * fgFactor) / AppGlobals.state.koernerProEinheit;
       var maxUnitsThisTab = tab.hektar * perUnit;
       var unitsForThisTab = Math.min(unitsRaw, maxUnitsThisTab);
-      var duengerPerUnit = getDuengerProEinheit(tab, state.koernerProEinheit);
+      var duengerPerUnit = AppGlobals.getDuengerProEinheit(tab, AppGlobals.state.koernerProEinheit);
       var duengerForThisTab = Math.min(duengerRaw, duengerPerUnit * unitsForThisTab);
       return {
-        time: mlIdx >= 0 ? getTabNextTime(tab) : new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+        time: mlIdx >= 0 ? AppGlobals.getTabNextTime(tab) : new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
         mlIdx: mlIdx,
         einheit: Math.round(unitsForThisTab * 100) / 100,
         duenger: Math.round(duengerForThisTab * 100) / 100,
@@ -398,20 +398,20 @@
     // Hilfsfunktion: liest dtl_e_<active>/dtl_d_<active> (mit rawValue-Preferenz)
     // für den Single-Tab-Pfad. Liefert { e, d } (0 wenn nicht vorhanden).
     function _readActivePerTabValues() {
-      var activeEEl = document.getElementById('dtl_e_' + state.activeReiter);
-      var activeDEl = document.getElementById('dtl_d_' + state.activeReiter);
+      var activeEEl = document.getElementById('dtl_e_' + AppGlobals.state.activeReiter);
+      var activeDEl = document.getElementById('dtl_d_' + AppGlobals.state.activeReiter);
       var activeERaw = activeEEl && activeEEl.dataset && activeEEl.dataset.rawValue;
       var activeDRaw = activeDEl && activeDEl.dataset && activeDEl.dataset.rawValue;
       var e = activeERaw !== undefined && activeERaw !== '' ? parseFloat(activeERaw)
-              : (activeEEl ? parseDE(activeEEl.value) || 0 : 0);
+              : (activeEEl ? AppGlobals.parseDE(activeEEl.value) || 0 : 0);
       var d = activeDRaw !== undefined && activeDRaw !== '' ? parseFloat(activeDRaw)
-              : (activeDEl ? parseDE(activeDEl.value) || 0 : 0);
+              : (activeDEl ? AppGlobals.parseDE(activeDEl.value) || 0 : 0);
       return { e: e, d: d };
     }
 
     // Hilfsfunktion: setzt alle Drill-Inputs (global + per-Tab) zurück.
     function _clearDrillInputs() {
-      for (var ci = 0; ci < state.reiter.length; ci++) {
+      for (var ci = 0; ci < AppGlobals.state.reiter.length; ci++) {
         var ceEl = document.getElementById('dtl_e_' + ci);
         var cdEl = document.getElementById('dtl_d_' + ci);
         if (ceEl) ceEl.value = '';
@@ -426,25 +426,25 @@
       var input = _parseDrillInputs();
       var einheit = input.einheit, duenger = input.duenger, zaehlerStand = input.zaehlerStand;
       if (einheit <= 0 && duenger <= 0) return;
-      var activeTab = state.reiter[state.activeReiter];
+      var activeTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
       if (!activeTab) return;
       var targetHektar = activeTab.hektar > 0 ? activeTab.hektar : 0;
       var dist = _resolvePerTabDistribution();
       var anyPushed = false;
       if (dist.hasPriority && dist.perTabHasAny) {
         // === Multi-tab mode: one entry per prioritized tab with values ===
-        for (var ti = 0; ti < state.reiter.length; ti++) {
-          if ((state.drillPriorities[ti] || 0) <= 0) continue;
+        for (var ti = 0; ti < AppGlobals.state.reiter.length; ti++) {
+          if ((AppGlobals.state.drillPriorities[ti] || 0) <= 0) continue;
           if (dist.perTabE[ti] <= 0 && dist.perTabD[ti] <= 0) continue;
-          var tab = state.reiter[ti];
-          var entry = _buildDrillEntry(tab, dist.perTabE[ti], dist.perTabD[ti], zaehlerStand, state.machineLog.length);
+          var tab = AppGlobals.state.reiter[ti];
+          var entry = _buildDrillEntry(tab, dist.perTabE[ti], dist.perTabD[ti], zaehlerStand, AppGlobals.state.machineLog.length);
           _pushEntryToTab(tab, entry);
           anyPushed = true;
         }
         // Ghost-entry fix (Issue #73): only push machineLog if at least one
         // per-tab entry was actually created.
         if (anyPushed) {
-          state.machineLog.push(_buildMachineLogEntry(einheit, duenger, zaehlerStand, targetHektar, activeTab));
+          AppGlobals.state.machineLog.push(_buildMachineLogEntry(einheit, duenger, zaehlerStand, targetHektar, activeTab));
         }
       } else if (activeTab.hektar > 0) {
         // === Single-tab mode ===
@@ -452,7 +452,7 @@
         // per-tab distribution is ambiguous in a multi-tab session → bail.
         var activeVD = _readActivePerTabValues();
         if (activeVD.e <= 0 && activeVD.d <= 0 &&
-            ((einheit <= 0 && duenger <= 0) || state.reiter.length > 1)) {
+            ((einheit <= 0 && duenger <= 0) || AppGlobals.state.reiter.length > 1)) {
           _clearDrillInputs();
           return;
         }
@@ -466,13 +466,13 @@
       }
       if (!anyPushed) { _clearDrillInputs(); return; }
       _clearDrillInputs();
-      appEmit('DRILL_ENTRY_ADDED', { tabIdx: state.activeReiter });
+      AppGlobals.appEmit('DRILL_ENTRY_ADDED', { tabIdx: AppGlobals.state.activeReiter });
     }
 
     function drillRemove(tabIdx, entryIdx) {
-      if (!state.reiter[tabIdx] || !state.reiter[tabIdx].entries) return;
-      state.reiter[tabIdx].entries.splice(entryIdx, 1);
-      appEmit('DRILL_ENTRY_REMOVED', { tabIdx: tabIdx, entryIdx: entryIdx });
+      if (!AppGlobals.state.reiter[tabIdx] || !AppGlobals.state.reiter[tabIdx].entries) return;
+      AppGlobals.state.reiter[tabIdx].entries.splice(entryIdx, 1);
+      AppGlobals.appEmit('DRILL_ENTRY_REMOVED', { tabIdx: tabIdx, entryIdx: entryIdx });
     }
 
     // Issue #277: _calcDrillDistribution ist die pure Berechnung der
@@ -486,12 +486,12 @@
     //     wenn er noch ungenutzten cap hat (Issue #266).
     function _calcDrillDistribution(totalE, totalD) {
       var priorities = [];
-      for (var pi2 = 0; pi2 < state.reiter.length; pi2++) {
-        var r = state.reiter[pi2];
+      for (var pi2 = 0; pi2 < AppGlobals.state.reiter.length; pi2++) {
+        var r = AppGlobals.state.reiter[pi2];
         if (r.hektar > 0 && r.koerner > 0) {
-          var prio = state.drillPriorities[pi2] || 0;
-          var total = getTabTotalEinheiten(r);
-          var used = getTabUsedEinheiten(r);
+          var prio = AppGlobals.state.drillPriorities[pi2] || 0;
+          var total = AppGlobals.getTabTotalEinheiten(r);
+          var used = AppGlobals.getTabUsedEinheiten(r);
           var rem = Math.max(0, total - used);
           priorities.push({ idx: pi2, prio: prio, rem: rem, r: r });
         }
@@ -501,7 +501,7 @@
         return a.idx - b.idx;
       });
       var plan = {};
-      for (var pi = 0; pi < state.reiter.length; pi++) plan[pi] = { giveE: 0, giveD: 0 };
+      for (var pi = 0; pi < AppGlobals.state.reiter.length; pi++) plan[pi] = { giveE: 0, giveD: 0 };
       if (totalE > 0 || totalD > 0) {
         var remE = totalE;
         var remD = totalD;
@@ -512,12 +512,12 @@
         for (var ipi = 0; ipi < priorities.length; ipi++) {
           var p = priorities[ipi];
           if (p.prio <= 0) continue;
-          if (remE <= EPSILON_QUANTITY && remD <= EPSILON_QUANTITY) break;
-          if (remE > EPSILON_QUANTITY) {
+          if (remE <= AppGlobals.EPSILON_QUANTITY && remD <= AppGlobals.EPSILON_QUANTITY) break;
+          if (remE > AppGlobals.EPSILON_QUANTITY) {
             plan[p.idx].giveE = Math.min(remE, p.rem);
             remE -= plan[p.idx].giveE;
           }
-          if (remD > EPSILON_QUANTITY) {
+          if (remD > AppGlobals.EPSILON_QUANTITY) {
             var tabDUsed = (p.r.entries || []).reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
             var tabDNeed = Math.max(0, (p.r.hektar || 0) * (p.r.duenger || 0));
             var tabDCap = Math.max(0, tabDNeed - tabDUsed);
@@ -526,13 +526,13 @@
           }
         }
         // Leftover-Absorption im letzten priorisierten Reiter (Issue #266)
-        if (lastPrioIdx >= 0 && remE > EPSILON_QUANTITY) {
+        if (lastPrioIdx >= 0 && remE > AppGlobals.EPSILON_QUANTITY) {
           var lastPlan = plan[lastPrioIdx];
           var lastP = null;
           for (var lpf = 0; lpf < priorities.length; lpf++) {
             if (priorities[lpf].idx === lastPrioIdx) { lastP = priorities[lpf]; break; }
           }
-          if (lastP && lastPlan.giveE < lastP.rem - EPSILON_QUANTITY) {
+          if (lastP && lastPlan.giveE < lastP.rem - AppGlobals.EPSILON_QUANTITY) {
             lastPlan.giveE += remE;
           }
         }
@@ -544,16 +544,16 @@
     // dtl_e_<i>/dtl_d_<i> Felder und steckt den 2-Dezimal-Wert in
     // dataset.rawValue (Issue #266-B2). Reine DOM-Schreib-Logik.
     function _applyDrillPlan(plan) {
-      for (var ai = 0; ai < state.reiter.length; ai++) {
+      for (var ai = 0; ai < AppGlobals.state.reiter.length; ai++) {
         var p = plan[ai];
         var eEl = document.getElementById('dtl_e_' + ai);
         var dEl = document.getElementById('dtl_d_' + ai);
         if (eEl) {
-          eEl.value = p.giveE > 0 ? fmt(p.giveE) : '';
+          eEl.value = p.giveE > 0 ? AppGlobals.fmt(p.giveE) : '';
           eEl.dataset.rawValue = p.giveE > 0 ? String(Math.round(p.giveE * 100) / 100) : '';
         }
         if (dEl) {
-          dEl.value = p.giveD > 0 ? fmt(p.giveD) : '';
+          dEl.value = p.giveD > 0 ? AppGlobals.fmt(p.giveD) : '';
           dEl.dataset.rawValue = p.giveD > 0 ? String(Math.round(p.giveD * 100) / 100) : '';
         }
       }
@@ -561,34 +561,34 @@
 
     function drillCalcAll() {
       // Read user input
-      var totalE = parseDE(document.getElementById('drill_einheit').value) || 0;
-      var totalD = parseDE(document.getElementById('drill_duenger').value) || 0;
+      var totalE = AppGlobals.parseDE(document.getElementById('drill_einheit').value) || 0;
+      var totalD = AppGlobals.parseDE(document.getElementById('drill_duenger').value) || 0;
       // Pure Verteilungs-Berechnung (Issue #277) — kein DOM-Zugriff
       var plan = _calcDrillDistribution(totalE, totalD);
       // Tab-Liste neu rendern (Input-Felder werden ersetzt)
-      renderDrillTabList();
+      AppGlobals.renderDrillTabList();
       // Plan in die frischen Inputs schreiben
       _applyDrillPlan(plan);
-      renderDrillSummary();
-      renderResults();
+      AppGlobals.renderDrillSummary();
+      AppGlobals.renderResults();
     }
 
     function drillCalcDebounced() {
-      clearTimeout(_internal.drillCalcTimer);
-      _internal.drillCalcTimer = setTimeout(drillCalcAll, 150);
+      clearTimeout(AppGlobals._internal.drillCalcTimer);
+      AppGlobals._internal.drillCalcTimer = setTimeout(AppGlobals.drillCalcAll, 150);
     }
 
     function drillMachineAdd() {
       var einheitVal = document.getElementById('drill_einheit').value;
       var duengerVal = document.getElementById('drill_duenger').value;
-      var einheit = parseDE(einheitVal) || 0;
-      var duenger = parseDE(duengerVal) || 0;
-      var targetHektar = parseDE(document.getElementById('drill_hektar').value) || 0;
+      var einheit = AppGlobals.parseDE(einheitVal) || 0;
+      var duenger = AppGlobals.parseDE(duengerVal) || 0;
+      var targetHektar = AppGlobals.parseDE(document.getElementById('drill_hektar').value) || 0;
       if (einheit <= 0 && duenger <= 0) return;
-      var activeTab = state.reiter[state.activeReiter];
+      var activeTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
       var entry = {
         time: Date.now(),
-        mlIdx: state.machineLog.length,
+        mlIdx: AppGlobals.state.machineLog.length,
         einheit: einheit,
         duenger: duenger,
         hektar: targetHektar > 0 ? targetHektar : (activeTab.hektar || 0),
@@ -598,41 +598,41 @@
         duengerRate: activeTab.duenger,
         isMachineLog: true
       };
-      state.machineLog.push(entry);
+      AppGlobals.state.machineLog.push(entry);
       var count = parseInt(document.getElementById('drill_einheit').value) || 1;
       for (var c = 0; c < count; c++) {
-        var e = { time: Date.now() + c, mlIdx: state.machineLog.length - 1, einheit: einheit / count, duenger: duenger / count, hektar: targetHektar > 0 ? targetHektar : (activeTab.hektar || 0), istHektar: 0, zaehlerStand: targetHektar, koerner: activeTab.koerner, duengerRate: activeTab.duenger };
+        var e = { time: Date.now() + c, mlIdx: AppGlobals.state.machineLog.length - 1, einheit: einheit / count, duenger: duenger / count, hektar: targetHektar > 0 ? targetHektar : (activeTab.hektar || 0), istHektar: 0, zaehlerStand: targetHektar, koerner: activeTab.koerner, duengerRate: activeTab.duenger };
         activeTab.entries.push(e);
       }
       document.getElementById('drill_einheit').value = '';
       document.getElementById('drill_duenger').value = '';
       document.getElementById('drill_hektar').value = '';
-      appEmit('DRILL_ENTRY_ADDED', { tabIdx: state.activeReiter });
+      AppGlobals.appEmit('DRILL_ENTRY_ADDED', { tabIdx: AppGlobals.state.activeReiter });
     }
 
     function drillMachineRemove(idx) {
-      if (!state.machineLog || idx < 0 || idx >= state.machineLog.length) return;
-      state.machineLog.splice(idx, 1);
-      state.reiter.forEach(function(r) {
+      if (!AppGlobals.state.machineLog || idx < 0 || idx >= AppGlobals.state.machineLog.length) return;
+      AppGlobals.state.machineLog.splice(idx, 1);
+      AppGlobals.state.reiter.forEach(function(r) {
         if (!r.entries) return;
         for (var i = r.entries.length - 1; i >= 0; i--) {
           if (r.entries[i].mlIdx === idx) r.entries.splice(i, 1);
           else if (r.entries[i].mlIdx > idx) r.entries[i].mlIdx--;
         }
       });
-      appEmit('DRILL_ENTRY_REMOVED', { mlIdx: idx });
+      AppGlobals.appEmit('DRILL_ENTRY_REMOVED', { mlIdx: idx });
     }
 
     // --- Berechnung ---
 
     function berechne() {
-      var r = getActiveReiter();
+      var r = AppGlobals.getActiveReiter();
       if (!r) return;
       // 1) Werte aus DOM lesen (Tests setzen .value direkt)
-      var h = parseDE(document.getElementById('hektar').value);
-      var k = parseDE(document.getElementById('koerner').value);
-      var d = parseDE(document.getElementById('duenger').value);
-      var ih = parseDE(document.getElementById('ist_hektar').value) || 0;
+      var h = AppGlobals.parseDE(document.getElementById('hektar').value);
+      var k = AppGlobals.parseDE(document.getElementById('koerner').value);
+      var d = AppGlobals.parseDE(document.getElementById('duenger').value);
+      var ih = AppGlobals.parseDE(document.getElementById('ist_hektar').value) || 0;
       // 2) Errors clearen
       document.getElementById('err_hektar').textContent = '';
       document.getElementById('err_koerner').textContent = '';
@@ -679,10 +679,10 @@
         // so the arg-overridden wrapper in this file doesn't return NaN when called
         // with only `r`. See getTotalEinheiten at L697 (arg version) and L52 in
         // calculations.js (the canonical impl).
-        var newEinheiten = getTabTotalEinheiten(r);
-        var newDuenger = getTabTotalDuenger(r);
-        var einheitExceeds = newEinheiten > 0 && usedEinheit > newEinheiten + EPSILON_QUANTITY;
-        var duengerExceeds = newDuenger > 0 && usedDuenger > newDuenger + EPSILON_QUANTITY;
+        var newEinheiten = AppGlobals.getTabTotalEinheiten(r);
+        var newDuenger = AppGlobals.getTabTotalDuenger(r);
+        var einheitExceeds = newEinheiten > 0 && usedEinheit > newEinheiten + AppGlobals.EPSILON_QUANTITY;
+        var duengerExceeds = newDuenger > 0 && usedDuenger > newDuenger + AppGlobals.EPSILON_QUANTITY;
         if (einheitExceeds || duengerExceeds) {
           if (_askConfirm('Die neuen Werte weichen von den eingetragenen Einheiten ab. Drill-Protokoll zurücksetzen?')) {
             // User confirmed: clear the entries so the new calculation sticks.
@@ -701,43 +701,43 @@
         }
       }
       // 7) Speichern + rendern + Ergebnisse anzeigen
-      saveState();
-      renderTabs();
-      renderResults();
+      AppGlobals.saveState();
+      AppGlobals.renderTabs();
+      AppGlobals.renderResults();
       document.getElementById('results').style.display = 'block';
-      appEmit('CALCULATION_DONE', { tabIdx: state.activeReiter });
+      AppGlobals.appEmit('CALCULATION_DONE', { tabIdx: AppGlobals.state.activeReiter });
     }
 
     // --- Input Binding (reactive writes to state) ---
 
     function onInputHektar(el) {
-      var r = getActiveReiter();
-      var v = parseDE(el.value);
-      if (r.hektar !== v) { r.hektar = v; appEmit('ENTRY_CHANGED'); }
+      var r = AppGlobals.getActiveReiter();
+      var v = AppGlobals.parseDE(el.value);
+      if (r.hektar !== v) { r.hektar = v; AppGlobals.appEmit('ENTRY_CHANGED'); }
     }
 
     function onInputIstHektar(el) {
-      var r = getActiveReiter();
-      var v = parseDE(el.value);
-      if (r.istHektar !== v) { r.istHektar = v; appEmit('ENTRY_CHANGED'); }
+      var r = AppGlobals.getActiveReiter();
+      var v = AppGlobals.parseDE(el.value);
+      if (r.istHektar !== v) { r.istHektar = v; AppGlobals.appEmit('ENTRY_CHANGED'); }
     }
 
     function onInputKoerner(el) {
-      var r = getActiveReiter();
-      var v = parseDE(el.value);
-      if (r.koerner !== v) { r.koerner = v; appEmit('ENTRY_CHANGED'); }
+      var r = AppGlobals.getActiveReiter();
+      var v = AppGlobals.parseDE(el.value);
+      if (r.koerner !== v) { r.koerner = v; AppGlobals.appEmit('ENTRY_CHANGED'); }
     }
 
     function onInputDuenger(el) {
-      var r = getActiveReiter();
-      var v = parseDE(el.value);
-      if (r.duenger !== v) { r.duenger = v; appEmit('ENTRY_CHANGED'); }
+      var r = AppGlobals.getActiveReiter();
+      var v = AppGlobals.parseDE(el.value);
+      if (r.duenger !== v) { r.duenger = v; AppGlobals.appEmit('ENTRY_CHANGED'); }
     }
 
     // --- UI Wrappers (bridge: pure calculations → active tab context) ---
     // getTabKornerGesamt is in calculations.js; getActiveReiter is in ui-handlers.js
     function getKornerGesamt() {
-      return getTabKornerGesamt(getActiveReiter());
+      return AppGlobals.getTabKornerGesamt(AppGlobals.getActiveReiter());
     }
 
     // Issue #186: Diese Wrapper schließen die Lücke zwischen calculations.js
@@ -746,11 +746,11 @@
     // WICHTIG: Andere Namen als in calculations.js, um die Funktion
     // getTotalEinheiten(r, koernerProEinheit) dort nicht zu überschreiben.
     function getActiveTotalEinheiten() {
-      return getTabTotalEinheiten(getActiveReiter());
+      return AppGlobals.getTabTotalEinheiten(AppGlobals.getActiveReiter());
     }
 
     function getActiveTotalDuenger() {
-      return getTabTotalDuenger(getActiveReiter());
+      return AppGlobals.getTabTotalDuenger(AppGlobals.getActiveReiter());
     }
 
     // No-arg API-Kompatibilitäts-Wrapper (Issue #266).
@@ -769,22 +769,22 @@
     function getTotalEinheiten(r, koernerProEinheit) {
       if (arguments.length === 0) {
         // No-arg: für aktiven Reiter berechnen
-        return getActiveTotalEinheiten();
+        return AppGlobals.getActiveTotalEinheiten();
       }
       // Arg-Version: calculations.js-Original (Issue #230)
       if (!r || !r.hektar || !r.koerner || koernerProEinheit <= 0) return 0;
-      var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : state.fahrgassenEnabled;
-      var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : state.fahrgassenBreite;
+      var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : AppGlobals.state.fahrgassenEnabled;
+      var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : AppGlobals.state.fahrgassenBreite;
       var faktor = 1;
       if (fgEnabled && fgBreite > 0) {
-        faktor = computeFahrgassenFaktor(fgBreite);
+        faktor = AppGlobals.computeFahrgassenFaktor(fgBreite);
       }
       var e = (r.hektar * r.koerner) / koernerProEinheit;
       return Math.max(0, e * faktor);
     }
     function getTotalDuenger(r) {
       if (arguments.length === 0) {
-        return getActiveTotalDuenger();
+        return AppGlobals.getActiveTotalDuenger();
       }
       if (!r || !r.hektar || !r.duenger) return 0;
       return Math.max(0, r.hektar * r.duenger);
@@ -895,18 +895,18 @@
     // --- Helpers ---
 
     function getActiveReiter() {
-      var r = state.reiter[state.activeReiter];
-      if (!r) return state.reiter[0];
+      var r = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
+      if (!r) return AppGlobals.state.reiter[0];
       if (!r.entries) r.entries = [];
       return r;
     }
 
     function syncStateFromInputs() {
-      var r = getActiveReiter();
-      r.hektar    = parseDE(document.getElementById('hektar').value) || 0;
-      r.istHektar = parseDE(document.getElementById('ist_hektar').value) || 0;
-      r.koerner   = parseDE(document.getElementById('koerner').value) || 0;
-      r.duenger    = parseDE(document.getElementById('duenger').value) || 0;
+      var r = AppGlobals.getActiveReiter();
+      r.hektar    = AppGlobals.parseDE(document.getElementById('hektar').value) || 0;
+      r.istHektar = AppGlobals.parseDE(document.getElementById('ist_hektar').value) || 0;
+      r.koerner   = AppGlobals.parseDE(document.getElementById('koerner').value) || 0;
+      r.duenger    = AppGlobals.parseDE(document.getElementById('duenger').value) || 0;
     }
 
     function toInputValue(n) {
@@ -914,7 +914,7 @@
     }
 
     function syncInputsFromState() {
-      var r = getActiveReiter();
+      var r = AppGlobals.getActiveReiter();
       var h = document.getElementById('hektar');
       var ih = document.getElementById('ist_hektar');
       var k = document.getElementById('koerner');
@@ -928,3 +928,51 @@
       k.value = kVal;  k.dataset.prev = kVal;  k.dataset.cleaned = kVal;
       d.value = dVal;  d.dataset.prev = dVal;  d.dataset.cleaned = dVal;
     }
+
+// Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
+Object.assign(window.AppGlobals, {
+  _askConfirm: _askConfirm,
+  DOM_IDS: DOM_IDS,
+  _resetInput: _resetInput,
+  addReiter: addReiter,
+  removeReiter: removeReiter,
+  switchReiter: switchReiter,
+  renameReiter: renameReiter,
+  switchToProtokoll: switchToProtokoll,
+  fahrgassenToggle: fahrgassenToggle,
+  fahrgassenUpdate: fahrgassenUpdate,
+  einheitGroesseToggle: einheitGroesseToggle,
+  einheitGroesseUpdate: einheitGroesseUpdate,
+  resetActiveTab: resetActiveTab,
+  resetAll: resetAll,
+  _parseDrillInputs: _parseDrillInputs,
+  _resolvePerTabDistribution: _resolvePerTabDistribution,
+  _buildDrillEntry: _buildDrillEntry,
+  _pushEntryToTab: _pushEntryToTab,
+  _buildMachineLogEntry: _buildMachineLogEntry,
+  _readActivePerTabValues: _readActivePerTabValues,
+  _clearDrillInputs: _clearDrillInputs,
+  drillAdd: drillAdd,
+  drillRemove: drillRemove,
+  _calcDrillDistribution: _calcDrillDistribution,
+  _applyDrillPlan: _applyDrillPlan,
+  drillCalcAll: drillCalcAll,
+  drillCalcDebounced: drillCalcDebounced,
+  drillMachineAdd: drillMachineAdd,
+  drillMachineRemove: drillMachineRemove,
+  berechne: berechne,
+  onInputHektar: onInputHektar,
+  onInputIstHektar: onInputIstHektar,
+  onInputKoerner: onInputKoerner,
+  onInputDuenger: onInputDuenger,
+  getKornerGesamt: getKornerGesamt,
+  getActiveTotalEinheiten: getActiveTotalEinheiten,
+  getActiveTotalDuenger: getActiveTotalDuenger,
+  getTotalEinheiten: getTotalEinheiten,
+  getTotalDuenger: getTotalDuenger,
+  onInputFormat: onInputFormat,
+  getActiveReiter: getActiveReiter,
+  syncStateFromInputs: syncStateFromInputs,
+  toInputValue: toInputValue,
+  syncInputsFromState: syncInputsFromState,
+});

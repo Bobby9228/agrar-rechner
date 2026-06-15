@@ -72,7 +72,7 @@ function migrateLegacyStorageKeys() {
 migrateLegacyStorageKeys();
 
 function saveState() {
-  invalidateCarryoverCache();
+  AppGlobals.invalidateCarryoverCache();
   try {
     localStorage.setItem('agrar_rechner', JSON.stringify(state));
   } catch(e) {
@@ -394,3 +394,38 @@ function dismissUpdateHint() {
   var banner = document.getElementById('update_banner');
   if (banner) banner.classList.remove('show');
 }
+
+// Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
+// `state` ist absichtlich NICHT hier registriert — AppGlobals.state ist
+// bereits in app-globals.js als Live-Alias für die `var state` definiert
+// (Getter/Setter). Ein hier eingefügter `state: state` würde den Getter
+// mit einem Plain-Property überschreiben und Reassignments (loadState,
+// resetAll, Cross-Tab-Sync) brechen.
+Object.assign(window.AppGlobals, {
+  LEGACY_KEY_MAP: LEGACY_KEY_MAP,
+  ALLOWED_TOP_KEYS: ALLOWED_TOP_KEYS,
+  ALLOWED_TAB_KEYS: ALLOWED_TAB_KEYS,
+  ALLOWED_ENTRY_KEYS: ALLOWED_ENTRY_KEYS,
+  ALLOWED_MACHINE_LOG_KEYS: ALLOWED_MACHINE_LOG_KEYS,
+  isIOS: isIOS,
+  isStandalone: isStandalone,
+  UPDATE_CHANGELOG: UPDATE_CHANGELOG,
+  migrateLegacyStorageKeys: migrateLegacyStorageKeys,
+  saveState: saveState,
+  showSaveError: showSaveError,
+  dismissSaveError: dismissSaveError,
+  isPlainObject: isPlainObject,
+  sanitizeNumber: sanitizeNumber,
+  sanitizeString: sanitizeString,
+  sanitizeBoolean: sanitizeBoolean,
+  sanitizeEntry: sanitizeEntry,
+  sanitizeMachineLogEntry: sanitizeMachineLogEntry,
+  sanitizeTab: sanitizeTab,
+  jsonReviver: jsonReviver,
+  parsePersistedState: parsePersistedState,
+  loadState: loadState,
+  maybeShowIosInstallHint: maybeShowIosInstallHint,
+  dismissIosInstallHint: dismissIosInstallHint,
+  maybeShowUpdateHint: maybeShowUpdateHint,
+  dismissUpdateHint: dismissUpdateHint,
+});

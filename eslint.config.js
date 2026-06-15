@@ -120,12 +120,12 @@ export default [
             // `state`), die in legacy-Dateien nicht importiert werden — diese
             // Regel war der Hauptverursacher der 348 Errors.
             //
-            // Re-enabled per-file für `tests/` weiter unten (Issue #233
-            // Follow-up, Review-Kommentar t_7215b1de #25): Tests verwenden
-            // bereits ESM `import`, profitieren also von `no-undef` ohne
-            // Refactor-Aufwand. 306 Errors verbleiben in public/js/ bis
-            // Phase 3+ (Modul-Refactor in ESM-`import`-Form).
-            "no-undef": "off",
+            // Re-enabled per-file für `tests/` und `public/js/`. Tests
+            // verwenden bereits ESM `import`, public/js/ migriert nach
+            // ADR-001 (Issue #278) auf das AppGlobals-Namespace-Objekt —
+            // beide profitieren also von `no-undef` ohne Refactor-Aufwand.
+            // Stand 2026-06-15 (fix #278): 0 Errors in beiden Trees.
+            // "no-undef": "off",
             // Bestehender Code deklariert Schleifen-Variablen in
             // aufeinanderfolgenden Blöcken mehrfach — typisches Legacy-Pattern.
             "no-redeclare": "off",
@@ -146,7 +146,26 @@ export default [
             // Re-enabled no-undef für Tests: sie verwenden ESM `import`,
             // also profitieren sie von der Regel ohne Refactor. 0 Errors
             // verifiziert (Stand: 2026-06-08, t_ddd81e3a). public/js/*
-            // bleibt absichtlich aus, siehe Block oben.
+            // bekommt eine eigene Override-Section weiter unten (ADR-001,
+            // Issue #278).
+            "no-undef": ["error", { typeof: true }],
+        },
+    },
+
+    // public/js/* Override (ADR-001, Issue #278): AppGlobals-Namespace ist
+    // der neue Single-Entry-Point. Konsumenten greifen über
+    // `AppGlobals.state.foo()` zu statt über den impliziten globalen
+    // `state`. `typeof`-Checks bleiben erlaubt (für defensive Initial-
+    // Checks à la `typeof AppGlobals.X === 'function'`). 0 Errors verifiziert
+    // nach Migration der Cross-File-Calls auf `AppGlobals.X`.
+    {
+        files: ["public/js/**/*.js"],
+        languageOptions: {
+            globals: {
+                AppGlobals: "readonly",
+            },
+        },
+        rules: {
             "no-undef": ["error", { typeof: true }],
         },
     },

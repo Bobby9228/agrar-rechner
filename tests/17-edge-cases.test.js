@@ -287,8 +287,8 @@ describe('resetActiveTab — UI state after reset', () => {
 
   it('calls renderDrillSummary to clear stale drill summary', () => {
     var callCount = 0;
-    var originalFn = w.renderDrillSummary;
-    w.renderDrillSummary = function() { callCount++; originalFn.call(w); };
+    var originalFn = w.AppGlobals.renderDrillSummary;
+    w.AppGlobals.renderDrillSummary = function() { callCount++; return originalFn.apply(this, arguments); };
 
     w.state.reiter[0] = {
       name: 'Tab 1', hektar: 10, koerner: 90000, duenger: 500, entries: []
@@ -298,7 +298,7 @@ describe('resetActiveTab — UI state after reset', () => {
     w.resetActiveTab();
 
     expect(callCount).toBe(1);
-    w.renderDrillSummary = originalFn;
+    w.AppGlobals.renderDrillSummary = originalFn;
   });
 
   it('clears drill section display after reset', () => {

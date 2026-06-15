@@ -70,7 +70,12 @@ export function createDom() {
   if (tabBar) tabBar.appendChild(tabAddBtn);
 
   // Build combined script from modular JS files (skip the placeholder <script> comment block)
+  // ADR-001 (Issue #278): initialise the AppGlobals namespace before any module script runs.
+  // app-globals.js declares the namespace AND installs the `state` getter/setter
+  // (Live-Alias für `var state`); the test harness loads the real file so the
+  // test scope matches production.
   const moduleScript = [
+    loadModule('app-globals.js'),
     'var _internal = { carryoverCache: null, drillCalcTimer: null, pendingKey: null };',
     loadModule('state.js'),
     loadModule('calculations.js'),
@@ -81,10 +86,13 @@ export function createDom() {
     loadModule('render-dashboard.js'),
     loadModule('reset-modal.js'),
     // Remove DOMContentLoaded auto-init from main.js (initUI is called manually below).
-    // The actual code uses an anonymous function wrapper, not the bare `initUI`
-    // identifier — match the real text so the replace actually fires.
+    // The actual code uses `AppGlobals.initUI()` (ADR-001, Issue #278) — match
+    // the real text so the replace actually fires. If we don't strip it, the
+    // DOMContentLoaded listener fires AFTER the manual call below and registers
+    // a duplicate state listener, causing double-renders (e.g. test 17-edge-cases
+    // "calls renderDrillSummary to clear stale drill summary" got 2 calls).
     loadModule('main.js').replace(
-      "document.addEventListener('DOMContentLoaded', function() {\n  initUI();\n});",
+      "document.addEventListener('DOMContentLoaded', function() {\n  AppGlobals.initUI();\n});",
       ''
     ),
   ].join('\n');
