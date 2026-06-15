@@ -123,6 +123,29 @@
       if (dsUsedD) dsUsedD.textContent = usedDuenger > 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' : '—';
       var dsRemD = document.getElementById('ds_duenger_remaining');
       if (dsRemD) dsRemD.textContent = remDuenger > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' : '0 kg';
+      // Issue #266-B2: IST<SOLL savings in #ds_savings.
+      // Shows "Ersparnis: X Einheiten Saatgut, Y kg Dünger" when the active
+      // tab has istHektar < hektar (savings source). Hides otherwise.
+      var dsSav = document.getElementById('ds_savings');
+      if (dsSav) {
+        if (istSum > 0 && r.hektar > istSum) {
+          var savE = (r.hektar - istSum) * r.koerner / state.koernerProEinheit;
+          var savD = (r.hektar - istSum) * (r.duenger || 0);
+          var savParts = [];
+          if (savE > 0.05) savParts.push(fmt(savE) + ' Einheiten Saatgut');
+          if (savD > 0.05) savParts.push(savD.toLocaleString('de-DE') + ' kg Dünger');
+          if (savParts.length > 0) {
+            dsSav.textContent = 'Ersparnis: ' + savParts.join(', ');
+            dsSav.style.display = 'block';
+          } else {
+            dsSav.textContent = '';
+            dsSav.style.display = 'none';
+          }
+        } else {
+          dsSav.textContent = '';
+          dsSav.style.display = 'none';
+        }
+      }
     }
 
     // --- Render: Drill Log ---
@@ -133,6 +156,52 @@
       container.innerHTML = '';
       var activeTab = state.reiter[state.activeReiter];
       var totalSummary = document.getElementById('ds_total_summary');
+      // Issue #266-B2: Per-tab carryover/savings/excess divs at the top.
+      // Shown for ALL tabs that have any carryover signal (savings source,
+      // excess source, or carryover received from other tabs). Tests assert
+      // these classes on the #drill_entries container.
+      for (var ci = 0; ci < state.reiter.length; ci++) {
+        var ct = state.reiter[ci];
+        if (!ct) continue;
+        var cco = getCarryover(ci);
+        var isSavingsSource = (ct.istHektar > 0 && ct.hektar > 0 && ct.istHektar < ct.hektar);
+        var isExcessSource = (ct.istHektar > 0 && ct.hektar > 0 && ct.istHektar > ct.hektar);
+        if (isSavingsSource) {
+          var sE = (ct.hektar - ct.istHektar) * (ct.koerner || 0) / state.koernerProEinheit;
+          var sD = (ct.hektar - ct.istHektar) * (ct.duenger || 0);
+          var sParts = [];
+          if (sE > 0.05) sParts.push(fmt(sE) + ' Einheiten Saatgut');
+          if (sD > 0.05) sParts.push(sD.toLocaleString('de-DE') + ' kg Dünger');
+          if (sParts.length > 0) {
+            var sDiv = document.createElement('div');
+            sDiv.className = 'drill-savings';
+            sDiv.textContent = 'Ersparnis: ' + sParts.join(', ');
+            container.appendChild(sDiv);
+          }
+        }
+        if (cco.savedEinheit > 0.05 || cco.savedDuenger > 0.05) {
+          var cParts = [];
+          if (cco.savedEinheit > 0.05) cParts.push(fmt(cco.savedEinheit) + ' Einheiten Saatgut');
+          if (cco.savedDuenger > 0.05) cParts.push(cco.savedDuenger.toLocaleString('de-DE') + ' kg Dünger');
+          var cDiv = document.createElement('div');
+          cDiv.className = 'drill-carryover';
+          cDiv.textContent = 'Übertrag aus ersparten Flächen: +' + cParts.join(', ');
+          container.appendChild(cDiv);
+        }
+        if (isExcessSource) {
+          var eE = (ct.istHektar - ct.hektar) * (ct.koerner || 0) / state.koernerProEinheit;
+          var eD = (ct.istHektar - ct.hektar) * (ct.duenger || 0);
+          var eParts = [];
+          if (eE > 0.05) eParts.push(fmt(eE) + ' Einheiten Saatgut');
+          if (eD > 0.05) eParts.push(eD.toLocaleString('de-DE') + ' kg Dünger');
+          if (eParts.length > 0) {
+            var eDiv = document.createElement('div');
+            eDiv.className = 'drill-excess';
+            eDiv.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eParts.join(', ');
+            container.appendChild(eDiv);
+          }
+        }
+      }
       if (!activeTab || !activeTab.entries || activeTab.entries.length === 0) {
         if (totalSummary) totalSummary.textContent = '';
         var empty = document.createElement('div');

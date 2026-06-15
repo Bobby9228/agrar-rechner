@@ -371,7 +371,13 @@
         // user-typed drill_einheit/drill_duenger are empty. If the user
         // typed directly into drill_einheit/drill_duenger, use those values
         // (legacy single-tab behaviour).
-        if (activeE <= 0 && activeD <= 0 && einheit <= 0 && duenger <= 0) {
+        // Issue #266-B2: in a multi-tab session (length > 1) with no priorities,
+        // the user must either click a priority button or run drillCalcAll to
+        // populate per-tab fields. A global drill_einheit without per-tab
+        // distribution is ambiguous in multi-tab mode → bail to prevent a
+        // ghost entry on the active tab.
+        if (activeE <= 0 && activeD <= 0 &&
+            ((einheit <= 0 && duenger <= 0) || state.reiter.length > 1)) {
           // Ghost-entry prevention: nothing to push, no machineLog either.
           document.getElementById('drill_einheit').value = '';
           document.getElementById('drill_duenger').value = '';
@@ -502,13 +508,17 @@
         var dEl = document.getElementById('dtl_d_' + ai);
         if (eEl) {
           eEl.value = p.giveE > 0 ? fmt(p.giveE) : '';
-          // Round to 1 decimal for downstream consumption (Issue #240: prevents
-          // 7.75 → fmt "7,8" → parseDE 7.8 drift). Stash raw value too.
-          eEl.dataset.rawValue = p.giveE > 0 ? String(Math.round(p.giveE * 10) / 10) : '';
+          // Issue #266-B2: round to 2 decimals so values like 7.75 (from
+          // FG-Faktor 23/24) survive. 1-decimal rounded 7.75 → 7.8 (half-up)
+          // which broke Test 14. The input value (via fmt) is still 1-decimal
+          // for display, but rawValue preserves the 2-decimal number so
+          // downstream consumers (drillAdd, maxUnitsThisTab) see the precise
+          // amount.
+          eEl.dataset.rawValue = p.giveE > 0 ? String(Math.round(p.giveE * 100) / 100) : '';
         }
         if (dEl) {
           dEl.value = p.giveD > 0 ? fmt(p.giveD) : '';
-          dEl.dataset.rawValue = p.giveD > 0 ? String(Math.round(p.giveD * 10) / 10) : '';
+          dEl.dataset.rawValue = p.giveD > 0 ? String(Math.round(p.giveD * 100) / 100) : '';
         }
       }
       renderDrillSummary();

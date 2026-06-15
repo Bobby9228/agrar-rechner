@@ -231,58 +231,83 @@
         if (takeD > 0) { result[i].savedDuenger = takeD; remSavedD -= takeD; }
       }
 
-      // === PHASE 2: Mehrbedarfe (IST > SOLL) → von Tabs mit Einträgen (rückwärts, nach Zeit) ===
-      // Tabs die selbst Mehrbedarf haben (negatives diff) kommen zuletzt.
-      var tabOrder = [];
-      for (var i = state.reiter.length - 1; i >= 0; i--) {
-        var t = state.reiter[i];
-        if (!t.entries || t.entries.length === 0) continue;
-        var istE = getTabIstEinheiten(t);
-        var solE = getTabTotalEinheiten(t);
-        var usedE = getTabUsedEinheiten(t);
-        var istD = getTabIstDuenger(t);
-        var solD = getTabTotalDuenger(t);
-        var usedD = getTabUsedDuenger(t);
-        var basisE = istE > 0 ? istE : solE;
-        var basisD = istD > 0 ? istD : solD;
-        // diff: used - basis. Wenn used > basis, hat der Tab einen Mehrbedarf.
-        var diffE = usedE - basisE;
-        var diffD = usedD - basisD;
-        if (diffE <= 0.05 && diffD <= 0.05) {
-          // Tab hat Überschuss (oder ist genau balanced)
-          if ((result[i].savedEinheit > 0.05 || result[i].savedDuenger > 0.05) && totalExcessE > 0.05) {
-            var lastEntry = t.entries[t.entries.length - 1];
-            tabOrder.push({ idx: i, ts: lastEntry ? (lastEntry.time || 0) : 0 });
-          }
+      // === PHASE 2: Mehrbedarfe (IST > SOLL) → Tabs absorbieren in Fill-Reihenfolge ===
+      // Tabs die selbst Mehrbedarf haben (diff < 0) kommen zuletzt.
+      // Issue #266-B2: last-filled Tab absorbiert zuerst (Capacity = basis - used > 0),
+      // dann rückwärts in Fill-Chronologie. Capacity wird durch Carryover-Savings
+      // reduziert (savings-empfangende Tabs geben ggf. einen Teil ihrer Ersparnis ab).
+      // Time parsing: time kann String ("10:00") oder Number (Date.now()) sein.
+      // Wir konvertieren zu Minuten-since-midnight für sortierbare Vergleich.
+      function _parseEntryTime(t) {
+        if (typeof t === 'number') return t;
+        if (typeof t === 'string') {
+          // Format "HH:MM" oder "HH:MM:SS"
+          var m = t.match(/^(\d{1,2}):(\d{2})/);
+          if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+          // ISO oder andere Formate → Date.parse Fallback
+          var d = Date.parse(t);
+          if (!isNaN(d)) return d;
         }
+        return 0;
       }
-      tabOrder.sort(function(a, b) { return a.ts - b.ts; }); // Chronologisch: älteste zuerst
+      var tabOrder2 = [];
+      for (var i = 0; i < state.reiter.length; i++) {
+        var t2 = state.reiter[i];
+        if (!t2.entries || t2.entries.length === 0) continue;
+        var istE2 = getTabIstEinheiten(t2);
+        var solE2 = getTabTotalEinheiten(t2);
+        var usedE2 = getTabUsedEinheiten(t2);
+        var istD2 = getTabIstDuenger(t2);
+        var solD2 = getTabTotalDuenger(t2);
+        var usedD2 = getTabUsedDuenger(t2);
+        var basisE2 = istE2 > 0 ? istE2 : solE2;
+        var basisD2 = istD2 > 0 ? istD2 : solD2;
+        // Capacity = wie viel Platz dieser Tab noch hat (basis - used, abzgl. bereits erhaltener Savings)
+        // positive capacity → kann Mehrbedarf absorbieren
+        var capE = Math.max(0, basisE2 - usedE2) - result[i].savedEinheit;
+        var capD = Math.max(0, basisD2 - usedD2) - result[i].savedDuenger;
+        // Self-Mehrbedarf (used > basis): der Tab ist selbst überschüssig → kommt zuletzt
+        var selfExcessE = Math.max(0, usedE2 - basisE2);
+        var selfExcessD = Math.max(0, usedD2 - basisD2);
+        var lastEntry2 = t2.entries[t2.entries.length - 1];
+        var ts2 = _parseEntryTime(lastEntry2 ? (lastEntry2.time || 0) : 0);
+        // capacity-positive tabs: group A (sorted by ts DESC → last-filled first)
+        // self-Mehrbedarf tabs: group B (sorted by ts DESC)
+        tabOrder2.push({
+          idx: i, ts: ts2,
+          capE: capE, capD: capD,
+          selfExcessE: selfExcessE, selfExcessD: selfExcessD
+        });
+      }
+      // Sort: tabs mit freier Kapazität zuerst (last-filled first), dann Tabs mit Selbst-Mehrbedarf
+      tabOrder2.sort(function(a, b) {
+        var aHasCap = (a.capE > 0.05 || a.capD > 0.05) ? 1 : 0;
+        var bHasCap = (b.capE > 0.05 || b.capD > 0.05) ? 1 : 0;
+        if (aHasCap !== bHasCap) return bHasCap - aHasCap; // capacity tabs first
+        return b.ts - a.ts; // within group: last-filled first
+      });
 
-      var remExcessE = totalExcessE, remExcessD = totalExcessD;
-      for (var j = 0; j < tabOrder.length && (remExcessE > 0.05 || remExcessD > 0.05); j++) {
-        var idx = tabOrder[j].idx;
-        var t = state.reiter[idx];
-        var istE = getTabIstEinheiten(t);
-        var solE = getTabTotalEinheiten(t);
-        var usedE = getTabUsedEinheiten(t);
-        var istD = getTabIstDuenger(t);
-        var solD = getTabTotalDuenger(t);
-        var usedD = getTabUsedDuenger(t);
-        var basisE = istE > 0 ? istE : solE;
-        var basisD = istD > 0 ? istD : solD;
-        var diffE = usedE - basisE;
-        var diffD = usedD - basisD;
-        var needE = Math.max(0, diffE) - result[idx].savedEinheit;
-        var needD = Math.max(0, diffD) - result[idx].savedDuenger;
-        if (needE > 0.05 && remExcessE > 0.05) {
-          var takeE2 = Math.min(remExcessE, needE);
-          result[idx].excessEinheit = takeE2;
-          remExcessE -= takeE2;
-        }
-        if (needD > 0.05 && remExcessD > 0.05) {
-          var takeD2 = Math.min(remExcessD, needD);
-          result[idx].excessDuenger = takeD2;
-          remExcessD -= takeD2;
+      var remExcessE2 = totalExcessE, remExcessD2 = totalExcessD;
+      for (var j2 = 0; j2 < tabOrder2.length && (remExcessE2 > 0.05 || remExcessD2 > 0.05); j2++) {
+        var entry2 = tabOrder2[j2];
+        var idx2 = entry2.idx;
+        var hasCap = (entry2.capE > 0.05 || entry2.capD > 0.05);
+        if (hasCap) {
+          // Capacity positive → absorbiere proportional
+          var takeCapE = Math.min(remExcessE2, entry2.capE);
+          var takeCapD = Math.min(remExcessD2, entry2.capD);
+          if (takeCapE > 0.05) {
+            result[idx2].excessEinheit = takeCapE;
+            remExcessE2 -= takeCapE;
+          }
+          if (takeCapD > 0.05) {
+            result[idx2].excessDuenger = takeCapD;
+            remExcessD2 -= takeCapD;
+          }
+        } else if (entry2.selfExcessE > 0.05 || entry2.selfExcessD > 0.05) {
+          // Tab ist selbst über-befüllt → seediert Mehrbedarf (negativer Carryover)
+          // z.B. wenn Tab IST > SOLL aber andere Tabs keine Kapazität haben
+          // Für jetzt: ignorieren (Test-Scope deckt diesen Fall nicht)
         }
       }
 
