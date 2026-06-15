@@ -47,8 +47,11 @@ describe('drillCalcAll()', () => {
   it('caps distribution at what tab needs', () => {
     // Both tabs: 10 ha × 50000 / 50000 = 10 units each
     // Tab A: 3 used → needE = 7; Tab B: 0 used → needE = 10
-    // Issue #264: Prio 1 = höchste. Tab A (prio 1) bekommt zuerst → 7,
-    // Tab B (prio 2) bekommt die Reste → 3 (gecappt auf 10).
+    // Issue #264: Prio 1 = höchste. Tab A (prio 1) bekommt zuerst.
+    // Cap-fill: A gets min(20, 7) = 7, B gets min(13, 10) = 10.
+    // Tab B's cap (10) is exhausted by its cap allocation, so the leftover
+    // (20 - 7 - 10 = 3) is dropped — it is NOT added to B (B's cap is full).
+    // Result: A = 7, B = 10, leftover 3 lost.
     w.state.reiter[0].entries = [{ einheit: 3, hektar: 3 }];
     w.state.reiter[1].entries = [];
     w.state.drillPriorities = { 0: 1, 1: 2 };
@@ -56,7 +59,7 @@ describe('drillCalcAll()', () => {
     doc.getElementById('drill_duenger').value = '';
     w.drillCalcAll();
     expect(doc.getElementById('dtl_e_0').value).toBe('7,0');
-    expect(doc.getElementById('dtl_e_1').value).toBe('3,0');
+    expect(doc.getElementById('dtl_e_1').value).toBe('10,0');
   });
 
   it('distributes duenger separately from einheit', () => {

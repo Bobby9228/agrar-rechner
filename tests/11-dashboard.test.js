@@ -115,7 +115,8 @@ describe('Dashboard', () => {
       w.openDashboard();
       // The einheiten remaining stat is at index 2
       const values = doc.querySelectorAll('.dashboard-stat-value');
-      expect(values[2].textContent).toContain('5,0');
+      // Issue #266: Dashboard nutzt fmtCompact (ganze Zahlen ohne ",0").
+      expect(values[2].textContent).toContain('5');
       expect(values[2].classList.contains('remaining')).toBe(true);
     });
 

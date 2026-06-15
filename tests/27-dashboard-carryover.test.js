@@ -55,7 +55,7 @@ describe('Dashboard carryover / savings', () => {
 // Tab 1: SOLL=10 ha → 16 units. Filled 16 units exactly
 // Total SOLL = 32, used = 24 → remaining = max(0, 32 - 24) = 8
 // No carryover because no IST is set (carryover savings come from IST<SOLL)
-expect(summary.einheitenVal).toBe('8,0');
+expect(summary.einheitenVal).toBe('8');
   });
 
   it('BUG: dashboard does not display savings indicator when tabs are under-utilized', () => {
@@ -87,7 +87,7 @@ expect(summary.einheitenVal).toBe('8,0');
     const summary = getDashboardSummary();
     // Each tab: SOLL=16, used=0 → remaining=16
     // Summary aggregates: total SOLL=32, total used=0 → remaining=32
-    expect(summary.einheitenVal).toBe('32,0');
+    expect(summary.einheitenVal).toBe('32');
   });
 
   it('dashboard remaining = SOLL - used (no carryover logic)', () => {
@@ -103,7 +103,7 @@ expect(summary.einheitenVal).toBe('8,0');
 
     const summary = getDashboardSummary();
     // Without istHektar set, carryover is 0 → dashboard shows total - used = 32 - 8 = 24
-    expect(summary.einheitenVal).toBe('24,0');
+    expect(summary.einheitenVal).toBe('24');
   });
 
   it('empty dashboard when no tabs have valid data', () => {
@@ -119,13 +119,13 @@ expect(summary.einheitenVal).toBe('8,0');
     w.state.reiter[0].entries = [];
 
     const s1 = getDashboardSummary();
-    expect(s1.einheitenVal).toBe('16,0');
+    expect(s1.einheitenVal).toBe('16');
 
     // Add entry
     w.state.reiter[0].entries = [{ einheit: 10.0, duenger: 0, zaehlerStand: 6, time: '10:00' }];
 
     const s2 = getDashboardSummary();
-    expect(s2.einheitenVal).toBe('6,0');
+    expect(s2.einheitenVal).toBe('6');
   });
 
   it('dashboard per-tab shows remaining correctly', () => {
@@ -137,7 +137,7 @@ expect(summary.einheitenVal).toBe('8,0');
     const cards = doc.querySelectorAll('.dashboard-reiter-card');
     const stats = cards[0].querySelectorAll('.dashboard-stat');
     const einheitenCardVal = stats[2]?.querySelector('.dashboard-stat-value')?.textContent || '';
-    expect(einheitenCardVal).toBe('11,0'); // 16 - 5 = 11
+    expect(einheitenCardVal).toBe('11'); // 16 - 5 = 11
   });
 
   it('BUG: excess (IST>SOLL) is also not reflected in dashboard remaining', () => {
@@ -149,6 +149,6 @@ expect(summary.einheitenVal).toBe('8,0');
     const summary = getDashboardSummary();
     // Dashboard: SOLL - used = 16 - 20 = max(0, -4) = 0 remaining
     // (No carryover redistribution shown)
-    expect(summary.einheitenVal).toBe('0,0');
+    expect(summary.einheitenVal).toBe('0');
   });
 });

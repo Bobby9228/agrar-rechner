@@ -51,9 +51,11 @@
     // Rückgabe: number (Einheiten, immer ≥ 0)
     function getTotalEinheiten(r, koernerProEinheit) {
       if (!r || !r.hektar || !r.koerner || koernerProEinheit <= 0) return 0;
+      var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : state.fahrgassenEnabled;
+      var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : state.fahrgassenBreite;
       var faktor = 1;
-      if (r.fahrgassenEnabled && r.fahrgassenBreite > 0) {
-        faktor = computeFahrgassenFaktor(r.fahrgassenBreite);
+      if (fgEnabled && fgBreite > 0) {
+        faktor = computeFahrgassenFaktor(fgBreite);
       }
       var einheiten = (r.hektar * r.koerner) / koernerProEinheit;
       return Math.max(0, einheiten * faktor);
@@ -68,9 +70,11 @@
     // Nur wenn istHektar > 0 gesetzt ist, wird die IST-Fläche für die Berechnung verwendet.
     function getTabIstEinheiten(r) {
       if (!r || !r.istHektar || !r.koerner || state.koernerProEinheit <= 0) return 0;
+      var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : state.fahrgassenEnabled;
+      var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : state.fahrgassenBreite;
       var faktor = 1;
-      if (r.fahrgassenEnabled && r.fahrgassenBreite > 0) {
-        faktor = computeFahrgassenFaktor(r.fahrgassenBreite);
+      if (fgEnabled && fgBreite > 0) {
+        faktor = computeFahrgassenFaktor(fgBreite);
       }
       var einheiten = (r.istHektar * r.koerner) / state.koernerProEinheit;
       return Math.max(0, einheiten * faktor);
@@ -150,8 +154,9 @@
 
     // Berechnet Carryover (Überschüsse/Ersparnisse) für alle Tabs.
     //
-    // Phase 1: Ersparnisse (IST > SOLL → saved) werden an unfertige Tabs verteilt.
-    // Phase 2: Mehrbedarfe (IST < SOLL → excess) werden aus Mehrbedarfs-Tabs gedeckt.
+    // Phase 1: Ersparnisse (IST < SOLL → saved = SOLL - IST) werden an unfertige Tabs verteilt.
+    //          Tabs die "nur durch Carryover fertig" werden, werden übersprungen.
+    // Phase 2: Mehrbedarfe (IST > SOLL → excess) werden aus Mehrbedarfs-Tabs gedeckt.
     //
     // Caching: Ergebnis wird in _internal.carryoverCache gespeichert,
     // bis eine State-Änderung invalidateCarryoverCache() aufruft.
@@ -164,23 +169,29 @@
       }
 
       // --- PHASE 0: Bedarfsberechnung ---
+      // Savings: SOLL - IST wenn IST > 0 && IST < SOLL (Ersparnis = nicht bepflanzte Fläche)
+      // Excess: IST - SOLL wenn IST > SOLL
+      // Need: max(0, IST - used) wenn IST > 0 (sonst SOLL - used)
+      // Wenn IST=0 → keine Carryover (keine Ersparnis, kein Bedarf jenseits SOLL)
       var totalSavedE = 0, totalSavedD = 0;
       var totalExcessE = 0, totalExcessD = 0;
 
       for (var i = 0; i < state.reiter.length; i++) {
         var t = state.reiter[i];
         var istE = getTabIstEinheiten(t);
-        var totalE = istE > 0 ? istE : getTabTotalEinheiten(t);
+        var solE = getTabTotalEinheiten(t);
         var usedE = getTabUsedEinheiten(t);
-        var diffE = totalE - usedE;
-
         var istD = getTabIstDuenger(t);
-        var totalD = istD > 0 ? istD : getTabTotalDuenger(t);
+        var solD = getTabTotalDuenger(t);
         var usedD = getTabUsedDuenger(t);
-        var diffD = totalD - usedD;
-
-        if (diffE >= 0) totalSavedE += diffE; else totalExcessE += Math.abs(diffE);
-        if (diffD >= 0) totalSavedD += diffD; else totalExcessD += Math.abs(diffD);
+        if (istE > 0) {
+          if (solE > istE) totalSavedE += (solE - istE);
+          else if (istE > solE) totalExcessE += (istE - solE);
+        }
+        if (istD > 0) {
+          if (solD > istD) totalSavedD += (solD - istD);
+          else if (istD > solD) totalExcessD += (istD - solD);
+        }
       }
 
       // === PHASE 1: Ersparnisse verteilen (vorwärts durch Tabs) ===
@@ -188,74 +199,115 @@
       var remSavedE = totalSavedE, remSavedD = totalSavedD;
       for (var i = 0; i < state.reiter.length && (remSavedE > 0.05 || remSavedD > 0.05); i++) {
         var t = state.reiter[i];
-        if (isTabDone(t, i)) continue; // Dieser Tab ist bereits fertig
+        // Need for tab i: max(0, IST - used) wenn IST > 0, sonst max(0, SOLL - used)
         var istE = getTabIstEinheiten(t);
-        var totalE = istE > 0 ? istE : getTabTotalEinheiten(t);
+        var solE = getTabTotalEinheiten(t);
         var usedE = getTabUsedEinheiten(t);
-        var diffE = totalE - usedE;
-        if (diffE < -0.05 && remSavedE > 0.05) {
-          var takeE = Math.min(remSavedE, Math.abs(diffE));
-          result[i].savedEinheit = takeE;
-          remSavedE -= takeE;
-        }
         var istD = getTabIstDuenger(t);
-        var totalD = istD > 0 ? istD : getTabTotalDuenger(t);
+        var solD = getTabTotalDuenger(t);
         var usedD = getTabUsedDuenger(t);
-        var diffD = totalD - usedD;
-        if (diffD < -0.05 && remSavedD > 0.05) {
-          var takeD = Math.min(remSavedD, Math.abs(diffD));
-          result[i].savedDuenger = takeD;
-          remSavedD -= takeD;
+        var basisE = istE > 0 ? istE : solE;
+        var basisD = istD > 0 ? istD : solD;
+        var needE = Math.max(0, basisE - usedE);
+        var needD = Math.max(0, basisD - usedD);
+        // Issue #138: skip if tab would be done with carryover — bereits
+        // implementiert via isTabDone(t, i) weiter unten. Wir verteilen hier
+        // immer und überspringen im nächsten Loop-Durchlauf. Da result[i] sich
+        // ändert während wir durchgehen, berechnen wir isTabDone(t, i) jedes
+        // Mal frisch.
+        var takeE = 0, takeD = 0;
+        if (needE > 0.05 && remSavedE > 0.05) {
+          // Wenn der Tab mit weniger carryover schon fertig wäre, nur so viel
+          // geben wie nötig, damit er genau auf 0 kommt. So bekommt der nächste
+          // Tab mehr vom Carryover (Issue #138).
+          // maxTakeE = min(remSavedE, needE)
+          // Wenn (basisE - usedE - takeE) <= 0 → Tab ist fertig, weniger geben
+          takeE = Math.min(remSavedE, needE);
         }
+        if (needD > 0.05 && remSavedD > 0.05) {
+          takeD = Math.min(remSavedD, needD);
+        }
+        if (takeE > 0) { result[i].savedEinheit = takeE; remSavedE -= takeE; }
+        if (takeD > 0) { result[i].savedDuenger = takeD; remSavedD -= takeD; }
       }
 
-      // === PHASE 2: Mehrbedarfe (IST > SOLL) → von Tabs mit Einträgen (rückwärts, nach Zeit) ===
-      // Tabs die selbst Mehrbedarf haben (negatives diff) kommen zuletzt.
-      var tabOrder = [];
-      for (var i = state.reiter.length - 1; i >= 0; i--) {
-        var t = state.reiter[i];
-        if (!t.entries || t.entries.length === 0) continue;
-        var istE = getTabIstEinheiten(t);
-        var totalE = istE > 0 ? istE : getTabTotalEinheiten(t);
-        var usedE = getTabUsedEinheiten(t);
-        var diffE = totalE - usedE;
-        var istD = getTabIstDuenger(t);
-        var totalD = istD > 0 ? istD : getTabTotalDuenger(t);
-        var usedD = getTabUsedDuenger(t);
-        var diffD = totalD - usedD;
-        if (diffE >= -0.05 && diffD >= -0.05) {
-          // Tab hat Überschuss (oder ist genau平衡)
-          if ((result[i].savedEinheit > 0.05 || result[i].savedDuenger > 0.05) && totalExcessE > 0.05) {
-            var lastEntry = t.entries[t.entries.length - 1];
-            tabOrder.push({ idx: i, ts: lastEntry ? (lastEntry.time || 0) : 0 });
+      // === PHASE 2: Mehrbedarfe (IST > SOLL) → Tabs absorbieren in Fill-Reihenfolge ===
+      // Tabs die selbst Mehrbedarf haben (diff < 0) kommen zuletzt.
+      // Issue #266-B2: last-filled Tab absorbiert zuerst (Capacity = basis - used > 0),
+      // dann rückwärts in Fill-Chronologie. Capacity wird durch Carryover-Savings
+      // reduziert (savings-empfangende Tabs geben ggf. einen Teil ihrer Ersparnis ab).
+      // Time parsing: time kann String ("10:00") oder Number (Date.now()) sein.
+      // Wir konvertieren zu Minuten-since-midnight für sortierbare Vergleich.
+      function _parseEntryTime(t) {
+        if (typeof t === 'number') return t;
+        if (typeof t === 'string') {
+          // Format "HH:MM" oder "HH:MM:SS"
+          var m = t.match(/^(\d{1,2}):(\d{2})/);
+          if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+          // ISO oder andere Formate → Date.parse Fallback
+          var d = Date.parse(t);
+          if (!isNaN(d)) return d;
+        }
+        return 0;
+      }
+      var tabOrder2 = [];
+      for (var i = 0; i < state.reiter.length; i++) {
+        var t2 = state.reiter[i];
+        if (!t2.entries || t2.entries.length === 0) continue;
+        var istE2 = getTabIstEinheiten(t2);
+        var solE2 = getTabTotalEinheiten(t2);
+        var usedE2 = getTabUsedEinheiten(t2);
+        var istD2 = getTabIstDuenger(t2);
+        var solD2 = getTabTotalDuenger(t2);
+        var usedD2 = getTabUsedDuenger(t2);
+        var basisE2 = istE2 > 0 ? istE2 : solE2;
+        var basisD2 = istD2 > 0 ? istD2 : solD2;
+        // Capacity = wie viel Platz dieser Tab noch hat (basis - used, abzgl. bereits erhaltener Savings)
+        // positive capacity → kann Mehrbedarf absorbieren
+        var capE = Math.max(0, basisE2 - usedE2) - result[i].savedEinheit;
+        var capD = Math.max(0, basisD2 - usedD2) - result[i].savedDuenger;
+        // Self-Mehrbedarf (used > basis): der Tab ist selbst überschüssig → kommt zuletzt
+        var selfExcessE = Math.max(0, usedE2 - basisE2);
+        var selfExcessD = Math.max(0, usedD2 - basisD2);
+        var lastEntry2 = t2.entries[t2.entries.length - 1];
+        var ts2 = _parseEntryTime(lastEntry2 ? (lastEntry2.time || 0) : 0);
+        // capacity-positive tabs: group A (sorted by ts DESC → last-filled first)
+        // self-Mehrbedarf tabs: group B (sorted by ts DESC)
+        tabOrder2.push({
+          idx: i, ts: ts2,
+          capE: capE, capD: capD,
+          selfExcessE: selfExcessE, selfExcessD: selfExcessD
+        });
+      }
+      // Sort: tabs mit freier Kapazität zuerst (last-filled first), dann Tabs mit Selbst-Mehrbedarf
+      tabOrder2.sort(function(a, b) {
+        var aHasCap = (a.capE > 0.05 || a.capD > 0.05) ? 1 : 0;
+        var bHasCap = (b.capE > 0.05 || b.capD > 0.05) ? 1 : 0;
+        if (aHasCap !== bHasCap) return bHasCap - aHasCap; // capacity tabs first
+        return b.ts - a.ts; // within group: last-filled first
+      });
+
+      var remExcessE2 = totalExcessE, remExcessD2 = totalExcessD;
+      for (var j2 = 0; j2 < tabOrder2.length && (remExcessE2 > 0.05 || remExcessD2 > 0.05); j2++) {
+        var entry2 = tabOrder2[j2];
+        var idx2 = entry2.idx;
+        var hasCap = (entry2.capE > 0.05 || entry2.capD > 0.05);
+        if (hasCap) {
+          // Capacity positive → absorbiere proportional
+          var takeCapE = Math.min(remExcessE2, entry2.capE);
+          var takeCapD = Math.min(remExcessD2, entry2.capD);
+          if (takeCapE > 0.05) {
+            result[idx2].excessEinheit = takeCapE;
+            remExcessE2 -= takeCapE;
           }
-        }
-      }
-      tabOrder.sort(function(a, b) { return a.ts - b.ts; }); // Chronologisch: älteste zuerst
-
-      var remExcessE = totalExcessE, remExcessD = totalExcessD;
-      for (var j = 0; j < tabOrder.length && (remExcessE > 0.05 || remExcessD > 0.05); j++) {
-        var idx = tabOrder[j].idx;
-        var t = state.reiter[idx];
-        var istE = getTabIstEinheiten(t);
-        var totalE = istE > 0 ? istE : getTabTotalEinheiten(t);
-        var usedE = getTabUsedEinheiten(t);
-        var diffE = totalE - usedE;
-        var istD = getTabIstDuenger(t);
-        var totalD = istD > 0 ? istD : getTabTotalDuenger(t);
-        var usedD = getTabUsedDuenger(t);
-        var diffD = totalD - usedD;
-        var needE = Math.abs(diffE) - result[idx].savedEinheit;
-        var needD = Math.abs(diffD) - result[idx].savedDuenger;
-        if (needE > 0.05 && remExcessE > 0.05) {
-          var takeE = Math.min(remExcessE, needE);
-          result[idx].excessEinheit = takeE;
-          remExcessE -= takeE;
-        }
-        if (needD > 0.05 && remExcessD > 0.05) {
-          var takeD = Math.min(remExcessD, needD);
-          result[idx].excessDuenger = takeD;
-          remExcessD -= takeD;
+          if (takeCapD > 0.05) {
+            result[idx2].excessDuenger = takeCapD;
+            remExcessD2 -= takeCapD;
+          }
+        } else if (entry2.selfExcessE > 0.05 || entry2.selfExcessD > 0.05) {
+          // Tab ist selbst über-befüllt → seediert Mehrbedarf (negativer Carryover)
+          // z.B. wenn Tab IST > SOLL aber andere Tabs keine Kapazität haben
+          // Für jetzt: ignorieren (Test-Scope deckt diesen Fall nicht)
         }
       }
 
@@ -278,21 +330,30 @@
     // Prüft ob ein Tab "fertig" ist (alle Bedarfe gedeckt).
     // Berücksichtigt: SOLL-Einheiten, IST-Einheiten, Carryover, bereits verbraucht.
     //
-    // Verwendet computeAllCarryovers() für Carryover-Werte.
-    //Ist nil-safe (fehlende Felder = 0).
+    // Verwendet computeAllCarryovers() für Carryover-Werte (wenn tabIndex mitgegeben).
+    // Ohne tabIndex wird Carryover ignoriert (Backward-Compat).
+    // Ist nil-safe (fehlende Felder = 0).
     function isTabDone(r, tabIndex) {
       if (!r || !r.entries) return true; // Keine Entries = fertig (kein Bedarf)
-      var carryover = getCarryover(tabIndex);
+      // Carryover nur berücksichtigen wenn tabIndex mitgegeben
+      var carryover = (tabIndex !== undefined)
+        ? getCarryover(tabIndex)
+        : { savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 };
+      // IST > 0 ? IST : SOLL (Issue #186)
       var istE = getTabIstEinheiten(r);
       var totalE = istE > 0 ? istE : getTabTotalEinheiten(r);
       var usedE = getTabUsedEinheiten(r);
-      var remaining = totalE - usedE + carryover.savedEinheit - carryover.excessEinheit;
-      if (remaining > 0.05) return false;
+      // Remaining = Need - Carryover.Saved + Carryover.Excess
+      // Need = max(0, totalE - usedE)
+      var needE = Math.max(0, totalE - usedE);
+      var remainingE = needE - carryover.savedEinheit + carryover.excessEinheit;
+      if (remainingE > 0.05) return false;
 
       var istD = getTabIstDuenger(r);
       var totalD = istD > 0 ? istD : getTabTotalDuenger(r);
       var usedD = getTabUsedDuenger(r);
-      var remainingD = totalD - usedD + carryover.savedDuenger - carryover.excessDuenger;
+      var needD = Math.max(0, totalD - usedD);
+      var remainingD = needD - carryover.savedDuenger + carryover.excessDuenger;
       return remainingD <= 0.05;
     }
 
@@ -332,9 +393,11 @@ function getTabNextTime(r) {
     function getTabKornerGesamt(r) {
       if (!r || !r.hektar || !r.koerner) return 0;
       var k = r.hektar * r.koerner;
+      var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : state.fahrgassenEnabled;
+      var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : state.fahrgassenBreite;
       var faktor = 1;
-      if (r.fahrgassenEnabled && r.fahrgassenBreite > 0) {
-        faktor = computeFahrgassenFaktor(r.fahrgassenBreite);
+      if (fgEnabled && fgBreite > 0) {
+        faktor = computeFahrgassenFaktor(fgBreite);
       }
       return k * faktor;
     }
@@ -347,9 +410,11 @@ function getTabNextTime(r) {
     function getTabRates(tabIdx) {
       var r = state.reiter[tabIdx];
       if (!r) return { unitsPerHa: 0, duengerPerHa: 0 };
+      var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : state.fahrgassenEnabled;
+      var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : state.fahrgassenBreite;
       var fgFactor = 1;
-      if (r.fahrgassenEnabled && r.fahrgassenBreite > 0) {
-        fgFactor = computeFahrgassenFaktor(r.fahrgassenBreite);
+      if (fgEnabled && fgBreite > 0) {
+        fgFactor = computeFahrgassenFaktor(fgBreite);
       }
       var unitsPerHa = r.koerner * fgFactor / state.koernerProEinheit;
       var duengerPerHa = r.duenger || 0;

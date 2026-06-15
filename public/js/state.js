@@ -252,7 +252,10 @@
         }
         // Migration 1→2: Globale entries → per-Tab entries
         if (lv < 2 && data.entries && Array.isArray(data.entries)) {
-          if (data.reiter && data.reiter[0]) data.reiter[0].entries = data.entries;
+          // Bestehende tab-entries nicht überschreiben (Issue #266 / Migration-Korrektur)
+          if (data.reiter && data.reiter[0] && (!data.reiter[0].entries || data.reiter[0].entries.length === 0)) {
+            data.reiter[0].entries = data.entries;
+          }
           delete data.entries;
           lv = 2;
         }

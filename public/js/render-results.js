@@ -128,6 +128,8 @@
       renderResultCard();
       renderDrillSummary();
       renderDrillLog();
+      renderDrillEntriesInline();
+      renderMachineLog();
       renderMiniFooter();
       var errHektar = document.getElementById('err_hektar');
       var errKoerner = document.getElementById('err_koerner');
@@ -143,8 +145,89 @@
         if (koernerEl) koernerEl.style.borderColor = '#c00';
         return;
       }
+      // Issue #266-A: hide results card when the active tab has no data,
+      // and show/hide the drill_summary block consistently. renderView()
+      // already handles drill_section / protokoll toggle; we only need to
+      // ensure results + drill_summary reflect the active tab's data state.
+      var resultsEl = document.getElementById('results');
+      var drillSummaryEl = document.getElementById('drill_summary');
+      var hasData = r.hektar > 0 && r.koerner > 0;
+      if (!hasData) {
+        if (resultsEl) resultsEl.style.display = 'none';
+        if (drillSummaryEl) drillSummaryEl.style.display = 'none';
+        return;
+      }
+      if (drillSummaryEl) drillSummaryEl.style.display = 'block';
       if (state.activeView !== 'protokoll') {
-        var resultsEl = document.getElementById('results');
         if (resultsEl) resultsEl.style.display = 'block';
       }
+    }
+
+    // Inline drill-entries im Result-Card-Body (r_drill_entries)
+    // Issue #266: Diese müssen sichtbar sein und einen Delete-Button haben,
+    // damit Tests den "btn-danger" + "drillRemove"-Pfad abdecken können.
+    function renderDrillEntriesInline() {
+      var container = document.getElementById('r_drill_entries');
+      if (!container) return;
+      container.innerHTML = '';
+      var r = getActiveReiter();
+      if (!r || !r.entries || r.entries.length === 0) {
+        var rdSection = document.getElementById('r_drill_section');
+        if (rdSection) rdSection.style.display = 'none';
+        return;
+      }
+      var rdSection = document.getElementById('r_drill_section');
+      if (rdSection) rdSection.style.display = 'block';
+      var usedE = r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
+      var usedD = r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
+      var istE = getTabIstEinheiten(r) || getTabTotalEinheiten(r);
+      var istD = getTabIstDuenger(r) || getTabTotalDuenger(r);
+      var remE = Math.max(0, istE - usedE);
+      var remD = Math.max(0, istD - usedD);
+      var usedEl = document.getElementById('r_drill_e_used');
+      if (usedEl) usedEl.textContent = formatEinheit(usedE);
+      var remEl = document.getElementById('r_drill_e_rem');
+      if (remEl) remEl.textContent = formatEinheit(remE);
+      var dUsedEl = document.getElementById('r_drill_d_used');
+      if (dUsedEl) dUsedEl.textContent = usedD > 0 ? usedD.toLocaleString('de-DE') + ' kg' : '—';
+      var dRemEl = document.getElementById('r_drill_d_rem');
+      if (dRemEl) dRemEl.textContent = remD > 0 ? remD.toLocaleString('de-DE') + ' kg' : '—';
+      var dUsedRow = document.getElementById('r_drill_d_used_row');
+      if (dUsedRow) dUsedRow.style.display = usedD > 0 ? '' : 'none';
+      var dRemRow = document.getElementById('r_drill_d_rem_row');
+      if (dRemRow) dRemRow.style.display = remD > 0 ? '' : 'none';
+      // Iterate in chronological order — matches renderDrillLog and the
+      // original f7f7e8d behaviour (see 09-blind-spots "drill entry has #number span").
+      r.entries.forEach(function(entry, actualIdx) {
+        var row = document.createElement('div');
+        row.className = 'drill-entry';
+        var numSpan = document.createElement('span');
+        numSpan.textContent = '#' + (actualIdx + 1) + ' ';
+        row.appendChild(numSpan);
+        var entryText = document.createElement('span');
+        entryText.className = 'entry-text';
+        var parts = [];
+        if (entry.time) {
+          var t = typeof entry.time === 'number' ? new Date(entry.time).toLocaleString('de-DE') : entry.time;
+          parts.push(t + ' –');
+        }
+        if (entry.istHektar || entry.zaehlerStand) {
+          var ha = entry.istHektar || entry.zaehlerStand;
+          parts.push(fmt(ha) + ' ha');
+        } else if (entry.hektar > 0) {
+          parts.push('@' + fmt(entry.hektar) + 'ha');
+        }
+        parts.push(formatEinheit(entry.einheit || 0));
+        if (entry.duenger > 0) {
+          parts.push((entry.duenger).toLocaleString('de-DE') + ' kg Dünger');
+        }
+        entryText.textContent = parts.join(' ');
+        row.appendChild(entryText);
+        var removeBtn = document.createElement('button');
+        removeBtn.className = 'btn-danger';
+        removeBtn.textContent = '✕';
+        removeBtn.onclick = function() { drillRemove(state.activeReiter, actualIdx); };
+        row.appendChild(removeBtn);
+        container.appendChild(row);
+      });
     }

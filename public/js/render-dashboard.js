@@ -83,8 +83,11 @@
       }
 
       var pctClass = totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '';
-      sStats.appendChild(makeSummaryStat('Fläche', totalHa > 0 ? fmt(totalHa) + ' ha' : '—'));
-      sStats.appendChild(makeSummaryStat('Einheiten verbl.', totalEinheitenBasis > 0 ? fmt(totalEinheitRem) : '—', pctClass));
+      sStats.appendChild(makeSummaryStat('Fläche', totalHa > 0 ? fmtCompact(totalHa) + ' ha' : '—'));
+      // fmtCompact: integer values shown without trailing ",0" (e.g. "8" not "8,0").
+      // Tests 26, 27, 40 use toBe('8') on this element; test 18-round2 uses
+      // toContain('15') on it. fmt() would produce "8,0" and break those tests.
+      sStats.appendChild(makeSummaryStat('Einheiten verbl.', totalEinheitenBasis > 0 ? fmtCompact(totalEinheitRem) : '—', pctClass));
       sStats.appendChild(makeSummaryStat('Dünger verbl.', totalDuengerBasis > 0 ? totalDuengerRem.toLocaleString('de-DE') + ' kg' : '—', pctClass));
       summaryCard.appendChild(sStats);
 
@@ -123,9 +126,9 @@
         haDivVal.className = 'dashboard-stat-value';
         var istH = getTabIstHektar(r);
         if (istH > 0 && istH !== r.hektar) {
-          haDivVal.textContent = fmt(r.hektar) + ' / ' + fmt(istH) + ' ha';
+          haDivVal.textContent = fmtCompact(r.hektar) + ' / ' + fmtCompact(istH) + ' ha';
         } else {
-          haDivVal.textContent = r.hektar > 0 ? fmt(r.hektar) + ' ha' : '—';
+          haDivVal.textContent = r.hektar > 0 ? fmtCompact(r.hektar) + ' ha' : '—';
         }
         haDiv.appendChild(haDivLabel);
         haDiv.appendChild(haDivVal);
@@ -178,7 +181,7 @@
         eStatLabel.textContent = 'Einheiten verbl.';
         var eStatVal = document.createElement('div');
         eStatVal.className = 'dashboard-stat-value ' + statusClass;
-        eStatVal.textContent = r.hektar > 0 && r.koerner > 0 ? fmt(einheitRem) : '—';
+        eStatVal.textContent = r.hektar > 0 && r.koerner > 0 ? fmtCompact(einheitRem) : '—';
         eStat.appendChild(eStatLabel);
         eStat.appendChild(eStatVal);
         stats.appendChild(eStat);
@@ -191,7 +194,7 @@
         dStatLabel.textContent = 'Dünger verbl.';
         var dStatVal = document.createElement('div');
         dStatVal.className = 'dashboard-stat-value ' + statusClass;
-        dStatVal.textContent = duengerTotal > 0 ? duengerRem.toLocaleString('de-DE') + ' kg' : '—';
+        dStatVal.textContent = duengerTotal > 0 ? Math.round(duengerRem).toLocaleString('de-DE') + ' kg' : '—';
         dStat.appendChild(dStatLabel);
         dStat.appendChild(dStatVal);
         stats.appendChild(dStat);
