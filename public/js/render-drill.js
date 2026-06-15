@@ -124,12 +124,14 @@
       var dsRemD = document.getElementById('ds_duenger_remaining');
       if (dsRemD) dsRemD.textContent = remDuenger > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' : '0 kg';
       // Issue #266-B2: IST<SOLL savings in #ds_savings.
-      // Shows "Ersparnis: X Einheiten Saatgut, Y kg Dünger" when the active
-      // tab has istHektar < hektar (savings source). Hides otherwise.
+      // Issue #273: savings/excess display must apply fahrgassenFaktor
+      // (consistent with getTabTotalEinheiten/getTabIstEinheiten that the
+      // carryover calculation uses). Compute via the same helpers so display
+      // and carryover source share one formula.
       var dsSav = document.getElementById('ds_savings');
       if (dsSav) {
         if (istSum > 0 && r.hektar > istSum) {
-          var savE = (r.hektar - istSum) * r.koerner / state.koernerProEinheit;
+          var savE = getTabTotalEinheiten(r) - getTabIstEinheiten(r);
           var savD = (r.hektar - istSum) * (r.duenger || 0);
           var savParts = [];
           if (savE > 0.05) savParts.push(fmt(savE) + ' Einheiten Saatgut');
@@ -167,7 +169,11 @@
         var isSavingsSource = (ct.istHektar > 0 && ct.hektar > 0 && ct.istHektar < ct.hektar);
         var isExcessSource = (ct.istHektar > 0 && ct.hektar > 0 && ct.istHektar > ct.hektar);
         if (isSavingsSource) {
-          var sE = (ct.hektar - ct.istHektar) * (ct.koerner || 0) / state.koernerProEinheit;
+          // Issue #273: source savings must apply fahrgassenFaktor, same as
+          // the carryover calculation. Use getTabTotalEinheiten - getTabIstEinheiten
+          // (both already apply the per-tab FG factor) so display and
+          // carryover share one formula.
+          var sE = getTabTotalEinheiten(ct) - getTabIstEinheiten(ct);
           var sD = (ct.hektar - ct.istHektar) * (ct.duenger || 0);
           var sParts = [];
           if (sE > 0.05) sParts.push(fmt(sE) + ' Einheiten Saatgut');
@@ -189,7 +195,11 @@
           container.appendChild(cDiv);
         }
         if (isExcessSource) {
-          var eE = (ct.istHektar - ct.hektar) * (ct.koerner || 0) / state.koernerProEinheit;
+          // Issue #273: source excess must apply fahrgassenFaktor, same as
+          // the carryover calculation. Use getTabIstEinheiten - getTabTotalEinheiten
+          // (both already apply the per-tab FG factor) so display and
+          // carryover share one formula.
+          var eE = getTabIstEinheiten(ct) - getTabTotalEinheiten(ct);
           var eD = (ct.istHektar - ct.hektar) * (ct.duenger || 0);
           var eParts = [];
           if (eE > 0.05) eParts.push(fmt(eE) + ' Einheiten Saatgut');

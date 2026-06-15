@@ -278,4 +278,63 @@ describe('IST/SOLL Savings & Carryover', () => {
     var co0 = w.getCarryover(0);
     expect(co0.excessEinheit).toBeCloseTo(1, 1);
   });
+
+  it('savings display applies fahrgassenFaktor (Issue #273)', () => {
+    // Bug: render-drill.js showed savings/excess without FG factor. Display
+    // diverged from getCarryover when FG was enabled. Fix: use
+    // getTabTotalEinheiten / getTabIstEinheiten (which already apply FG) so
+    // display and carryover source share one formula.
+    const { w } = setup();
+    w.addReiter();
+    w.addReiter();
+    // Tab 0: SOLL=10, IST=8, koerner=50000, FG breite=24 → fgFactor 23/24
+    // Savings: (10 - 8) × 50000/50000 × 23/24 = 1.9167 Einheiten
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, istHektar: 8, koerner: 50000, duenger: 100, fahrgassenEnabled: true, fahrgassenBreite: 24 };
+    w.state.reiter[0].entries.push({ einheit: 8, zaehlerStand: 8, duenger: 800, time: '10:00' });
+    // Tab 1: SOLL=5, not done → absorbs the savings as carryover
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 5, koerner: 50000, duenger: 80, fahrgassenEnabled: true, fahrgassenBreite: 24 };
+    w.state.activeReiter = 0;
+    w.renderResults();
+
+    // #ds_savings: must show FG-adjusted value (1,9), NOT the unadjusted (2,0)
+    const savEl = w.document.getElementById('ds_savings');
+    expect(savEl).not.toBeNull();
+    expect(savEl.style.display).not.toBe('none');
+    expect(savEl.textContent).toContain('1,9');
+    expect(savEl.textContent).toContain('Einheiten Saatgut');
+    expect(savEl.textContent).not.toContain('2,0 Einheiten');
+
+    // .drill-savings per-tab: same constraint
+    const container = w.document.getElementById('drill_entries');
+    const savingsDivs = container.querySelectorAll('.drill-savings');
+    expect(savingsDivs.length).toBeGreaterThanOrEqual(1);
+    expect(savingsDivs[0].textContent).toContain('1,9');
+    expect(savingsDivs[0].textContent).not.toContain('2,0 Einheiten');
+
+    // Carryover for the receiving tab equals the source savings within tolerance
+    var co1 = w.getCarryover(1);
+    expect(co1.savedEinheit).toBeCloseTo(1.9167, 2);
+  });
+
+  it('excess display applies fahrgassenFaktor (Issue #273)', () => {
+    const { w } = setup();
+    w.addReiter();
+    w.addReiter();
+    // Tab 0: SOLL=5, IST=8, FG breite=24 → excess source
+    // Excess: (8 - 5) × 50000/50000 × 23/24 = 2.875 Einheiten
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 5, istHektar: 8, koerner: 50000, duenger: 100, fahrgassenEnabled: true, fahrgassenBreite: 24 };
+    w.state.reiter[0].entries.push({ einheit: 5, zaehlerStand: 8, duenger: 500, time: '09:00' });
+    // Tab 1: SOLL=4, last filled → absorbs excess
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 4, koerner: 50000, duenger: 100, fahrgassenEnabled: true, fahrgassenBreite: 24 };
+    w.state.reiter[1].entries.push({ einheit: 2, zaehlerStand: 4, duenger: 200, time: '10:00' });
+    w.state.activeReiter = 1;
+    w.renderResults();
+
+    // .drill-excess: must show FG-adjusted value (2,9), NOT the unadjusted (3,0)
+    const container = w.document.getElementById('drill_entries');
+    const excessDivs = container.querySelectorAll('.drill-excess');
+    expect(excessDivs.length).toBeGreaterThanOrEqual(1);
+    expect(excessDivs[0].textContent).toContain('2,9');
+    expect(excessDivs[0].textContent).not.toContain('3,0 Einheiten');
+  });
 });
