@@ -164,6 +164,25 @@ describe('Reset Confirmation Modal (#236)', () => {
     w.confirm = origConfirm;
     expect(called).toBe(false);
   });
+
+  it('_askConfirm is mockable so tests can intercept confirm without regex on source', () => {
+    // Issue #280: confirm() is now called directly inside _askConfirm, so the
+    // old source-level regex check is no longer needed. Instead, tests can
+    // override _askConfirm to assert the confirm branch in berechne().
+    expect(typeof w._askConfirm).toBe('function');
+    var called = 0;
+    var origAskConfirm = w._askConfirm;
+    w._askConfirm = function() { called += 1; return true; };
+    // Seed an entry that exceeds the new totals → berechne() will call
+    // _askConfirm. Without the mock, this would pop a native confirm.
+    w.state.reiter[0].entries = [{ einheit: 10, duenger: 0, zaehlerStand: 0, time: 'now' }];
+    doc.getElementById('hektar').value = '1';
+    doc.getElementById('koerner').value = '90000';
+    doc.getElementById('duenger').value = '0';
+    w.berechne();
+    w._askConfirm = origAskConfirm;
+    expect(called).toBe(1);
+  });
 });
 
 describe('Reset modal — source-level invariants', () => {
@@ -174,19 +193,6 @@ describe('Reset modal — source-level invariants', () => {
     const __dirname = dirname(fileURLToPath(import.meta.url));
     const src = readFileSync(resolve(__dirname, '../public/js/reset-modal.js'), 'utf-8');
     // Strip line comments first, then check for confirm( call sites.
-    var code = src
-      .split('\n')
-      .map(function(line) { return line.replace(/\/\/.*$/, ''); })
-      .join('\n');
-    expect(code).not.toMatch(/[^a-zA-Z_]confirm\s*\(/);
-  });
-
-  it('does not call window.confirm() in ui-handlers.js (comments ok)', async () => {
-    const { readFileSync } = await import('fs');
-    const { resolve, dirname } = await import('path');
-    const { fileURLToPath } = await import('url');
-    const __dirname = dirname(fileURLToPath(import.meta.url));
-    const src = readFileSync(resolve(__dirname, '../public/js/ui-handlers.js'), 'utf-8');
     var code = src
       .split('\n')
       .map(function(line) { return line.replace(/\/\/.*$/, ''); })
