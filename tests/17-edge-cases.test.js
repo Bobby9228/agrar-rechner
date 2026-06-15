@@ -5,7 +5,7 @@
  * - getTabKornerGesamt / getTabTotalDuenger with various inputs
  * - getTabTotalEinheiten with fahrgassen
  * - lv() migration edge cases
- * - confirmResetAll / confirmRemoveReiter (confirm mock)
+ * - confirmRemoveReiter (confirm mock)
  * - resetAll clears machineLog
  */
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -122,7 +122,7 @@ describe('lv() migration edge cases', () => {
       duenger: 150,
       entries: [{ einheit: 5, duenger: 100 }]
     };
-    w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
+    w.localStorage.setItem('agrar_rechner', JSON.stringify(oldState));
     w.loadState();
     expect(w.state.reiter).toBeTruthy();
     expect(w.state.reiter.length).toBe(1);
@@ -136,7 +136,7 @@ describe('lv() migration edge cases', () => {
       reiter: [{ name: 'Tab 1', hektar: 5, koerner: 80000 }],
       entries: [{ einheit: 3, duenger: 50 }]
     };
-    w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
+    w.localStorage.setItem('agrar_rechner', JSON.stringify(oldState));
     w.loadState();
     expect(w.state.reiter[0].entries.length).toBe(1);
     // Global entries should be removed
@@ -151,7 +151,7 @@ describe('lv() migration edge cases', () => {
       ],
       entries: [{ einheit: 3 }]
     };
-    w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
+    w.localStorage.setItem('agrar_rechner', JSON.stringify(oldState));
     w.loadState();
     // Tab 1 already has entries, should keep them
     expect(w.state.reiter[0].entries.length).toBe(1);
@@ -165,69 +165,56 @@ describe('lv() migration edge cases', () => {
       reiter: [{ name: 'Tab 1', hektar: 5, koerner: 80000, entries: [] }]
     };
     delete oldState.machineLog;
-    w.localStorage.setItem('mais_rechner', JSON.stringify(oldState));
+    w.localStorage.setItem('agrar_rechner', JSON.stringify(oldState));
     w.loadState();
     expect(w.state.machineLog).toEqual([]);
   });
 });
 
-describe('confirmResetAll', () => {
-  let w;
-  beforeEach(() => { w = createDom().window; });
-
-  it('calls resetActiveTab when confirmed (partial reset)', () => {
-    // Mock confirm to return true
-    var originalConfirm = w.confirm;
-    w.confirm = () => true;
-
-    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
-    w.confirmResetAll();
-
-    expect(w.state.reiter[0].hektar).toBe(0);
-    expect(w.state.reiter[0].koerner).toBe(0);
-
-    w.confirm = originalConfirm;
+describe('openResetModal', () => {
+  let w, doc;
+  beforeEach(() => {
+    const result = createDom();
+    w = result.window;
+    doc = w.document;
   });
 
-  it('calls resetAll when fullReset=true', () => {
-    var originalConfirm = w.confirm;
-    w.confirm = () => true;
+  it('clicking "Aktuellen Tab zurücksetzen" in modal resets active tab', () => {
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
+    w.openResetModal();
+    doc.getElementById('reset_modal_tab').click();
+    expect(w.state.reiter[0].hektar).toBe(0);
+    expect(w.state.reiter[0].koerner).toBe(0);
+  });
 
+  it('clicking "Alle Daten löschen" twice resets all tabs and machineLog', () => {
     w.addReiter();
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
     w.state.reiter[1] = { ...w.state.reiter[1], hektar: 5, koerner: 45000 };
     w.state.machineLog = [{ einheit: 5, hektar: 3, duenger: 100, time: '10:00' }];
-    w.confirmResetAll(true);  // full reset
-
-    expect(w.state.reiter.length).toBe(1);  // all tabs cleared
-    expect(w.state.machineLog).toEqual([]);   // machineLog cleared
-
-    w.confirm = originalConfirm;
+    w.openResetModal();
+    var btn = doc.getElementById('reset_modal_confirm_all');
+    btn.click(); // arm
+    btn.click(); // confirm
+    expect(w.state.reiter.length).toBe(1);
+    expect(w.state.machineLog).toEqual([]);
   });
 
-  it('does nothing when cancelled', () => {
-    var originalConfirm = w.confirm;
-    w.confirm = () => false;
-
+  it('clicking "Abbrechen" in modal does not modify state', () => {
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
-    w.confirmResetAll();
-
+    w.openResetModal();
+    doc.getElementById('reset_modal_cancel').click();
     expect(w.state.reiter[0].hektar).toBe(10);
-
-    w.confirm = originalConfirm;
   });
 
-  it('includes tab name in confirm message', () => {
-    var lastMsg = '';
-    var originalConfirm = w.confirm;
-    w.confirm = (msg) => { lastMsg = msg; return false; };
-
-    w.state.reiter[0].name = 'Feld A';
-    w.confirmResetAll();
-
-    expect(lastMsg).toContain('Feld A');
-
-    w.confirm = originalConfirm;
+  it('does not call native window.confirm()', () => {
+    var called = false;
+    var orig = w.confirm;
+    w.confirm = () => { called = true; return true; };
+    w.openResetModal();
+    doc.getElementById('reset_modal_tab').click();
+    expect(called).toBe(false);
+    w.confirm = orig;
   });
 });
 
@@ -300,8 +287,8 @@ describe('resetActiveTab — UI state after reset', () => {
 
   it('calls renderDrillSummary to clear stale drill summary', () => {
     var callCount = 0;
-    var originalFn = w.renderDrillSummary;
-    w.renderDrillSummary = function() { callCount++; originalFn.call(w); };
+    var originalFn = w.AppGlobals.renderDrillSummary;
+    w.AppGlobals.renderDrillSummary = function() { callCount++; return originalFn.apply(this, arguments); };
 
     w.state.reiter[0] = {
       name: 'Tab 1', hektar: 10, koerner: 90000, duenger: 500, entries: []
@@ -311,7 +298,7 @@ describe('resetActiveTab — UI state after reset', () => {
     w.resetActiveTab();
 
     expect(callCount).toBe(1);
-    w.renderDrillSummary = originalFn;
+    w.AppGlobals.renderDrillSummary = originalFn;
   });
 
   it('clears drill section display after reset', () => {
@@ -441,7 +428,7 @@ describe('drillRemove cross-tab', () => {
   it('saves state after removal', () => {
     w.state.reiter[0].entries = [{ einheit: 5, duenger: 100 }];
     w.drillRemove(0, 0);
-    var stored = JSON.parse(w.localStorage.getItem('mais_rechner'));
+    var stored = JSON.parse(w.localStorage.getItem('agrar_rechner'));
     expect(stored.reiter[0].entries.length).toBe(0);
   });
 });

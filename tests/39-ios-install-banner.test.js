@@ -20,11 +20,11 @@ describe('iOS Install Hint Banner', () => {
     w = result.window;
     doc = w.document;
     store = result.store;
-    delete store['mais_rechner_ios_install_seen'];
+    delete store['agrar_rechner_ios_install_seen'];
   });
 
   afterEach(() => {
-    delete store['mais_rechner_ios_install_seen'];
+    delete store['agrar_rechner_ios_install_seen'];
   });
 
   describe('maybeShowIosInstallHint()', () => {
@@ -75,7 +75,7 @@ describe('iOS Install Hint Banner', () => {
       Object.defineProperty(w, 'navigator', { value: w.navigator, writable: true });
       w.isIOS = true;
       w.isStandalone = false;
-      store['mais_rechner_ios_install_seen'] = '1';
+      store['agrar_rechner_ios_install_seen'] = '1';
       w.maybeShowIosInstallHint();
       const banner = doc.getElementById('ios_install_banner');
       expect(banner.classList.contains('show')).toBe(false);
@@ -106,7 +106,7 @@ describe('iOS Install Hint Banner', () => {
       w.isIOS = true;
       w.isStandalone = false;
       w.dismissIosInstallHint();
-      expect(store['mais_rechner_ios_install_seen']).toBe('1');
+      expect(store['agrar_rechner_ios_install_seen']).toBe('1');
     });
 
     it('banner does not re-appear on next maybeShowIosInstallHint call', () => {
@@ -136,7 +136,7 @@ describe('iOS Install Hint Banner', () => {
       w.isIOS = true;
       w.isStandalone = false;
       // Clear any persisted hint
-      delete store['mais_rechner_ios_install_seen'];
+      delete store['agrar_rechner_ios_install_seen'];
       // initUI() calls maybeShowIosInstallHint() at the end of calculation flow
       w.initUI();
       // Simulate what happens after calculation: handleBerechnenFlow calls maybeShowIosInstallHint

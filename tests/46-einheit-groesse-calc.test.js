@@ -244,8 +244,9 @@ describe('Variable koernerProEinheit — calculation impact', () => {
 
     w.openDashboard();
     const content = doc.getElementById('dashboard_content').textContent;
-    // Total should show 8,0 Einheiten (not 16,0)
-    expect(content).toMatch(/8,0/);
-    expect(content).not.toMatch(/16,0/);
+    // Total should show 8 Einheiten (not 16,0). fmtCompact strips trailing ",0"
+    // for integer values, so the text contains "8" but not "8,0".
+    expect(content).toMatch(/8(?![,\d])/);
+    expect(content).not.toMatch(/16/);
   });
 });

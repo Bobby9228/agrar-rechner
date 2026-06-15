@@ -41,7 +41,7 @@ describe('einheitGroesseToggle', () => {
 
   it('saves state via sv()', () => {
     w.einheitGroesseToggle();
-    var stored = JSON.parse(w.localStorage.getItem('mais_rechner'));
+    var stored = JSON.parse(w.localStorage.getItem('agrar_rechner'));
     expect(stored.einheitGroesseEnabled).toBe(true);
   });
 });
@@ -99,7 +99,7 @@ describe('einheitGroesseUpdate', () => {
   it('saves state via sv()', () => {
     w.document.getElementById('koerner_pro_einheit').value = '60000';
     w.einheitGroesseUpdate();
-    var stored = JSON.parse(w.localStorage.getItem('mais_rechner'));
+    var stored = JSON.parse(w.localStorage.getItem('agrar_rechner'));
     expect(stored.koernerProEinheit).toBe(60000);
   });
 
@@ -145,5 +145,15 @@ describe('getTabTotalEinheiten with custom koernerProEinheit', () => {
     var r = { hektar: 10, koerner: 0, entries: [] };
     w.state.koernerProEinheit = 80000;
     expect(w.getTabTotalEinheiten(r)).toBe(0);
+  });
+
+  // Regression: Issue #229 — getTabTotalEinheiten() must read state.koernerProEinheit,
+  // not a hardcoded 50000. Otherwise carryover / dashboard "Einheiten verbl." /
+  // drill-summary are silently wrong whenever the user changes the unit size.
+  it('regression #229: uses state.koernerProEinheit, not hardcoded 50000', () => {
+    var r = { hektar: 10, koerner: 100000, entries: [] };
+    w.state.koernerProEinheit = 40000; // 2.5× the default
+    // 10 * 100000 / 40000 = 25.0 — with hardcoded 50000 this would have returned 20.0
+    expect(w.getTabTotalEinheiten(r)).toBeCloseTo(25.0);
   });
 });

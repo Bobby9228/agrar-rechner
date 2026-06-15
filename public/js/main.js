@@ -2,7 +2,8 @@
 // MAIN.JS — Einstiegspunkt für agrar-rechner
 //
 // Lädt alle Module und initialisiert die App.
-// Reihenfolge: state.js → calculations.js → ui-handlers.js → rendering.js
+// Reihenfolge: state.js → calculations.js → ui-handlers.js → render-tabs.js
+//   → render-results.js → render-drill.js → render-dashboard.js → main.js
 // ============================================================================
 
 // --- App Constants ---
@@ -12,24 +13,40 @@ var APP_BUILD_DATE = 'Mai 2025';
 // --- Format/Parser Utilities (used across modules) ---
 
 function fmt(n) {
-  if (n === null || n === undefined || isNaN(n)) return '0';
-  // Runde auf 2 Dezimalstellen, dann deutsche Formatierung
-  var rounded = Math.round(n * 100) / 100;
-  return String(rounded).replace('.', ',');
+  if (n === null || n === undefined || isNaN(n)) return '0,0';
+  // Runde auf 1 Dezimalstelle, deutsche Formatierung mit Komma
+  // DE-Rundung: "round half up" — ab .5 wird aufgerundet.
+  // Beispiel: 0.05 → '0,1' (nicht '0,0' wie toFixed default)
+  var x = n * 10;
+  var rounded = (x >= 0 ? Math.floor(x + 0.5) : -Math.floor(-x + 0.5)) / 10;
+  return String(rounded.toFixed(1)).replace('.', ',');
 }
 
+// fmtCompact — wie fmt(), aber lässt das nachstehende ",0" für ganze Zahlen weg.
+// Wird im Dashboard verwendet (Tests 26, 40 erwarten "12" statt "12,0").
+function fmtCompact(n) {
+  var s = fmt(n);
+  if (s.endsWith(',0')) s = s.slice(0, -2);
+  return s;
+}
+
+// Issue #262: Rückgabe war 'null' für ungültige/leere Eingaben — hat 207 Tests rot
+// gemacht und Null-Werte in den State geschleust. Jetzt wieder 0 mit NaN-Guard.
 function parseDE(val) {
-  if (!val || typeof val !== 'string') return null;
-  // Deutsche Zahl: Komma = Dezimaltrennzeichen, Punkt = Tausender
-  var cleaned = val.replace(/\./g, '').replace(',', '.');
+  if (typeof val === 'number') return (isNaN(val) ? 0 : val);
+  if (!val) return 0;
+  var s = val.toString().trim();
+  var cleaned = s.replace(/\./g, '').replace(',', '.');
   var num = parseFloat(cleaned);
-  return isNaN(num) ? null : num;
+  return isNaN(num) ? 0 : num;
 }
 
+// Issue #262: Vorherige Version hat die Einheit-Label und den Infinity-Schutz
+// verloren. Restored to pre-Phase-3 (vor 398a6f9) Verhalten.
 function formatEinheit(n) {
-  if (!n || isNaN(n)) return '0';
-  var rounded = Math.round(n * 10) / 10;
-  return String(rounded).replace('.', ',');
+  if (!isFinite(n)) return '—';
+  var rounded = Math.round(n * 10) / 10;  // DE Rundung: ab .5 aufrunden
+  return rounded.toFixed(1).replace('.', ',') + (rounded === 1.0 ? ' Einheit' : ' Einheiten');
 }
 
 // --- Event Emitter ---
@@ -62,21 +79,34 @@ window.app = {
   offStateChange: appOffStateChange,
   emit:           appEmit,
   dispatch:       dispatch,
-  invalidateCarryoverCache: function() { _internal.carryoverCache = null; },
-  _internal: _internal
+  invalidateCarryoverCache: function() { AppGlobals._internal.carryoverCache = null; },
+  migrateLegacyStorageKeys: AppGlobals.migrateLegacyStorageKeys,
+  LEGACY_KEY_MAP:            AppGlobals.LEGACY_KEY_MAP,
+  _internal:                 AppGlobals._internal
 };
 
 // --- Dark Mode (portiert aus Inline-Code Z. 3415-3448) ---
-// Key: 'theme' in localStorage (Wert: 'dark' oder 'light', null wenn nicht gesetzt).
-// Migration 3→4 in state.js vereinheitlicht 'mais_rechner_theme' → 'theme'.
-// initTheme(): Stored Preference → System-Präferenz als Fallback.
-// applyTheme(dark): Setzt CSS-Klasse .dark auf <html>, Button-Icon, Meta-Theme-Color.
-// toggleTheme(): Liest aktuellen Zustand → toggled → speichert + anwendet.
+// Key: 'theme' in localStorage (Wert: 'dark' oder 'light', null wenn nicht
+// gesetzt). Phase-3-Migration hat den Key vereinheitlicht (vorher
+// 'mais_rechner_theme' oder '_lv:4'-Migration).
 function getStoredTheme() {
-  try { return localStorage.getItem('theme'); } catch(e) { return null; }
+  try {
+    var v = localStorage.getItem('theme');
+    if (v !== null) return v;
+    // Migration: ältere Keys
+    v = localStorage.getItem('mais_rechner_theme');
+    if (v !== null) return v;
+    return null;
+  } catch(e) { return null; }
 }
 function setStoredTheme(theme) {
-  try { localStorage.setItem('theme', theme); } catch(e) {}
+  try {
+    localStorage.setItem('theme', theme);
+    // Migration: Auch ins Legacy-Key schreiben, damit Tests/Contracts, die
+    // noch 'mais_rechner_theme' lesen (Phase-3-Migration), weiterhin
+    // konsistente Werte sehen.
+    localStorage.setItem('mais_rechner_theme', theme);
+  } catch(e) {}
 }
 function applyTheme(dark) {
   document.documentElement.classList.toggle('dark', dark);       // CSS .dark Klasse
@@ -130,5 +160,26 @@ document.addEventListener('input', function() {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-  initUI();
+  AppGlobals.initUI();
+});
+
+// Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
+Object.assign(window.AppGlobals, {
+  APP_VERSION: APP_VERSION,
+  APP_BUILD_DATE: APP_BUILD_DATE,
+  _stateListeners: _stateListeners,
+  _pendingKey: _pendingKey,
+  fmt: fmt,
+  fmtCompact: fmtCompact,
+  parseDE: parseDE,
+  formatEinheit: formatEinheit,
+  appOnStateChange: appOnStateChange,
+  appOffStateChange: appOffStateChange,
+  appEmit: appEmit,
+  dispatch: dispatch,
+  getStoredTheme: getStoredTheme,
+  setStoredTheme: setStoredTheme,
+  applyTheme: applyTheme,
+  toggleTheme: toggleTheme,
+  initTheme: initTheme,
 });

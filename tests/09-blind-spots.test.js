@@ -380,7 +380,7 @@ describe('Blind spots — initUI restores fahrgassen without breite', () => {
   });
 
   it('enables toggle but does not set breite when fahrgassenBreite=0', () => {
-    store['mais_rechner'] = JSON.stringify({
+    store['agrar_rechner'] = JSON.stringify({
       reiter: [{ name: 'Reiter 1', hektar: 0, koerner: 0, duenger: 0, entries: [] }],
       activeReiter: 0,
       fahrgassenEnabled: true,

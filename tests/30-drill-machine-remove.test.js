@@ -63,7 +63,7 @@ describe('drillMachineRemove', () => {
     w.drillMachineRemove(0);
 
     // sv() is called → state should be persisted
-    const saved = JSON.parse(store['mais_rechner']);
+    const saved = JSON.parse(store['agrar_rechner']);
     expect(saved.machineLog.length).toBe(0);
   });
 

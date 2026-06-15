@@ -1,4 +1,4 @@
-# Mais-Rechner — Dokumentation
+# Agrar-Rechner — Dokumentation
 
 ## Inhaltsverzeichnis
 
@@ -21,7 +21,7 @@
 
 ## Überblick
 
-Der **Mais-Rechner** ist eine Single-Page Progressive Web App (PWA) für Landwirte, die bei der Aussaat von Mais die benötigte **Saatgut-Menge (Einheiten)** und **Dünger-Menge (kg)** präzise berechnet. Er verwaltet mehrere Felder gleichzeitig über Tabs, führt ein **Drill-Protokoll** über eingefüllte Mengen, berechnet automatisch **Überträge (Carryover)** zwischen Feldern bei Flächenabweichungen und zeigt eine **Dashboard-Übersicht** aller Felder.
+Der **Agrar-Rechner** ist eine Single-Page Progressive Web App (PWA) für Landwirte, die bei der Aussaat von Mais die benötigte **Saatgut-Menge (Einheiten)** und **Dünger-Menge (kg)** präzise berechnet. Er verwaltet mehrere Felder gleichzeitig über Tabs, führt ein **Drill-Protokoll** über eingefüllte Mengen, berechnet automatisch **Überträge (Carryover)** zwischen Feldern bei Flächenabweichungen und zeigt eine **Dashboard-Übersicht** aller Felder.
 
 **Typische Workflows:**
 1. Landwirt gibt für ein Feld (Tab) Hektar, Körner/ha und Dünger/kg ein → App berechnet automatisch Gesamtkörner, Einheiten und Dünger

@@ -145,23 +145,23 @@ describe('drillCalcAll', () => {
     setupMultiTab(w);
     w.renderDrillTabList();
 
-    // Tab 1 = prio 2 (higher), tab 0 = prio 1 (lower) — fill tab 1 first
+    // Issue #264: Prio 1 = highest priority. Tab 0 = prio 1 (higher), Tab 1 = prio 2 (lower) — fill tab 0 first
+    const btn0 = w.document.getElementById('dtl_prio_0');
+    btn0.click(); // prio 1
     const btn1 = w.document.getElementById('dtl_prio_1');
     btn1.click(); // prio 1
     btn1.click(); // prio 2
-    const btn0 = w.document.getElementById('dtl_prio_0');
-    btn0.click(); // prio 1
 
-    // Tab 1 needs 13.6 einheiten, give 20 total → gets 13.6 first
+    // Tab 0 needs 18 einheiten, give 20 total → gets 18 first
     w.document.getElementById('drill_einheit').value = '20';
     w.document.getElementById('drill_duenger').value = '0';
 
     w.drillCalcAll();
 
-    // Tab 1 (prio 2) needs 13.6 → gets min(13.6, 20) = 13.6
-    expect(w.document.getElementById('dtl_e_1').value).toBe('13,6');
-    // Tab 0 (prio 1) needs 18 → gets min(18, 20-13.6) = 6.4
-    expect(w.document.getElementById('dtl_e_0').value).toBe('6,4');
+    // Tab 0 (prio 1 = highest) needs 18 → gets min(18, 20) = 18
+    expect(w.document.getElementById('dtl_e_0').value).toBe('18,0');
+    // Tab 1 (prio 2) needs 13.6 → gets min(13.6, 20-18=2) = 2
+    expect(w.document.getElementById('dtl_e_1').value).toBe('2,0');
   });
 
   it('clears inputs for unprioritized tabs', () => {
@@ -359,21 +359,21 @@ describe('drillAdd multi-tab mode', () => {
 
     w.renderDrillTabList();
 
-    // Set priority: tab 0 = 1 (lower), tab 1 = 2 (higher — filled first)
+    // Issue #264: Prio 1 = highest priority. Tab 0 = prio 1 (highest), Tab 1 = prio 2 (second)
     w.document.getElementById('dtl_prio_0').click(); // prio 1
     w.document.getElementById('dtl_prio_1').click(); // prio 1
     w.document.getElementById('dtl_prio_1').click(); // prio 2
 
-    // Fill 10 units (less than combined remaining)
-    w.document.getElementById('drill_einheit').value = '10';
+    // Fill 16.6 units (more than tab 0 remaining of 13, fills tab 1 with the rest)
+    w.document.getElementById('drill_einheit').value = '16,6';
     w.document.getElementById('drill_duenger').value = '0';
 
     w.drillCalcAll();
 
-    // Tab 1 (prio 2) needs 3.6 more → gets min(3.6, 10) = 3.6 (filled first)
+    // Tab 0 (prio 1 = highest) needs 13 → gets min(13, 16.6) = 13
+    expect(w.document.getElementById('dtl_e_0').value).toBe('13,0');
+    // Tab 1 (prio 2) needs 3.6 → gets min(3.6, 16.6-13=3.6) = 3.6
     expect(w.document.getElementById('dtl_e_1').value).toBe('3,6');
-    // Tab 0 (prio 1) needs 13 more → gets min(13, 10-3.6=6.4) = 6.4
-    expect(w.document.getElementById('dtl_e_0').value).toBe('6,4');
   });
 
   // ── machineLog with multiple tabs ────────────────────────────────────────────
@@ -488,7 +488,7 @@ describe('drillPriorities persistence', () => {
     expect(w.state.drillPriorities[0]).toBe(1);
 
     // Saved to localStorage
-    const saved = JSON.parse(store['mais_rechner']);
+    const saved = JSON.parse(store['agrar_rechner']);
     expect(saved.drillPriorities[0]).toBe(1);
   });
 
@@ -514,7 +514,7 @@ describe('drillPriorities persistence', () => {
   it('lv() initializes drillPriorities to {} if missing in saved state', () => {
     const { window: w, store } = createDom();
     // Manually put a state without drillPriorities in localStorage
-    store['mais_rechner'] = JSON.stringify({
+    store['agrar_rechner'] = JSON.stringify({
       reiter: [{ name: 'Tab 1', hektar: 10, koerner: 90000, duenger: 0, entries: [] }],
       activeReiter: 0,
       machineLog: [],

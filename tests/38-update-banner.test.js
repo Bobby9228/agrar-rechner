@@ -15,16 +15,16 @@ describe('Update Banner ("What\'s New")', () => {
     w = result.window;
     doc = w.document;
     store = result.store;
-    delete store['mais_rechner_version_seen'];
+    delete store['agrar_rechner_version_seen'];
   });
 
   afterEach(() => {
-    delete store['mais_rechner_version_seen'];
+    delete store['agrar_rechner_version_seen'];
   });
 
   describe('maybeShowUpdateHint() via initUI', () => {
     it('shows banner on first visit (no version seen)', () => {
-      delete store['mais_rechner_version_seen'];
+      delete store['agrar_rechner_version_seen'];
       w.initUI();
       const banner = doc.getElementById('update_banner');
       expect(banner).toBeTruthy();
@@ -32,21 +32,21 @@ describe('Update Banner ("What\'s New")', () => {
     });
 
     it('fills version text correctly', () => {
-      delete store['mais_rechner_version_seen'];
+      delete store['agrar_rechner_version_seen'];
       w.initUI();
       const verEl = doc.getElementById('update_version');
       expect(verEl.textContent).toBe('v1.0.0');
     });
 
     it('fills changelog text correctly', () => {
-      delete store['mais_rechner_version_seen'];
+      delete store['agrar_rechner_version_seen'];
       w.initUI();
       const changelogEl = doc.getElementById('update_changelog');
       expect(changelogEl.textContent.length).toBeGreaterThan(0);
     });
 
     it('shows banner when older version was seen', () => {
-      store['mais_rechner_version_seen'] = 'v0.9.0';
+      store['agrar_rechner_version_seen'] = 'v0.9.0';
       w.initUI();
       const banner = doc.getElementById('update_banner');
       expect(banner).toBeTruthy();
@@ -56,7 +56,7 @@ describe('Update Banner ("What\'s New")', () => {
 
   describe('dismissUpdateHint()', () => {
     it('hides the banner after dismiss', () => {
-      delete store['mais_rechner_version_seen'];
+      delete store['agrar_rechner_version_seen'];
       w.initUI();
       w.dismissUpdateHint();
       const banner = doc.getElementById('update_banner');
@@ -64,13 +64,13 @@ describe('Update Banner ("What\'s New")', () => {
     });
 
     it('saves current version to localStorage after dismiss', () => {
-      delete store['mais_rechner_version_seen'];
+      delete store['agrar_rechner_version_seen'];
       w.dismissUpdateHint();
-      expect(store['mais_rechner_version_seen']).toBe('v1.0.0');
+      expect(store['agrar_rechner_version_seen']).toBe('v1.0.0');
     });
 
     it('second initUI does not re-show banner after dismiss', () => {
-      delete store['mais_rechner_version_seen'];
+      delete store['agrar_rechner_version_seen'];
       w.initUI();
       w.dismissUpdateHint();
       w.initUI();
@@ -97,7 +97,7 @@ describe('Update Banner ("What\'s New")', () => {
 
   describe('version footer', () => {
     it('version footer shows APP_VERSION and APP_BUILD_DATE after initUI', () => {
-      delete store['mais_rechner_version_seen'];
+      delete store['agrar_rechner_version_seen'];
       w.initUI();
       const footer = doc.getElementById('version_footer');
       expect(footer).toBeTruthy();

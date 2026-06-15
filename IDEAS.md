@@ -1,4 +1,4 @@
-# Feature-Ideen für den Mais-Rechner
+# Feature-Ideen für den Agrar-Rechner
 
 ## Hohe Priorität
 

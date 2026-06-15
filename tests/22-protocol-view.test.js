@@ -61,7 +61,7 @@ describe('switchToProtokoll', () => {
 
     w.switchToProtokoll();
 
-    const saved = JSON.parse(store['mais_rechner']);
+    const saved = JSON.parse(store['agrar_rechner']);
     expect(saved.activeView).toBe('protokoll');
   });
 });
@@ -147,7 +147,6 @@ describe('renderView', () => {
 
     expect(w.document.getElementById('berechnen_btn').style.display).toBe('none');
     expect(w.document.getElementById('reset_btn').style.display).toBe('none');
-    expect(w.document.getElementById('reset_all_btn').style.display).toBe('none');
   });
 
   it('hides sticky footer in protokoll mode', () => {

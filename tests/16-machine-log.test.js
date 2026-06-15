@@ -121,7 +121,7 @@ describe('drillMachineRemove', () => {
       { einheit: 5, hektar: 3, duenger: 100, time: '10:00' },
     ];
     w.drillMachineRemove(0);
-    var stored = JSON.parse(w.localStorage.getItem('mais_rechner'));
+    var stored = JSON.parse(w.localStorage.getItem('agrar_rechner'));
     expect(stored.machineLog.length).toBe(0);
   });
 });

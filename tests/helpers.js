@@ -1,6 +1,8 @@
 /**
- * Shared test helper — loads the Mais-Rechner JS into a jsdom instance.
- * Works with the modular architecture: state.js, calculations.js, ui-handlers.js, rendering.js, main.js
+ * Shared test helper — loads the Agrar-Rechner JS into a jsdom instance.
+ * Works with the modular architecture: state.js, calculations.js, ui-handlers.js,
+ * render-tabs.js, render-results.js, render-drill.js, render-dashboard.js, main.js
+ * (Issue #212: rendering.js was split into 4 modules in June 2026.)
  */
 import { JSDOM } from 'jsdom';
 import { readFileSync } from 'fs';
@@ -68,15 +70,29 @@ export function createDom() {
   if (tabBar) tabBar.appendChild(tabAddBtn);
 
   // Build combined script from modular JS files (skip the placeholder <script> comment block)
+  // ADR-001 (Issue #278): initialise the AppGlobals namespace before any module script runs.
+  // app-globals.js declares the namespace AND installs the `state` getter/setter
+  // (Live-Alias für `var state`); the test harness loads the real file so the
+  // test scope matches production.
   const moduleScript = [
+    loadModule('app-globals.js'),
     'var _internal = { carryoverCache: null, drillCalcTimer: null, pendingKey: null };',
     loadModule('state.js'),
     loadModule('calculations.js'),
     loadModule('ui-handlers.js'),
-    loadModule('rendering.js'),
-    // Remove DOMContentLoaded from main.js (auto-init doesn't work in jsdom)
+    loadModule('render-tabs.js'),
+    loadModule('render-results.js'),
+    loadModule('render-drill.js'),
+    loadModule('render-dashboard.js'),
+    loadModule('reset-modal.js'),
+    // Remove DOMContentLoaded auto-init from main.js (initUI is called manually below).
+    // The actual code uses `AppGlobals.initUI()` (ADR-001, Issue #278) — match
+    // the real text so the replace actually fires. If we don't strip it, the
+    // DOMContentLoaded listener fires AFTER the manual call below and registers
+    // a duplicate state listener, causing double-renders (e.g. test 17-edge-cases
+    // "calls renderDrillSummary to clear stale drill summary" got 2 calls).
     loadModule('main.js').replace(
-      "document.addEventListener('DOMContentLoaded', initUI);",
+      "document.addEventListener('DOMContentLoaded', function() {\n  AppGlobals.initUI();\n});",
       ''
     ),
   ].join('\n');
