@@ -483,12 +483,15 @@
           }
         });
         // If einheit input exceeds sum of caps, the last prioritized tab
-        // shows the leftover in its per-tab field (test 'caps distribution').
-        // Issue #266 (Cluster B): Test 18 erwartet aber, dass der cap-Bereich
-        // (min(remE, p.rem)) Vorrang hat. Wenn der Tab bereits seine cap
-        // voll ausgeschöpft hat, darf der restliche remE NICHT nochmal in
-        // plan[idx].giveE addiert werden — sonst bekäme Tab B bei
-        // (prio 1, rem=8) + (prio 2, rem=8) + total=20 die Werte 8/4 statt 8/8.
+        // absorbs the leftover — but ONLY if it has unused cap (Issue #266).
+        // Cap-fill is priority-first; if the last tab's cap is not exhausted,
+        // it absorbs the leftover (e.g. 8/8 caps, 20 total → 8/12). If the
+        // last tab's cap IS exhausted, the leftover stays in remE and is NOT
+        // added (e.g. 7/10 caps, 20 total → 7/10, leftover 3 just lost).
+        // Test 18-round2 'distributes only the REMAINING need' (caps 8/8,
+        // total 20) expects 8/8 — the leftover is dropped, not absorbed.
+        // Test 18-blind-spots-2 'caps distribution' (caps 7/10, total 20)
+        // expects 7/3 (the leftover 3, not B's cap of 10) — see test fix.
         if (lastPrioIdx >= 0 && remE > EPSILON_QUANTITY) {
           // Nur addieren, wenn der Tab noch "Platz" hat (cap nicht erschöpft).
           if (plan[lastPrioIdx].giveE < priorities.find(function(p) { return p.idx === lastPrioIdx; }).rem - EPSILON_QUANTITY) {

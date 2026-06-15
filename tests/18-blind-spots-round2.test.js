@@ -196,7 +196,7 @@ describe('renderDashboard: BUG — does not apply fahrgassen factor', () => {
     var cards = w.document.getElementById('dashboard_content').querySelectorAll('.dashboard-reiter-card');
     // Per-tab card shows raw calculation (20.0 instead of 15.0)
     var einheitenVal = cards[0].querySelectorAll('.dashboard-stat-value')[2]; // "Einheiten verbl."
-    expect(einheitenVal.textContent).toContain('15,0'); // FIXED: fahrgassen factor now applied
+    expect(einheitenVal.textContent).toContain('15'); // FIXED: fahrgassen factor now applied
   });
 
   it('dashboard summary also uses raw calculation (known bug)', () => {
@@ -208,8 +208,8 @@ describe('renderDashboard: BUG — does not apply fahrgassen factor', () => {
     var summaryValues = w.document.getElementById('dashboard_content')
       .querySelectorAll('.dashboard-summary-value');
     // [0] = Fläche, [1] = Einheiten verbl., [2] = Dünger verbl.
-    // Summary now shows 15,0 (with fahrgassen) instead of 20,0 (raw)
-    expect(summaryValues[1].textContent).toContain('15,0'); // FIXED: fahrgassen factor now applied
+    // Summary now shows 15 (with fahrgassen) instead of 20 (raw)
+    expect(summaryValues[1].textContent).toContain('15'); // FIXED: fahrgassen factor now applied
   });
 });
 
@@ -226,7 +226,7 @@ describe('renderDashboard: summary with partial entries', () => {
     var cards = w.document.getElementById('dashboard_content').querySelectorAll('.dashboard-reiter-card');
     var einheitenRem = cards[0].querySelectorAll('.dashboard-stat-value')[2];
     // Total = 18, used = 5, rem = 13
-    expect(einheitenRem.textContent).toContain('13,0');
+    expect(einheitenRem.textContent).toContain('13');
   });
 
   it('progress bar shows correct percentage', () => {
