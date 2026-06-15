@@ -6,12 +6,50 @@
 // Keine render*-Aufrufe direkt in diesen Funktionen (außer wo sofort nötig).
 // ============================================================================
 
-    // Confirm-Wrapper für Test 45-Konformität: `confirm(` darf im Quellcode
-    // nicht direkt auftauchen (Regex `[^a-zA-Z_]confirm\s*\(`), daher gehen
-    // wir über einen indirection-Lookup. In Browsern liefert `globalThis`
-    // die `window.confirm`-Funktion; in jsdom wird sie vom Test gemockt.
+    // Confirm-Dialog-Wrapper. In Browsern ist `globalThis.confirm` der
+    // native window.confirm; in jsdom-Tests wird die Funktion gemockt
+    // (siehe tests/45-reset-modal.test.js).
     function _askConfirm(message) {
-      return globalThis['conf' + 'irm'](message);
+      return globalThis.confirm(message);
+    }
+
+    // Zentrale DOM-ID-Registry (Issue #281). IDs aus resetAll() und
+    // resetActiveTab() werden hier gebündelt, damit die Reset-Funktionen
+    // nicht mit verstreuten String-Literals arbeiten. Helper `_resetInput`
+    // und `_resetSummary` arbeiten auf dieser Konstante.
+    var DOM_IDS = {
+      hektar: 'hektar',
+      istHektar: 'ist_hektar',
+      koerner: 'koerner',
+      duenger: 'duenger',
+      errHektar: 'err_hektar',
+      errKoerner: 'err_koerner',
+      results: 'results',
+      drillSection: 'drill_section',
+      drillOverflowWarn: 'drill_overflow_warn',
+      fahrgassenToggle: 'fahrgassen_toggle',
+      fahrgassenSettings: 'fahrgassen_settings',
+      fahrgassenBreite: 'fahrgassen_breite',
+      fahrgassenSaved: 'fahrgassen_saved',
+      einheitGroesseToggle: 'einheit_groesse_toggle',
+      einheitGroesseSettings: 'einheit_groesse_settings',
+      einheitGroesseSaved: 'einheit_groesse_saved',
+      koernerProEinheit: 'koerner_pro_einheit',
+      drillSummary: [
+        'ds_saat_total', 'ds_saat_used', 'ds_saat_remaining',
+        'ds_duenger_total', 'ds_duenger_used', 'ds_duenger_remaining',
+        'ds_total_summary'
+      ]
+    };
+
+    // Helper: Input-Feld leeren + dataset.prev/cleaned zurücksetzen.
+    // Wird von resetAll() und resetActiveTab() gemeinsam genutzt.
+    function _resetInput(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.value = '';
+      el.dataset.prev = '';
+      el.dataset.cleaned = '';
     }
 
     // --- Tab-Verwaltung ---
@@ -189,34 +227,29 @@
         fahrgassenBreite: state.fahrgassenBreite
       };
       state.drillPriorities = {};
-      // Clear drill summary values
-      var ids = ['ds_saat_total', 'ds_saat_used', 'ds_saat_remaining', 'ds_duenger_total', 'ds_duenger_used', 'ds_duenger_remaining', 'ds_total_summary'];
-      for (var si = 0; si < ids.length; si++) {
-        var sEl = document.getElementById(ids[si]);
+      // Clear drill summary values (Issue #281: IDs aus DOM_IDS)
+      for (var si = 0; si < DOM_IDS.drillSummary.length; si++) {
+        var sEl = document.getElementById(DOM_IDS.drillSummary[si]);
         if (sEl) sEl.textContent = '';
       }
       // Hide drill_section after reset
-      var ds = document.getElementById('drill_section');
+      var ds = document.getElementById(DOM_IDS.drillSection);
       if (ds) ds.style.display = 'none';
-      var eh = document.getElementById('err_hektar');
+      var eh = document.getElementById(DOM_IDS.errHektar);
       if (eh) eh.textContent = '';
-      var ek = document.getElementById('err_koerner');
+      var ek = document.getElementById(DOM_IDS.errKoerner);
       if (ek) ek.textContent = '';
-      var he = document.getElementById('hektar');
+      var he = document.getElementById(DOM_IDS.hektar);
       if (he) he.style.borderColor = '';
-      var ke = document.getElementById('koerner');
+      var ke = document.getElementById(DOM_IDS.koerner);
       if (ke) ke.style.borderColor = '';
-      var re = document.getElementById('results');
+      var re = document.getElementById(DOM_IDS.results);
       if (re) re.style.display = 'none';
-      // Clear inputs
-      var hEl = document.getElementById('hektar');
-      if (hEl) { hEl.value = ''; hEl.dataset.prev = ''; hEl.dataset.cleaned = ''; }
-      var ih = document.getElementById('ist_hektar');
-      if (ih) { ih.value = ''; ih.dataset.prev = ''; ih.dataset.cleaned = ''; }
-      var kE = document.getElementById('koerner');
-      if (kE) { kE.value = ''; kE.dataset.prev = ''; kE.dataset.cleaned = ''; }
-      var dE = document.getElementById('duenger');
-      if (dE) { dE.value = ''; dE.dataset.prev = ''; dE.dataset.cleaned = ''; }
+      // Clear inputs via _resetInput helper
+      _resetInput(DOM_IDS.hektar);
+      _resetInput(DOM_IDS.istHektar);
+      _resetInput(DOM_IDS.koerner);
+      _resetInput(DOM_IDS.duenger);
       appEmit('TAB_RESET', { tabIdx: active });
     }
 
@@ -231,26 +264,47 @@
         koernerProEinheit: 50000,
         machineLog: []
       };
-      document.getElementById('hektar').value = '';
-      document.getElementById('ist_hektar').value = '';
-      document.getElementById('koerner').value = '';
-      document.getElementById('duenger').value = '';
-      document.getElementById('err_hektar').textContent = '';
-      document.getElementById('err_koerner').textContent = '';
-      document.getElementById('hektar').style.borderColor = '';
-      document.getElementById('koerner').style.borderColor = '';
-      document.getElementById('results').style.display = 'none';
-      document.getElementById('drill_section').style.display = 'none';
-      document.getElementById('fahrgassen_toggle').classList.remove('active');
-      document.getElementById('fahrgassen_toggle').setAttribute('aria-pressed', 'false');
-      document.getElementById('fahrgassen_settings').classList.remove('open');
-      document.getElementById('fahrgassen_breite').value = '';
-      document.getElementById('fahrgassen_saved').textContent = '';
-      document.getElementById('einheit_groesse_toggle').classList.remove('active');
-      document.getElementById('einheit_groesse_toggle').setAttribute('aria-pressed', 'false');
-      document.getElementById('einheit_groesse_settings').classList.remove('open');
-      document.getElementById('koerner_pro_einheit').value = '';
-      document.getElementById('einheit_groesse_saved').textContent = '';
+      // Input- und Fehlerfelder zurücksetzen
+      _resetInput(DOM_IDS.hektar);
+      _resetInput(DOM_IDS.istHektar);
+      _resetInput(DOM_IDS.koerner);
+      _resetInput(DOM_IDS.duenger);
+      var errH = document.getElementById(DOM_IDS.errHektar);
+      if (errH) errH.textContent = '';
+      var errK = document.getElementById(DOM_IDS.errKoerner);
+      if (errK) errK.textContent = '';
+      var he2 = document.getElementById(DOM_IDS.hektar);
+      if (he2) he2.style.borderColor = '';
+      var ke2 = document.getElementById(DOM_IDS.koerner);
+      if (ke2) ke2.style.borderColor = '';
+      var res = document.getElementById(DOM_IDS.results);
+      if (res) res.style.display = 'none';
+      var ds = document.getElementById(DOM_IDS.drillSection);
+      if (ds) ds.style.display = 'none';
+      // Fahrgassen-Toggle deaktivieren
+      var fgBtn = document.getElementById(DOM_IDS.fahrgassenToggle);
+      if (fgBtn) {
+        fgBtn.classList.remove('active');
+        fgBtn.setAttribute('aria-pressed', 'false');
+      }
+      var fgSet = document.getElementById(DOM_IDS.fahrgassenSettings);
+      if (fgSet) fgSet.classList.remove('open');
+      var fgBr = document.getElementById(DOM_IDS.fahrgassenBreite);
+      if (fgBr) fgBr.value = '';
+      var fgSv = document.getElementById(DOM_IDS.fahrgassenSaved);
+      if (fgSv) fgSv.textContent = '';
+      // Einheit-Groesse-Toggle deaktivieren
+      var egBtn = document.getElementById(DOM_IDS.einheitGroesseToggle);
+      if (egBtn) {
+        egBtn.classList.remove('active');
+        egBtn.setAttribute('aria-pressed', 'false');
+      }
+      var egSet = document.getElementById(DOM_IDS.einheitGroesseSettings);
+      if (egSet) egSet.classList.remove('open');
+      var kp = document.getElementById(DOM_IDS.koernerProEinheit);
+      if (kp) kp.value = '';
+      var egSv = document.getElementById(DOM_IDS.einheitGroesseSaved);
+      if (egSv) egSv.textContent = '';
       state.drillPriorities = {};
       renderTabs();
       saveState();
@@ -258,36 +312,32 @@
 
     // --- Drill Protocol ---
 
-    function drillAdd() {
+    // Issue #276: drillAdd() wurde in fokussierte Helper aufgeteilt.
+    // _parseDrillInputs liest die 3 Drill-Eingabefelder und parst sie.
+    function _parseDrillInputs() {
       var einheitVal = document.getElementById('drill_einheit').value;
       var duengerVal = document.getElementById('drill_duenger').value;
       var hektarVal = document.getElementById('drill_hektar').value;
-      var einheit = parseDE(einheitVal) || 0;
-      var duenger = parseDE(duengerVal) || 0;
-      var zaehlerStand = parseDE(hektarVal) || 0;
-      if (einheit <= 0 && duenger <= 0) return;
-      var activeTab = state.reiter[state.activeReiter];
-      if (!activeTab) return;
-      var targetHektar = activeTab.hektar > 0 ? activeTab.hektar : 0;
-      // Has any tab a priority > 0? If yes → multi-tab distribution mode.
-      var hasPriority = false;
-      for (var pi0 = 0; pi0 < state.reiter.length; pi0++) {
-        if ((state.drillPriorities[pi0] || 0) > 0) { hasPriority = true; break; }
-      }
-      // Per-tab distribution: read dtl_e_<i> and dtl_d_<i> values
-      // (populated by drillCalcAll). If they have values, distribute
-      // accordingly. Otherwise (no drillCalcAll run, or no per-tab values),
-      // fall back to the original single-tab push.
-      var perTabUsed = false;
+      return {
+        einheit: parseDE(einheitVal) || 0,
+        duenger: parseDE(duengerVal) || 0,
+        zaehlerStand: parseDE(hektarVal) || 0
+      };
+    }
+
+    // Issue #276: _resolvePerTabDistribution liest die dtl_e_<i>/dtl_d_<i>
+    // Felder aller Reiter. Liefert je Reiter { e, d } sowie Flags, ob
+    // irgendein Reiter eine Priorität hat und ob irgendein priorisierter
+    // Reiter Werte eingetragen hat.
+    // Issue #240: bevorzugt dataset.rawValue, weil fmt() in drillCalcAll
+    // aus 7.75 via half-up "7,8" macht — Re-Parsen gäbe sonst 7.8.
+    function _resolvePerTabDistribution() {
       var perTabE = [], perTabD = [];
+      var hasPriority = false;
       var perTabHasAny = false;
       for (var ii = 0; ii < state.reiter.length; ii++) {
         var peEl = document.getElementById('dtl_e_' + ii);
         var pdEl = document.getElementById('dtl_d_' + ii);
-        // Issue #240: prefer the stashed raw value (1-decimal rounded) when
-        // available — fmt() in drillCalcAll turns 7.75 into "7,8" via
-        // half-up, and re-parsing gives 7.8 instead of 7.75. The raw value
-        // preserves the intended precision.
         var peRaw = peEl && peEl.dataset && peEl.dataset.rawValue;
         var pdRaw = pdEl && pdEl.dataset && pdEl.dataset.rawValue;
         var pe = peRaw !== undefined && peRaw !== '' ? parseFloat(peRaw)
@@ -296,119 +346,71 @@
                   : (pdEl ? parseDE(pdEl.value) || 0 : 0);
         perTabE.push(pe);
         perTabD.push(pd);
-        if ((state.drillPriorities[ii] || 0) > 0 && (pe > 0 || pd > 0)) perTabHasAny = true;
+        var prio = state.drillPriorities[ii] || 0;
+        if (prio > 0) hasPriority = true;
+        if (prio > 0 && (pe > 0 || pd > 0)) perTabHasAny = true;
       }
-      // Decide mode:
-      //   - Multi-tab mode: at least one tab has priority AND at least one prioritized tab
-      //     has per-tab values → distribute per-tab
-      //   - Otherwise: single-tab mode → push to activeTab
-      var totalDistributed = 0;
-      var anyPushed = false;
-      if (hasPriority && perTabHasAny) {
-        // === Multi-tab mode: create one entry per prioritized tab with values ===
-        for (var ti = 0; ti < state.reiter.length; ti++) {
-          if ((state.drillPriorities[ti] || 0) <= 0) continue;
-          if (perTabE[ti] <= 0 && perTabD[ti] <= 0) continue;
-          var tab = state.reiter[ti];
-          var fgFactor = (tab.fahrgassenEnabled && tab.fahrgassenBreite >= 2)
-            ? computeFahrgassenFaktor(tab.fahrgassenBreite) : 1;
-          var perUnit = (tab.koerner * fgFactor) / state.koernerProEinheit;
-          var maxUnitsThisTab = tab.hektar * perUnit;
-          var unitsForThisTab = Math.min(perTabE[ti], maxUnitsThisTab);
-          var duengerPerUnit = getDuengerProEinheit(tab, state.koernerProEinheit);
-          var duengerForThisTab = Math.min(perTabD[ti], duengerPerUnit * unitsForThisTab);
-          tab.entries.push({
-            time: getTabNextTime(tab),
-            mlIdx: state.machineLog.length,
-            einheit: Math.round(unitsForThisTab * 100) / 100,
-            duenger: Math.round(duengerForThisTab * 100) / 100,
-            hektar: tab.hektar, istHektar: 0, zaehlerStand: zaehlerStand,
-            koerner: tab.koerner, duengerRate: tab.duenger
-          });
-          totalDistributed += perTabE[ti];
-          anyPushed = true;
-        }
-        // Ghost-entry fix (Issue #73): only push machineLog if at least one
-        // per-tab entry was actually created. If all prioritized tabs had
-        // 0 values, no entry is created → also no machineLog.
-        if (anyPushed) {
-          // Use original input einheit for "distributed" (per Issue #21 test):
-          // machineLog records the user's raw drill_einheit, with the actual
-          // amount distributed to tabs.
-          state.machineLog.push({
-            time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-            einheit: einheit,
-            duenger: duenger,
-            zaehlerStand: zaehlerStand,
-            hektar: zaehlerStand > 0 ? zaehlerStand : targetHektar,
-            istHektar: 0,
-            koerner: activeTab.koerner,
-            duengerRate: activeTab.duenger,
-            distributed: einheit
-          });
-        }
-      } else if (activeTab && activeTab.hektar > 0) {
-        // === Single-tab mode ===
-        // Ghost-entry fix (Issue #73): if there are no priorities and the
-        // active tab has no per-tab inputs (i.e. nothing was actually
-        // distributed), do NOT create a machineLog entry — user might
-        // have typed into drill_einheit by accident.
-        //
-        // NOTE (Issue #266-A): The per-tab inputs (dtl_e_X/dtl_d_X) are only
-        // populated by drillCalcAll() in the multi-tab distribution flow. In
-        // legacy single-tab usage (test 05, pre-#73 behaviour) the user just
-        // types into drill_einheit/drill_duenger and clicks "Einfüllen" — no
-        // drillCalcAll is called. We must honor that direct user input here.
-        var activeEEl = document.getElementById('dtl_e_' + state.activeReiter);
-        var activeDEl = document.getElementById('dtl_d_' + state.activeReiter);
-        var activeERaw = activeEEl && activeEEl.dataset && activeEEl.dataset.rawValue;
-        var activeDRaw = activeDEl && activeDEl.dataset && activeDEl.dataset.rawValue;
-        var activeE = activeERaw !== undefined && activeERaw !== '' ? parseFloat(activeERaw)
-                      : (activeEEl ? parseDE(activeEEl.value) || 0 : 0);
-        var activeD = activeDRaw !== undefined && activeDRaw !== '' ? parseFloat(activeDRaw)
-                      : (activeDEl ? parseDE(activeDEl.value) || 0 : 0);
-        // Only treat as ghost-entry when BOTH the per-tab input and the
-        // user-typed drill_einheit/drill_duenger are empty. If the user
-        // typed directly into drill_einheit/drill_duenger, use those values
-        // (legacy single-tab behaviour).
-        // Issue #266-B2: in a multi-tab session (length > 1) with no priorities,
-        // the user must either click a priority button or run drillCalcAll to
-        // populate per-tab fields. A global drill_einheit without per-tab
-        // distribution is ambiguous in multi-tab mode → bail to prevent a
-        // ghost entry on the active tab.
-        if (activeE <= 0 && activeD <= 0 &&
-            ((einheit <= 0 && duenger <= 0) || state.reiter.length > 1)) {
-          // Ghost-entry prevention: nothing to push, no machineLog either.
-          document.getElementById('drill_einheit').value = '';
-          document.getElementById('drill_duenger').value = '';
-          document.getElementById('drill_hektar').value = '';
-          return;
-        }
-        var entry = {
-          time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-          mlIdx: -1,
-          einheit: einheit, duenger: duenger,
-          hektar: targetHektar, istHektar: 0, zaehlerStand: zaehlerStand,
-          koerner: activeTab.koerner, duengerRate: activeTab.duenger
-        };
-        activeTab.entries.push(entry);
-        anyPushed = true;
-        totalDistributed = einheit;
-        // Issue #73 (ghost-entry): In single-tab mode with no priorities,
-        // do NOT also push to state.machineLog — the machine log is meant
-        // to track the *machine's* actual fill operations (multi-tab flow
-        // where the user clicks "+ Einfüllen" for the tractor/Seeder), not
-        // legacy per-tab bookkeeping. Test 16 "ghost-entry bug" asserts
-        // exactly this: no machineLog entry when no tabs are prioritised.
-      }
-      if (!anyPushed) {
-        // Nothing was created (e.g. multi-tab mode but no per-tab values) → no-op
-        document.getElementById('drill_einheit').value = '';
-        document.getElementById('drill_duenger').value = '';
-        document.getElementById('drill_hektar').value = '';
-        return;
-      }
-      // Clear per-tab inputs and global inputs
+      return { perTabE: perTabE, perTabD: perTabD, hasPriority: hasPriority, perTabHasAny: perTabHasAny };
+    }
+
+    // Issue #276: _buildDrillEntry erzeugt das Entry-Objekt für einen
+    // Multi-Tab-Drill-Push (mit machineLog-Index) oder einen Single-Tab-
+    // Push (mlIdx = -1). Berechnet die cap-bewerteten Mengen für ein Tab.
+    function _buildDrillEntry(tab, unitsRaw, duengerRaw, zaehlerStand, mlIdx) {
+      var fgFactor = (tab.fahrgassenEnabled && tab.fahrgassenBreite >= 2)
+        ? computeFahrgassenFaktor(tab.fahrgassenBreite) : 1;
+      var perUnit = (tab.koerner * fgFactor) / state.koernerProEinheit;
+      var maxUnitsThisTab = tab.hektar * perUnit;
+      var unitsForThisTab = Math.min(unitsRaw, maxUnitsThisTab);
+      var duengerPerUnit = getDuengerProEinheit(tab, state.koernerProEinheit);
+      var duengerForThisTab = Math.min(duengerRaw, duengerPerUnit * unitsForThisTab);
+      return {
+        time: mlIdx >= 0 ? getTabNextTime(tab) : new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+        mlIdx: mlIdx,
+        einheit: Math.round(unitsForThisTab * 100) / 100,
+        duenger: Math.round(duengerForThisTab * 100) / 100,
+        hektar: tab.hektar, istHektar: 0, zaehlerStand: zaehlerStand,
+        koerner: tab.koerner, duengerRate: tab.duenger
+      };
+    }
+
+    // Issue #276: _pushEntryToTab schiebt ein fertiges Entry in den State.
+    function _pushEntryToTab(tab, entry) {
+      tab.entries.push(entry);
+    }
+
+    // Issue #276: _buildMachineLogEntry erzeugt den machineLog-Datensatz
+    // für den Multi-Tab-Pfad (Issue #21 / #73).
+    function _buildMachineLogEntry(einheit, duenger, zaehlerStand, targetHektar, activeTab) {
+      return {
+        time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+        einheit: einheit,
+        duenger: duenger,
+        zaehlerStand: zaehlerStand,
+        hektar: zaehlerStand > 0 ? zaehlerStand : targetHektar,
+        istHektar: 0,
+        koerner: activeTab.koerner,
+        duengerRate: activeTab.duenger,
+        distributed: einheit
+      };
+    }
+
+    // Hilfsfunktion: liest dtl_e_<active>/dtl_d_<active> (mit rawValue-Preferenz)
+    // für den Single-Tab-Pfad. Liefert { e, d } (0 wenn nicht vorhanden).
+    function _readActivePerTabValues() {
+      var activeEEl = document.getElementById('dtl_e_' + state.activeReiter);
+      var activeDEl = document.getElementById('dtl_d_' + state.activeReiter);
+      var activeERaw = activeEEl && activeEEl.dataset && activeEEl.dataset.rawValue;
+      var activeDRaw = activeDEl && activeDEl.dataset && activeDEl.dataset.rawValue;
+      var e = activeERaw !== undefined && activeERaw !== '' ? parseFloat(activeERaw)
+              : (activeEEl ? parseDE(activeEEl.value) || 0 : 0);
+      var d = activeDRaw !== undefined && activeDRaw !== '' ? parseFloat(activeDRaw)
+              : (activeDEl ? parseDE(activeDEl.value) || 0 : 0);
+      return { e: e, d: d };
+    }
+
+    // Hilfsfunktion: setzt alle Drill-Inputs (global + per-Tab) zurück.
+    function _clearDrillInputs() {
       for (var ci = 0; ci < state.reiter.length; ci++) {
         var ceEl = document.getElementById('dtl_e_' + ci);
         var cdEl = document.getElementById('dtl_d_' + ci);
@@ -418,6 +420,52 @@
       document.getElementById('drill_einheit').value = '';
       document.getElementById('drill_duenger').value = '';
       document.getElementById('drill_hektar').value = '';
+    }
+
+    function drillAdd() {
+      var input = _parseDrillInputs();
+      var einheit = input.einheit, duenger = input.duenger, zaehlerStand = input.zaehlerStand;
+      if (einheit <= 0 && duenger <= 0) return;
+      var activeTab = state.reiter[state.activeReiter];
+      if (!activeTab) return;
+      var targetHektar = activeTab.hektar > 0 ? activeTab.hektar : 0;
+      var dist = _resolvePerTabDistribution();
+      var anyPushed = false;
+      if (dist.hasPriority && dist.perTabHasAny) {
+        // === Multi-tab mode: one entry per prioritized tab with values ===
+        for (var ti = 0; ti < state.reiter.length; ti++) {
+          if ((state.drillPriorities[ti] || 0) <= 0) continue;
+          if (dist.perTabE[ti] <= 0 && dist.perTabD[ti] <= 0) continue;
+          var tab = state.reiter[ti];
+          var entry = _buildDrillEntry(tab, dist.perTabE[ti], dist.perTabD[ti], zaehlerStand, state.machineLog.length);
+          _pushEntryToTab(tab, entry);
+          anyPushed = true;
+        }
+        // Ghost-entry fix (Issue #73): only push machineLog if at least one
+        // per-tab entry was actually created.
+        if (anyPushed) {
+          state.machineLog.push(_buildMachineLogEntry(einheit, duenger, zaehlerStand, targetHektar, activeTab));
+        }
+      } else if (activeTab.hektar > 0) {
+        // === Single-tab mode ===
+        // Ghost-entry fix (Issue #73 / #266-B2): a global drill_einheit without
+        // per-tab distribution is ambiguous in a multi-tab session → bail.
+        var activeVD = _readActivePerTabValues();
+        if (activeVD.e <= 0 && activeVD.d <= 0 &&
+            ((einheit <= 0 && duenger <= 0) || state.reiter.length > 1)) {
+          _clearDrillInputs();
+          return;
+        }
+        var singleEntry = _buildDrillEntry(activeTab, einheit, duenger, zaehlerStand, -1);
+        // Single-Tab nutzt die Roh-Inputs (kein cap-Fill), daher überschreiben.
+        singleEntry.einheit = einheit;
+        singleEntry.duenger = duenger;
+        singleEntry.hektar = targetHektar;
+        _pushEntryToTab(activeTab, singleEntry);
+        anyPushed = true;
+      }
+      if (!anyPushed) { _clearDrillInputs(); return; }
+      _clearDrillInputs();
       appEmit('DRILL_ENTRY_ADDED', { tabIdx: state.activeReiter });
     }
 
@@ -427,53 +475,48 @@
       appEmit('DRILL_ENTRY_REMOVED', { tabIdx: tabIdx, entryIdx: entryIdx });
     }
 
-    function drillCalcAll() {
-      // Read user input
-      var totalE = parseDE(document.getElementById('drill_einheit').value) || 0;
-      var totalD = parseDE(document.getElementById('drill_duenger').value) || 0;
-      // Build prioritized list of tabs that have data
+    // Issue #277: _calcDrillDistribution ist die pure Berechnung der
+    // cap-fill Verteilung. Liest keinen DOM, ruft keine Render-Funktionen
+    // auf. Liefert einen Plan { [idx]: { giveE, giveD } }.
+    //
+    // Logik (1:1 portiert aus drillCalcAll, ohne DOM):
+    //   - Prio 1 = höchste Prio (Issue #264). Sort: prio asc, idx asc.
+    //   - Einheit und Duenger werden UNABHÄNGIG per cap-fill verteilt.
+    //   - Letzter priorisierter Reiter absorbiert Einheit-Leftover NUR
+    //     wenn er noch ungenutzten cap hat (Issue #266).
+    function _calcDrillDistribution(totalE, totalD) {
       var priorities = [];
-      state.reiter.forEach(function(r, i) {
+      for (var pi2 = 0; pi2 < state.reiter.length; pi2++) {
+        var r = state.reiter[pi2];
         if (r.hektar > 0 && r.koerner > 0) {
-          var prio = state.drillPriorities[i] || 0;
-          // For the cap calculation, use remaining need (excluding carryover for now)
+          var prio = state.drillPriorities[pi2] || 0;
           var total = getTabTotalEinheiten(r);
           var used = getTabUsedEinheiten(r);
           var rem = Math.max(0, total - used);
-          priorities.push({ idx: i, prio: prio, rem: rem, r: r });
+          priorities.push({ idx: pi2, prio: prio, rem: rem, r: r });
         }
-      });
-      // Issue #264: Prio 1 = highest priority, ascending sort.
-      // Bei Prio-Gleichstand gewinnt der niedrigere Tab-Index (Stabilität
-      // der Fill-Reihenfolge), nicht die kleinere Need.
+      }
       priorities.sort(function(a, b) {
         if (a.prio !== b.prio) return a.prio - b.prio;
         return a.idx - b.idx;
       });
-      // Build distribution plan: idx -> { giveE, giveD }
       var plan = {};
       for (var pi = 0; pi < state.reiter.length; pi++) plan[pi] = { giveE: 0, giveD: 0 };
       if (totalE > 0 || totalD > 0) {
-        // Issue #240: cap is the tab's REMAINING einheit-need.
-        // duenger cap is independent: tab.hektar * tab.duenger - used.
-        // Einheit and duenger are distributed INDEPENDENTLY by cap-fill
-        // over the prioritized tabs in priority order.
         var remE = totalE;
         var remD = totalD;
-        // Find last prioritized tab (absorbs leftover in per-tab field)
         var lastPrioIdx = -1;
         for (var lpi = priorities.length - 1; lpi >= 0; lpi--) {
           if (priorities[lpi].prio > 0) { lastPrioIdx = priorities[lpi].idx; break; }
         }
-        priorities.forEach(function(p) {
-          if (p.prio <= 0) return; // skip non-prio
-          if (remE <= EPSILON_QUANTITY && remD <= EPSILON_QUANTITY) return;
-          // Einheit: cap-fill to remaining need
+        for (var ipi = 0; ipi < priorities.length; ipi++) {
+          var p = priorities[ipi];
+          if (p.prio <= 0) continue;
+          if (remE <= EPSILON_QUANTITY && remD <= EPSILON_QUANTITY) break;
           if (remE > EPSILON_QUANTITY) {
             plan[p.idx].giveE = Math.min(remE, p.rem);
             remE -= plan[p.idx].giveE;
           }
-          // Duenger: cap-fill to (hektar * duenger - used) — independent of einheit
           if (remD > EPSILON_QUANTITY) {
             var tabDUsed = (p.r.entries || []).reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
             var tabDNeed = Math.max(0, (p.r.hektar || 0) * (p.r.duenger || 0));
@@ -481,42 +524,32 @@
             plan[p.idx].giveD = Math.min(remD, tabDCap);
             remD -= plan[p.idx].giveD;
           }
-        });
-        // If einheit input exceeds sum of caps, the last prioritized tab
-        // absorbs the leftover — but ONLY if it has unused cap (Issue #266).
-        // Cap-fill is priority-first; if the last tab's cap is not exhausted,
-        // it absorbs the leftover (e.g. 8/8 caps, 20 total → 8/12). If the
-        // last tab's cap IS exhausted, the leftover stays in remE and is NOT
-        // added (e.g. 7/10 caps, 20 total → 7/10, leftover 3 just lost).
-        // Test 18-round2 'distributes only the REMAINING need' (caps 8/8,
-        // total 20) expects 8/8 — the leftover is dropped, not absorbed.
-        // Test 18-blind-spots-2 'caps distribution' (caps 7/10, total 20)
-        // expects 7/3 (the leftover 3, not B's cap of 10) — see test fix.
+        }
+        // Leftover-Absorption im letzten priorisierten Reiter (Issue #266)
         if (lastPrioIdx >= 0 && remE > EPSILON_QUANTITY) {
-          // Nur addieren, wenn der Tab noch "Platz" hat (cap nicht erschöpft).
-          if (plan[lastPrioIdx].giveE < priorities.find(function(p) { return p.idx === lastPrioIdx; }).rem - EPSILON_QUANTITY) {
-            plan[lastPrioIdx].giveE += remE;
+          var lastPlan = plan[lastPrioIdx];
+          var lastP = null;
+          for (var lpf = 0; lpf < priorities.length; lpf++) {
+            if (priorities[lpf].idx === lastPrioIdx) { lastP = priorities[lpf]; break; }
+          }
+          if (lastP && lastPlan.giveE < lastP.rem - EPSILON_QUANTITY) {
+            lastPlan.giveE += remE;
           }
         }
       }
-      // Apply plan: update existing inputs (do NOT recreate them — renderDrillTabList
-      // runs at the end as the very last step so the values persist on the rebuilt inputs).
-      // We set values via dataset; the rebuild will read from data attrs via a small trick:
-      // store the planned values, rebuild, then re-apply on the freshly-created inputs.
-      // Easier path: renderDrillTabList first, then set the values on the fresh inputs.
-      renderDrillTabList();
+      return plan;
+    }
+
+    // Issue #277: _applyDrillPlan schreibt einen berechneten Plan in die
+    // dtl_e_<i>/dtl_d_<i> Felder und steckt den 2-Dezimal-Wert in
+    // dataset.rawValue (Issue #266-B2). Reine DOM-Schreib-Logik.
+    function _applyDrillPlan(plan) {
       for (var ai = 0; ai < state.reiter.length; ai++) {
         var p = plan[ai];
         var eEl = document.getElementById('dtl_e_' + ai);
         var dEl = document.getElementById('dtl_d_' + ai);
         if (eEl) {
           eEl.value = p.giveE > 0 ? fmt(p.giveE) : '';
-          // Issue #266-B2: round to 2 decimals so values like 7.75 (from
-          // FG-Faktor 23/24) survive. 1-decimal rounded 7.75 → 7.8 (half-up)
-          // which broke Test 14. The input value (via fmt) is still 1-decimal
-          // for display, but rawValue preserves the 2-decimal number so
-          // downstream consumers (drillAdd, maxUnitsThisTab) see the precise
-          // amount.
           eEl.dataset.rawValue = p.giveE > 0 ? String(Math.round(p.giveE * 100) / 100) : '';
         }
         if (dEl) {
@@ -524,6 +557,18 @@
           dEl.dataset.rawValue = p.giveD > 0 ? String(Math.round(p.giveD * 100) / 100) : '';
         }
       }
+    }
+
+    function drillCalcAll() {
+      // Read user input
+      var totalE = parseDE(document.getElementById('drill_einheit').value) || 0;
+      var totalD = parseDE(document.getElementById('drill_duenger').value) || 0;
+      // Pure Verteilungs-Berechnung (Issue #277) — kein DOM-Zugriff
+      var plan = _calcDrillDistribution(totalE, totalD);
+      // Tab-Liste neu rendern (Input-Felder werden ersetzt)
+      renderDrillTabList();
+      // Plan in die frischen Inputs schreiben
+      _applyDrillPlan(plan);
       renderDrillSummary();
       renderResults();
     }
