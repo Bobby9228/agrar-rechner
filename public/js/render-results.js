@@ -1,5 +1,5 @@
 // ============================================================================
-// RENDER-RESULTS — Ergebnis-Karte, Mini-Footer, Hauptergebnis-Render
+// RENDER-RESULTS — Ergebnis-Karte, Hauptergebnis-Render
 //
 // Lade-Reihenfolge: state.js → calculations.js → ui-handlers.js → render-tabs.js
 //   → render-results.js (DIESE DATEI) → render-drill.js → render-dashboard.js
@@ -96,31 +96,6 @@
       }
     }
 
-    // --- Render: Mini Footer ---
-
-    function renderMiniFooter() {
-      var mf = document.getElementById('mini_result');
-      if (!mf) return;
-      var activeR = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
-      if (!activeR) return;
-      if (activeR.hektar > 0 && activeR.koerner > 0) {
-        var einheiten = AppGlobals.getActiveTotalEinheiten();
-        var duengerTotal = AppGlobals.getActiveTotalDuenger();
-        var kornerGesamt = AppGlobals.getKornerGesamt();
-        var kornerStr = Math.round(kornerGesamt).toLocaleString('de-DE');
-        var miniResult = mf.querySelector('.mini-result') || mf;
-        var duengerStr = duengerTotal > 0
-          ? ' / ' + duengerTotal.toLocaleString('de-DE') + ' kg'
-          : '';
-        miniResult.innerHTML = 'Bedarf: <span class="mr-einheiten">' + AppGlobals.formatEinheit(einheiten) + '</span> / ' + kornerStr + ' Körner' + duengerStr;
-        miniResult.classList.remove('mini-result-empty');
-      } else {
-        var miniResult = mf.querySelector('.mini-result') || mf;
-        miniResult.textContent = 'Bitte Hektar und Körner eingeben';
-        miniResult.classList.add('mini-result-empty');
-      }
-    }
-
     // --- Render: Results (Hauptergebnis) ---
 
     function renderResults() {
@@ -130,7 +105,6 @@
       AppGlobals.renderDrillLog();
       renderDrillEntriesInline();
       AppGlobals.renderMachineLog();
-      renderMiniFooter();
       var errHektar = document.getElementById('err_hektar');
       var errKoerner = document.getElementById('err_koerner');
       var hektarEl = document.getElementById('hektar');
@@ -235,7 +209,6 @@
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 Object.assign(window.AppGlobals, {
   renderResultCard: renderResultCard,
-  renderMiniFooter: renderMiniFooter,
   renderResults: renderResults,
   renderDrillEntriesInline: renderDrillEntriesInline,
 });

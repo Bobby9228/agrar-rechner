@@ -86,12 +86,6 @@
       if (drillSection) drillSection.style.display = isProtokoll ? 'block' : 'none';
       var drillMask = document.getElementById('drill_mask');
       if (drillMask) drillMask.style.display = isProtokoll ? '' : 'none';
-      var berechnenBtn = document.getElementById('berechnen_btn');
-      if (berechnenBtn) berechnenBtn.style.display = isProtokoll ? 'none' : '';
-      var resetBtn = document.getElementById('reset_btn');
-      if (resetBtn) resetBtn.style.display = isProtokoll ? 'none' : '';
-      var stickyFooter = document.getElementById('sticky_footer');
-      if (stickyFooter) stickyFooter.style.display = isProtokoll ? 'none' : '';
     }
 
     // --- Init: UI (nach DOMContentLoaded) ---
