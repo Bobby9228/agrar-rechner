@@ -140,23 +140,6 @@ describe('renderView', () => {
     expect(drillSection.style.display).toBe('none');
   });
 
-  it('hides footer buttons in protokoll mode', () => {
-    const { window: w } = createDom();
-    w.state.activeView = 'protokoll';
-    w.renderView();
-
-    expect(w.document.getElementById('berechnen_btn').style.display).toBe('none');
-    expect(w.document.getElementById('reset_btn').style.display).toBe('none');
-  });
-
-  it('hides sticky footer in protokoll mode', () => {
-    const { window: w } = createDom();
-    w.state.activeView = 'protokoll';
-    w.renderView();
-
-    expect(w.document.getElementById('sticky_footer').style.display).toBe('none');
-  });
-
   it('shows results in field mode when data exists', () => {
     const { window: w } = createDom();
     w.document.getElementById('hektar').value = '10';

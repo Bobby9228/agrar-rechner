@@ -8,7 +8,7 @@
 
     // Confirm-Dialog-Wrapper. In Browsern ist `globalThis.confirm` der
     // native window.confirm; in jsdom-Tests wird die Funktion gemockt
-    // (siehe tests/45-reset-modal.test.js).
+    // (siehe tests/28-berechne-confirm.test.js).
     function _askConfirm(message) {
       return globalThis.confirm(message);
     }

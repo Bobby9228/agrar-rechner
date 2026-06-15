@@ -857,24 +857,6 @@ describe('renderView()', () => {
     doc = w.document;
   });
 
-  it('berechnen_btn hidden in protokoll view', () => {
-    w.state.activeView = 'protokoll';
-    w.renderView();
-    expect(doc.getElementById('berechnen_btn').style.display).toBe('none');
-  });
-
-  it('berechnen_btn shown in field view', () => {
-    w.state.activeView = null;
-    w.renderView();
-    expect(doc.getElementById('berechnen_btn').style.display).toBe('');
-  });
-
-  it('reset_btn hidden in protokoll view', () => {
-    w.state.activeView = 'protokoll';
-    w.renderView();
-    expect(doc.getElementById('reset_btn').style.display).toBe('none');
-  });
-
   it('drill_section shown in protokoll view', () => {
     w.state.activeView = 'protokoll';
     w.renderView();

@@ -205,19 +205,6 @@
 
     </div><!-- end .container -->
 
-    <!-- Sticky footer -->
-    <div class="sticky-footer" id="sticky_footer">
-      <div class="container">
-        <div id="mini_result" class="mini-result mini-result-empty">
-          Bitte Hektar und Körner eingeben
-        </div>
-        <div class="footer-btn-row">
-          <button class="btn" onclick="berechne()" id="berechnen_btn">Berechnen</button>
-          <button class="btn btn-secondary" onclick="openResetModal(this)" id="reset_btn" aria-haspopup="dialog" aria-controls="reset_modal">Zurücksetzen</button>
-        </div>
-      </div>
-    </div>
-
     </div><!-- end .scrollable-content -->
   </div><!-- end .app-layout -->
 
@@ -251,7 +238,7 @@
     // Lade-Reihenfolge (wichtig!):
     //   state.js → calculations.js → ui-handlers.js
     //     → render-tabs.js → render-results.js → render-drill.js → render-dashboard.js
-    //     → reset-modal.js → main.js
+    //     → main.js
     //
     //   state.js definiert: state, saveState(), loadState()
     //   calculations.js braucht: state, _internal (von state.js)
@@ -260,7 +247,6 @@
     //   render-results.js braucht: state, render-tabs.js, render-drill.js, calculations.js
     //   render-drill.js braucht: state, ui-handlers.js, calculations.js
     //   render-dashboard.js braucht: state, calculations.js
-    //   reset-modal.js braucht: state, resetActiveTab, resetAll (Issue #236)
     //   main.js: APP_VERSION, Event-Emitter, initTheme
     // ============================================================================
   </script>
@@ -272,7 +258,6 @@
   <script src="js/render-results.js"></script>
   <script src="js/render-drill.js"></script>
   <script src="js/render-dashboard.js"></script>
-  <script src="js/reset-modal.js"></script>
   <script src="js/main.js"></script>
   <div class="version-footer" id="version_footer"></div>
   <!-- Dashboard overlay + sheet -->
@@ -283,22 +268,6 @@
       <button class="dashboard-close" onclick="closeDashboard()" aria-label="Schließen">✕</button>
     </div>
     <div class="dashboard-content" id="dashboard_content"></div>
-  </div>
-
-  <!-- Reset Confirmation Modal (Issue #236) -->
-  <div class="reset-overlay" id="reset_overlay" onclick="_onOverlayClick(event)"></div>
-  <div class="reset-modal" id="reset_modal" role="dialog" aria-modal="true" aria-labelledby="reset_modal_title" aria-describedby="reset_modal_desc">
-    <div class="reset-modal-header">
-      <h2 id="reset_modal_title">Zurücksetzen</h2>
-    </div>
-    <p class="reset-modal-desc" id="reset_modal_desc">
-      Was möchtest du zurücksetzen? Diese Aktion lässt sich nicht rückgängig machen.
-    </p>
-    <div class="reset-modal-actions">
-      <button class="btn btn-secondary" id="reset_modal_tab" onclick="_onResetTab()">Aktuellen Tab zurücksetzen</button>
-      <button class="btn btn-danger" id="reset_modal_confirm_all" onclick="_onResetAll()">Alle Daten löschen</button>
-      <button class="btn btn-cancel" id="reset_modal_cancel" onclick="_onCancel()">Abbrechen</button>
-    </div>
   </div>
 </body>
 </html>

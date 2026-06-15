@@ -140,7 +140,7 @@ Körner nach Fahrgassen = Körner gesamt × (Fahrgassenbreite - 1) / Fahrgassenb
 
 ### `berechne()` — Hauptberechnung
 
-Wird vom "Berechnen"-Button ausgelöst. Validiert Eingaben, liest Input-Felder aus, speichert in State, ruft `renderResults()` auf.
+Wird durch `syncStateFromInputs()` und die Eingabe-Change-Handler ausgelöst (z. B. Hektar/Körner-Änderung, Tab-Wechsel). Validiert Eingaben, liest Input-Felder aus, speichert in State, ruft `renderResults()` auf.
 
 **Validierung:**
 - Hektar > 0 erforderlich (ansonsten rote Fehlermeldung + Border)
