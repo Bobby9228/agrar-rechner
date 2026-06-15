@@ -14,45 +14,45 @@
     // --- Render: Result Card ---
 
     function renderResultCard() {
-      var r = getActiveReiter();
-      var kornerGesamt = getKornerGesamt();
+      var r = AppGlobals.getActiveReiter();
+      var kornerGesamt = AppGlobals.getKornerGesamt();
       // Issue #186: IST-Fläche (vom Input-Feld) hat Vorrang vor SOLL.
       // r_einheiten/r_duenger zeigen die tatsächlichen IST-Bedarfe, wenn
       // r.istHektar > 0 — konsistent mit Dashboard, Drill-Summary, etc.
-      var istSum = getTabIstHektar(r);
-      var einheiten = istSum > 0 ? getTabIstEinheiten(r) : getActiveTotalEinheiten();
-      var duengerTotal = istSum > 0 ? getTabIstDuenger(r) : getActiveTotalDuenger();
+      var istSum = AppGlobals.getTabIstHektar(r);
+      var einheiten = istSum > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getActiveTotalEinheiten();
+      var duengerTotal = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : AppGlobals.getActiveTotalDuenger();
       var rkEl = document.getElementById('r_korner');
       if (rkEl) rkEl.textContent = Math.round(kornerGesamt).toLocaleString('de-DE');
       var reEl = document.getElementById('r_einheiten');
-      if (reEl) reEl.textContent = formatEinheit(einheiten);
+      if (reEl) reEl.textContent = AppGlobals.formatEinheit(einheiten);
       var rdEl = document.getElementById('r_duenger');
       if (rdEl) rdEl.textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
       var riEl = document.getElementById('r_info');
       if (riEl) {
         if (duengerTotal > 0) {
-          riEl.textContent = duengerTotal.toLocaleString('de-DE') + ' kg Dünger, ' + formatEinheit(einheiten) + ' Saat';
+          riEl.textContent = duengerTotal.toLocaleString('de-DE') + ' kg Dünger, ' + AppGlobals.formatEinheit(einheiten) + ' Saat';
         } else {
-          riEl.textContent = formatEinheit(einheiten) + ' Saat (ohne Dünger)';
+          riEl.textContent = AppGlobals.formatEinheit(einheiten) + ' Saat (ohne Dünger)';
         }
       }
       var sollHa = r.hektar;
-      var istHa = getTabIstHektar(r);
+      var istHa = AppGlobals.getTabIstHektar(r);
       var diff = istHa - sollHa;
       var sollIstSection = document.getElementById('r_soll_ist_section');
       if (sollIstSection) {
         if (sollHa > 0 && istHa > 0) {
           var rshEl = document.getElementById('r_soll_ha');
-          if (rshEl) rshEl.textContent = fmt(sollHa) + ' ha';
+          if (rshEl) rshEl.textContent = AppGlobals.fmt(sollHa) + ' ha';
           var rihEl = document.getElementById('r_ist_ha');
-          if (rihEl) rihEl.textContent = fmt(istHa) + ' ha';
+          if (rihEl) rihEl.textContent = AppGlobals.fmt(istHa) + ' ha';
           var rDiffEl = document.getElementById('r_diff_ha');
           if (rDiffEl) {
             if (diff >= 0) {
-              rDiffEl.textContent = '+' + fmt(diff) + ' ha';
+              rDiffEl.textContent = '+' + AppGlobals.fmt(diff) + ' ha';
               rDiffEl.className = 'value small positive';
             } else {
-              rDiffEl.textContent = fmt(diff) + ' ha';
+              rDiffEl.textContent = AppGlobals.fmt(diff) + ' ha';
               rDiffEl.className = 'value small negative';
             }
           }
@@ -72,12 +72,12 @@
       }
       if (carryoverHint) {
         while (carryoverHint.firstChild) carryoverHint.removeChild(carryoverHint.firstChild);
-        var activeIdx = state.activeReiter || 0;
-        var co = getCarryover(activeIdx);
+        var activeIdx = AppGlobals.state.activeReiter || 0;
+        var co = AppGlobals.getCarryover(activeIdx);
         if (co.savedEinheit > 0.05 || co.savedDuenger > 0.05) {
           var parts = [];
-          if (co.savedEinheit > 0.05) parts.push(fmt(co.savedEinheit) + ' Einheiten');
-          if (co.savedDuenger > 0.05) parts.push(fmt(co.savedDuenger) + ' kg Dünger');
+          if (co.savedEinheit > 0.05) parts.push(AppGlobals.fmt(co.savedEinheit) + ' Einheiten');
+          if (co.savedDuenger > 0.05) parts.push(AppGlobals.fmt(co.savedDuenger) + ' kg Dünger');
           var savedSpan = document.createElement('span');
           savedSpan.className = 'carryover-hint';
           savedSpan.textContent = 'Übertrag aus ersparten Flächen: +' + parts.join(', ');
@@ -85,8 +85,8 @@
         }
         if (co.excessEinheit > 0.05 || co.excessDuenger > 0.05) {
           var eparts = [];
-          if (co.excessEinheit > 0.05) eparts.push(fmt(co.excessEinheit) + ' Einheiten');
-          if (co.excessDuenger > 0.05) eparts.push(fmt(co.excessDuenger) + ' kg Dünger');
+          if (co.excessEinheit > 0.05) eparts.push(AppGlobals.fmt(co.excessEinheit) + ' Einheiten');
+          if (co.excessDuenger > 0.05) eparts.push(AppGlobals.fmt(co.excessDuenger) + ' kg Dünger');
           if (carryoverHint.firstChild) carryoverHint.appendChild(document.createElement('br'));
           var excessSpan = document.createElement('span');
           excessSpan.className = 'excess-hint';
@@ -101,18 +101,18 @@
     function renderMiniFooter() {
       var mf = document.getElementById('mini_result');
       if (!mf) return;
-      var activeR = state.reiter[state.activeReiter];
+      var activeR = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
       if (!activeR) return;
       if (activeR.hektar > 0 && activeR.koerner > 0) {
-        var einheiten = getActiveTotalEinheiten();
-        var duengerTotal = getActiveTotalDuenger();
-        var kornerGesamt = getKornerGesamt();
+        var einheiten = AppGlobals.getActiveTotalEinheiten();
+        var duengerTotal = AppGlobals.getActiveTotalDuenger();
+        var kornerGesamt = AppGlobals.getKornerGesamt();
         var kornerStr = Math.round(kornerGesamt).toLocaleString('de-DE');
         var miniResult = mf.querySelector('.mini-result') || mf;
         var duengerStr = duengerTotal > 0
           ? ' / ' + duengerTotal.toLocaleString('de-DE') + ' kg'
           : '';
-        miniResult.innerHTML = 'Bedarf: <span class="mr-einheiten">' + formatEinheit(einheiten) + '</span> / ' + kornerStr + ' Körner' + duengerStr;
+        miniResult.innerHTML = 'Bedarf: <span class="mr-einheiten">' + AppGlobals.formatEinheit(einheiten) + '</span> / ' + kornerStr + ' Körner' + duengerStr;
         miniResult.classList.remove('mini-result-empty');
       } else {
         var miniResult = mf.querySelector('.mini-result') || mf;
@@ -124,12 +124,12 @@
     // --- Render: Results (Hauptergebnis) ---
 
     function renderResults() {
-      var r = getActiveReiter();
+      var r = AppGlobals.getActiveReiter();
       renderResultCard();
-      renderDrillSummary();
-      renderDrillLog();
+      AppGlobals.renderDrillSummary();
+      AppGlobals.renderDrillLog();
       renderDrillEntriesInline();
-      renderMachineLog();
+      AppGlobals.renderMachineLog();
       renderMiniFooter();
       var errHektar = document.getElementById('err_hektar');
       var errKoerner = document.getElementById('err_koerner');
@@ -158,7 +158,7 @@
         return;
       }
       if (drillSummaryEl) drillSummaryEl.style.display = 'block';
-      if (state.activeView !== 'protokoll') {
+      if (AppGlobals.state.activeView !== 'protokoll') {
         if (resultsEl) resultsEl.style.display = 'block';
       }
     }
@@ -170,7 +170,7 @@
       var container = document.getElementById('r_drill_entries');
       if (!container) return;
       container.innerHTML = '';
-      var r = getActiveReiter();
+      var r = AppGlobals.getActiveReiter();
       if (!r || !r.entries || r.entries.length === 0) {
         var rdSection = document.getElementById('r_drill_section');
         if (rdSection) rdSection.style.display = 'none';
@@ -180,14 +180,14 @@
       if (rdSection) rdSection.style.display = 'block';
       var usedE = r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
       var usedD = r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
-      var istE = getTabIstEinheiten(r) || getTabTotalEinheiten(r);
-      var istD = getTabIstDuenger(r) || getTabTotalDuenger(r);
+      var istE = AppGlobals.getTabIstEinheiten(r) || AppGlobals.getTabTotalEinheiten(r);
+      var istD = AppGlobals.getTabIstDuenger(r) || AppGlobals.getTabTotalDuenger(r);
       var remE = Math.max(0, istE - usedE);
       var remD = Math.max(0, istD - usedD);
       var usedEl = document.getElementById('r_drill_e_used');
-      if (usedEl) usedEl.textContent = formatEinheit(usedE);
+      if (usedEl) usedEl.textContent = AppGlobals.formatEinheit(usedE);
       var remEl = document.getElementById('r_drill_e_rem');
-      if (remEl) remEl.textContent = formatEinheit(remE);
+      if (remEl) remEl.textContent = AppGlobals.formatEinheit(remE);
       var dUsedEl = document.getElementById('r_drill_d_used');
       if (dUsedEl) dUsedEl.textContent = usedD > 0 ? usedD.toLocaleString('de-DE') + ' kg' : '—';
       var dRemEl = document.getElementById('r_drill_d_rem');
@@ -213,11 +213,11 @@
         }
         if (entry.istHektar || entry.zaehlerStand) {
           var ha = entry.istHektar || entry.zaehlerStand;
-          parts.push(fmt(ha) + ' ha');
+          parts.push(AppGlobals.fmt(ha) + ' ha');
         } else if (entry.hektar > 0) {
-          parts.push('@' + fmt(entry.hektar) + 'ha');
+          parts.push('@' + AppGlobals.fmt(entry.hektar) + 'ha');
         }
-        parts.push(formatEinheit(entry.einheit || 0));
+        parts.push(AppGlobals.formatEinheit(entry.einheit || 0));
         if (entry.duenger > 0) {
           parts.push((entry.duenger).toLocaleString('de-DE') + ' kg Dünger');
         }
@@ -226,8 +226,16 @@
         var removeBtn = document.createElement('button');
         removeBtn.className = 'btn-danger';
         removeBtn.textContent = '✕';
-        removeBtn.onclick = function() { drillRemove(state.activeReiter, actualIdx); };
+        removeBtn.onclick = function() { AppGlobals.drillRemove(AppGlobals.state.activeReiter, actualIdx); };
         row.appendChild(removeBtn);
         container.appendChild(row);
       });
     }
+
+// Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
+Object.assign(window.AppGlobals, {
+  renderResultCard: renderResultCard,
+  renderMiniFooter: renderMiniFooter,
+  renderResults: renderResults,
+  renderDrillEntriesInline: renderDrillEntriesInline,
+});

@@ -1,8 +1,8 @@
 // ============================================================================
 // RENDER-DASHBOARD — Dashboard-Übersicht (Sheet) + openDashboard/closeDashboard
 //
-// Lade-Reihenfolge: state.js → calculations.js → ui-handlers.js → render-tabs.js
-//   → render-results.js → render-drill.js → render-dashboard.js (DIESE DATEI)
+// Lade-Reihenfolge: state (state.js) → calc (calculations.js) → ui (ui-handlers.js) → render-tabs
+//   → render-results → render-drill → render-dashboard (DIESE DATEI)
 //   → main.js
 //
 // render-dashboard.js braucht: state, calculations.js (getTabIstHektar,
@@ -15,10 +15,27 @@
     // Verwendet IST-Fläche (wenn gesetzt) als Basis für "verbleibend"-Berechnung,
     // konsistent mit renderResultCard() und renderDrillSummary().
 
+    // Erzeugt ein einzelnes Summary-Stat-Element (Label + Wert).
+    // Auf Modul-Ebene gehoben (ADR-001, Issue #278), damit es auf AppGlobals
+    // registriert werden kann (Object.assign am Dateiende).
+    function makeSummaryStat(label, value, valueClass) {
+      var stat = document.createElement('div');
+      stat.className = 'dashboard-summary-stat';
+      var lbl = document.createElement('div');
+      lbl.className = 'dashboard-summary-label';
+      lbl.textContent = label;
+      var val = document.createElement('div');
+      val.className = 'dashboard-summary-value' + (valueClass ? ' ' + valueClass : '');
+      val.textContent = value;
+      stat.appendChild(lbl);
+      stat.appendChild(val);
+      return stat;
+    }
+
     function renderDashboard() {
       var container = document.getElementById('dashboard_content');
       if (!container) return;
-      var reiter = state.reiter;
+      var reiter = AppGlobals.state.reiter;
       if (reiter.length === 0) {
         var emptyDiv = document.createElement('div');
         emptyDiv.className = 'dashboard-empty';
@@ -35,10 +52,10 @@
       var totalDuengerBasis = 0, totalDuengerUsed = 0;
       reiter.forEach(function(r, idx) {
         if (r.hektar > 0 && r.koerner > 0) {
-          var istSum = getTabIstHektar(r);
+          var istSum = AppGlobals.getTabIstHektar(r);
           totalHa += istSum > 0 ? istSum : r.hektar;
-          var basisE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
-          var basisD = istSum > 0 ? getTabIstDuenger(r) : r.hektar * r.duenger;
+          var basisE = istSum > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getTabTotalEinheiten(r);
+          var basisD = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : r.hektar * r.duenger;
           var usedE = r.entries ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
           var usedD = r.entries ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
           // remaining = max(0, basis - used) — no carryover subtraction
@@ -68,26 +85,12 @@
       var sStats = document.createElement('div');
       sStats.className = 'dashboard-summary-stats';
 
-      function makeSummaryStat(label, value, valueClass) {
-        var stat = document.createElement('div');
-        stat.className = 'dashboard-summary-stat';
-        var lbl = document.createElement('div');
-        lbl.className = 'dashboard-summary-label';
-        lbl.textContent = label;
-        var val = document.createElement('div');
-        val.className = 'dashboard-summary-value' + (valueClass ? ' ' + valueClass : '');
-        val.textContent = value;
-        stat.appendChild(lbl);
-        stat.appendChild(val);
-        return stat;
-      }
-
       var pctClass = totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '';
-      sStats.appendChild(makeSummaryStat('Fläche', totalHa > 0 ? fmtCompact(totalHa) + ' ha' : '—'));
+      sStats.appendChild(makeSummaryStat('Fläche', totalHa > 0 ? AppGlobals.fmtCompact(totalHa) + ' ha' : '—'));
       // fmtCompact: integer values shown without trailing ",0" (e.g. "8" not "8,0").
       // Tests 26, 27, 40 use toBe('8') on this element; test 18-round2 uses
       // toContain('15') on it. fmt() would produce "8,0" and break those tests.
-      sStats.appendChild(makeSummaryStat('Einheiten verbl.', totalEinheitenBasis > 0 ? fmtCompact(totalEinheitRem) : '—', pctClass));
+      sStats.appendChild(makeSummaryStat('Einheiten verbl.', totalEinheitenBasis > 0 ? AppGlobals.fmtCompact(totalEinheitRem) : '—', pctClass));
       sStats.appendChild(makeSummaryStat('Dünger verbl.', totalDuengerBasis > 0 ? totalDuengerRem.toLocaleString('de-DE') + ' kg' : '—', pctClass));
       summaryCard.appendChild(sStats);
 
@@ -108,7 +111,7 @@
         var nameEl = document.createElement('div');
         nameEl.className = 'dashboard-reiter-name';
         nameEl.textContent = r.name || ('Reiter ' + (idx + 1));
-        if (idx === state.activeReiter) {
+        if (idx === AppGlobals.state.activeReiter) {
           nameEl.textContent += ' (aktiv)';
         }
         card.appendChild(nameEl);
@@ -124,11 +127,11 @@
         haDivLabel.textContent = 'Hektar';
         var haDivVal = document.createElement('div');
         haDivVal.className = 'dashboard-stat-value';
-        var istH = getTabIstHektar(r);
+        var istH = AppGlobals.getTabIstHektar(r);
         if (istH > 0 && istH !== r.hektar) {
-          haDivVal.textContent = fmtCompact(r.hektar) + ' / ' + fmtCompact(istH) + ' ha';
+          haDivVal.textContent = AppGlobals.fmtCompact(r.hektar) + ' / ' + AppGlobals.fmtCompact(istH) + ' ha';
         } else {
-          haDivVal.textContent = r.hektar > 0 ? fmtCompact(r.hektar) + ' ha' : '—';
+          haDivVal.textContent = r.hektar > 0 ? AppGlobals.fmtCompact(r.hektar) + ' ha' : '—';
         }
         haDiv.appendChild(haDivLabel);
         haDiv.appendChild(haDivVal);
@@ -157,10 +160,10 @@
         var pct = 0;
         var statusClass = 'na';
         if (r.hektar > 0 && r.koerner > 0) {
-          var istSum = getTabIstHektar(r);
-          einheiten = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
+          var istSum = AppGlobals.getTabIstHektar(r);
+          einheiten = istSum > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getTabTotalEinheiten(r);
           usedEinheit = r.entries ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
-          duengerTotal = istSum > 0 ? getTabIstDuenger(r) : r.hektar * r.duenger;
+          duengerTotal = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : r.hektar * r.duenger;
           usedDuenger = r.entries ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
           einheitRem = Math.max(0, einheiten - usedEinheit);
           duengerRem = Math.max(0, duengerTotal - usedDuenger);
@@ -181,7 +184,7 @@
         eStatLabel.textContent = 'Einheiten verbl.';
         var eStatVal = document.createElement('div');
         eStatVal.className = 'dashboard-stat-value ' + statusClass;
-        eStatVal.textContent = r.hektar > 0 && r.koerner > 0 ? fmtCompact(einheitRem) : '—';
+        eStatVal.textContent = r.hektar > 0 && r.koerner > 0 ? AppGlobals.fmtCompact(einheitRem) : '—';
         eStat.appendChild(eStatLabel);
         eStat.appendChild(eStatVal);
         stats.appendChild(eStat);
@@ -272,3 +275,12 @@
         _dashboardPrevFocus = null;
       }
     }
+
+    // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
+    Object.assign(window.AppGlobals, {
+      renderDashboard: renderDashboard,
+      makeSummaryStat: makeSummaryStat,
+      _dashboardKeyHandler: _dashboardKeyHandler,
+      openDashboard: openDashboard,
+      closeDashboard: closeDashboard,
+    });

@@ -51,8 +51,8 @@ function computeFahrgassenFaktor(breite) {
 // Rückgabe: number (Einheiten, immer ≥ 0)
 function getTotalEinheiten(r, koernerProEinheit) {
   if (!r || !r.hektar || !r.koerner || koernerProEinheit <= 0) return 0;
-  var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : state.fahrgassenEnabled;
-  var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : state.fahrgassenBreite;
+  var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : AppGlobals.state.fahrgassenEnabled;
+  var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : AppGlobals.state.fahrgassenBreite;
   var faktor = 1;
   if (fgEnabled && fgBreite > 0) {
     faktor = computeFahrgassenFaktor(fgBreite);
@@ -63,20 +63,20 @@ function getTotalEinheiten(r, koernerProEinheit) {
 
 // Berechnet die Gesamteinheiten für ein Tab-Objekt (SOLL), mit globalen Einstellungen.
 function getTabTotalEinheiten(r) {
-  return getTotalEinheiten(r, state.koernerProEinheit);
+  return getTotalEinheiten(r, AppGlobals.state.koernerProEinheit);
 }
 
 // Berechnet die IST-Einheiten basierend auf der IST-Fläche.
 // Nur wenn istHektar > 0 gesetzt ist, wird die IST-Fläche für die Berechnung verwendet.
 function getTabIstEinheiten(r) {
-  if (!r || !r.istHektar || !r.koerner || state.koernerProEinheit <= 0) return 0;
-  var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : state.fahrgassenEnabled;
-  var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : state.fahrgassenBreite;
+  if (!r || !r.istHektar || !r.koerner || AppGlobals.state.koernerProEinheit <= 0) return 0;
+  var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : AppGlobals.state.fahrgassenEnabled;
+  var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : AppGlobals.state.fahrgassenBreite;
   var faktor = 1;
   if (fgEnabled && fgBreite > 0) {
     faktor = computeFahrgassenFaktor(fgBreite);
   }
-  var einheiten = (r.istHektar * r.koerner) / state.koernerProEinheit;
+  var einheiten = (r.istHektar * r.koerner) / AppGlobals.state.koernerProEinheit;
   return Math.max(0, einheiten * faktor);
 }
 
@@ -164,7 +164,7 @@ function computeAllCarryovers() {
   if (_internal.carryoverCache !== null) return _internal.carryoverCache;
 
   var result = [];
-  for (let i = 0; i < state.reiter.length; i++) {
+  for (let i = 0; i < AppGlobals.state.reiter.length; i++) {
     result.push({ savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 });
   }
 
@@ -176,8 +176,8 @@ function computeAllCarryovers() {
   var totalSavedE = 0, totalSavedD = 0;
   var totalExcessE = 0, totalExcessD = 0;
 
-  for (let i = 0; i < state.reiter.length; i++) {
-    var t = state.reiter[i];
+  for (let i = 0; i < AppGlobals.state.reiter.length; i++) {
+    var t = AppGlobals.state.reiter[i];
     var istE = getTabIstEinheiten(t);
     var solE = getTabTotalEinheiten(t);
     var usedE = getTabUsedEinheiten(t);
@@ -197,8 +197,8 @@ function computeAllCarryovers() {
   // === PHASE 1: Ersparnisse verteilen (vorwärts durch Tabs) ===
   _internal.carryoverCache = result;
   var remSavedE = totalSavedE, remSavedD = totalSavedD;
-  for (let i = 0; i < state.reiter.length && (remSavedE > 0.05 || remSavedD > 0.05); i++) {
-    var t = state.reiter[i];
+  for (let i = 0; i < AppGlobals.state.reiter.length && (remSavedE > 0.05 || remSavedD > 0.05); i++) {
+    var t = AppGlobals.state.reiter[i];
     // Need for tab i: max(0, IST - used) wenn IST > 0, sonst max(0, SOLL - used)
     var istE = getTabIstEinheiten(t);
     var solE = getTabTotalEinheiten(t);
@@ -251,8 +251,8 @@ function computeAllCarryovers() {
     return 0;
   }
   var tabOrder2 = [];
-  for (let i = 0; i < state.reiter.length; i++) {
-    var t2 = state.reiter[i];
+  for (let i = 0; i < AppGlobals.state.reiter.length; i++) {
+    var t2 = AppGlobals.state.reiter[i];
     if (!t2.entries || t2.entries.length === 0) continue;
     var istE2 = getTabIstEinheiten(t2);
     var solE2 = getTabTotalEinheiten(t2);
@@ -393,8 +393,8 @@ function getTabNextTime(r) {
 function getTabKornerGesamt(r) {
   if (!r || !r.hektar || !r.koerner) return 0;
   var k = r.hektar * r.koerner;
-  var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : state.fahrgassenEnabled;
-  var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : state.fahrgassenBreite;
+  var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : AppGlobals.state.fahrgassenEnabled;
+  var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : AppGlobals.state.fahrgassenBreite;
   var faktor = 1;
   if (fgEnabled && fgBreite > 0) {
     faktor = computeFahrgassenFaktor(fgBreite);
@@ -405,18 +405,43 @@ function getTabKornerGesamt(r) {
 // Berechnet Verbrauchsraten (Einheiten/ha, Dünger/ha) für einen bestimmten Tab.
 // (portiert aus Inline-Code Z. 2349-2359)
 // Argumente:
-//   tabIdx — Index in state.reiter
+//   tabIdx — Index in AppGlobals.state.reiter
 // Rückgabe: { unitsPerHa, duengerPerHa }
 function getTabRates(tabIdx) {
-  var r = state.reiter[tabIdx];
+  var r = AppGlobals.state.reiter[tabIdx];
   if (!r) return { unitsPerHa: 0, duengerPerHa: 0 };
-  var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : state.fahrgassenEnabled;
-  var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : state.fahrgassenBreite;
+  var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : AppGlobals.state.fahrgassenEnabled;
+  var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : AppGlobals.state.fahrgassenBreite;
   var fgFactor = 1;
   if (fgEnabled && fgBreite > 0) {
     fgFactor = computeFahrgassenFaktor(fgBreite);
   }
-  var unitsPerHa = r.koerner * fgFactor / state.koernerProEinheit;
+  var unitsPerHa = r.koerner * fgFactor / AppGlobals.state.koernerProEinheit;
   var duengerPerHa = r.duenger || 0;
   return { unitsPerHa: unitsPerHa, duengerPerHa: duengerPerHa };
 }
+
+// Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
+Object.assign(window.AppGlobals, {
+  EPSILON_QUANTITY: EPSILON_QUANTITY,
+  _internal: _internal,
+  computeFahrgassenFaktor: computeFahrgassenFaktor,
+  getTotalEinheiten: getTotalEinheiten,
+  getTabTotalEinheiten: getTabTotalEinheiten,
+  getTabIstEinheiten: getTabIstEinheiten,
+  getTotalDuenger: getTotalDuenger,
+  getTabTotalDuenger: getTabTotalDuenger,
+  getDuengerProEinheit: getDuengerProEinheit,
+  getTabIstDuenger: getTabIstDuenger,
+  getTabUsedEinheiten: getTabUsedEinheiten,
+  getTabUsedDuenger: getTabUsedDuenger,
+  computeAllCarryovers: computeAllCarryovers,
+  invalidateCarryoverCache: invalidateCarryoverCache,
+  getCarryover: getCarryover,
+  isTabDone: isTabDone,
+  getTabLastEntryTime: getTabLastEntryTime,
+  getTabIstHektar: getTabIstHektar,
+  getTabNextTime: getTabNextTime,
+  getTabKornerGesamt: getTabKornerGesamt,
+  getTabRates: getTabRates,
+});

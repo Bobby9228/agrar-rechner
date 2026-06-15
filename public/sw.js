@@ -1,11 +1,12 @@
 // ⚠️ CACHE_VERSION muss bei jedem Release manuell gebumpet werden!
 // Bei Vergessen bekommen Nutzer die alte Version aus dem Cache.
 // alternativa: Build-Script das Hash/Zeitstempel injiziert.
-const CACHE_VERSION = 'agrar-rechner-v15';
+const CACHE_VERSION = 'agrar-rechner-v16';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
     '/css/styles.css',
+    '/js/app-globals.js',
     '/js/state.js',
     '/js/calculations.js',
     '/js/ui-handlers.js',

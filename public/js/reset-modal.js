@@ -77,7 +77,7 @@
 
     function _onResetTab() {
       closeResetModal();
-      if (typeof resetActiveTab === 'function') resetActiveTab();
+      if (typeof AppGlobals.resetActiveTab === 'function') AppGlobals.resetActiveTab();
     }
 
     function _onResetAll() {
@@ -94,7 +94,7 @@
       }
       // Zweite Stufe: ausführen.
       closeResetModal();
-      if (typeof resetAll === 'function') resetAll();
+      if (typeof AppGlobals.resetAll === 'function') AppGlobals.resetAll();
     }
 
     function _onOverlayClick(e) {
@@ -138,3 +138,21 @@
       }
       _modalLastTrigger = null;
     }
+
+// Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
+Object.assign(window.AppGlobals, {
+  _modalLastTrigger: _modalLastTrigger,
+  _fullResetArmed: _fullResetArmed,
+  _getModal: _getModal,
+  _getOverlay: _getOverlay,
+  _focusableInModal: _focusableInModal,
+  _trapFocus: _trapFocus,
+  _onKeydown: _onKeydown,
+  _disarmFullReset: _disarmFullReset,
+  _onResetTab: _onResetTab,
+  _onResetAll: _onResetAll,
+  _onOverlayClick: _onOverlayClick,
+  _onCancel: _onCancel,
+  openResetModal: openResetModal,
+  closeResetModal: closeResetModal,
+});

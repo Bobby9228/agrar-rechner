@@ -1,9 +1,8 @@
 // ============================================================================
 // RENDER-DRILL — Drill-Protokoll-Ansicht
 //
-// Lade-Reihenfolge: state.js → calculations.js → ui-handlers.js → render-tabs.js
-//   → render-results.js → render-drill.js (DIESE DATEI) → render-dashboard.js
-//   → main.js
+// Lade-Reihenfolge: state → calc → ui → render-tabs → render-results → render-drill (DIESE DATEI)
+//   → render-dashboard → main.js
 //
 // render-drill.js braucht: state, ui-handlers.js (drillRemove, drillCalcDebounced),
 //   calculations.js (getTabIstHektar, getTabTotalEinheiten, getTabIstEinheiten,
@@ -18,26 +17,26 @@
       var container = document.getElementById('drill_tab_list');
       if (!container) return;
       container.innerHTML = '';
-      state.reiter.forEach(function(r, i) {
+      AppGlobals.state.reiter.forEach(function(r, i) {
         var row = document.createElement('div');
         row.className = 'drill-tab-row';
         var prioBtn = document.createElement('button');
         prioBtn.className = 'drill-prio-btn';
         prioBtn.id = 'dtl_prio_' + i;
-        var initPrio = Object.prototype.hasOwnProperty.call(state.drillPriorities, String(i)) ? state.drillPriorities[i] : 0;
+        var initPrio = Object.prototype.hasOwnProperty.call(AppGlobals.state.drillPriorities, String(i)) ? AppGlobals.state.drillPriorities[i] : 0;
         prioBtn.textContent = initPrio === 0 ? '—' : String(initPrio);
         prioBtn.setAttribute('data-prio', String(initPrio));
         prioBtn.classList.toggle('active', initPrio > 0);
         prioBtn.onclick = function() {
           var current = parseInt(prioBtn.getAttribute('data-prio')) || 0;
-          var maxPrio = state.reiter.length;
+          var maxPrio = AppGlobals.state.reiter.length;
           var next = current >= maxPrio ? 0 : current + 1;
           prioBtn.setAttribute('data-prio', String(next));
           prioBtn.textContent = next === 0 ? '—' : String(next);
           prioBtn.classList.toggle('active', next > 0);
-          state.drillPriorities[i] = next;
-          saveState();
-          drillCalcAll();
+          AppGlobals.state.drillPriorities[i] = next;
+          AppGlobals.saveState();
+          AppGlobals.drillCalcAll();
         };
         row.appendChild(prioBtn);
         var nameWrap = document.createElement('div');
@@ -47,12 +46,12 @@
         label.textContent = r.name || ('Tab ' + (i + 1));
         nameWrap.appendChild(label);
         if (r.hektar > 0 && r.koerner > 0) {
-          var istSum = getTabIstHektar(r);
-          var totalE = istSum > 0 ? getTabIstEinheiten(r) : getTabTotalEinheiten(r);
+          var istSum = AppGlobals.getTabIstHektar(r);
+          var totalE = istSum > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getTabTotalEinheiten(r);
           var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-          var totalD = istSum > 0 ? getTabIstDuenger(r) : getTabTotalDuenger(r);
+          var totalD = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : AppGlobals.getTabTotalDuenger(r);
           var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-          var co = getCarryover(i);
+          var co = AppGlobals.getCarryover(i);
           var remaining = totalE - usedE;
           var remainingD = totalD - usedD;
           var statusEl = document.createElement('div');
@@ -63,12 +62,12 @@
             statusEl.classList.add('done');
           } else if (remainingD <= 0.05) {
             // Nur Saatgut übrig — Dünger-Anteil weglassen (Issue #266)
-            statusEl.textContent = 'braucht ' + fmt(Math.max(0, remaining)) + ' Einheiten';
+            statusEl.textContent = 'braucht ' + AppGlobals.fmt(Math.max(0, remaining)) + ' Einheiten';
           } else if (remaining <= 0.05) {
             // Nur Dünger übrig (seltener Fall, abgedeckt für Vollständigkeit)
-            statusEl.textContent = 'braucht ' + fmt(Math.max(0, remainingD)) + ' kg Dünger';
+            statusEl.textContent = 'braucht ' + AppGlobals.fmt(Math.max(0, remainingD)) + ' kg Dünger';
           } else {
-            statusEl.textContent = 'braucht ' + fmt(Math.max(0, remaining)) + ' Einheiten, ' + fmt(Math.max(0, remainingD)) + ' kg Dünger';
+            statusEl.textContent = 'braucht ' + AppGlobals.fmt(Math.max(0, remaining)) + ' Einheiten, ' + AppGlobals.fmt(Math.max(0, remainingD)) + ' kg Dünger';
           }
           nameWrap.appendChild(statusEl);
         }
@@ -80,7 +79,7 @@
         einheitIn.placeholder = 'Einheiten';
         einheitIn.dataset.tabIdx = String(i);
         einheitIn.oninput = function() {
-          drillCalcDebounced();
+          AppGlobals.drillCalcDebounced();
         };
         row.appendChild(einheitIn);
         var duengerIn = document.createElement('input');
@@ -90,7 +89,7 @@
         duengerIn.placeholder = 'kg Dünger';
         duengerIn.dataset.tabIdx = String(i);
         duengerIn.oninput = function() {
-          drillCalcDebounced();
+          AppGlobals.drillCalcDebounced();
         };
         row.appendChild(duengerIn);
         container.appendChild(row);
@@ -100,23 +99,23 @@
     // --- Render: Drill Summary ---
 
     function renderDrillSummary() {
-      var r = getActiveReiter();
+      var r = AppGlobals.getActiveReiter();
       // Issue #186: IST-Fläche (vom Input-Feld) hat Vorrang vor SOLL.
-      var istSum = getTabIstHektar(r);
-      var einheiten = istSum > 0 ? getTabIstEinheiten(r) : getActiveTotalEinheiten();
-      var duengerTotal = istSum > 0 ? getTabIstDuenger(r) : getActiveTotalDuenger();
+      var istSum = AppGlobals.getTabIstHektar(r);
+      var einheiten = istSum > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getActiveTotalEinheiten();
+      var duengerTotal = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : AppGlobals.getActiveTotalDuenger();
       var usedEinheit = (r && r.entries) ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
       var usedDuenger = (r && r.entries) ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
-      var istEinheiten = istSum > 0 ? getTabIstEinheiten(r) : einheiten;
-      var istDuenger = istSum > 0 ? getTabIstDuenger(r) : duengerTotal;
+      var istEinheiten = istSum > 0 ? AppGlobals.getTabIstEinheiten(r) : einheiten;
+      var istDuenger = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : duengerTotal;
       var remEinheit = Math.max(0, istEinheiten - usedEinheit);
       var remDuenger = Math.max(0, istDuenger - usedDuenger);
       var dsSollE = document.getElementById('ds_saat_total');
-      if (dsSollE) dsSollE.textContent = formatEinheit(einheiten);
+      if (dsSollE) dsSollE.textContent = AppGlobals.formatEinheit(einheiten);
       var dsUsedE = document.getElementById('ds_saat_used');
-      if (dsUsedE) dsUsedE.textContent = formatEinheit(usedEinheit);
+      if (dsUsedE) dsUsedE.textContent = AppGlobals.formatEinheit(usedEinheit);
       var dsRemE = document.getElementById('ds_saat_remaining');
-      if (dsRemE) dsRemE.textContent = formatEinheit(remEinheit);
+      if (dsRemE) dsRemE.textContent = AppGlobals.formatEinheit(remEinheit);
       var dsSollD = document.getElementById('ds_duenger_total');
       if (dsSollD) dsSollD.textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
       var dsUsedD = document.getElementById('ds_duenger_used');
@@ -131,10 +130,10 @@
       var dsSav = document.getElementById('ds_savings');
       if (dsSav) {
         if (istSum > 0 && r.hektar > istSum) {
-          var savE = getTabTotalEinheiten(r) - getTabIstEinheiten(r);
+          var savE = AppGlobals.getTabTotalEinheiten(r) - AppGlobals.getTabIstEinheiten(r);
           var savD = (r.hektar - istSum) * (r.duenger || 0);
           var savParts = [];
-          if (savE > 0.05) savParts.push(fmt(savE) + ' Einheiten Saatgut');
+          if (savE > 0.05) savParts.push(AppGlobals.fmt(savE) + ' Einheiten Saatgut');
           if (savD > 0.05) savParts.push(savD.toLocaleString('de-DE') + ' kg Dünger');
           if (savParts.length > 0) {
             dsSav.textContent = 'Ersparnis: ' + savParts.join(', ');
@@ -156,16 +155,16 @@
       var container = document.getElementById('drill_entries');
       if (!container) return;
       container.innerHTML = '';
-      var activeTab = state.reiter[state.activeReiter];
+      var activeTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
       var totalSummary = document.getElementById('ds_total_summary');
       // Issue #266-B2: Per-tab carryover/savings/excess divs at the top.
       // Shown for ALL tabs that have any carryover signal (savings source,
       // excess source, or carryover received from other tabs). Tests assert
       // these classes on the #drill_entries container.
-      for (var ci = 0; ci < state.reiter.length; ci++) {
-        var ct = state.reiter[ci];
+      for (var ci = 0; ci < AppGlobals.state.reiter.length; ci++) {
+        var ct = AppGlobals.state.reiter[ci];
         if (!ct) continue;
-        var cco = getCarryover(ci);
+        var cco = AppGlobals.getCarryover(ci);
         var isSavingsSource = (ct.istHektar > 0 && ct.hektar > 0 && ct.istHektar < ct.hektar);
         var isExcessSource = (ct.istHektar > 0 && ct.hektar > 0 && ct.istHektar > ct.hektar);
         if (isSavingsSource) {
@@ -173,10 +172,10 @@
           // the carryover calculation. Use getTabTotalEinheiten - getTabIstEinheiten
           // (both already apply the per-tab FG factor) so display and
           // carryover share one formula.
-          var sE = getTabTotalEinheiten(ct) - getTabIstEinheiten(ct);
+          var sE = AppGlobals.getTabTotalEinheiten(ct) - AppGlobals.getTabIstEinheiten(ct);
           var sD = (ct.hektar - ct.istHektar) * (ct.duenger || 0);
           var sParts = [];
-          if (sE > 0.05) sParts.push(fmt(sE) + ' Einheiten Saatgut');
+          if (sE > 0.05) sParts.push(AppGlobals.fmt(sE) + ' Einheiten Saatgut');
           if (sD > 0.05) sParts.push(sD.toLocaleString('de-DE') + ' kg Dünger');
           if (sParts.length > 0) {
             var sDiv = document.createElement('div');
@@ -187,7 +186,7 @@
         }
         if (cco.savedEinheit > 0.05 || cco.savedDuenger > 0.05) {
           var cParts = [];
-          if (cco.savedEinheit > 0.05) cParts.push(fmt(cco.savedEinheit) + ' Einheiten Saatgut');
+          if (cco.savedEinheit > 0.05) cParts.push(AppGlobals.fmt(cco.savedEinheit) + ' Einheiten Saatgut');
           if (cco.savedDuenger > 0.05) cParts.push(cco.savedDuenger.toLocaleString('de-DE') + ' kg Dünger');
           var cDiv = document.createElement('div');
           cDiv.className = 'drill-carryover';
@@ -199,10 +198,10 @@
           // the carryover calculation. Use getTabIstEinheiten - getTabTotalEinheiten
           // (both already apply the per-tab FG factor) so display and
           // carryover share one formula.
-          var eE = getTabIstEinheiten(ct) - getTabTotalEinheiten(ct);
+          var eE = AppGlobals.getTabIstEinheiten(ct) - AppGlobals.getTabTotalEinheiten(ct);
           var eD = (ct.istHektar - ct.hektar) * (ct.duenger || 0);
           var eParts = [];
-          if (eE > 0.05) eParts.push(fmt(eE) + ' Einheiten Saatgut');
+          if (eE > 0.05) eParts.push(AppGlobals.fmt(eE) + ' Einheiten Saatgut');
           if (eD > 0.05) eParts.push(eD.toLocaleString('de-DE') + ' kg Dünger');
           if (eParts.length > 0) {
             var eDiv = document.createElement('div');
@@ -226,8 +225,8 @@
         var usedE = activeTab.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
         var usedD = activeTab.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
         var parts = [];
-        if (usedHa > 0) parts.push(fmt(usedHa) + ' ha');
-        if (usedE > 0) parts.push(fmt(usedE) + ' Einheiten');
+        if (usedHa > 0) parts.push(AppGlobals.fmt(usedHa) + ' ha');
+        if (usedE > 0) parts.push(AppGlobals.fmt(usedE) + ' Einheiten');
         if (usedD > 0) parts.push(usedD.toLocaleString('de-DE') + ' kg Dünger');
         totalSummary.textContent = parts.join(' · ');
       }
@@ -254,11 +253,11 @@
         }
         if (entry.istHektar || entry.zaehlerStand) {
           var ha = entry.istHektar || entry.zaehlerStand;
-          parts2.push(fmt(ha) + ' ha');
+          parts2.push(AppGlobals.fmt(ha) + ' ha');
         } else if (entry.hektar > 0) {
-          parts2.push('@' + fmt(entry.hektar) + 'ha');
+          parts2.push('@' + AppGlobals.fmt(entry.hektar) + 'ha');
         }
-        parts2.push(formatEinheit(entry.einheit || 0));
+        parts2.push(AppGlobals.formatEinheit(entry.einheit || 0));
         if (entry.duenger > 0) {
           parts2.push((entry.duenger).toLocaleString('de-DE') + ' kg Dünger');
         }
@@ -267,7 +266,7 @@
         var removeBtn = document.createElement('button');
         removeBtn.className = 'btn-danger';
         removeBtn.textContent = '✕';
-        removeBtn.onclick = function() { drillRemove(state.activeReiter, actualIdx); };
+        removeBtn.onclick = function() { AppGlobals.drillRemove(AppGlobals.state.activeReiter, actualIdx); };
         row.appendChild(removeBtn);
         container.appendChild(row);
       });
@@ -275,10 +274,10 @@
 
     // --- Render: Machine Log (Maschinen-Protokoll) ---
 
-    // Issue #266-A: renderResults() must populate the #drill_machine_log container
+    // renderResults() must populate the #drill_machine_log container
     // so the test in tests/16-machine-log.test.js can find the entries, header,
     // delete buttons and prognose. The machine log is a flat global list
-    // (state.machineLog), independent of the per-tab entries — each row shows
+    // (AppGlobals.state.machineLog), independent of the per-tab entries — each row shows
     // what was filled into the machine, not the per-tab allocation.
     //
     // Prognose: for each entry, the cumulative tank level (after this fill)
@@ -289,8 +288,8 @@
       var container = document.getElementById('drill_machine_log');
       if (!container) return;
       container.innerHTML = '';
-      var log = state.machineLog || [];
-      var activeTab = state.reiter[state.activeReiter];
+      var log = AppGlobals.state.machineLog || [];
+      var activeTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
       if (log.length === 0) return;
       // Header
       var header = document.createElement('div');
@@ -301,13 +300,13 @@
       // Issue #266 (Cluster B): Fahrgassen-Faktor muss in unitsPerHa
       // berücksichtigt werden (Test 18: unitsPerHa = koerner * fgFactor /
       // koernerProEinheit). fgFactor ist 1 wenn FG aus, sonst (breite-1)/breite.
-      var fgEnabled = (activeTab && activeTab.fahrgassenEnabled !== undefined) ? activeTab.fahrgassenEnabled : state.fahrgassenEnabled;
-      var fgBreite = (activeTab && activeTab.fahrgassenBreite !== undefined) ? activeTab.fahrgassenBreite : state.fahrgassenBreite;
-      var fgFactor = (fgEnabled && fgBreite >= 2) ? computeFahrgassenFaktor(fgBreite) : 1;
+      var fgEnabled = (activeTab && activeTab.fahrgassenEnabled !== undefined) ? activeTab.fahrgassenEnabled : AppGlobals.state.fahrgassenEnabled;
+      var fgBreite = (activeTab && activeTab.fahrgassenBreite !== undefined) ? activeTab.fahrgassenBreite : AppGlobals.state.fahrgassenBreite;
+      var fgFactor = (fgEnabled && fgBreite >= 2) ? AppGlobals.computeFahrgassenFaktor(fgBreite) : 1;
       var unitsPerHa = 0;
       var duengerPerHa = 0;
       if (activeTab && activeTab.koerner > 0) {
-        unitsPerHa = activeTab.koerner * fgFactor / state.koernerProEinheit;
+        unitsPerHa = activeTab.koerner * fgFactor / AppGlobals.state.koernerProEinheit;
       }
       if (activeTab && activeTab.duenger > 0) {
         duengerPerHa = activeTab.duenger;
@@ -335,7 +334,7 @@
           var ha = entry.zaehlerStand || entry.hektar;
           parts.push(ha.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' ha');
         }
-        parts.push(formatEinheit(entry.einheit || 0));
+        parts.push(AppGlobals.formatEinheit(entry.einheit || 0));
         if (entry.duenger > 0) {
           parts.push(entry.duenger.toLocaleString('de-DE') + ' kg Dünger');
         }
@@ -345,7 +344,7 @@
         removeBtn.className = 'btn-danger';
         removeBtn.textContent = '✕';
         removeBtn.onclick = (function(idx) {
-          return function() { drillMachineRemove(idx); };
+          return function() { AppGlobals.drillMachineRemove(idx); };
         })(i);
         row.appendChild(removeBtn);
         container.appendChild(row);
@@ -361,11 +360,11 @@
         var prognoseParts = [];
         if (unitsPerHa > 0 && entry.einheit > 0) {
           var saatLeer = zaehler + cumEinheit / unitsPerHa;
-          prognoseParts.push('Saat leer bei ' + fmt(saatLeer) + ' ha');
+          prognoseParts.push('Saat leer bei ' + AppGlobals.fmt(saatLeer) + ' ha');
         }
         if (duengerPerHa > 0 && entry.duenger > 0) {
           var duengerLeer = zaehler + cumDuenger / duengerPerHa;
-          prognoseParts.push('Dünger leer bei ' + fmt(duengerLeer) + ' ha');
+          prognoseParts.push('Dünger leer bei ' + AppGlobals.fmt(duengerLeer) + ' ha');
         }
         if (prognoseParts.length > 0) {
           var prognose = document.createElement('div');
@@ -375,3 +374,11 @@
         }
       }
     }
+
+// Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
+Object.assign(window.AppGlobals, {
+  renderDrillTabList: renderDrillTabList,
+  renderDrillSummary: renderDrillSummary,
+  renderDrillLog: renderDrillLog,
+  renderMachineLog: renderMachineLog,
+});
