@@ -140,7 +140,7 @@ Körner nach Fahrgassen = Körner gesamt × (Fahrgassenbreite - 1) / Fahrgassenb
 
 ### `berechne()` — Hauptberechnung
 
-Wird durch `syncStateFromInputs()` und die Eingabe-Change-Handler ausgelöst (z. B. Hektar/Körner-Änderung, Tab-Wechsel). Validiert Eingaben, liest Input-Felder aus, speichert in State, ruft `renderResults()` auf.
+Wird im Live-Pfad nicht mehr aufgerufen — die `onInput*`-Handler in `ui-handlers.js` schreiben direkt in den State und emittieren `ENTRY_CHANGED`, woraufhin `AppGlobals.renderResults()` (siehe `render-results.js`) die Ergebnis-Karte rendert. `berechne()` existiert weiterhin auf `AppGlobals` als Back-Compat-Shim für die Test-Suite (siehe `tests/03-berechne.test.js`).
 
 **Validierung:**
 - Hektar > 0 erforderlich (ansonsten rote Fehlermeldung + Border)
