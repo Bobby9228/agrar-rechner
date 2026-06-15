@@ -164,7 +164,7 @@
       if (_internal.carryoverCache !== null) return _internal.carryoverCache;
 
       var result = [];
-      for (var i = 0; i < state.reiter.length; i++) {
+      for (let i = 0; i < state.reiter.length; i++) {
         result.push({ savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 });
       }
 
@@ -176,7 +176,7 @@
       var totalSavedE = 0, totalSavedD = 0;
       var totalExcessE = 0, totalExcessD = 0;
 
-      for (var i = 0; i < state.reiter.length; i++) {
+      for (let i = 0; i < state.reiter.length; i++) {
         var t = state.reiter[i];
         var istE = getTabIstEinheiten(t);
         var solE = getTabTotalEinheiten(t);
@@ -197,7 +197,7 @@
       // === PHASE 1: Ersparnisse verteilen (vorwärts durch Tabs) ===
       _internal.carryoverCache = result;
       var remSavedE = totalSavedE, remSavedD = totalSavedD;
-      for (var i = 0; i < state.reiter.length && (remSavedE > 0.05 || remSavedD > 0.05); i++) {
+      for (let i = 0; i < state.reiter.length && (remSavedE > 0.05 || remSavedD > 0.05); i++) {
         var t = state.reiter[i];
         // Need for tab i: max(0, IST - used) wenn IST > 0, sonst max(0, SOLL - used)
         var istE = getTabIstEinheiten(t);
@@ -251,7 +251,7 @@
         return 0;
       }
       var tabOrder2 = [];
-      for (var i = 0; i < state.reiter.length; i++) {
+      for (let i = 0; i < state.reiter.length; i++) {
         var t2 = state.reiter[i];
         if (!t2.entries || t2.entries.length === 0) continue;
         var istE2 = getTabIstEinheiten(t2);
