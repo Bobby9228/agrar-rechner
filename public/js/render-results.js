@@ -120,9 +120,8 @@
         return;
       }
       // Issue #266-A: hide results card when the active tab has no data,
-      // and show/hide the drill_summary block consistently. renderView()
-      // already handles drill_section / protokoll toggle; we only need to
-      // ensure results + drill_summary reflect the active tab's data state.
+      // and show/hide the drill_summary block consistently. We only need
+      // to ensure results + drill_summary reflect the active tab's data state.
       var resultsEl = document.getElementById('results');
       var drillSummaryEl = document.getElementById('drill_summary');
       var hasData = r.hektar > 0 && r.koerner > 0;
@@ -132,9 +131,7 @@
         return;
       }
       if (drillSummaryEl) drillSummaryEl.style.display = 'block';
-      if (AppGlobals.state.activeView !== 'protokoll') {
-        if (resultsEl) resultsEl.style.display = 'block';
-      }
+      if (resultsEl) resultsEl.style.display = 'block';
     }
 
     // Inline drill-entries im Result-Card-Body (r_drill_entries)

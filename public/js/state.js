@@ -7,7 +7,6 @@
 // Struktur:
 //   reiter[]       — Array von Feld-Tabs (jeder Tab = ein Feld)
 //   activeReiter   — Index des aktuell ausgewählten Tabs
-//   activeView     — 'protokoll' = Drill-Protokoll-Ansicht, sonst null
 //   fahrgassen*    — Fahrgassen-Korrektur
 //   einheitGroesse* — Anpassung der Körner-pro-Einheit
 //   machineLog[]   — Globales Maschinen-Protokoll
@@ -23,7 +22,6 @@ var state = {
     entries:    []
   }],
   activeReiter:   0,
-  activeView:     null,
   fahrgassenEnabled: false,
   fahrgassenBreite:   0,
   einheitGroesseEnabled: false,
@@ -103,7 +101,7 @@ function dismissSaveError() {
 // Erlaubte Keys (Whitelist) — alles andere wird im Reviver verworfen.
 // Hinzufügen neuer Felder erfordert eine bewusste Entscheidung.
 var ALLOWED_TOP_KEYS = [
-  'reiter', 'activeReiter', 'activeView',
+  'reiter', 'activeReiter',
   'fahrgassenEnabled', 'fahrgassenBreite',
   'einheitGroesseEnabled', 'koernerProEinheit',
   'machineLog', 'drillPriorities', 'iosInstallHintShown',
@@ -247,7 +245,7 @@ function loadState() {
     var lv = originalLv;
     // Migration 0→1: Einzelne Felder → Tab-Array
     if (!data.reiter && (data.hektar !== undefined || data.koerner !== undefined)) {
-      data = { reiter: [{ name: 'Tab 1', hektar: data.hektar || 0, istHektar: data.istHektar || 0, koerner: data.koerner || 0, duenger: data.duenger || 0, entries: data.entries || [] }], activeReiter: 0, activeView: null, fahrgassenEnabled: false, fahrgassenBreite: 0, einheitGroesseEnabled: false, koernerProEinheit: 50000, machineLog: data.machineLog || [], drillPriorities: {}, iosInstallHintShown: false, _lv: 1 };
+      data = { reiter: [{ name: 'Tab 1', hektar: data.hektar || 0, istHektar: data.istHektar || 0, koerner: data.koerner || 0, duenger: data.duenger || 0, entries: data.entries || [] }], activeReiter: 0, fahrgassenEnabled: false, fahrgassenBreite: 0, einheitGroesseEnabled: false, koernerProEinheit: 50000, machineLog: data.machineLog || [], drillPriorities: {}, iosInstallHintShown: false, _lv: 1 };
       lv = 1;
     }
     // Migration 1→2: Globale entries → per-Tab entries
@@ -296,7 +294,6 @@ function loadState() {
     data.activeReiter = activeReiterRaw >= 0 && activeReiterRaw < sanitizedReiter.length
       ? Math.floor(activeReiterRaw)
       : 0;
-    data.activeView = (data.activeView === 'protokoll') ? 'protokoll' : null;
     if (data.fahrgassenEnabled === undefined) data.fahrgassenEnabled = false;
     if (data.fahrgassenBreite === undefined) data.fahrgassenBreite = 0;
     data.fahrgassenEnabled = sanitizeBoolean(data.fahrgassenEnabled, false);

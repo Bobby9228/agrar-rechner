@@ -407,7 +407,7 @@
       if (sheet) sheet.classList.add('open');
       if (overlay) overlay.classList.add('open');
       document.body.style.overflow = 'hidden';
-      // Triggere Initial-Render der Tab-Liste (früher in switchToProtokoll())
+      // Triggere Initial-Render der Tab-Liste (Issue #291)
       AppGlobals.renderDrillTabList();
       // Move focus into the dialog for accessibility (Issue #291)
       // Use setTimeout to avoid jsdom focus-event side effects
