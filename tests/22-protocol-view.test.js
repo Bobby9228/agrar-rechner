@@ -123,14 +123,15 @@ describe('drill_section visibility', () => {
     expect(drillSection.style.display).toBe('none');
   });
 
-  it('drill_section is still hidden when the sheet is open (sheet slides over the page; drill is rendered inside)', () => {
-    // The protokoll sheet is a slide-in overlay; drill_section visibility
-    // is driven by renderResults/renderDrillSummary, not by openProtokoll.
-    // This test guards against a regression where opening the sheet
-    // accidentally toggles drill_section.style.display.
+  it('drill_section is shown when the sheet is open (Issue #291 follow-up: inline display:none toggled by openProtokoll/closeProtokoll)', () => {
+    // After the Refactor, the protokoll sheet is a slide-in overlay; the
+    // inline style="display:none" on drill_section is toggled off in
+    // openProtokoll() so the inputs are visible inside the sheet. This
+    // guards against a regression where the sheet opens but the content
+    // stays hidden (empty-header bug seen in the mobile screenshot).
     w.openProtokoll();
     const drillSection = w.document.getElementById('drill_section');
-    expect(drillSection.style.display).toBe('none');
+    expect(drillSection.style.display).not.toBe('none');
   });
 
   it('drill_section is hidden after closeProtokoll()', () => {

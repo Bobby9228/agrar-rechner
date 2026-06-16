@@ -406,6 +406,11 @@
       _protokollPrevFocus = document.activeElement;
       if (sheet) sheet.classList.add('open');
       if (overlay) overlay.classList.add('open');
+      // Show drill_section content inside the sheet (Issue #291 follow-up:
+      // inline style="display:none" on drill_section is the default; we toggle
+      // it on open so the inputs are visible, and toggle off on close).
+      var drillSection = document.getElementById('drill_section');
+      if (drillSection) drillSection.style.display = '';
       document.body.style.overflow = 'hidden';
       // Triggere Initial-Render der Tab-Liste (Issue #291)
       AppGlobals.renderDrillTabList();
@@ -426,6 +431,10 @@
       var overlay = document.getElementById('protokoll_overlay');
       if (sheet) sheet.classList.remove('open');
       if (overlay) overlay.classList.remove('open');
+      // Hide drill_section again so it doesn't bleed into the main view
+      // when the sheet is closed (Issue #291 follow-up).
+      var drillSection = document.getElementById('drill_section');
+      if (drillSection) drillSection.style.display = 'none';
       document.body.style.overflow = '';
       document.removeEventListener('keydown', _protokollKeyHandler);
       // Restore focus to the element that opened the sheet
