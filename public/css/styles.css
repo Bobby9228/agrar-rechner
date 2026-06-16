@@ -1020,6 +1020,73 @@ font-size: 0.75rem;
     .dashboard-close:active {
       background: var(--color-bg-hover);
     }
+
+    /* Protokoll (Issue #291)
+       Z-Index: Protokoll-Overlay/Sheet eine Stufe unter Dashboard (148/149 vs. 150/151).
+       Grund: Dashboard hat Priorität — wenn beide Sheets versehentlich gleichzeitig
+       geöffnet werden, verdeckt das Dashboard das Protokoll-Sheet, damit die
+       jüngste User-Aktion (Dashboard) zu sehen ist. */
+    .protokoll-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 148;
+    }
+    .protokoll-overlay.open {
+      display: block;
+    }
+    .protokoll-sheet {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--color-card-bg);
+      border-radius: 20px 20px 0 0;
+      max-height: 80vh;
+      overflow-y: auto;
+      z-index: 149;
+      padding: 0 0 max(20px, env(safe-area-inset-bottom));
+    }
+    .protokoll-sheet.open {
+      display: block;
+    }
+    .protokoll-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 20px 16px;
+      border-bottom: 2px solid var(--color-border-soft);
+      position: sticky;
+      top: 0;
+      background: var(--color-card-bg);
+      border-radius: 20px 20px 0 0;
+    }
+    .protokoll-header h2 {
+      margin: 0;
+      padding: 0;
+      border: none;
+      font-size: 1.1rem;
+      color: var(--color-primary-dark);
+    }
+    .protokoll-close {
+      background: var(--color-border-soft);
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: var(--color-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .protokoll-close:active {
+      background: var(--color-bg-hover);
+    }
+
     .dashboard-open-btn {
       background: var(--color-primary-dark);
       color: var(--color-ios-banner-text);
