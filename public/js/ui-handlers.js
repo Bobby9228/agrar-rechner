@@ -87,6 +87,10 @@
       if (idx === AppGlobals.state.activeReiter && AppGlobals.state.activeView !== 'protokoll') return;
       syncStateFromInputs();
       AppGlobals.state.activeReiter = idx;
+      // Beim Tab-Wechsel aus der Protokoll-Ansicht zurück in die Feld-Ansicht
+      // (Issue #291 View-Toggle-Pattern: Tab-Klick = Feld-Tab zeigen, Protokoll-Tab
+      // ist kein eigener Reiter sondern ein View-Toggle).
+      AppGlobals.state.activeView = null;
       AppGlobals.appEmit('TAB_CHANGED', { tabIdx: idx });
     }
 
