@@ -1,62 +1,139 @@
 /**
- * Tests for the Protokoll-Sheet (Issue #291) — openProtokoll / closeProtokoll.
+ * Tests for renderView() — show/hide logic for field vs. protokoll views.
+ * Also tests switchToProtokoll() and related view switching.
  *
- * Note: The old per-view renderer and the per-view state field that lived
- * in `w.state` were removed in the sheet-architecture refactor (the
- * Protokoll tab is now a slide-in sheet with an overlay). openProtokoll()
- * and closeProtokoll() in public/js/render-drill.js drive the sheet.
- *
- * This file covers sheet open/close semantics. Visibility of inner elements
- * (drill_section, results, sticky footer) is covered by tests/22-protocol-view.test.js
- * and the regular render-* tests.
+ * View-Toggle-Pattern (Pre-#291, Issue #291-Revert):
+ *   - state.activeView === 'protokoll' → drill_section sichtbar, alle
+ *     anderen Cards auf display:none (results auch, selbst mit Daten)
+ *   - state.activeView === null → Feld-Ansicht, Cards sichtbar je nach
+ *     vorhandenen Daten
+ *   - protokoll_tab_btn bekommt die `active`-Klasse wenn activeView='protokoll'
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createDom } from './helpers.js';
 
-function getSheet(w) { return w.document.getElementById('protokoll_sheet'); }
-function getOverlay(w) { return w.document.getElementById('protokoll_overlay'); }
-
-describe('Protokoll sheet open/close', () => {
+describe('renderView', () => {
   let w;
   beforeEach(() => { w = createDom().window; });
 
-  it('is closed by default on a fresh page', () => {
-    expect(getSheet(w).classList.contains('open')).toBe(false);
-    expect(getOverlay(w).classList.contains('open')).toBe(false);
+  it('hides input cards when in protokoll view (drill_section stays visible)', () => {
+    w.state.activeView = 'protokoll';
+    w.renderView();
+    var cards = w.document.querySelectorAll('.card');
+    cards.forEach(function(c) {
+      if (c.id === 'drill_section') {
+        // drill_section is visible in protokoll mode — it contains the drill protocol
+        expect(c.style.display).toBe('block');
+      } else {
+        expect(c.style.display).toBe('none');
+      }
+    });
   });
 
-  it('openProtokoll() adds .open to sheet and overlay and locks body scroll', () => {
-    w.openProtokoll();
-    expect(getSheet(w).classList.contains('open')).toBe(true);
-    expect(getOverlay(w).classList.contains('open')).toBe(true);
-    expect(w.document.body.style.overflow).toBe('hidden');
+  it('shows cards when in field view', () => {
+    w.state.activeView = null;
+    w.renderView();
+    var cards = w.document.querySelectorAll('.card');
+    var anyVisible = false;
+    cards.forEach(function(c) {
+      if (c.style.display !== 'none') anyVisible = true;
+    });
+    expect(anyVisible).toBe(true);
   });
 
-  it('closeProtokoll() removes .open from sheet and overlay and restores body scroll', () => {
-    w.openProtokoll();
-    w.closeProtokoll();
-    expect(getSheet(w).classList.contains('open')).toBe(false);
-    expect(getOverlay(w).classList.contains('open')).toBe(false);
-    expect(w.document.body.style.overflow).toBe('');
+  it('shows results when tab has data and not in protokoll', () => {
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
+    w.state.activeView = null;
+    w.renderView();
+    expect(w.document.getElementById('results').style.display).toBe('block');
   });
 
-  it('openProtokoll is idempotent (calling it twice keeps the sheet open)', () => {
-    w.openProtokoll();
-    w.openProtokoll();
-    expect(getSheet(w).classList.contains('open')).toBe(true);
+  it('hides results when in protokoll view even with data', () => {
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
+    w.state.activeView = 'protokoll';
+    w.renderView();
+    expect(w.document.getElementById('results').style.display).toBe('none');
   });
 
-  it('closeProtokoll is a no-op when the sheet is already closed', () => {
-    expect(() => w.closeProtokoll()).not.toThrow();
-    expect(getSheet(w).classList.contains('open')).toBe(false);
+  it('hides results when no data', () => {
+    w.state.activeView = null;
+    w.renderView();
+    expect(w.document.getElementById('results').style.display).toBe('none');
   });
 
-  it('does not save anything to localStorage on open/close (sheet state is DOM-only)', () => {
-    const { window: w, store } = createDom();
-    w.openProtokoll();
-    w.closeProtokoll();
-    // Sheet state is intentionally not persisted — opening the page
-    // starts with the sheet closed, regardless of last session.
-    expect(store['agrar_rechner']).toBeUndefined();
+  it('shows drill_section when in protokoll view', () => {
+    w.state.activeView = 'protokoll';
+    w.renderView();
+    expect(w.document.getElementById('drill_section').style.display).toBe('block');
+  });
+
+  it('hides drill_section when not in protokoll view', () => {
+    w.state.activeView = null;
+    w.renderView();
+    expect(w.document.getElementById('drill_section').style.display).toBe('none');
+  });
+
+  it('shows drill_mask when in protokoll view', () => {
+    w.state.activeView = 'protokoll';
+    w.renderView();
+    expect(w.document.getElementById('drill_mask').style.display).toBe('');
+  });
+
+  it('hides drill_mask when not in protokoll view', () => {
+    w.state.activeView = null;
+    w.renderView();
+    expect(w.document.getElementById('drill_mask').style.display).toBe('none');
+  });
+});
+
+describe('switchToProtokoll', () => {
+  let w;
+  beforeEach(() => { w = createDom().window; });
+
+  it('switches to protokoll view', () => {
+    w.switchToProtokoll();
+    expect(w.state.activeView).toBe('protokoll');
+  });
+
+  it('switches back from protokoll to field', () => {
+    w.switchToProtokoll(); // enter protokoll
+    w.switchToProtokoll(); // leave protokoll
+    expect(w.state.activeView).toBeNull();
+  });
+
+  it('syncs state from inputs before switching', () => {
+    w.document.getElementById('hektar').value = '15';
+    w.document.getElementById('koerner').value = '80000';
+    w.switchToProtokoll();
+    expect(w.state.reiter[0].hektar).toBe(15);
+    expect(w.state.reiter[0].koerner).toBe(80000);
+  });
+
+  it('renders drill tab list when entering protokoll', () => {
+    w.switchToProtokoll();
+    // renderDrillTabList should have been called — check that drill_tab_list has content
+    var container = w.document.getElementById('drill_tab_list');
+    expect(container).toBeTruthy();
+    // Should have rendered priority buttons
+    expect(w.document.getElementById('dtl_prio_0')).toBeTruthy();
+  });
+
+  it('saves state via saveState()', () => {
+    w.switchToProtokoll();
+    var stored = JSON.parse(w.localStorage.getItem('agrar_rechner'));
+    expect(stored.activeView).toBe('protokoll');
+  });
+
+  it('marks protokoll tab as active', () => {
+    w.switchToProtokoll();
+    var protokollBtn = w.document.getElementById('protokoll_tab_btn');
+    expect(protokollBtn.classList.contains('active')).toBe(true);
+  });
+
+  it('unmarks protokoll tab when switching back', () => {
+    w.switchToProtokoll();
+    w.switchToProtokoll();
+    var protokollBtn = w.document.getElementById('protokoll_tab_btn');
+    expect(protokollBtn.classList.contains('active')).toBe(false);
   });
 });

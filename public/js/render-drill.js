@@ -375,82 +375,10 @@
       }
     }
 
-    // Öffnet das Protokoll-Sheet (Issue #291).
-    // Pattern analog zu openDashboard() in render-dashboard.js Z. 245-262.
-    var _protokollPrevFocus = null;
-
-    // Trap Tab/Shift+Tab inside the protokoll dialog (Issue #291)
-    function _protokollKeyHandler(e) {
-      if (e.key === 'Escape') {
-        closeProtokoll();
-        e.preventDefault();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-      var sheet = document.getElementById('protokoll_sheet');
-      if (!sheet) return;
-      var focusable = sheet.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-      if (focusable.length === 0) return;
-      var first = focusable[0];
-      var last = focusable[focusable.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first) { last.focus(); e.preventDefault(); }
-      } else {
-        if (document.activeElement === last) { first.focus(); e.preventDefault(); }
-      }
-    }
-
-    function openProtokoll() {
-      var sheet = document.getElementById('protokoll_sheet');
-      var overlay = document.getElementById('protokoll_overlay');
-      _protokollPrevFocus = document.activeElement;
-      if (sheet) sheet.classList.add('open');
-      if (overlay) overlay.classList.add('open');
-      // Show drill_section content inside the sheet (Issue #291 follow-up:
-      // inline style="display:none" on drill_section is the default; we toggle
-      // it on open so the inputs are visible, and toggle off on close).
-      var drillSection = document.getElementById('drill_section');
-      if (drillSection) drillSection.style.display = '';
-      document.body.style.overflow = 'hidden';
-      // Triggere Initial-Render der Tab-Liste (Issue #291)
-      AppGlobals.renderDrillTabList();
-      // Move focus into the dialog for accessibility (Issue #291)
-      // Use setTimeout to avoid jsdom focus-event side effects
-      if (sheet) {
-        setTimeout(function() {
-          var closeBtn = sheet.querySelector('.protokoll-close');
-          if (closeBtn) closeBtn.focus();
-        }, 0);
-      }
-      document.addEventListener('keydown', _protokollKeyHandler);
-    }
-
-    // Schließt das Protokoll-Sheet.
-    function closeProtokoll() {
-      var sheet = document.getElementById('protokoll_sheet');
-      var overlay = document.getElementById('protokoll_overlay');
-      if (sheet) sheet.classList.remove('open');
-      if (overlay) overlay.classList.remove('open');
-      // Hide drill_section again so it doesn't bleed into the main view
-      // when the sheet is closed (Issue #291 follow-up).
-      var drillSection = document.getElementById('drill_section');
-      if (drillSection) drillSection.style.display = 'none';
-      document.body.style.overflow = '';
-      document.removeEventListener('keydown', _protokollKeyHandler);
-      // Restore focus to the element that opened the sheet
-      if (_protokollPrevFocus && _protokollPrevFocus.focus) {
-        _protokollPrevFocus.focus();
-        _protokollPrevFocus = null;
-      }
-    }
-
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 Object.assign(window.AppGlobals, {
   renderDrillTabList: renderDrillTabList,
   renderDrillSummary: renderDrillSummary,
   renderDrillLog: renderDrillLog,
   renderMachineLog: renderMachineLog,
-  _protokollKeyHandler: _protokollKeyHandler,
-  openProtokoll: openProtokoll,
-  closeProtokoll: closeProtokoll,
 });

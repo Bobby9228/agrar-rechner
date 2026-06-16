@@ -18,6 +18,7 @@ const LEGACY_DATA = {
   _lv: 4,
   reiter: [{ name: 'Tab 1', hektar: 12.5, istHektar: 12.5, koerner: 90000, duenger: 200, entries: [] }],
   activeReiter: 0,
+  activeView: null,
   fahrgassenEnabled: false,
   fahrgassenBreite: 0,
   einheitGroesseEnabled: false,

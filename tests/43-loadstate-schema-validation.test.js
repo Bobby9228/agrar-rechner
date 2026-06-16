@@ -251,6 +251,55 @@ describe('loadState() schema validation (Issue #237)', () => {
         });
     });
 
+    describe('activeView coercion (Pre-#291 View-Toggle pattern)', () => {
+        it('coerces activeView to null unless literally "protokoll"', () => {
+            store['agrar_rechner'] = JSON.stringify({
+                reiter: [{ name: 'Tab 1', entries: [] }],
+                activeView: 'random-string',
+                _lv: 4
+            });
+            w.loadState();
+            expect(w.state.activeView).toBeNull();
+        });
+
+        it('preserves activeView = "protokoll"', () => {
+            store['agrar_rechner'] = JSON.stringify({
+                reiter: [{ name: 'Tab 1', entries: [] }],
+                activeView: 'protokoll',
+                _lv: 4
+            });
+            w.loadState();
+            expect(w.state.activeView).toBe('protokoll');
+        });
+
+        it('coerces non-string activeView values (numbers, objects, arrays) to null', () => {
+            store['agrar_rechner'] = JSON.stringify({
+                reiter: [{ name: 'Tab 1', entries: [] }],
+                activeView: 42,
+                _lv: 4
+            });
+            w.loadState();
+            expect(w.state.activeView).toBeNull();
+
+            store['agrar_rechner'] = JSON.stringify({
+                reiter: [{ name: 'Tab 1', entries: [] }],
+                activeView: { evil: true },
+                _lv: 4
+            });
+            w.loadState();
+            expect(w.state.activeView).toBeNull();
+        });
+
+        it('defaults activeView to null when missing from persisted state', () => {
+            store['agrar_rechner'] = JSON.stringify({
+                reiter: [{ name: 'Tab 1', entries: [] }],
+                _lv: 4
+            });
+            w.loadState();
+            expect(w.state.activeView).toBeNull();
+        });
+    });
+
     describe('Missing / malformed fields use safe defaults', () => {
         it('fills missing tab fields with zero defaults', () => {
             store['agrar_rechner'] = JSON.stringify({

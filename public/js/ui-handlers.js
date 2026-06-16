@@ -84,10 +84,25 @@
     }
 
     function switchReiter(idx) {
-      if (idx === AppGlobals.state.activeReiter) return;
+      if (idx === AppGlobals.state.activeReiter && AppGlobals.state.activeView !== 'protokoll') return;
       syncStateFromInputs();
       AppGlobals.state.activeReiter = idx;
+      // Beim Tab-Wechsel aus der Protokoll-Ansicht zurück in die Feld-Ansicht
+      // (Issue #291 View-Toggle-Pattern: Tab-Klick = Feld-Tab zeigen, Protokoll-Tab
+      // ist kein eigener Reiter sondern ein View-Toggle).
+      AppGlobals.state.activeView = null;
       AppGlobals.appEmit('TAB_CHANGED', { tabIdx: idx });
+    }
+
+    function switchToProtokoll() {
+      syncStateFromInputs();
+      if (AppGlobals.state.activeView === 'protokoll') {
+        AppGlobals.state.activeView = null;
+      } else {
+        AppGlobals.state.activeView = 'protokoll';
+        AppGlobals.renderDrillTabList();
+      }
+      AppGlobals.appEmit('VIEW_CHANGED', { view: AppGlobals.state.activeView });
     }
 
     function renameReiter(idx, name) {
@@ -925,6 +940,7 @@ Object.assign(window.AppGlobals, {
   removeReiter: removeReiter,
   switchReiter: switchReiter,
   renameReiter: renameReiter,
+  switchToProtokoll: switchToProtokoll,
   fahrgassenToggle: fahrgassenToggle,
   fahrgassenUpdate: fahrgassenUpdate,
   einheitGroesseToggle: einheitGroesseToggle,

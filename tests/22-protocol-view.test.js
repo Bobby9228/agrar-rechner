@@ -1,268 +1,223 @@
 /**
- * Test 22: Protocol view — openProtokoll / closeProtokoll (Issue #291 sheet architecture)
+ * Test 22: Protocol view — switchToProtokoll + renderView
  *
- * The Protokoll-Sheet is opened via the 🔧 tab button. Tests cover:
- *   - openProtokoll() adds the .open class to #protokoll_sheet and #protokoll_overlay,
- *     locks body scroll, renders the drill tab list.
- *   - closeProtokoll() removes the .open class, restores body scroll, focuses back.
- *   - Escape key (via _protokollKeyHandler) closes the sheet.
- *   - Clicks on the overlay fire closeProtokoll() (HTML onclick handler).
- *   - The drill_section stays hidden (display:none) when the sheet is closed —
- *     it becomes visible only inside the open sheet via renderResults.
+ * The Protokoll view is a View-Toggle (Issue #291, Pre-#291 pattern): the
+ * 🔧 tab button is NOT a separate tab; it's a view-mode toggle that swaps
+ * the main content between "Feld" (input/results cards) and "Protokoll"
+ * (drill_section). `state.activeView` tracks the current view:
+ *   - 'protokoll' → Protokoll-Ansicht (drill_section sichtbar)
+ *   - null        → Feld-Ansicht (input/results cards sichtbar)
+ *
+ * Tests cover:
+ *   - switchToProtokoll() sets/clears state.activeView
+ *   - renderView() toggles .card visibility (drill_section on, rest off)
+ *   - renderView() hides results even when tab has data, when in protokoll
+ *   - state.activeView roundtrips through localStorage
+ *   - switchReiter() resets activeView to null (Tab-Wechsel beendet Protokoll)
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { createDom } from './helpers.js';
 
-function getSheet(w) { return w.document.getElementById('protokoll_sheet'); }
-function getOverlay(w) { return w.document.getElementById('protokoll_overlay'); }
-function sheetIsOpen(w) { return getSheet(w).classList.contains('open'); }
-function overlayIsOpen(w) { return getOverlay(w).classList.contains('open'); }
+function getDrillSection(w) { return w.document.getElementById('drill_section'); }
+function getDrillMask(w) { return w.document.getElementById('drill_mask'); }
+function getResults(w) { return w.document.getElementById('results'); }
+function getProtokollBtn(w) { return w.document.getElementById('protokoll_tab_btn'); }
 
-describe('openProtokoll()', () => {
+describe('switchToProtokoll()', () => {
   let w;
   beforeEach(() => { w = createDom().window; });
 
-  it('opens the protokoll sheet on openProtokoll()', () => {
-    w.openProtokoll();
+  it('switches to protokoll view from field view', () => {
+    w.document.getElementById('hektar').value = '10';
+    w.document.getElementById('koerner').value = '90000';
+    w.berechne();
 
-    expect(sheetIsOpen(w)).toBe(true);
-    expect(overlayIsOpen(w)).toBe(true);
-    expect(w.document.body.style.overflow).toBe('hidden');
+    expect(w.state.activeView).toBeNull();
+    w.switchToProtokoll();
+
+    expect(w.state.activeView).toBe('protokoll');
   });
 
-  it('renders the drill tab list when opening the sheet', () => {
+  it('switches back to field view when already in protokoll', () => {
+    w.switchToProtokoll(); // → protokoll
+    expect(w.state.activeView).toBe('protokoll');
+
+    w.switchToProtokoll(); // → back to null
+    expect(w.state.activeView).toBeNull();
+  });
+
+  it('calls renderDrillTabList when entering protokoll', () => {
     w.addReiter();
     w.state.reiter[0].hektar = 10;
     w.state.reiter[0].koerner = 90000;
     w.state.reiter[0].duenger = 150;
     w.saveState();
 
-    w.openProtokoll();
+    w.switchToProtokoll();
 
     // renderDrillTabList should have created elements
     expect(w.document.getElementById('dtl_prio_0')).toBeTruthy();
     expect(w.document.getElementById('dtl_e_0')).toBeTruthy();
   });
 
-  it('opens the sheet on click of the 🔧 Protokoll tab button', () => {
-    const tabBtn = w.document.getElementById('protokoll_tab_btn');
-    expect(tabBtn).toBeTruthy();
-    // onclick="openProtokoll()" is wired in the HTML
-    tabBtn.click();
-    expect(sheetIsOpen(w)).toBe(true);
+  it('syncs state from inputs before switching', () => {
+    w.document.getElementById('hektar').value = '15';
+    w.document.getElementById('koerner').value = '80000';
+
+    w.switchToProtokoll();
+
+    // syncStateFromInputs reads hektar/koerner inputs into state
+    expect(w.state.reiter[0].hektar).toBe(15);
+    expect(w.state.reiter[0].koerner).toBe(80000);
   });
 
-  it('opens the sheet on click of the overlay — overlay click triggers closeProtokoll, not open', () => {
-    // The overlay's onclick handler is closeProtokoll (HTML attribute).
-    // Document the contract: opening is via the tab button, not the overlay.
-    const overlay = getOverlay(w);
-    expect(overlay.getAttribute('onclick')).toContain('closeProtokoll');
-  });
-});
+  it('persists view state to localStorage', () => {
+    w.document.getElementById('hektar').value = '10';
+    w.document.getElementById('koerner').value = '90000';
+    w.berechne(); // Ensure state is initialized and sv() works
 
-describe('closeProtokoll()', () => {
-  let w;
-  beforeEach(() => { w = createDom().window; });
+    w.switchToProtokoll();
 
-  it('closes the protokoll sheet on closeProtokoll()', () => {
-    w.openProtokoll();
-    expect(sheetIsOpen(w)).toBe(true);
-
-    w.closeProtokoll();
-
-    expect(sheetIsOpen(w)).toBe(false);
-    expect(overlayIsOpen(w)).toBe(false);
-    expect(w.document.body.style.overflow).toBe('');
+    const saved = JSON.parse(w.localStorage.getItem('agrar_rechner'));
+    expect(saved.activeView).toBe('protokoll');
   });
 
-  it('is a no-op when the sheet is already closed', () => {
-    expect(sheetIsOpen(w)).toBe(false);
-    expect(() => w.closeProtokoll()).not.toThrow();
-    expect(sheetIsOpen(w)).toBe(false);
+  it('marks protokoll tab button as active when entering protokoll', () => {
+    w.switchToProtokoll();
+    expect(getProtokollBtn(w).classList.contains('active')).toBe(true);
   });
 
-  it('closes the sheet when the close button is clicked', () => {
-    w.openProtokoll();
-    const closeBtn = w.document.querySelector('.protokoll-close');
-    expect(closeBtn).toBeTruthy();
-    expect(closeBtn.getAttribute('onclick')).toContain('closeProtokoll');
-    closeBtn.click();
-    expect(sheetIsOpen(w)).toBe(false);
+  it('unmarks protokoll tab button when leaving protokoll', () => {
+    w.switchToProtokoll();
+    w.switchToProtokoll();
+    expect(getProtokollBtn(w).classList.contains('active')).toBe(false);
   });
 });
 
-describe('Protokoll sheet — keyboard handling', () => {
+describe('renderView()', () => {
   let w;
   beforeEach(() => { w = createDom().window; });
 
-  it('closes the protokoll sheet on Escape key', () => {
-    w.openProtokoll();
-    expect(sheetIsOpen(w)).toBe(true);
+  it('hides all cards except drill_section when in protokoll view', () => {
+    w.document.getElementById('hektar').value = '10';
+    w.document.getElementById('koerner').value = '90000';
+    w.berechne();
+    w.switchToProtokoll();
 
-    // _protokollKeyHandler is exposed on AppGlobals for testability
-    w.AppGlobals._protokollKeyHandler({ key: 'Escape', preventDefault: () => {} });
-
-    expect(sheetIsOpen(w)).toBe(false);
+    const cards = w.document.querySelectorAll('.card');
+    cards.forEach(c => {
+      if (c.id === 'drill_section') {
+        expect(c.style.display).toBe('block');
+      } else {
+        expect(c.style.display).toBe('none');
+      }
+    });
   });
 
-  it('does not close on non-Escape keys', () => {
-    w.openProtokoll();
-    w.AppGlobals._protokollKeyHandler({ key: 'Enter', preventDefault: () => {} });
-    w.AppGlobals._protokollKeyHandler({ key: ' ', preventDefault: () => {} });
-    expect(sheetIsOpen(w)).toBe(true);
+  it('hides results in protokoll mode even with data', () => {
+    w.document.getElementById('hektar').value = '10';
+    w.document.getElementById('koerner').value = '90000';
+    w.berechne();
+
+    w.state.activeView = 'protokoll';
+    w.renderView();
+
+    expect(getResults(w).style.display).toBe('none');
+  });
+
+  it('shows drill section in protokoll mode', () => {
+    w.state.activeView = 'protokoll';
+    w.renderView();
+    expect(getDrillSection(w).style.display).toBe('block');
+  });
+
+  it('shows drill mask in protokoll mode (clears display:none)', () => {
+    w.state.activeView = 'protokoll';
+    w.renderView();
+    // drill_mask starts with style="display:none" in the HTML — renderView
+    // resets it to '' (default) when in protokoll mode
+    expect(getDrillMask(w).style.display).toBe('');
+  });
+
+  it('hides drill section in field mode', () => {
+    w.renderView();
+    expect(getDrillSection(w).style.display).toBe('none');
+  });
+
+  it('shows results in field mode when tab has data', () => {
+    w.document.getElementById('hektar').value = '10';
+    w.document.getElementById('koerner').value = '90000';
+    w.berechne();
+
+    expect(getResults(w).style.display).toBe('block');
+  });
+
+  it('hides results when no data in field mode', () => {
+    w.renderView();
+    expect(getResults(w).style.display).toBe('none');
   });
 });
 
-describe('drill_section visibility', () => {
+describe('switchReiter resets activeView from protokoll', () => {
   let w;
   beforeEach(() => { w = createDom().window; });
 
-  it('does not show drill_section outside the open protokoll sheet', () => {
-    // drill_section has style="display:none" in the HTML by default.
-    const drillSection = w.document.getElementById('drill_section');
-    expect(drillSection.style.display).toBe('none');
-  });
+  it('switchReiter(0) when in protokoll view returns to field view (same tab)', () => {
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
+    w.switchToProtokoll();
+    expect(w.state.activeView).toBe('protokoll');
+    expect(w.state.activeReiter).toBe(0);
 
-  it('drill_section is shown when the sheet is open (Issue #291 follow-up: inline display:none toggled by openProtokoll/closeProtokoll)', () => {
-    // After the Refactor, the protokoll sheet is a slide-in overlay; the
-    // inline style="display:none" on drill_section is toggled off in
-    // openProtokoll() so the inputs are visible inside the sheet. This
-    // guards against a regression where the sheet opens but the content
-    // stays hidden (empty-header bug seen in the mobile screenshot).
-    w.openProtokoll();
-    const drillSection = w.document.getElementById('drill_section');
-    expect(drillSection.style.display).not.toBe('none');
-  });
-
-  it('drill_section is hidden after closeProtokoll()', () => {
-    w.openProtokoll();
-    w.closeProtokoll();
-    const drillSection = w.document.getElementById('drill_section');
-    expect(drillSection.style.display).toBe('none');
-  });
-});
-
-describe('Protokoll tab switching does not affect the sheet', () => {
-  let w;
-  beforeEach(() => { w = createDom().window; });
-
-  it('switching reiter does not change the sheet open state', () => {
-    w.addReiter();
-    w.openProtokoll();
-    expect(sheetIsOpen(w)).toBe(true);
-
+    // Tab-Klick aus dem Protokoll-Tab zurück in den Feld-Tab:
+    // activeView muss null werden, sonst bleibt das Protokoll sichtbar.
     w.switchReiter(0);
-    expect(sheetIsOpen(w)).toBe(true);
+    expect(w.state.activeView).toBeNull();
+    expect(w.state.activeReiter).toBe(0);
+  });
 
-    w.closeProtokoll();
+  it('switchReiter(1) when in protokoll view switches tab AND exits protokoll', () => {
+    w.addReiter();
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 5, koerner: 80000 };
+    w.switchToProtokoll();
+    expect(w.state.activeView).toBe('protokoll');
+
     w.switchReiter(1);
-    expect(sheetIsOpen(w)).toBe(false);
+    expect(w.state.activeView).toBeNull();
+    expect(w.state.activeReiter).toBe(1);
+  });
+
+  it('switchReiter from protokoll triggers renderView so drill_section hides', () => {
+    w.addReiter();
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 5, koerner: 80000 };
+    w.switchToProtokoll();
+    expect(getDrillSection(w).style.display).toBe('block');
+
+    w.switchReiter(1);
+    // Nach Tab-Wechsel ist drill_section wieder versteckt
+    expect(getDrillSection(w).style.display).toBe('none');
   });
 });
 
-describe('Protokoll sheet — focus management', () => {
-  let w;
-  beforeEach(() => { w = createDom().window; });
+describe('state.activeView persistence', () => {
+  it('roundtrips activeView=protokoll through localStorage', () => {
+    const { window: w, store } = createDom();
+    w.document.getElementById('hektar').value = '10';
+    w.document.getElementById('koerner').value = '90000';
+    w.berechne();
+    w.switchToProtokoll();
+    expect(w.state.activeView).toBe('protokoll');
 
-  it('moves focus into the dialog on open (focuses the close button)', () => {
-    // openProtokoll uses setTimeout(0) to move focus into the dialog to
-    // avoid jsdom focus-event side effects (see public/js/render-drill.js
-    // openProtokoll). Wait for the timeout to flush.
-    w.openProtokoll();
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const closeBtn = w.document.querySelector('.protokoll-close');
-        expect(w.document.activeElement).toBe(closeBtn);
-        resolve();
-      }, 10);
-    });
+    // Re-read from localStorage
+    const saved = JSON.parse(store['agrar_rechner']);
+    expect(saved.activeView).toBe('protokoll');
   });
 
-  it('Tab from the last focusable element wraps to the first (focus trap)', () => {
-    w.openProtokoll();
-    // Wait for the open-focus setTimeout to settle so the close button has
-    // focus, then simulate Tab from the last focusable inside the sheet.
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const sheet = getSheet(w);
-        const focusable = sheet.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        expect(focusable.length).toBeGreaterThan(1);
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        last.focus();
-        expect(w.document.activeElement).toBe(last);
-        const preventDefault = vi.fn();
-        w.AppGlobals._protokollKeyHandler({
-          key: 'Tab', shiftKey: false, preventDefault,
-        });
-        expect(preventDefault).toHaveBeenCalled();
-        expect(w.document.activeElement).toBe(first);
-        resolve();
-      }, 10);
-    });
-  });
-
-  it('Shift+Tab from the first focusable element wraps to the last (focus trap)', () => {
-    w.openProtokoll();
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const sheet = getSheet(w);
-        const focusable = sheet.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        first.focus();
-        const preventDefault = vi.fn();
-        w.AppGlobals._protokollKeyHandler({
-          key: 'Tab', shiftKey: true, preventDefault,
-        });
-        expect(preventDefault).toHaveBeenCalled();
-        expect(w.document.activeElement).toBe(last);
-        resolve();
-      }, 10);
-    });
-  });
-
-  it('Tab between non-edge focusables does not preventDefault (normal tab navigation)', () => {
-    w.openProtokoll();
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const sheet = getSheet(w);
-        const focusable = sheet.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable.length < 3) {
-          // Skip the assertion if the sheet has too few focusables to test
-          // the "middle" case — this guards the test from being environment
-          // dependent.
-          resolve();
-          return;
-        }
-        // Focus the second focusable (not first, not last) and Tab forward.
-        focusable[1].focus();
-        const preventDefault = vi.fn();
-        w.AppGlobals._protokollKeyHandler({
-          key: 'Tab', shiftKey: false, preventDefault,
-        });
-        expect(preventDefault).not.toHaveBeenCalled();
-        resolve();
-      }, 10);
-    });
-  });
-
-  it('restores focus to the previously focused element after closeProtokoll()', () => {
-    // Setup: focus a known trigger element, then open the sheet.
-    const tabBtn = w.document.getElementById('protokoll_tab_btn');
-    tabBtn.focus();
-    expect(w.document.activeElement).toBe(tabBtn);
-
-    w.openProtokoll();
-    w.closeProtokoll();
-
-    // closeProtokoll synchronously calls _protokollPrevFocus.focus().
-    expect(w.document.activeElement).toBe(tabBtn);
+  it('roundtrips activeView=null through localStorage', () => {
+    const { window: w, store } = createDom();
+    w.saveState();
+    const saved = JSON.parse(store['agrar_rechner']);
+    expect(saved.activeView).toBeNull();
   });
 });
