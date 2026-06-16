@@ -36,7 +36,7 @@
     <div class="tab-bar" id="tab_bar">
       <div class="tab-bar-left" id="tab_bar_left"><button class="tab-add" onclick="addReiter()">+ Tab</button></div>
       <div class="tab-separator"></div>
-      <button class="tab-btn protokoll-tab" id="protokoll_tab_btn" onclick="openProtokoll()">🔧 Protokoll</button>
+      <button class="tab-btn protokoll-tab" id="protokoll_tab_btn" onclick="switchToProtokoll()">🔧 Protokoll</button>
     </div>
 
     <div class="card card-input" id="card_input">
@@ -148,6 +148,61 @@
       <div class="info" id="r_info"></div>
     </div><!-- end results card -->
 
+    <div class="card" id="drill_section" style="display:none">
+      <h2>🔧 Drill-Protokoll</h2>
+      <div id="drill_mask">
+        <div class="drill-machine-row">
+          <div class="field">
+            <label for="drill_einheit">Maschine eingefüllt (Einheiten)</label>
+            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_einheit" placeholder="z.B. 4" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal', event)">
+          </div>
+          <div class="field">
+            <label for="drill_duenger">Maschine eingefüllt (Dünger kg)</label>
+            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_duenger" placeholder="z.B. 200" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal', event)">
+          </div>
+        </div>
+        <div class="field">
+          <label for="drill_hektar">Zählerstand (ha)</label>
+          <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal', event)">
+        </div>
+        <div class="drill-tabs-section">
+          <div class="drill-tabs-header">Aufteilen auf (Klick = Prio: 1 → 2 → 3 → aus):</div>
+          <div id="drill_tab_list"></div>
+        </div>
+        <button class="btn-add" onclick="drillAdd()">+ Einfüllen</button>
+      </div>
+      <div id="drill_summary" class="drill-summary" style="display:none">
+        <div id="ds_total_summary" class="drill-total-summary" style="margin-bottom:8px;font-weight:bold;"></div>
+        <div class="drill-summary-row">
+          <span>Einheiten gesamt</span>
+          <span id="ds_saat_total">—</span>
+        </div>
+        <div class="drill-summary-row">
+          <span>Einheiten verwendet</span>
+          <span id="ds_saat_used">—</span>
+        </div>
+        <div class="drill-summary-row remaining">
+          <span>Einheiten verbleibend</span>
+          <span id="ds_saat_remaining">—</span>
+        </div>
+        <div class="drill-summary-row">
+          <span>Dünger gesamt</span>
+          <span id="ds_duenger_total">—</span>
+        </div>
+        <div class="drill-summary-row">
+          <span>Dünger verwendet</span>
+          <span id="ds_duenger_used">—</span>
+        </div>
+        <div class="drill-summary-row remaining">
+          <span>Dünger verbleibend</span>
+          <span id="ds_duenger_remaining">—</span>
+        </div>
+        <div class="drill-summary-savings" id="ds_savings" style="display:none"></div>
+      </div>
+      <div id="drill_machine_log"></div>
+      <div id="drill_entries"></div>
+    </div>
+
     </div><!-- end .container -->
 
     </div><!-- end .scrollable-content -->
@@ -213,83 +268,6 @@
       <button class="dashboard-close" onclick="closeDashboard()" aria-label="Schließen">✕</button>
     </div>
     <div class="dashboard-content" id="dashboard_content"></div>
-  </div>
-  <!-- Protokoll overlay + sheet (Issue #291) -->
-  <div class="protokoll-overlay" id="protokoll_overlay" onclick="closeProtokoll()"></div>
-  <div class="protokoll-sheet" id="protokoll_sheet" role="dialog" aria-modal="true" aria-label="Drill-Protokoll">
-    <div class="protokoll-header">
-      <h2>🔧 Drill-Protokoll</h2>
-      <button class="protokoll-close" onclick="closeProtokoll()" aria-label="Schließen">✕</button>
-    </div>
-    <div class="card" id="drill_section" style="display:none">
-      <div id="drill_mask">
-        <div class="drill-machine-row">
-          <div class="field">
-            <label for="drill_einheit">Maschine eingefüllt (Einheiten)</label>
-            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_einheit" placeholder="z.B. 4" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal', event)">
-          </div>
-          <div class="field">
-            <label for="drill_duenger">Maschine eingefüllt (Dünger kg)</label>
-            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_duenger" placeholder="z.B. 200" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal', event)">
-          </div>
-        </div>
-        <div class="field">
-          <label for="drill_hektar">Zählerstand (ha)</label>
-          <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal', event)">
-        </div>
-        <div class="drill-tabs-section">
-          <div class="drill-tabs-header">Aufteilen auf (Klick = Prio: 1 → 2 → 3 → aus):</div>
-          <div id="drill_tab_list"></div>
-        </div>
-        <button class="btn-add" onclick="drillAdd()">+ Einfüllen</button>
-      </div>
-      <div id="drill_summary" class="drill-summary" style="display:none">
-        <div id="ds_total_summary" class="drill-total-summary" style="margin-bottom:8px;font-weight:bold;"></div>
-        <div class="drill-summary-row">
-          <span>Einheiten gesamt</span>
-          <span id="ds_saat_total">—</span>
-        </div>
-        <div class="drill-summary-row">
-          <span>Einheiten verwendet</span>
-          <span id="ds_saat_used">—</span>
-        </div>
-        <div class="drill-summary-row remaining">
-          <span>Einheiten verbleibend</span>
-          <span id="ds_saat_remaining">—</span>
-        </div>
-        <div class="drill-summary-row">
-          <span>Dünger gesamt</span>
-          <span id="ds_duenger_total">—</span>
-        </div>
-        <div class="drill-summary-row">
-          <span>Dünger verwendet</span>
-          <span id="ds_duenger_used">—</span>
-        </div>
-        <div class="drill-summary-row remaining">
-          <span>Dünger verbleibend</span>
-          <span id="ds_duenger_remaining">—</span>
-        </div>
-        <div class="drill-summary-savings" id="ds_savings" style="display:none"></div>
-      </div>
-      <div id="drill_machine_log"></div>
-      <div id="drill_entries"></div>
-    </div>
-  </div>
-
-  <!-- Reset Confirmation Modal (Issue #236) -->
-  <div class="reset-overlay" id="reset_overlay" onclick="_onOverlayClick(event)"></div>
-  <div class="reset-modal" id="reset_modal" role="dialog" aria-modal="true" aria-labelledby="reset_modal_title" aria-describedby="reset_modal_desc">
-    <div class="reset-modal-header">
-      <h2 id="reset_modal_title">Zurücksetzen</h2>
-    </div>
-    <p class="reset-modal-desc" id="reset_modal_desc">
-      Was möchtest du zurücksetzen? Diese Aktion lässt sich nicht rückgängig machen.
-    </p>
-    <div class="reset-modal-actions">
-      <button class="btn btn-secondary" id="reset_modal_tab" onclick="_onResetTab()">Aktuellen Tab zurücksetzen</button>
-      <button class="btn btn-danger" id="reset_modal_confirm_all" onclick="_onResetAll()">Alle Daten löschen</button>
-      <button class="btn btn-cancel" id="reset_modal_cancel" onclick="_onCancel()">Abbrechen</button>
-    </div>
   </div>
 </body>
 </html>

@@ -84,15 +84,27 @@
     }
 
     function switchReiter(idx) {
-      if (idx === AppGlobals.state.activeReiter) return;
+      if (idx === AppGlobals.state.activeReiter && AppGlobals.state.activeView !== 'protokoll') return;
       syncStateFromInputs();
       AppGlobals.state.activeReiter = idx;
+      AppGlobals.state.activeView = null;
       AppGlobals.appEmit('TAB_CHANGED', { tabIdx: idx });
     }
 
     function renameReiter(idx, name) {
       AppGlobals.state.reiter[idx].name = name.substring(0, 20);
       AppGlobals.appEmit('TAB_RENAMED', { tabIdx: idx });
+    }
+
+    function switchToProtokoll() {
+      syncStateFromInputs();
+      if (AppGlobals.state.activeView === 'protokoll') {
+        AppGlobals.state.activeView = null;
+      } else {
+        AppGlobals.state.activeView = 'protokoll';
+        AppGlobals.renderDrillTabList();
+      }
+      AppGlobals.appEmit('VIEW_CHANGED', { view: AppGlobals.state.activeView });
     }
 
     // --- Fahrgassen ---
@@ -245,6 +257,7 @@
       AppGlobals.state = {
         reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] }],
         activeReiter: 0,
+        activeView: null,
         fahrgassenEnabled: false,
         fahrgassenBreite: 0,
         einheitGroesseEnabled: false,
@@ -925,6 +938,7 @@ Object.assign(window.AppGlobals, {
   removeReiter: removeReiter,
   switchReiter: switchReiter,
   renameReiter: renameReiter,
+  switchToProtokoll: switchToProtokoll,
   fahrgassenToggle: fahrgassenToggle,
   fahrgassenUpdate: fahrgassenUpdate,
   einheitGroesseToggle: einheitGroesseToggle,

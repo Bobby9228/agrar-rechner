@@ -2,8 +2,7 @@
  * Tests for remaining blind spots and edge cases found in audit round 2.
  *
  * Includes (original round 2):
- * 1. switchReiter behavior with the protokoll sheet open (sheet is independent
- *    of reiter switching in the new sheet-architecture, Issue #291)
+ * 1. switchReiter from protokoll view to same tab
  * 2. Prognose cumulative calculation with fahrgassen factor
  * 3. Prognose with duenger-only consumption (no einheit)
  * 4. drillTabList needDiv: done with duenger finished but einheit remaining
@@ -19,37 +18,39 @@
  * - drillMachineRemove() — machine log entry removal
  * - Theme — getStoredTheme / setStoredTheme / applyTheme / toggleTheme / initTheme
  * - renderDrillTabList() — row rendering, priority button, input mode
- * - openProtokoll() / closeProtokoll() — sheet toggle (Issue #291)
- * - Protokoll tab btn — open via click (no `active` class on tab, see T4)
+ * - switchToProtokoll() — view toggle
+ * - renderView() — visibility in protokoll vs field view
+ * - renderTabs() protokoll btn — active class
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createDom } from './helpers.js';
 
-describe('switchReiter while protokoll sheet is open', () => {
+describe('switchReiter from protokoll view', () => {
   let w;
   beforeEach(() => { w = createDom().window; });
 
-  // The protokoll sheet is a slide-in overlay; switching reiter is independent
-  // of the sheet state (the sheet stays where it is until explicitly closed).
-  it('does not close the protokoll sheet when switching reiter to the same tab', () => {
+  it('allows switching to same tab when currently in protokoll view', () => {
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
-    w.openProtokoll();
-    expect(w.document.getElementById('protokoll_sheet').classList.contains('open')).toBe(true);
+    w.switchToProtokoll();
+    expect(w.state.activeView).toBe('protokoll');
+    expect(w.state.activeReiter).toBe(0);
 
+    // switchReiter(0) should work even though activeReiter is already 0,
+    // because activeView is 'protokoll'
     w.switchReiter(0);
-    // Sheet stays open, activeReiter unchanged
-    expect(w.document.getElementById('protokoll_sheet').classList.contains('open')).toBe(true);
+    expect(w.state.activeView).toBeNull();
     expect(w.state.activeReiter).toBe(0);
   });
 
-  it('does not close the protokoll sheet when switching reiter to a different tab', () => {
+  it('switches to different tab from protokoll', () => {
     w.addReiter();
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
     w.state.reiter[1] = { ...w.state.reiter[1], hektar: 5, koerner: 80000 };
-    w.openProtokoll();
+    w.switchToProtokoll();
+    expect(w.state.activeView).toBe('protokoll');
 
     w.switchReiter(1);
-    expect(w.document.getElementById('protokoll_sheet').classList.contains('open')).toBe(true);
+    expect(w.state.activeView).toBeNull();
     expect(w.state.activeReiter).toBe(1);
   });
 });
@@ -800,9 +801,9 @@ describe('renderDrillTabList()', () => {
 });
 
 // ---------------------------------------------------------------------------
-// openProtokoll / closeProtokoll — sheet toggle (Issue #291)
+// switchToProtokoll
 // ---------------------------------------------------------------------------
-describe('openProtokoll() / closeProtokoll()', () => {
+describe('switchToProtokoll()', () => {
   let w, doc;
 
   beforeEach(() => {
@@ -811,47 +812,43 @@ describe('openProtokoll() / closeProtokoll()', () => {
     doc = w.document;
   });
 
-  it('openProtokoll() adds .open to sheet and overlay', () => {
-    w.openProtokoll();
-    expect(doc.getElementById('protokoll_sheet').classList.contains('open')).toBe(true);
-    expect(doc.getElementById('protokoll_overlay').classList.contains('open')).toBe(true);
+  it('sets activeView to protokoll', () => {
+    w.switchToProtokoll();
+    expect(w.state.activeView).toBe('protokoll');
   });
 
-  it('openProtokoll() locks body scroll', () => {
-    w.openProtokoll();
-    expect(doc.body.style.overflow).toBe('hidden');
-  });
-
-  it('openProtokoll() calls renderDrillTabList', () => {
+  it('calls renderDrillTabList', () => {
     w.state.reiter = [{ name: 'A', hektar: 10, koerner: 90000, duenger: 0, entries: [] }];
-    w.openProtokoll();
+    w.switchToProtokoll();
     expect(doc.querySelectorAll('.drill-tab-row').length).toBe(1);
   });
 
-  it('closeProtokoll() removes .open from sheet and overlay', () => {
-    w.openProtokoll();
-    w.closeProtokoll();
-    expect(doc.getElementById('protokoll_sheet').classList.contains('open')).toBe(false);
-    expect(doc.getElementById('protokoll_overlay').classList.contains('open')).toBe(false);
+  it('toggles back to null when called again', () => {
+    w.switchToProtokoll();
+    expect(w.state.activeView).toBe('protokoll');
+    w.switchToProtokoll();
+    expect(w.state.activeView).toBeNull();
   });
 
-  it('closeProtokoll() restores body scroll', () => {
-    w.openProtokoll();
-    w.closeProtokoll();
-    expect(doc.body.style.overflow).toBe('');
+  it('persists state', () => {
+    w.switchToProtokoll();
+    const stored = JSON.parse(w.localStorage.getItem('agrar_rechner'));
+    expect(stored.activeView).toBe('protokoll');
   });
 
-  it('Escape key closes the sheet (via _protokollKeyHandler)', () => {
-    w.openProtokoll();
-    w.AppGlobals._protokollKeyHandler({ key: 'Escape', preventDefault: () => {} });
-    expect(doc.getElementById('protokoll_sheet').classList.contains('open')).toBe(false);
+  it('syncs current inputs before switching', () => {
+    w.state.reiter[0].hektar = 10;
+    doc.getElementById('hektar').value = '15';
+    w.syncStateFromInputs();
+    w.switchToProtokoll();
+    expect(w.state.reiter[0].hektar).toBe(15);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Protokoll tab button — opens the sheet on click (Issue #291)
+// renderView — visibility of elements in protokoll vs field view
 // ---------------------------------------------------------------------------
-describe('Protokoll tab button', () => {
+describe('renderView()', () => {
   let w, doc;
 
   beforeEach(() => {
@@ -860,11 +857,18 @@ describe('Protokoll tab button', () => {
     doc = w.document;
   });
 
-  it('opens the protokoll sheet when the tab button is clicked', () => {
-    var tabBtn = doc.getElementById('protokoll_tab_btn');
-    expect(tabBtn).toBeTruthy();
-    tabBtn.click();
-    expect(doc.getElementById('protokoll_sheet').classList.contains('open')).toBe(true);
+  it('drill_section shown in protokoll view', () => {
+    w.state.activeView = 'protokoll';
+    w.renderView();
+    expect(doc.getElementById('drill_section').style.display).toBe('block');
+  });
+
+  it('results hidden when switching to protokoll', () => {
+    w.state.reiter[0].hektar = 10;
+    w.state.reiter[0].koerner = 90000;
+    w.state.activeView = 'protokoll';
+    w.renderView();
+    expect(doc.getElementById('results').style.display).toBe('none');
   });
 });
 
@@ -880,14 +884,16 @@ describe('renderTabs() protokoll btn', () => {
     doc = w.document;
   });
 
-  it('is a static button without `active` class management (Issue #291/T4 — visual active state on Protokoll tab is intentionally lost)', () => {
-    // After T4, renderTabs() no longer toggles an `active` class on the
-    // protokoll tab. The tab is just a trigger for openProtokoll().
-    // Document this contract: renderTabs() should not add/remove the class.
-    var tabBtn = doc.getElementById('protokoll_tab_btn');
-    expect(tabBtn.classList.contains('active')).toBe(false);
+  it('protokoll_tab_btn has active class when activeView=protokoll', () => {
+    w.state.activeView = 'protokoll';
     w.renderTabs();
-    expect(tabBtn.classList.contains('active')).toBe(false);
+    expect(doc.getElementById('protokoll_tab_btn').classList.contains('active')).toBe(true);
+  });
+
+  it('protokoll_tab_btn has no active class when activeView=null', () => {
+    w.state.activeView = null;
+    w.renderTabs();
+    expect(doc.getElementById('protokoll_tab_btn').classList.contains('active')).toBe(false);
   });
 });
 

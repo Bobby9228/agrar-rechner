@@ -138,6 +138,7 @@ describe('initUI einheitGroesse restoration', () => {
       fahrgassenBreite: 0,
       zaehlerstand: 0,
       machineLog: [],
+      activeView: null,
     };
     store['agrar_rechner'] = JSON.stringify(savedState);
 
@@ -161,6 +162,7 @@ describe('initUI einheitGroesse restoration', () => {
       fahrgassenBreite: 0,
       zaehlerstand: 0,
       machineLog: [],
+      activeView: null,
     };
     store['agrar_rechner'] = JSON.stringify(savedState);
 
