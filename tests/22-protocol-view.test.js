@@ -10,7 +10,7 @@
  *   - The drill_section stays hidden (display:none) when the sheet is closed —
  *     it becomes visible only inside the open sheet via renderResults.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createDom } from './helpers.js';
 
 function getSheet(w) { return w.document.getElementById('protokoll_sheet'); }
@@ -156,5 +156,112 @@ describe('Protokoll tab switching does not affect the sheet', () => {
     w.closeProtokoll();
     w.switchReiter(1);
     expect(sheetIsOpen(w)).toBe(false);
+  });
+});
+
+describe('Protokoll sheet — focus management', () => {
+  let w;
+  beforeEach(() => { w = createDom().window; });
+
+  it('moves focus into the dialog on open (focuses the close button)', () => {
+    // openProtokoll uses setTimeout(0) to move focus into the dialog to
+    // avoid jsdom focus-event side effects (see public/js/render-drill.js
+    // openProtokoll). Wait for the timeout to flush.
+    w.openProtokoll();
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const closeBtn = w.document.querySelector('.protokoll-close');
+        expect(w.document.activeElement).toBe(closeBtn);
+        resolve();
+      }, 10);
+    });
+  });
+
+  it('Tab from the last focusable element wraps to the first (focus trap)', () => {
+    w.openProtokoll();
+    // Wait for the open-focus setTimeout to settle so the close button has
+    // focus, then simulate Tab from the last focusable inside the sheet.
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const sheet = getSheet(w);
+        const focusable = sheet.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        expect(focusable.length).toBeGreaterThan(1);
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        last.focus();
+        expect(w.document.activeElement).toBe(last);
+        const preventDefault = vi.fn();
+        w.AppGlobals._protokollKeyHandler({
+          key: 'Tab', shiftKey: false, preventDefault,
+        });
+        expect(preventDefault).toHaveBeenCalled();
+        expect(w.document.activeElement).toBe(first);
+        resolve();
+      }, 10);
+    });
+  });
+
+  it('Shift+Tab from the first focusable element wraps to the last (focus trap)', () => {
+    w.openProtokoll();
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const sheet = getSheet(w);
+        const focusable = sheet.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        first.focus();
+        const preventDefault = vi.fn();
+        w.AppGlobals._protokollKeyHandler({
+          key: 'Tab', shiftKey: true, preventDefault,
+        });
+        expect(preventDefault).toHaveBeenCalled();
+        expect(w.document.activeElement).toBe(last);
+        resolve();
+      }, 10);
+    });
+  });
+
+  it('Tab between non-edge focusables does not preventDefault (normal tab navigation)', () => {
+    w.openProtokoll();
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const sheet = getSheet(w);
+        const focusable = sheet.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length < 3) {
+          // Skip the assertion if the sheet has too few focusables to test
+          // the "middle" case — this guards the test from being environment
+          // dependent.
+          resolve();
+          return;
+        }
+        // Focus the second focusable (not first, not last) and Tab forward.
+        focusable[1].focus();
+        const preventDefault = vi.fn();
+        w.AppGlobals._protokollKeyHandler({
+          key: 'Tab', shiftKey: false, preventDefault,
+        });
+        expect(preventDefault).not.toHaveBeenCalled();
+        resolve();
+      }, 10);
+    });
+  });
+
+  it('restores focus to the previously focused element after closeProtokoll()', () => {
+    // Setup: focus a known trigger element, then open the sheet.
+    const tabBtn = w.document.getElementById('protokoll_tab_btn');
+    tabBtn.focus();
+    expect(w.document.activeElement).toBe(tabBtn);
+
+    w.openProtokoll();
+    w.closeProtokoll();
+
+    // closeProtokoll synchronously calls _protokollPrevFocus.focus().
+    expect(w.document.activeElement).toBe(tabBtn);
   });
 });
