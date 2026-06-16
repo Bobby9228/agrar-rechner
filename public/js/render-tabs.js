@@ -16,7 +16,7 @@
       var bar = document.getElementById('tab_bar_left');
       bar.innerHTML = '';
       AppGlobals.state.reiter.forEach(function(r, i) {
-        var isActive = i === AppGlobals.state.activeReiter;
+        var isActive = i === AppGlobals.state.activeReiter && AppGlobals.state.activeView !== 'protokoll';
         var btn = document.createElement('button');
         btn.className = 'tab-btn field-tab' + (isActive ? ' active' : '');
         btn.setAttribute('aria-label', 'Tab ' + (i+1));
@@ -64,6 +64,28 @@
       addBtn.textContent = '+ Tab';
       addBtn.onclick = function() { AppGlobals.addReiter(); };
       bar.appendChild(addBtn);
+      var protokollBtn = document.getElementById('protokoll_tab_btn');
+      if (protokollBtn) protokollBtn.classList.toggle('active', AppGlobals.state.activeView === 'protokoll');
+    }
+
+    // --- Render: View (Feld vs. Protokoll) ---
+
+    function renderView() {
+      var r = AppGlobals.getActiveReiter();
+      var hasData = r.hektar > 0 && r.koerner > 0;
+      var isProtokoll = AppGlobals.state.activeView === 'protokoll';
+      var skipIds = { r_soll_ist_section: true };
+      var cards = document.querySelectorAll('.card');
+      cards.forEach(function(c) {
+        if (skipIds[c.id]) return;
+        c.style.display = isProtokoll ? 'none' : 'block';
+      });
+      var resultsEl = document.getElementById('results');
+      if (resultsEl) resultsEl.style.display = (hasData && !isProtokoll) ? 'block' : 'none';
+      var drillSection = document.getElementById('drill_section');
+      if (drillSection) drillSection.style.display = isProtokoll ? 'block' : 'none';
+      var drillMask = document.getElementById('drill_mask');
+      if (drillMask) drillMask.style.display = isProtokoll ? '' : 'none';
     }
 
     // --- Init: UI (nach DOMContentLoaded) ---
@@ -140,9 +162,12 @@
       }
       if (AppGlobals.state.reiter[AppGlobals.state.activeReiter] && AppGlobals.state.reiter[AppGlobals.state.activeReiter].hektar > 0 && AppGlobals.state.reiter[AppGlobals.state.activeReiter].koerner > 0) {
         AppGlobals.renderResults();
-        var resultsEl = document.getElementById('results');
-        if (resultsEl) resultsEl.style.display = 'block';
+        if (AppGlobals.state.activeView !== 'protokoll') {
+          var resultsEl = document.getElementById('results');
+          if (resultsEl) resultsEl.style.display = 'block';
+        }
       }
+      renderView();
       AppGlobals.renderDashboard();
       var vf = document.getElementById('version_footer');
       if (vf) vf.textContent = APP_VERSION + ' · ' + APP_BUILD_DATE;
@@ -153,6 +178,7 @@
             AppGlobals.renderTabs();
             AppGlobals.saveState();
             AppGlobals.renderResults();
+            renderView();
             break;
           case 'ENTRY_ADDED':
           case 'ENTRY_REMOVED':
@@ -161,6 +187,7 @@
             AppGlobals.saveState();
             AppGlobals.renderTabs();
             AppGlobals.renderResults();
+            renderView();
             // Issue #186: Dashboard muss bei State-Änderungen mit-synchronisieren.
             // Wenn das Dashboard-Sheet offen ist, sofort neu rendern, damit
             // verbleibende Einheiten/Dünger konsistent mit Tab-Ergebnis sind.
@@ -179,6 +206,7 @@
           case 'STATE_LOADED':
             AppGlobals.syncInputsFromState();
             AppGlobals.renderTabs();
+            renderView();
             AppGlobals.renderResults();
             AppGlobals.renderDashboard();
             break;
@@ -194,6 +222,7 @@
             AppGlobals.saveState();
             AppGlobals.renderTabs();
             AppGlobals.renderResults();
+            renderView();
             var re3 = document.getElementById('results');
             if (re3) re3.style.display = 'none';
             var ds = document.getElementById('drill_section');
@@ -211,11 +240,20 @@
             AppGlobals.syncInputsFromState();
             AppGlobals.saveState();
             AppGlobals.renderTabs();
+            renderView();
             break;
           case 'TAB_REMOVED':
             AppGlobals.syncInputsFromState();
             AppGlobals.saveState();
             AppGlobals.renderTabs();
+            AppGlobals.renderResults();
+            renderView();
+            break;
+          case 'VIEW_CHANGED':
+            AppGlobals.saveState();
+            AppGlobals.renderTabs();
+            renderView();
+            if (AppGlobals.state.activeView === 'protokoll') AppGlobals.renderDrillTabList();
             AppGlobals.renderResults();
             break;
           case 'DRILL_ENTRY_ADDED':
@@ -252,6 +290,7 @@
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 Object.assign(window.AppGlobals, {
   renderTabs: renderTabs,
+  renderView: renderView,
   initUI: initUI,
   confirmRemoveReiter: confirmRemoveReiter,
 });
