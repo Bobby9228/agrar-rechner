@@ -99,42 +99,87 @@
     // --- Render: Drill Summary ---
 
     function renderDrillSummary() {
-      var r = AppGlobals.getActiveReiter();
-      // Issue #186: IST-Fläche (vom Input-Feld) hat Vorrang vor SOLL.
-      var istSum = AppGlobals.getTabIstHektar(r);
-      var einheiten = istSum > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getActiveTotalEinheiten();
-      var duengerTotal = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : AppGlobals.getActiveTotalDuenger();
-      var usedEinheit = (r && r.entries) ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
-      var usedDuenger = (r && r.entries) ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
-      var istEinheiten = istSum > 0 ? AppGlobals.getTabIstEinheiten(r) : einheiten;
-      var istDuenger = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : duengerTotal;
-      var remEinheit = Math.max(0, istEinheiten - usedEinheit);
-      var remDuenger = Math.max(0, istDuenger - usedDuenger);
+      // Issue #multi-tab-agg (T1): aggregate SOLL/IST/used/remaining across
+      // ALL tabs in state.reiter, not just getActiveReiter(). Per-tab IST
+      // takes precedence over SOLL (Issue #186) independently for each tab.
+      // Same fg-factor-aware helpers as renderDrillLog (#273) so display and
+      // carryover source share one formula. Carryover savings/excess applied
+      // per tab (Issue #266-B2) so the remaining reflects post-redistribution
+      // state, matching the model in calculations.js isTabDone().
+      //
+      // NOTE: Drill-Summary and Dashboard show DELIBERATELY DIFFERENT views:
+      //   - Dashboard (render-dashboard.js:61) = realer Stand WITHOUT carryover
+      //     ("wie viel wurde tatsächlich auf den Acker gebracht?")
+      //   - Drill-Summary (here)            = Need-after-distribution WITH
+      //     carryover ("wie viel Saatgut/Dünger ist nach Verteilung + Savings-
+      //     Umverteilung noch offen?").
+      // Beide Perspektiven sind absichtlich — keine Bug-Doppelung.
+      var allTabs = AppGlobals.state.reiter || [];
+      var totalEinheiten = 0;   // sum of per-tab SOLL or IST (whichever applies)
+      var totalDuenger = 0;
+      var usedEinheit = 0;
+      var usedDuenger = 0;
+      var remEinheit = 0;
+      var remDuenger = 0;
+      for (var ti = 0; ti < allTabs.length; ti++) {
+        var rt = allTabs[ti];
+        if (!rt) continue;
+        var tIstHa = AppGlobals.getTabIstHektar(rt);
+        var tEinheiten = tIstHa > 0 ? AppGlobals.getTabIstEinheiten(rt) : AppGlobals.getTabTotalEinheiten(rt);
+        var tDuenger = tIstHa > 0 ? AppGlobals.getTabIstDuenger(rt) : AppGlobals.getTabTotalDuenger(rt);
+        totalEinheiten += tEinheiten;
+        totalDuenger += tDuenger;
+        var tUsedE = 0;
+        var tUsedD = 0;
+        if (rt.entries && rt.entries.length) {
+          for (var ei = 0; ei < rt.entries.length; ei++) {
+            tUsedE += (rt.entries[ei].einheit || 0);
+            tUsedD += (rt.entries[ei].duenger || 0);
+          }
+        }
+        usedEinheit += tUsedE;
+        usedDuenger += tUsedD;
+        // Per-tab carryover: remaining on this tab = need - savings + excess.
+        var cco = AppGlobals.getCarryover(ti);
+        var needE = Math.max(0, tEinheiten - tUsedE);
+        var needD = Math.max(0, tDuenger - tUsedD);
+        remEinheit += Math.max(0, needE - cco.savedEinheit + cco.excessEinheit);
+        remDuenger += Math.max(0, needD - cco.savedDuenger + cco.excessDuenger);
+      }
       var dsSollE = document.getElementById('ds_saat_total');
-      if (dsSollE) dsSollE.textContent = AppGlobals.formatEinheit(einheiten);
+      if (dsSollE) dsSollE.textContent = AppGlobals.formatEinheit(totalEinheiten);
       var dsUsedE = document.getElementById('ds_saat_used');
       if (dsUsedE) dsUsedE.textContent = AppGlobals.formatEinheit(usedEinheit);
       var dsRemE = document.getElementById('ds_saat_remaining');
       if (dsRemE) dsRemE.textContent = AppGlobals.formatEinheit(remEinheit);
       var dsSollD = document.getElementById('ds_duenger_total');
-      if (dsSollD) dsSollD.textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
+      if (dsSollD) dsSollD.textContent = totalDuenger > 0 ? totalDuenger.toLocaleString('de-DE') + ' kg' : '—';
       var dsUsedD = document.getElementById('ds_duenger_used');
       if (dsUsedD) dsUsedD.textContent = usedDuenger > 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' : '—';
       var dsRemD = document.getElementById('ds_duenger_remaining');
       if (dsRemD) dsRemD.textContent = remDuenger > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' : '0 kg';
-      // Issue #266-B2: IST<SOLL savings in #ds_savings.
-      // Issue #273: savings/excess display must apply fahrgassenFaktor
-      // (consistent with getTabTotalEinheiten/getTabIstEinheiten that the
-      // carryover calculation uses). Compute via the same helpers so display
-      // and carryover source share one formula.
+      // Issue #266-B2: IST<SOLL savings in #ds_savings (aggregated across all
+      // tabs that are savings sources). Issue #273: apply fahrgassenFaktor via
+      // getTabTotalEinheiten/getTabIstEinheiten so display matches carryover.
       var dsSav = document.getElementById('ds_savings');
       if (dsSav) {
-        if (istSum > 0 && r.hektar > istSum) {
-          var savE = AppGlobals.getTabTotalEinheiten(r) - AppGlobals.getTabIstEinheiten(r);
-          var savD = (r.hektar - istSum) * (r.duenger || 0);
+        var savETotal = 0;
+        var savDTotal = 0;
+        var anySavings = false;
+        for (var si = 0; si < allTabs.length; si++) {
+          var sr = allTabs[si];
+          if (!sr) continue;
+          var srIstHa = AppGlobals.getTabIstHektar(sr);
+          if (srIstHa > 0 && sr.hektar > srIstHa) {
+            anySavings = true;
+            savETotal += AppGlobals.getTabTotalEinheiten(sr) - AppGlobals.getTabIstEinheiten(sr);
+            savDTotal += (sr.hektar - srIstHa) * (sr.duenger || 0);
+          }
+        }
+        if (anySavings) {
           var savParts = [];
-          if (savE > 0.05) savParts.push(AppGlobals.fmt(savE) + ' Einheiten Saatgut');
-          if (savD > 0.05) savParts.push(savD.toLocaleString('de-DE') + ' kg Dünger');
+          if (savETotal > 0.05) savParts.push(AppGlobals.fmt(savETotal) + ' Einheiten Saatgut');
+          if (savDTotal > 0.05) savParts.push(savDTotal.toLocaleString('de-DE') + ' kg Dünger');
           if (savParts.length > 0) {
             dsSav.textContent = 'Ersparnis: ' + savParts.join(', ');
             dsSav.style.display = 'block';
@@ -155,7 +200,6 @@
       var container = document.getElementById('drill_entries');
       if (!container) return;
       container.innerHTML = '';
-      var activeTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
       var totalSummary = document.getElementById('ds_total_summary');
       // Issue #266-B2: Per-tab carryover/savings/excess divs at the top.
       // Shown for ALL tabs that have any carryover signal (savings source,
@@ -211,7 +255,14 @@
           }
         }
       }
-      if (!activeTab || !activeTab.entries || activeTab.entries.length === 0) {
+      // All-tabs aggregation (T3): iterate state.reiter in index order.
+      // Each tab with entries.length > 0 gets a drill-entry-tab-header div,
+      // followed by its entries in chronological order. #N numbering resets
+      // per tab (Option A — consistent with single-tab behaviour, test 09
+      // unchanged). Empty state only when ALL tabs have empty entries.
+      var allTabs = AppGlobals.state.reiter || [];
+      var hasAnyEntry = allTabs.some(function(r) { return r && r.entries && r.entries.length > 0; });
+      if (!hasAnyEntry) {
         if (totalSummary) totalSummary.textContent = '';
         var empty = document.createElement('div');
         empty.className = 'drill-empty';
@@ -219,56 +270,74 @@
         container.appendChild(empty);
         return;
       }
-      // Total-Summary (Hektar/Einheiten/Dünger über alle Entries)
+      // Total-Summary (Hektar/Einheiten/Dünger über alle Entries aller Tabs)
       if (totalSummary) {
-        var usedHa = activeTab.entries.reduce(function(s, e) { return s + (e.istHektar || e.hektar || 0); }, 0);
-        var usedE = activeTab.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
-        var usedD = activeTab.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
+        var usedHa = 0, usedE = 0, usedD = 0;
+        allTabs.forEach(function(rt) {
+          if (!rt || !rt.entries) return;
+          rt.entries.forEach(function(e) {
+            usedHa += (e.istHektar || e.hektar || 0);
+            usedE += (e.einheit || 0);
+            usedD += (e.duenger || 0);
+          });
+        });
         var parts = [];
         if (usedHa > 0) parts.push(AppGlobals.fmt(usedHa) + ' ha');
         if (usedE > 0) parts.push(AppGlobals.fmt(usedE) + ' Einheiten');
         if (usedD > 0) parts.push(usedD.toLocaleString('de-DE') + ' kg Dünger');
         totalSummary.textContent = parts.join(' · ');
       }
-      // Iterate in chronological order — entries[0] is the first fill
-      // (oldest, marked "#1") and entries[length-1] is the latest ("#N").
-      // Tests (09-blind-spots "drill entry has #number span") assert that
-      // the first span shows "#1 " and the second "#2 ", which matches the
-      // original f7f7e8d renderDrillLog behaviour.
-      activeTab.entries.forEach(function(entry, actualIdx) {
-        var row = document.createElement('div');
-        row.className = 'drill-entry';
-        // #number span (nested inside .entry-text — tests query
-        // '.entry-text span' to find the #N markers; the original f7f7e8d
-        // implementation also kept the hash span inside the entry-text.)
-        var entryText = document.createElement('span');
-        entryText.className = 'entry-text';
-        var numSpan = document.createElement('span');
-        numSpan.textContent = '#' + (actualIdx + 1) + ' ';
-        entryText.appendChild(numSpan);
-        var parts2 = [];
-        if (entry.time) {
-          var t = typeof entry.time === 'number' ? new Date(entry.time).toLocaleString('de-DE') : entry.time;
-          parts2.push(t + ' –');
-        }
-        if (entry.istHektar || entry.zaehlerStand) {
-          var ha = entry.istHektar || entry.zaehlerStand;
-          parts2.push(AppGlobals.fmt(ha) + ' ha');
-        } else if (entry.hektar > 0) {
-          parts2.push('@' + AppGlobals.fmt(entry.hektar) + 'ha');
-        }
-        parts2.push(AppGlobals.formatEinheit(entry.einheit || 0));
-        if (entry.duenger > 0) {
-          parts2.push((entry.duenger).toLocaleString('de-DE') + ' kg Dünger');
-        }
-        entryText.appendChild(document.createTextNode(parts2.join(' ')));
-        row.appendChild(entryText);
-        var removeBtn = document.createElement('button');
-        removeBtn.className = 'btn-danger';
-        removeBtn.textContent = '✕';
-        removeBtn.onclick = function() { AppGlobals.drillRemove(AppGlobals.state.activeReiter, actualIdx); };
-        row.appendChild(removeBtn);
-        container.appendChild(row);
+      // Iterate per tab in index order. Per-tab #N numbering (Option A):
+      // entries[0] = '#1', entries[1] = '#2', etc. Consistent with single-tab
+      // behaviour — test 09-blind-spots ('drill entry shows time prefix when
+      // time is set') still sees entry-text[0] as the first entry of the
+      // only tab with entries.
+      allTabs.forEach(function(rt, tabIdx) {
+        if (!rt || !rt.entries || rt.entries.length === 0) return;
+        var header = document.createElement('div');
+        header.className = 'drill-entry-tab-header';
+        header.textContent = rt.name || ('Tab ' + (tabIdx + 1));
+        container.appendChild(header);
+        rt.entries.forEach(function(entry, actualIdx) {
+          var row = document.createElement('div');
+          row.className = 'drill-entry';
+          // #number span (nested inside .entry-text — tests query
+          // '.entry-text span' to find the #N markers; the original f7f7e8d
+          // implementation also kept the hash span inside the entry-text.)
+          var entryText = document.createElement('span');
+          entryText.className = 'entry-text';
+          var numSpan = document.createElement('span');
+          numSpan.textContent = '#' + (actualIdx + 1) + ' ';
+          entryText.appendChild(numSpan);
+          var parts2 = [];
+          if (entry.time) {
+            var t = typeof entry.time === 'number' ? new Date(entry.time).toLocaleString('de-DE') : entry.time;
+            parts2.push(t + ' –');
+          }
+          if (entry.istHektar || entry.zaehlerStand) {
+            var ha = entry.istHektar || entry.zaehlerStand;
+            parts2.push(AppGlobals.fmt(ha) + ' ha');
+          } else if (entry.hektar > 0) {
+            parts2.push('@' + AppGlobals.fmt(entry.hektar) + 'ha');
+          }
+          parts2.push(AppGlobals.formatEinheit(entry.einheit || 0));
+          if (entry.duenger > 0) {
+            parts2.push((entry.duenger).toLocaleString('de-DE') + ' kg Dünger');
+          }
+          entryText.appendChild(document.createTextNode(parts2.join(' ')));
+          row.appendChild(entryText);
+          var removeBtn = document.createElement('button');
+          removeBtn.className = 'btn-danger';
+          removeBtn.textContent = '✕';
+          // Use the per-tab index (tabIdx), not state.activeReiter — entries
+          // are aggregated across tabs in renderDrillLog, so the delete
+          // handler must address the correct tab.
+          removeBtn.onclick = (function(ti, ai) {
+            return function() { AppGlobals.drillRemove(ti, ai); };
+          })(tabIdx, actualIdx);
+          row.appendChild(removeBtn);
+          container.appendChild(row);
+        });
       });
     }
 
