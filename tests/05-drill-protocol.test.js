@@ -271,9 +271,13 @@ describe('Drill-Protokoll', () => {
       setupTwoTabs(w);
       // SOLL einheiten: Tab1 = 10*90000/50000 = 18, Tab2 = 5*90000/50000 = 9 → 27
       // SOLL dünger: Tab1 = 10*200 = 2000, Tab2 = 5*200 = 1000 → 3000
-      // drillAdd distributes 27/3000 over both prioritised tabs.
+      // drillCalcAll() must run first so dtl_e_<i>/dtl_d_<i> DOM inputs are
+      // populated — only then does drillAdd() take the multi-tab priority
+      // distribution path (per Issue #276). With 27 einheiten and 3000 kg
+      // distributed: Tab1 gets 18 einheiten/2000 kg (cap), Tab2 gets 9/1000.
       doc.getElementById('drill_einheit').value = '27';
       doc.getElementById('drill_duenger').value = '3000';
+      w.drillCalcAll();
       w.drillAdd();
       w.renderResults();
 
@@ -296,36 +300,29 @@ describe('Drill-Protokoll', () => {
 
     it('renderDrillSummary() — remaining einheiten after carryover is smaller than total need', () => {
       setupTwoTabs(w);
-      // Setup carryover source: Tab 2 with IST 3ha → Ersparnis
-      // (SOLL 5ha, IST 3ha → 2ha Ersparnis → erspart: 2*90000/50000 = 3.6 Einheiten)
+      // Tab 2: SOLL 5ha, IST 3ha → Ersparnis-Quelle.
+      // (SOLL 9 Einheiten − IST 5,4 Einheiten = 3,6 Einheiten Ersparnis.)
+      // Tab 2 wird via direct entries.push als "befüllt mit 3ha" markiert
+      // (gebrauchte Einheiten = 3*90000/50000 = 5,4 → usedE=5,4, fertig via
+      // Carryover-Savings). Tab 1 bleibt offen mit SOLL=18, used=0.
       w.state.reiter[1].istHektar = 3;
+      w.state.reiter[1].entries.push({
+        einheit: 5.4, istHektar: 3, zaehlerStand: 3, duenger: 0, time: '08:00'
+      });
       w.saveState();
 
-      // Snapshot ds_saat_remaining WITHOUT carryover distribution: drillAdd()
-      // only fills Tab 1's SOLL (18 einheiten) because Tab 2's istHektar<hektar
-      // marks it as "fertig" via carryover savings.
-      doc.getElementById('drill_einheit').value = '18';
-      doc.getElementById('drill_duenger').value = '2000';
-      w.drillAdd();
+      // Total ohne Carryover-Konsum = 18 (Tab 1) + 5,4 (Tab 2) − 0 (used) = 23,4.
+      // Tab 2 ist Ersparnis-Quelle mit 3,6 Einheiten. Nach Verteilung der
+      // Ersparnis auf Tab 1 verbleiben 23,4 − 5,4 − 3,6 = 14,4.
+      // Buggy single-tab-Version zeigt 18 (nur Tab 1: SOLL 18, used 0).
       w.renderResults();
-
-      // Compute the "raw" remaining from entries alone (no carryover):
-      // total einheiten across tabs using IST preference:
-      //   Tab1 (istHektar=0): 18; Tab2 (istHektar=3): 5.4 → 23.4 total
-      // used = 18 (Tab1 filled), so raw remaining = 23.4 - 18 = 5.4
-      // Carryover source = Tab2 (3.6 einheiten savings).
-      // After carryover, remaining should be smaller than 5.4.
       const remText = doc.getElementById('ds_saat_remaining').textContent;
-      // Convert 'X,Y Einheiten' to a number for the assertion.
+      // Erwartetes Format: 'X,Y Einheiten' (formatEinheit-Round auf 1 Dezimalstelle).
       const match = remText.match(/^(\d+),(\d+) Einheiten$/);
       expect(match).not.toBeNull();
       const remValue = parseFloat(match[1] + '.' + match[2]);
-      // The bug (single-tab) would leave remaining = 0 because it only sees
-      // Tab1 (used=18, total=18). With all-tabs aggregation + carryover, the
-      // remaining should be < 5.4 (some carryover is consumed, but Tab2's
-      // excess-of-savings shows up in remaining for the unaccounted Tab2 istHektar).
-      // Use a loose bound: the post-carryover remaining must NOT be 0.
-      expect(remValue).toBeGreaterThan(0);
+      // Nach Carryover muss remaining strikt kleiner sein als totalNeed (23,4 − 5,4 = 18).
+      expect(remValue).toBeLessThan(18);
     });
 
     it('renderDrillLog() renders one .drill-entry per entry across all tabs', () => {
