@@ -39,9 +39,14 @@ jobs:
       - name: Run tests
         run: pnpm test
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Workers (static assets)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy public/ --project-name=agrar-rechner-dev
+          # Live at https://agrar-rechner-dev.ohlejakob.workers.dev
+          # wrangler.jsonc sets "assets.directory: ./public", so `wrangler deploy`
+          # ships the static site to the existing Worker (option 1 from #298).
+          # The "uncommitted changes" warning from actions/checkout is non-fatal
+          # in wrangler 3.x; no need to silence it explicitly.
+          command: deploy --name=agrar-rechner-dev
