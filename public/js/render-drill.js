@@ -155,7 +155,6 @@
       var container = document.getElementById('drill_entries');
       if (!container) return;
       container.innerHTML = '';
-      var activeTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
       var totalSummary = document.getElementById('ds_total_summary');
       // Issue #266-B2: Per-tab carryover/savings/excess divs at the top.
       // Shown for ALL tabs that have any carryover signal (savings source,
@@ -211,7 +210,14 @@
           }
         }
       }
-      if (!activeTab || !activeTab.entries || activeTab.entries.length === 0) {
+      // All-tabs aggregation (T3): iterate state.reiter in index order.
+      // Each tab with entries.length > 0 gets a drill-entry-tab-header div,
+      // followed by its entries in chronological order. #N numbering resets
+      // per tab (Option A — consistent with single-tab behaviour, test 09
+      // unchanged). Empty state only when ALL tabs have empty entries.
+      var allTabs = AppGlobals.state.reiter || [];
+      var hasAnyEntry = allTabs.some(function(r) { return r && r.entries && r.entries.length > 0; });
+      if (!hasAnyEntry) {
         if (totalSummary) totalSummary.textContent = '';
         var empty = document.createElement('div');
         empty.className = 'drill-empty';
@@ -219,56 +225,74 @@
         container.appendChild(empty);
         return;
       }
-      // Total-Summary (Hektar/Einheiten/Dünger über alle Entries)
+      // Total-Summary (Hektar/Einheiten/Dünger über alle Entries aller Tabs)
       if (totalSummary) {
-        var usedHa = activeTab.entries.reduce(function(s, e) { return s + (e.istHektar || e.hektar || 0); }, 0);
-        var usedE = activeTab.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
-        var usedD = activeTab.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
+        var usedHa = 0, usedE = 0, usedD = 0;
+        allTabs.forEach(function(rt) {
+          if (!rt || !rt.entries) return;
+          rt.entries.forEach(function(e) {
+            usedHa += (e.istHektar || e.hektar || 0);
+            usedE += (e.einheit || 0);
+            usedD += (e.duenger || 0);
+          });
+        });
         var parts = [];
         if (usedHa > 0) parts.push(AppGlobals.fmt(usedHa) + ' ha');
         if (usedE > 0) parts.push(AppGlobals.fmt(usedE) + ' Einheiten');
         if (usedD > 0) parts.push(usedD.toLocaleString('de-DE') + ' kg Dünger');
         totalSummary.textContent = parts.join(' · ');
       }
-      // Iterate in chronological order — entries[0] is the first fill
-      // (oldest, marked "#1") and entries[length-1] is the latest ("#N").
-      // Tests (09-blind-spots "drill entry has #number span") assert that
-      // the first span shows "#1 " and the second "#2 ", which matches the
-      // original f7f7e8d renderDrillLog behaviour.
-      activeTab.entries.forEach(function(entry, actualIdx) {
-        var row = document.createElement('div');
-        row.className = 'drill-entry';
-        // #number span (nested inside .entry-text — tests query
-        // '.entry-text span' to find the #N markers; the original f7f7e8d
-        // implementation also kept the hash span inside the entry-text.)
-        var entryText = document.createElement('span');
-        entryText.className = 'entry-text';
-        var numSpan = document.createElement('span');
-        numSpan.textContent = '#' + (actualIdx + 1) + ' ';
-        entryText.appendChild(numSpan);
-        var parts2 = [];
-        if (entry.time) {
-          var t = typeof entry.time === 'number' ? new Date(entry.time).toLocaleString('de-DE') : entry.time;
-          parts2.push(t + ' –');
-        }
-        if (entry.istHektar || entry.zaehlerStand) {
-          var ha = entry.istHektar || entry.zaehlerStand;
-          parts2.push(AppGlobals.fmt(ha) + ' ha');
-        } else if (entry.hektar > 0) {
-          parts2.push('@' + AppGlobals.fmt(entry.hektar) + 'ha');
-        }
-        parts2.push(AppGlobals.formatEinheit(entry.einheit || 0));
-        if (entry.duenger > 0) {
-          parts2.push((entry.duenger).toLocaleString('de-DE') + ' kg Dünger');
-        }
-        entryText.appendChild(document.createTextNode(parts2.join(' ')));
-        row.appendChild(entryText);
-        var removeBtn = document.createElement('button');
-        removeBtn.className = 'btn-danger';
-        removeBtn.textContent = '✕';
-        removeBtn.onclick = function() { AppGlobals.drillRemove(AppGlobals.state.activeReiter, actualIdx); };
-        row.appendChild(removeBtn);
-        container.appendChild(row);
+      // Iterate per tab in index order. Per-tab #N numbering (Option A):
+      // entries[0] = '#1', entries[1] = '#2', etc. Consistent with single-tab
+      // behaviour — test 09-blind-spots ('drill entry shows time prefix when
+      // time is set') still sees entry-text[0] as the first entry of the
+      // only tab with entries.
+      allTabs.forEach(function(rt, tabIdx) {
+        if (!rt || !rt.entries || rt.entries.length === 0) return;
+        var header = document.createElement('div');
+        header.className = 'drill-entry-tab-header';
+        header.textContent = rt.name || ('Tab ' + (tabIdx + 1));
+        container.appendChild(header);
+        rt.entries.forEach(function(entry, actualIdx) {
+          var row = document.createElement('div');
+          row.className = 'drill-entry';
+          // #number span (nested inside .entry-text — tests query
+          // '.entry-text span' to find the #N markers; the original f7f7e8d
+          // implementation also kept the hash span inside the entry-text.)
+          var entryText = document.createElement('span');
+          entryText.className = 'entry-text';
+          var numSpan = document.createElement('span');
+          numSpan.textContent = '#' + (actualIdx + 1) + ' ';
+          entryText.appendChild(numSpan);
+          var parts2 = [];
+          if (entry.time) {
+            var t = typeof entry.time === 'number' ? new Date(entry.time).toLocaleString('de-DE') : entry.time;
+            parts2.push(t + ' –');
+          }
+          if (entry.istHektar || entry.zaehlerStand) {
+            var ha = entry.istHektar || entry.zaehlerStand;
+            parts2.push(AppGlobals.fmt(ha) + ' ha');
+          } else if (entry.hektar > 0) {
+            parts2.push('@' + AppGlobals.fmt(entry.hektar) + 'ha');
+          }
+          parts2.push(AppGlobals.formatEinheit(entry.einheit || 0));
+          if (entry.duenger > 0) {
+            parts2.push((entry.duenger).toLocaleString('de-DE') + ' kg Dünger');
+          }
+          entryText.appendChild(document.createTextNode(parts2.join(' ')));
+          row.appendChild(entryText);
+          var removeBtn = document.createElement('button');
+          removeBtn.className = 'btn-danger';
+          removeBtn.textContent = '✕';
+          // Use the per-tab index (tabIdx), not state.activeReiter — entries
+          // are aggregated across tabs in renderDrillLog, so the delete
+          // handler must address the correct tab.
+          removeBtn.onclick = (function(ti, ai) {
+            return function() { AppGlobals.drillRemove(ti, ai); };
+          })(tabIdx, actualIdx);
+          row.appendChild(removeBtn);
+          container.appendChild(row);
+        });
       });
     }
 
