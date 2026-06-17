@@ -106,6 +106,14 @@
       // carryover source share one formula. Carryover savings/excess applied
       // per tab (Issue #266-B2) so the remaining reflects post-redistribution
       // state, matching the model in calculations.js isTabDone().
+      //
+      // NOTE: Drill-Summary and Dashboard show DELIBERATELY DIFFERENT views:
+      //   - Dashboard (render-dashboard.js:61) = realer Stand WITHOUT carryover
+      //     ("wie viel wurde tatsächlich auf den Acker gebracht?")
+      //   - Drill-Summary (here)            = Need-after-distribution WITH
+      //     carryover ("wie viel Saatgut/Dünger ist nach Verteilung + Savings-
+      //     Umverteilung noch offen?").
+      // Beide Perspektiven sind absichtlich — keine Bug-Doppelung.
       var allTabs = AppGlobals.state.reiter || [];
       var totalEinheiten = 0;   // sum of per-tab SOLL or IST (whichever applies)
       var totalDuenger = 0;
@@ -118,7 +126,7 @@
         if (!rt) continue;
         var tIstHa = AppGlobals.getTabIstHektar(rt);
         var tEinheiten = tIstHa > 0 ? AppGlobals.getTabIstEinheiten(rt) : AppGlobals.getTabTotalEinheiten(rt);
-        var tDuenger = tIstHa > 0 ? AppGlobals.getTabIstDuenger(rt) : (rt.hektar || 0) * (rt.duenger || 0);
+        var tDuenger = tIstHa > 0 ? AppGlobals.getTabIstDuenger(rt) : AppGlobals.getTabTotalDuenger(rt);
         totalEinheiten += tEinheiten;
         totalDuenger += tDuenger;
         var tUsedE = 0;
