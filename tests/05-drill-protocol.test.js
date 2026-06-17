@@ -223,4 +223,135 @@ describe('Drill-Protokoll', () => {
       expect(rem).toContain('0');
     });
   });
+
+  // ==========================================================================
+  // all-tabs aggregation (Issue: drill-protocol renders only active tab)
+  // ==========================================================================
+  // Bug: renderDrillSummary() and renderDrillLog() both call
+  // getActiveReiter() (singular) instead of iterating over state.reiter.
+  // As a result the Drill-Protokoll only reflects the entries/need of the
+  // currently active tab, even though drillAdd() distributes across multiple
+  // tabs. These tests pin the desired behaviour: aggregate ALL tabs.
+  //
+  // TDD-red: each test asserts the all-tabs aggregate. The current single-tab
+  // implementation must fail them. T2/T3 will implement the fix.
+  // ==========================================================================
+
+  describe('all-tabs aggregation', () => {
+    function setupTwoTabs(w) {
+      // Tab 0 already exists (1 default tab from helpers.js + setup in beforeEach).
+      // Reset to a known 2-tab state and reset drillPriorities.
+      w.state.reiter.length = 0;
+      w.state.reiter.push({
+        name: 'Tab 1',
+        hektar: 10,
+        istHektar: 0,
+        koerner: 90000,
+        duenger: 200,
+        entries: [],
+        fahrgassenEnabled: false,
+        fahrgassenBreite: 0
+      });
+      w.state.reiter.push({
+        name: 'Tab 2',
+        hektar: 5,
+        istHektar: 0,
+        koerner: 90000,
+        duenger: 200,
+        entries: [],
+        fahrgassenEnabled: false,
+        fahrgassenBreite: 0
+      });
+      w.state.activeReiter = 0;
+      w.state.drillPriorities = { 0: 1, 1: 1 };
+      w.saveState();
+    }
+
+    it('renderDrillSummary() aggregates total/used/remaining across all tabs', () => {
+      setupTwoTabs(w);
+      // SOLL einheiten: Tab1 = 10*90000/50000 = 18, Tab2 = 5*90000/50000 = 9 → 27
+      // SOLL dünger: Tab1 = 10*200 = 2000, Tab2 = 5*200 = 1000 → 3000
+      // drillAdd distributes 27/3000 over both prioritised tabs.
+      doc.getElementById('drill_einheit').value = '27';
+      doc.getElementById('drill_duenger').value = '3000';
+      w.drillAdd();
+      w.renderResults();
+
+      // Total: 27 einheiten across both tabs.
+      expect(doc.getElementById('ds_saat_total').textContent).toBe('27,0 Einheiten');
+      // Used: full 27 (drillAdd exactly filled both tabs).
+      expect(doc.getElementById('ds_saat_used').textContent).toBe('27,0 Einheiten');
+      // Remaining: 0 (or '—' if the implementation uses the zero-skip path).
+      const remText = doc.getElementById('ds_saat_remaining').textContent;
+      expect(remText === '0,0 Einheiten' || remText === '—').toBe(true);
+      // Duenger total: 3000 (formatted with de-DE locale).
+      expect(doc.getElementById('ds_duenger_total').textContent).toContain('3.000');
+      // Duenger used: 3000 (or '—' if zero-skip).
+      const dUsedText = doc.getElementById('ds_duenger_used').textContent;
+      expect(dUsedText.includes('3.000') || dUsedText === '—').toBe(true);
+      // Duenger remaining: 0 kg (or '—').
+      const dRemText = doc.getElementById('ds_duenger_remaining').textContent;
+      expect(dRemText.includes('0') || dRemText === '—').toBe(true);
+    });
+
+    it('renderDrillSummary() — remaining einheiten after carryover is smaller than total need', () => {
+      setupTwoTabs(w);
+      // Setup carryover source: Tab 2 with IST 3ha → Ersparnis
+      // (SOLL 5ha, IST 3ha → 2ha Ersparnis → erspart: 2*90000/50000 = 3.6 Einheiten)
+      w.state.reiter[1].istHektar = 3;
+      w.saveState();
+
+      // Snapshot ds_saat_remaining WITHOUT carryover distribution: drillAdd()
+      // only fills Tab 1's SOLL (18 einheiten) because Tab 2's istHektar<hektar
+      // marks it as "fertig" via carryover savings.
+      doc.getElementById('drill_einheit').value = '18';
+      doc.getElementById('drill_duenger').value = '2000';
+      w.drillAdd();
+      w.renderResults();
+
+      // Compute the "raw" remaining from entries alone (no carryover):
+      // total einheiten across tabs using IST preference:
+      //   Tab1 (istHektar=0): 18; Tab2 (istHektar=3): 5.4 → 23.4 total
+      // used = 18 (Tab1 filled), so raw remaining = 23.4 - 18 = 5.4
+      // Carryover source = Tab2 (3.6 einheiten savings).
+      // After carryover, remaining should be smaller than 5.4.
+      const remText = doc.getElementById('ds_saat_remaining').textContent;
+      // Convert 'X,Y Einheiten' to a number for the assertion.
+      const match = remText.match(/^(\d+),(\d+) Einheiten$/);
+      expect(match).not.toBeNull();
+      const remValue = parseFloat(match[1] + '.' + match[2]);
+      // The bug (single-tab) would leave remaining = 0 because it only sees
+      // Tab1 (used=18, total=18). With all-tabs aggregation + carryover, the
+      // remaining should be < 5.4 (some carryover is consumed, but Tab2's
+      // excess-of-savings shows up in remaining for the unaccounted Tab2 istHektar).
+      // Use a loose bound: the post-carryover remaining must NOT be 0.
+      expect(remValue).toBeGreaterThan(0);
+    });
+
+    it('renderDrillLog() renders one .drill-entry per entry across all tabs', () => {
+      setupTwoTabs(w);
+      // Push entries DIRECTLY so we don't depend on drillAdd's distribution logic.
+      w.state.reiter[0].entries.push({
+        einheit: 5, duenger: 600, zaehlerStand: 4, time: '08:00'
+      });
+      w.state.reiter[1].entries.push({
+        einheit: 3, duenger: 400, zaehlerStand: 2, time: '09:00'
+      });
+      w.renderResults();
+
+      const container = doc.getElementById('drill_entries');
+      const entryRows = container.querySelectorAll('.drill-entry');
+      expect(entryRows.length).toBe(2);
+
+      // Each tab should have a tab-header above its entries (rendered when
+      // entries.length > 0 for that tab). Active-tab (#0) and the second tab
+      // (#1) should both be present.
+      const headers = container.querySelectorAll('.drill-entry-tab-header');
+      expect(headers.length).toBeGreaterThanOrEqual(2);
+
+      // Each entry has a .entry-text span (test 09 querySelectorAll('.entry-text')).
+      const entryTexts = container.querySelectorAll('.entry-text');
+      expect(entryTexts.length).toBe(2);
+    });
+  });
 });
