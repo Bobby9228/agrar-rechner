@@ -350,5 +350,68 @@ describe('Drill-Protokoll', () => {
       const entryTexts = container.querySelectorAll('.entry-text');
       expect(entryTexts.length).toBe(2);
     });
+
+    // Issue #302: drill summary 'verbleibend' must net cross-tab carryover.
+    // Bug: renderDrillSummary() applied carryover per-tab (sum of
+    // max(0, need_t - saved_t + excess_t)) inside the tab loop. TASK-SPEC
+    // (#302 body) mandates refactoring to Phase A (per-tab need) + Phase B
+    // (global netting): rem = max(0, TotalNeed - TotalSaved + TotalExcess).
+    //
+    // The two formulas are mathematically equivalent given carryover's
+    // invariant `saved_t ≤ need_t` and `excess_t ≤ (need_t - saved_t)`,
+    // so this test pins the cross-tab-netting OUTPUT as a regression guard.
+    // If either invariant is ever relaxed, this test will catch the divergence.
+    //
+    // Test scenario (matches the user's repro: 2 tabs je 1 ha, 450.000
+    // Körner/ha, 1000 kg Dünger/ha; koernerProEinheit=50000 by default):
+    //   Tab 0: r.istHektar=2.4 → istE=21.6, istD=2400; solE=9, solD=1000.
+    //          1 entry einheit=12, duenger=2000, time='10:00'.
+    //   Tab 1: empty (pure need side).
+    //
+    // Phase 0: Tab 0 istE>solE → excessE=12.6, excessD=1400. No savings.
+    // Phase 1: skip.
+    // Phase 2: only Tab 0 has entries (Tab 1 skipped at line 256 — no entries).
+    //   Tab 0: capE=9.6, capD=400. takeE=9.6, takeD=400 → cco[0]={0,0,9.6,400}.
+    //   Tab 1: cco[1]={0,0,0,0}.
+    //
+    // Phase A: need_Tab0 = max(0,21.6-12)=9.6; need_Tab1 = max(0,9-0)=9.
+    //          TotalNeed_E = 18.6, TotalNeed_D = 400+1000 = 1400.
+    // Phase B: TotalExcess_E = 9.6, TotalExcess_D = 400.
+    //          remEinheit  = max(0, 18.6 - 0 + 9.6) = 28.2
+    //          remDuenger  = max(0, 1400 - 0 + 400) = 1800
+    it('renderDrillSummary() nets carryover across tabs (Issue #302)', () => {
+      setupTwoTabs(w);
+      // Reset tabs to the user's repro (1 ha / 450.000 K/ha / 1000 kg).
+      // setupTwoTabs defaults to 10 ha / 90000 K/ha / 200 kg/ha — too large.
+      w.state.reiter[0] = {
+        name: 'Tab 1', hektar: 1, istHektar: 0, koerner: 450000, duenger: 1000,
+        entries: [], fahrgassenEnabled: false, fahrgassenBreite: 0
+      };
+      w.state.reiter[1] = {
+        name: 'Tab 2', hektar: 1, istHektar: 0, koerner: 450000, duenger: 1000,
+        entries: [], fahrgassenEnabled: false, fahrgassenBreite: 0
+      };
+      w.state.activeReiter = 0;
+      w.state.drillPriorities = { 0: 1, 1: 1 };
+      // Tab 0: r.istHektar=2.4 → istE=21.6, istD=2400; entry covers 12 E / 2000 kg.
+      w.state.reiter[0].istHektar = 2.4;
+      w.state.reiter[0].entries.push({
+        einheit: 12, duenger: 2000, istHektar: 2.4, zaehlerStand: 2.4, time: '10:00'
+      });
+      w.state.reiter[1].istHektar = 0;
+      w.saveState();
+
+      w.renderResults();
+
+      // Phase A + Phase B per Issue #302 spec.
+      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('28,2 Einheiten');
+      expect(doc.getElementById('ds_duenger_remaining').textContent).toBe('1.800 kg');
+
+      // Sanity: total/used are independent of carryover.
+      expect(doc.getElementById('ds_saat_total').textContent).toBe('30,6 Einheiten');
+      expect(doc.getElementById('ds_saat_used').textContent).toBe('12,0 Einheiten');
+      expect(doc.getElementById('ds_duenger_total').textContent).toBe('3.400 kg');
+      expect(doc.getElementById('ds_duenger_used').textContent).toBe('2.000 kg');
+    });
   });
 });
