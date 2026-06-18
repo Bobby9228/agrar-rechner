@@ -103,9 +103,15 @@
       // ALL tabs in state.reiter, not just getActiveReiter(). Per-tab IST
       // takes precedence over SOLL (Issue #186) independently for each tab.
       // Same fg-factor-aware helpers as renderDrillLog (#273) so display and
-      // carryover source share one formula. Carryover savings/excess applied
-      // per tab (Issue #266-B2) so the remaining reflects post-redistribution
-      // state, matching the model in calculations.js isTabDone().
+      // carryover source share one formula.
+      // Issue #302: 'verbleibend' nets cross-tab in TWO phases:
+      //   Phase A (loop body): collect per-tab needE/needD and sum
+      //                        cco.saved*/cco.excess* across all tabs.
+      //   Phase B (after loop): rem = max(0, TotalNeed - TotalSaved + TotalExcess).
+      // Mathematically equivalent to summing per-tab max(0, need - saved + excess)
+      // given carryover's invariants (saved_t ≤ need_t, excess_t ≤ need_t-saved_t),
+      // but expressed globally so the summary reflects cross-tab netting without
+      // per-tab side effects (Issue #302: previously per-tab applied excess as +need).
       //
       // NOTE: Drill-Summary and Dashboard show DELIBERATELY DIFFERENT views:
       //   - Dashboard (render-dashboard.js:61) = realer Stand WITHOUT carryover
@@ -119,8 +125,17 @@
       var totalDuenger = 0;
       var usedEinheit = 0;
       var usedDuenger = 0;
-      var remEinheit = 0;
-      var remDuenger = 0;
+      // Issue #302: 'verbleibend' must net cross-tab. Phase A collects per-tab
+      // need inside the loop; Phase B (after the loop) sums carryover and applies
+      // rem = max(0, TotalNeed - TotalSaved + TotalExcess) once, globally.
+      // Same fg-factor-aware helpers as renderDrillLog (#273) so display and
+      // carryover source share one formula.
+      var totalNeedE = 0;
+      var totalNeedD = 0;
+      var totalSavedE = 0;
+      var totalSavedD = 0;
+      var totalExcessE = 0;
+      var totalExcessD = 0;
       for (var ti = 0; ti < allTabs.length; ti++) {
         var rt = allTabs[ti];
         if (!rt) continue;
@@ -139,13 +154,27 @@
         }
         usedEinheit += tUsedE;
         usedDuenger += tUsedD;
-        // Per-tab carryover: remaining on this tab = need - savings + excess.
+        // Phase A: per-tab need for this summary. Carryover (saved/excess)
+        // is summed across all tabs in Phase B below — NOT applied per tab
+        // (Issue #302). getCarryover(ti) returns this tab's share of the
+        // global carryover pool; summing across tabs gives the totals the
+        // formula needs.
         var cco = AppGlobals.getCarryover(ti);
         var needE = Math.max(0, tEinheiten - tUsedE);
         var needD = Math.max(0, tDuenger - tUsedD);
-        remEinheit += Math.max(0, needE - cco.savedEinheit + cco.excessEinheit);
-        remDuenger += Math.max(0, needD - cco.savedDuenger + cco.excessDuenger);
+        totalNeedE += needE;
+        totalNeedD += needD;
+        totalSavedE += cco.savedEinheit;
+        totalSavedD += cco.savedDuenger;
+        totalExcessE += cco.excessEinheit;
+        totalExcessD += cco.excessDuenger;
       }
+      // Phase B: cross-tab netting. Mathematically equivalent to summing
+      // per-tab max(0, need - saved + excess) given carryover's invariants
+      // (saved_t ≤ need_t, excess_t ≤ need_t - saved_t), but expressed as
+      // a single global formula per Issue #302 spec.
+      var remEinheit = Math.max(0, totalNeedE - totalSavedE + totalExcessE);
+      var remDuenger = Math.max(0, totalNeedD - totalSavedD + totalExcessD);
       var dsSollE = document.getElementById('ds_saat_total');
       if (dsSollE) dsSollE.textContent = AppGlobals.formatEinheit(totalEinheiten);
       var dsUsedE = document.getElementById('ds_saat_used');
