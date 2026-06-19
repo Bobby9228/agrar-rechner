@@ -225,79 +225,105 @@
 
     // --- Render: Drill Log ---
 
+    // Issue #309: Per-tab carryover/savings/excess block helper.
+    // Appends the three optional divs (.drill-savings / .drill-carryover /
+    // .drill-excess) into the given container, in the order savings → carryover
+    // → excess. Used by renderDrillLog() (under each tab-header) AND by
+    // renderMachineLog() (under each per-tab sub-header). Single source of
+    // truth so both containers stay in sync — see "3 Carryover-Render-Sites"
+    // rule in the agrar-rechner skill (renderDrillSummary, render-dashboard,
+    // inline render-results), of which the tab-anchored blocks are now a 4th
+    // site that has to remain consistent.
+    function _appendTabCarryoverBlocks(tabIdx, ct, container) {
+      if (!ct) return;
+      var cco = AppGlobals.getCarryover(tabIdx);
+      var isSavingsSource = (ct.istHektar > 0 && ct.hektar > 0 && ct.istHektar < ct.hektar);
+      var isExcessSource = (ct.istHektar > 0 && ct.hektar > 0 && ct.istHektar > ct.hektar);
+      if (isSavingsSource) {
+        // Issue #273: source savings must apply fahrgassenFaktor, same as
+        // the carryover calculation. Use getTabTotalEinheiten - getTabIstEinheiten
+        // (both already apply the per-tab FG factor) so display and
+        // carryover share one formula.
+        var sE = AppGlobals.getTabTotalEinheiten(ct) - AppGlobals.getTabIstEinheiten(ct);
+        var sD = (ct.hektar - ct.istHektar) * (ct.duenger || 0);
+        var sParts = [];
+        if (sE > 0.05) sParts.push(AppGlobals.fmt(sE) + ' Einheiten Saatgut');
+        if (sD > 0.05) sParts.push(sD.toLocaleString('de-DE') + ' kg Dünger');
+        if (sParts.length > 0) {
+          var sDiv = document.createElement('div');
+          sDiv.className = 'drill-savings';
+          sDiv.textContent = 'Ersparnis: ' + sParts.join(', ');
+          container.appendChild(sDiv);
+        }
+      }
+      if (cco.savedEinheit > 0.05 || cco.savedDuenger > 0.05) {
+        var cParts = [];
+        if (cco.savedEinheit > 0.05) cParts.push(AppGlobals.fmt(cco.savedEinheit) + ' Einheiten Saatgut');
+        if (cco.savedDuenger > 0.05) cParts.push(cco.savedDuenger.toLocaleString('de-DE') + ' kg Dünger');
+        var cDiv = document.createElement('div');
+        cDiv.className = 'drill-carryover';
+        cDiv.textContent = 'Übertrag aus ersparten Flächen: +' + cParts.join(', ');
+        container.appendChild(cDiv);
+      }
+      if (isExcessSource) {
+        // Issue #273: source excess must apply fahrgassenFaktor, same as
+        // the carryover calculation. Use getTabIstEinheiten - getTabTotalEinheiten
+        // (both already apply the per-tab FG factor) so display and
+        // carryover share one formula.
+        var eE = AppGlobals.getTabIstEinheiten(ct) - AppGlobals.getTabTotalEinheiten(ct);
+        var eD = (ct.istHektar - ct.hektar) * (ct.duenger || 0);
+        var eParts = [];
+        if (eE > 0.05) eParts.push(AppGlobals.fmt(eE) + ' Einheiten Saatgut');
+        if (eD > 0.05) eParts.push(eD.toLocaleString('de-DE') + ' kg Dünger');
+        if (eParts.length > 0) {
+          var eDiv = document.createElement('div');
+          eDiv.className = 'drill-excess';
+          eDiv.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eParts.join(', ');
+          container.appendChild(eDiv);
+        }
+      }
+    }
+
+    // Issue #309: tab has a carryover signal worth showing (savings source,
+    // excess source, or carryover received from another tab).
+    function _tabHasCarryoverSignal(tabIdx, ct) {
+      if (!ct) return false;
+      var cco = AppGlobals.getCarryover(tabIdx);
+      if (cco.savedEinheit > 0.05 || cco.savedDuenger > 0.05) return true;
+      if (ct.istHektar > 0 && ct.hektar > 0) {
+        if (ct.istHektar < ct.hektar) return true;  // savings source
+        if (ct.istHektar > ct.hektar) return true;  // excess source
+      }
+      return false;
+    }
+
     function renderDrillLog() {
       var container = document.getElementById('drill_entries');
       if (!container) return;
       container.innerHTML = '';
       var totalSummary = document.getElementById('ds_total_summary');
-      // Issue #266-B2: Per-tab carryover/savings/excess divs at the top.
-      // Shown for ALL tabs that have any carryover signal (savings source,
-      // excess source, or carryover received from other tabs). Tests assert
-      // these classes on the #drill_entries container.
-      for (var ci = 0; ci < AppGlobals.state.reiter.length; ci++) {
-        var ct = AppGlobals.state.reiter[ci];
-        if (!ct) continue;
-        var cco = AppGlobals.getCarryover(ci);
-        var isSavingsSource = (ct.istHektar > 0 && ct.hektar > 0 && ct.istHektar < ct.hektar);
-        var isExcessSource = (ct.istHektar > 0 && ct.hektar > 0 && ct.istHektar > ct.hektar);
-        if (isSavingsSource) {
-          // Issue #273: source savings must apply fahrgassenFaktor, same as
-          // the carryover calculation. Use getTabTotalEinheiten - getTabIstEinheiten
-          // (both already apply the per-tab FG factor) so display and
-          // carryover share one formula.
-          var sE = AppGlobals.getTabTotalEinheiten(ct) - AppGlobals.getTabIstEinheiten(ct);
-          var sD = (ct.hektar - ct.istHektar) * (ct.duenger || 0);
-          var sParts = [];
-          if (sE > 0.05) sParts.push(AppGlobals.fmt(sE) + ' Einheiten Saatgut');
-          if (sD > 0.05) sParts.push(sD.toLocaleString('de-DE') + ' kg Dünger');
-          if (sParts.length > 0) {
-            var sDiv = document.createElement('div');
-            sDiv.className = 'drill-savings';
-            sDiv.textContent = 'Ersparnis: ' + sParts.join(', ');
-            container.appendChild(sDiv);
-          }
-        }
-        if (cco.savedEinheit > 0.05 || cco.savedDuenger > 0.05) {
-          var cParts = [];
-          if (cco.savedEinheit > 0.05) cParts.push(AppGlobals.fmt(cco.savedEinheit) + ' Einheiten Saatgut');
-          if (cco.savedDuenger > 0.05) cParts.push(cco.savedDuenger.toLocaleString('de-DE') + ' kg Dünger');
-          var cDiv = document.createElement('div');
-          cDiv.className = 'drill-carryover';
-          cDiv.textContent = 'Übertrag aus ersparten Flächen: +' + cParts.join(', ');
-          container.appendChild(cDiv);
-        }
-        if (isExcessSource) {
-          // Issue #273: source excess must apply fahrgassenFaktor, same as
-          // the carryover calculation. Use getTabIstEinheiten - getTabTotalEinheiten
-          // (both already apply the per-tab FG factor) so display and
-          // carryover share one formula.
-          var eE = AppGlobals.getTabIstEinheiten(ct) - AppGlobals.getTabTotalEinheiten(ct);
-          var eD = (ct.istHektar - ct.hektar) * (ct.duenger || 0);
-          var eParts = [];
-          if (eE > 0.05) eParts.push(AppGlobals.fmt(eE) + ' Einheiten Saatgut');
-          if (eD > 0.05) eParts.push(eD.toLocaleString('de-DE') + ' kg Dünger');
-          if (eParts.length > 0) {
-            var eDiv = document.createElement('div');
-            eDiv.className = 'drill-excess';
-            eDiv.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eParts.join(', ');
-            container.appendChild(eDiv);
-          }
-        }
-      }
       // All-tabs aggregation (T3): iterate state.reiter in index order.
       // Each tab with entries.length > 0 gets a drill-entry-tab-header div,
       // followed by its entries in chronological order. #N numbering resets
       // per tab (Option A — consistent with single-tab behaviour, test 09
-      // unchanged). Empty state only when ALL tabs have empty entries.
+      // unchanged). Empty state only when ALL tabs have empty entries AND no
+      // tab has a carryover signal worth showing.
       var allTabs = AppGlobals.state.reiter || [];
       var hasAnyEntry = allTabs.some(function(r) { return r && r.entries && r.entries.length > 0; });
       if (!hasAnyEntry) {
-        if (totalSummary) totalSummary.textContent = '';
-        var empty = document.createElement('div');
-        empty.className = 'drill-empty';
-        empty.textContent = 'Noch nichts eingefüllt';
-        container.appendChild(empty);
-        return;
+        // Issue #309: still show carryover blocks if ANY tab has a signal —
+        // a savings/excess source with no entries yet is a valid edge case
+        // (IST set, no drillAdd done). Only collapse to "Noch nichts
+        // eingefüllt" when nothing meaningful can be displayed at all.
+        var anyCarryover = allTabs.some(function(r, i) { return _tabHasCarryoverSignal(i, r); });
+        if (!anyCarryover) {
+          if (totalSummary) totalSummary.textContent = '';
+          var empty = document.createElement('div');
+          empty.className = 'drill-empty';
+          empty.textContent = 'Noch nichts eingefüllt';
+          container.appendChild(empty);
+          return;
+        }
       }
       // Total-Summary (Hektar/Einheiten/Dünger über alle Entries aller Tabs)
       if (totalSummary) {
@@ -321,12 +347,24 @@
       // behaviour — test 09-blind-spots ('drill entry shows time prefix when
       // time is set') still sees entry-text[0] as the first entry of the
       // only tab with entries.
+      //
+      // Issue #309: each tab-section is now [tab-header → carryover blocks
+      // (if any) → entries]. Previously the carryover blocks were rendered in
+      // a separate first loop ABOVE all tab-headers, which left them visually
+      // unanchored (user could not tell which tab they belonged to). Moving
+      // them inside the per-tab loop binds them to the right tab.
       allTabs.forEach(function(rt, tabIdx) {
-        if (!rt || !rt.entries || rt.entries.length === 0) return;
+        if (!rt) return;
+        var hasEntries = rt.entries && rt.entries.length > 0;
+        if (!hasEntries && !_tabHasCarryoverSignal(tabIdx, rt)) return;
         var header = document.createElement('div');
         header.className = 'drill-entry-tab-header';
         header.textContent = rt.name || ('Tab ' + (tabIdx + 1));
         container.appendChild(header);
+        // Carryover blocks (Ersparnis / Übertrag / Mehrbedarf) directly below
+        // the tab-header so users can see which tab each block belongs to.
+        _appendTabCarryoverBlocks(tabIdx, rt, container);
+        if (!hasEntries) return;
         rt.entries.forEach(function(entry, actualIdx) {
           var row = document.createElement('div');
           row.className = 'drill-entry';
@@ -388,12 +426,30 @@
       container.innerHTML = '';
       var log = AppGlobals.state.machineLog || [];
       var activeTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
-      if (log.length === 0) return;
       // Header
       var header = document.createElement('div');
       header.className = 'drill-entry-tab-header';
       header.textContent = 'Maschinen-Protokoll';
       container.appendChild(header);
+      // Issue #309: per-tab carryover sections (Ersparnis / Übertrag / Mehrbedarf)
+      // — the machine-log entries themselves are a flat global list (no tabIdx
+      // on machineLog entries, by design), but the carryover blocks are
+      // per-tab and must be tab-anchored here too. Without this, a user
+      // reading the Maschinen-Protokoll view sees carryover blocks visually
+      // disconnected from the tab they belong to (matches the original bug
+      // repro in #309). Use the same _appendTabCarryoverBlocks helper as
+      // renderDrillLog() so both containers stay in sync (single source of
+      // truth for the "3 Carryover-Render-Sites" rule).
+      var allTabs = AppGlobals.state.reiter || [];
+      allTabs.forEach(function(rt, tabIdx) {
+        if (!rt || !_tabHasCarryoverSignal(tabIdx, rt)) return;
+        var sub = document.createElement('div');
+        sub.className = 'drill-entry-tab-header drill-machine-log-tab-subheader';
+        sub.textContent = rt.name || ('Tab ' + (tabIdx + 1));
+        container.appendChild(sub);
+        _appendTabCarryoverBlocks(tabIdx, rt, container);
+      });
+      if (log.length === 0) return;
       // Per-entry rates come from the active tab (Issue #186: prefer IST).
       // Issue #266 (Cluster B): Fahrgassen-Faktor muss in unitsPerHa
       // berücksichtigt werden (Test 18: unitsPerHa = koerner * fgFactor /
