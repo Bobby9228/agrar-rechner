@@ -266,4 +266,60 @@ describe('machineLog prognose', () => {
     // Second prognose should say saat leer bei ~5,7 ha
     expect(prognose[1].textContent).toContain('5,7');
   });
+
+  // Issue #307 — Pattern #1 (falsy-fallback through valid 0): when `zaehlerStand=0`,
+  // the buggy `entry.zaehlerStand || entry.hektar` falls through to the target
+  // hectares, inflating `driven` by the full target. A single freshly-logged entry
+  // (`zaehlerStand=0`, `hektar=15`, `einheit=24`, `duenger=2000`) should NOT show
+  // phantom prognose of "Saat leer bei 28,3 ha · Dünger leer bei 25,0 ha".
+  //
+  // Tab: koerner=90000, koernerProEinheit=50000 (default) → unitsPerHa=1,8.
+  // Tab: duenger=200 → duengerPerHa=200.
+  // After fix: driven=0, cumEinheit=24, cumDuenger=2000.
+  // → saatLeer = 0 + 24/1.8 = 13,3 ha
+  // → duengerLeer = 0 + 2000/200 = 10,0 ha
+  it('Issue #307 Pattern #1: zaehlerStand=0 reports driven=0 (no phantom-ha inflation)', () => {
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 15, koerner: 90000, duenger: 200, entries: [] };
+    w.state.machineLog = [
+      { einheit: 24, zaehlerStand: 0, duenger: 2000, hektar: 15, time: '10:00' },
+    ];
+    w.renderResults();
+
+    var mlContainer = w.document.getElementById('drill_machine_log');
+    var prognose = mlContainer.querySelectorAll('.drill-prognose');
+    expect(prognose.length).toBe(1);
+    var txt = prognose[0].textContent;
+    // Must NOT contain the buggy phantom values (28,3 / 25,0)
+    expect(txt).not.toContain('28,3');
+    expect(txt).not.toContain('25,0');
+    // Must contain the corrected values (13,3 / 10,0)
+    expect(txt).toContain('13,3');
+    expect(txt).toContain('10,0');
+  });
+
+  // Issue #307 — Pattern #2 (per-entry condition instead of cumulative):
+  // a follow-up entry that refills ONLY Dünger (entry.einheit=0) must still
+  // show the "Saat leer bei" prognose, because `cumEinheit` is still > 0 from
+  // the previous fill. The buggy `entry.einheit > 0` check silently drops the
+  // Saat prognose on every entry that doesn't add Saat.
+  it('Issue #307 Pattern #2: Saat prognose survives a Dünger-only follow-up entry', () => {
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 15, koerner: 90000, duenger: 200, entries: [] };
+    w.state.machineLog = [
+      { einheit: 24, zaehlerStand: 0, duenger: 2000, hektar: 15, time: '10:00' },
+      { einheit: 0,  zaehlerStand: 0, duenger: 1000, hektar: 15, time: '11:00' },
+    ];
+    w.renderResults();
+
+    var mlContainer = w.document.getElementById('drill_machine_log');
+    var prognose = mlContainer.querySelectorAll('.drill-prognose');
+    // Both entries must render a prognose row.
+    expect(prognose.length).toBe(2);
+    // The second entry (Dünger-only refill) must STILL show the Saat prognose,
+    // because the cumulative Saat tank is still > 0 after the first fill.
+    expect(prognose[1].textContent).toContain('Saat leer bei');
+    expect(prognose[1].textContent).toContain('13,3');
+    // And of course the Dünger prognose accumulates too.
+    expect(prognose[1].textContent).toContain('Dünger leer bei');
+    expect(prognose[1].textContent).toContain('15,0');
+  });
 });

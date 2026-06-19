@@ -428,9 +428,13 @@
           var t = typeof entry.time === 'number' ? new Date(entry.time).toLocaleString('de-DE') : entry.time;
           parts.push(t + ' –');
         }
-        if (entry.hektar || entry.zaehlerStand) {
-          var ha = entry.zaehlerStand || entry.hektar;
-          parts.push(ha.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' ha');
+        // Issue #307: `zaehlerStand` starts at 0; `||` would silently fall through
+        // to `entry.hektar` (the target). For display, prefer an explicit `!= null`
+        // check so a freshly-started log (zaehlerStand=0) shows "0,0 ha" instead of
+        // the misleading target-hektar.
+        var displayHa = entry.zaehlerStand != null ? entry.zaehlerStand : entry.hektar;
+        if (entry.zaehlerStand != null || entry.hektar) {
+          parts.push(displayHa.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' ha');
         }
         parts.push(AppGlobals.formatEinheit(entry.einheit || 0));
         if (entry.duenger > 0) {
@@ -447,7 +451,13 @@
         row.appendChild(removeBtn);
         container.appendChild(row);
         // Update cumulative tank-level: subtract driven ha since last fill, then add this fill.
-        var zaehler = entry.zaehlerStand || entry.hektar || 0;
+        // Issue #307: `zaehlerStand` is the drill's meter counter and starts at 0;
+        // `||` falls through 0 to `entry.hektar` (the target), so `driven = zaehler - lastZaehler`
+        // would phantom-inflate by the full target on the first entry. Use an explicit
+        // `!= null` check so a `zaehlerStand=0` entry correctly reports `driven = 0`.
+        var zaehler = entry.zaehlerStand != null
+          ? entry.zaehlerStand
+          : (entry.hektar != null ? entry.hektar : 0);
         var driven = Math.max(0, zaehler - lastZaehler);
         if (unitsPerHa > 0) cumEinheit = Math.max(0, cumEinheit - driven * unitsPerHa);
         if (duengerPerHa > 0) cumDuenger = Math.max(0, cumDuenger - driven * duengerPerHa);
@@ -455,12 +465,16 @@
         cumDuenger += entry.duenger || 0;
         lastZaehler = zaehler;
         // Prognose row (one per entry that has rates)
+        // Issue #307: per-entry check (`entry.einheit > 0`) suppresses the Saat
+        // prognose on a follow-up entry that only refilled Dünger — even though
+        // the cumulative tank is still > 0. Switch to `cumEinheit > 0` so the
+        // prognose is correct for every entry as long as some Saat remains.
         var prognoseParts = [];
-        if (unitsPerHa > 0 && entry.einheit > 0) {
+        if (unitsPerHa > 0 && cumEinheit > 0) {
           var saatLeer = zaehler + cumEinheit / unitsPerHa;
           prognoseParts.push('Saat leer bei ' + AppGlobals.fmt(saatLeer) + ' ha');
         }
-        if (duengerPerHa > 0 && entry.duenger > 0) {
+        if (duengerPerHa > 0 && cumDuenger > 0) {
           var duengerLeer = zaehler + cumDuenger / duengerPerHa;
           prognoseParts.push('Dünger leer bei ' + AppGlobals.fmt(duengerLeer) + ' ha');
         }
