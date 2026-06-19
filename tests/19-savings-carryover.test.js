@@ -337,4 +337,153 @@ describe('IST/SOLL Savings & Carryover', () => {
     expect(excessDivs[0].textContent).toContain('2,9');
     expect(excessDivs[0].textContent).not.toContain('3,0 Einheiten');
   });
+
+  // Issue #309: tab-anchoring. The Ersparnis / Übertrag / Mehrbedarf blocks
+  // must appear DIRECTLY UNDER the tab-header they belong to (inside the
+  // tab's <div.drill-entry-tab-header> section in #drill_entries), NOT as a
+  // flat batch at the very top of the container above all tab-headers.
+  it('drill-savings/carryover/excess appear directly under their tab-header in #drill_entries', () => {
+    const { w } = setup();
+    w.addReiter();
+    // Tab 0: SOLL=8, IST=7.9 → savings source. Has an entry.
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 7.9, koerner: 50000, duenger: 100, entries: [] };
+    w.state.reiter[0].entries.push({ einheit: 7.9, zaehlerStand: 7.9, duenger: 790, time: '10:00' });
+    // Tab 1: SOLL=10, IST=8 → savings source. No entry → carryover for tab 0? No —
+    // tab 0 is done. Carryover for tab 1 = savings from tab 0. Wait: tab 1 has
+    // savings source but no entry. With savings source on tab 1, tab 1 itself
+    // becomes the FIRST not-done tab → it absorbs tab 0's carryover (but tab 0's
+    // savings are 0 since its need is met) AND it advertises its own savings.
+    // Keep it simple: tab 1 also a savings source with IST=8, SOLL=10. No entry.
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 10, istHektar: 8, koerner: 50000, duenger: 100, entries: [] };
+    w.state.activeReiter = 0;
+    w.renderResults();
+
+    const container = w.document.getElementById('drill_entries');
+    // Walk children in order; assert every .drill-savings / .drill-carryover /
+    // .drill-excess is preceded by a .drill-entry-tab-header.
+    const children = Array.from(container.children);
+    let lastHeaderIdx = -1;
+    for (let i = 0; i < children.length; i++) {
+      const c = children[i];
+      if (c.classList.contains('drill-entry-tab-header')) {
+        lastHeaderIdx = i;
+      } else if (
+        c.classList.contains('drill-savings') ||
+        c.classList.contains('drill-carryover') ||
+        c.classList.contains('drill-excess')
+      ) {
+        // Carryover block must be directly under SOME tab-header (not at top
+        // of container before any header).
+        expect(lastHeaderIdx).toBeGreaterThanOrEqual(0);
+        // And not be the .drill-empty placeholder
+        expect(c.classList.contains('drill-empty')).toBe(false);
+      }
+    }
+    // Specifically: tab 0 must show a savings block (IST < SOLL with entry).
+    // Find tab 0's header (first one), then assert a savings block follows it.
+    const tab0HeaderIdx = children.findIndex(c =>
+      c.classList.contains('drill-entry-tab-header') && c.textContent.includes('Tab 1'));
+    expect(tab0HeaderIdx).toBeGreaterThanOrEqual(0);
+    // The next child after tab 0's header must be its savings block (since tab 0
+    // is a savings source with an entry, it has drill-savings).
+    const next = children[tab0HeaderIdx + 1];
+    expect(next).toBeDefined();
+    expect(next.classList.contains('drill-savings')).toBe(true);
+    expect(next.textContent).toContain('Ersparnis');
+  });
+
+  it('drill-entries are NOT rendered above their tab-header (no orphan blocks at top)', () => {
+    const { w } = setup();
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000, duenger: 100, entries: [] };
+    w.state.reiter[0].entries.push({ einheit: 5, zaehlerStand: 3, duenger: 200, time: '10:00' });
+    w.state.activeReiter = 0;
+    w.renderResults();
+
+    const container = w.document.getElementById('drill_entries');
+    const children = Array.from(container.children);
+    // The first child must be a tab-header (or a savings/carryover/excess
+    // block directly above a tab-header) — never a bare .drill-entry before
+    // any header has been rendered.
+    const firstIdx = children.findIndex(c => c.classList.contains('drill-entry-tab-header'));
+    expect(firstIdx).toBeGreaterThanOrEqual(0);
+    // No .drill-entry before the first tab-header
+    for (let i = 0; i < firstIdx; i++) {
+      expect(children[i].classList.contains('drill-entry')).toBe(false);
+    }
+  });
+
+  it('#drill_machine_log gets tab-anchored carryover blocks under per-tab sub-headers', () => {
+    const { w } = setup();
+    w.addReiter();
+    // Tab 0: savings source. machineLog has one entry.
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 7.9, koerner: 50000, duenger: 100, entries: [] };
+    w.state.reiter[0].entries.push({ einheit: 7.9, zaehlerStand: 7.9, duenger: 790, time: '10:00' });
+    // Tab 1: SOLL=10, IST=8 → savings source with no entry → gets carryover.
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 10, istHektar: 8, koerner: 50000, duenger: 100, entries: [] };
+    w.state.machineLog = [
+      { einheit: 5, zaehlerStand: 0, duenger: 0, time: '10:00' },
+    ];
+    w.state.activeReiter = 0;
+    w.renderResults();
+
+    const ml = w.document.getElementById('drill_machine_log');
+    const mlChildren = Array.from(ml.children);
+    // First child: "Maschinen-Protokoll" static header.
+    expect(mlChildren[0].classList.contains('drill-entry-tab-header')).toBe(true);
+    expect(mlChildren[0].textContent).toContain('Maschinen-Protokoll');
+    // Find a tab sub-header + savings block somewhere after the static header.
+    // (Tab 0 has savings, tab 1 has carryover received + own savings.)
+    const savBlocks = ml.querySelectorAll('.drill-savings');
+    const coBlocks = ml.querySelectorAll('.drill-carryover');
+    expect(savBlocks.length).toBeGreaterThanOrEqual(1);
+    expect(coBlocks.length).toBeGreaterThanOrEqual(1);
+    // Each savings/carryover block must be preceded by a tab-header.
+    let lastHeaderIdx = -1;
+    for (let i = 0; i < mlChildren.length; i++) {
+      const c = mlChildren[i];
+      if (c.classList.contains('drill-entry-tab-header')) {
+        lastHeaderIdx = i;
+      } else if (
+        c.classList.contains('drill-savings') ||
+        c.classList.contains('drill-carryover') ||
+        c.classList.contains('drill-excess')
+      ) {
+        expect(lastHeaderIdx).toBeGreaterThanOrEqual(0);
+      }
+    }
+    // .drill-entry (machine-log entries) must appear AFTER all tab-sub-headers
+    // and their carryover blocks, not interleaved.
+    const firstEntryIdx = mlChildren.findIndex(c => c.classList.contains('drill-entry'));
+    const firstSubSavIdx = mlChildren.findIndex(c =>
+      c.classList.contains('drill-savings') || c.classList.contains('drill-carryover') || c.classList.contains('drill-excess'));
+    if (firstEntryIdx >= 0 && firstSubSavIdx >= 0) {
+      expect(firstEntryIdx).toBeGreaterThan(firstSubSavIdx);
+    }
+  });
+
+  it('carryover blocks render under tab-header even when tab has no entries', () => {
+    // Regression: before the fix, renderDrillLog() always returned "Noch
+    // nichts eingefüllt" when ALL tabs had empty entries — even when one tab
+    // was a savings source. Now the empty-state is suppressed if any tab has
+    // a carryover signal, so the savings block is visible.
+    const { w } = setup();
+    w.addReiter();
+    // Tab 0: savings source, no entries.
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 7.9, koerner: 50000, duenger: 100, entries: [] };
+    // Tab 1: not done, no entries, no savings/excess → no signal.
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 10, koerner: 50000, duenger: 100, entries: [] };
+    w.state.activeReiter = 0;
+    w.renderResults();
+
+    const container = w.document.getElementById('drill_entries');
+    // Should NOT show "Noch nichts eingefüllt" because tab 0 has a savings signal.
+    const empty = container.querySelector('.drill-empty');
+    expect(empty).toBeNull();
+    // Should show the savings block anchored to tab 0's header.
+    const headers = container.querySelectorAll('.drill-entry-tab-header');
+    expect(headers.length).toBeGreaterThanOrEqual(1);
+    const sav = container.querySelector('.drill-savings');
+    expect(sav).not.toBeNull();
+    expect(sav.textContent).toContain('Ersparnis');
+  });
 });
