@@ -156,8 +156,12 @@
       var usedD = r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
       var istE = AppGlobals.getTabIstEinheiten(r) || AppGlobals.getTabTotalEinheiten(r);
       var istD = AppGlobals.getTabIstDuenger(r) || AppGlobals.getTabTotalDuenger(r);
-      var remE = Math.max(0, istE - usedE);
-      var remD = Math.max(0, istD - usedD);
+      // Issue #305: subtract carryover savings / add excess from other tabs
+      // so the inline-drill "verbleibend" matches the dashboard + drill summary.
+      var activeIdx = AppGlobals.state.activeReiter || 0;
+      var co = AppGlobals.getCarryover(activeIdx);
+      var remE = Math.max(0, istE - usedE - co.savedEinheit + co.excessEinheit);
+      var remD = Math.max(0, istD - usedD - co.savedDuenger + co.excessDuenger);
       var usedEl = document.getElementById('r_drill_e_used');
       if (usedEl) usedEl.textContent = AppGlobals.formatEinheit(usedE);
       var remEl = document.getElementById('r_drill_e_rem');
