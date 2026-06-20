@@ -322,4 +322,76 @@ describe('machineLog prognose', () => {
     expect(prognose[1].textContent).toContain('Dünger leer bei');
     expect(prognose[1].textContent).toContain('15,0');
   });
+
+  // Issue #313 regression: drillMachineAdd() previously read
+  // parseInt('drill_einheit') as a repetition count, producing N phantom
+  // entries with einheit=1, duenger=1 whenever the seed-quantity input
+  // contained a value > 1 (the user's reported bug: 2x "2000 kg Dünger"
+  // filled → used=3333,33 kg / remaining=1266,67 kg instead of 4000/500).
+  //
+  // One click of "+ Einfüllen" must push exactly ONE entry into the active
+  // tab's entries AND exactly ONE entry into machineLog — regardless of the
+  // numeric value the user typed into drill_einheit.
+  describe('Issue #313 — drillMachineAdd single-entry contract', () => {
+    it('one click → exactly one machineLog entry and one activeTab entry', () => {
+      w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000, duenger: 150, entries: [] };
+      w.state.machineLog = [];
+      w.state.activeReiter = 0;
+
+      w.document.getElementById('drill_einheit').value = '2000';
+      w.document.getElementById('drill_duenger').value = '2000';
+      w.document.getElementById('drill_hektar').value = '4.5';
+      w.drillMachineAdd();
+
+      expect(w.state.machineLog.length).toBe(1);
+      expect(w.state.reiter[0].entries.length).toBe(1);
+
+      // The single entry must carry the full user-typed values (NOT divided).
+      expect(w.state.machineLog[0].einheit).toBe(2000);
+      expect(w.state.machineLog[0].duenger).toBe(2000);
+      expect(w.state.reiter[0].entries[0].einheit).toBe(2000);
+      expect(w.state.reiter[0].entries[0].duenger).toBe(2000);
+    });
+
+    it('two clicks → exactly two entries (each click is one entry)', () => {
+      w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000, duenger: 150, entries: [] };
+      w.state.machineLog = [];
+      w.state.activeReiter = 0;
+
+      w.document.getElementById('drill_einheit').value = '5';
+      w.document.getElementById('drill_duenger').value = '200';
+      w.document.getElementById('drill_hektar').value = '3';
+      w.drillMachineAdd();
+
+      w.document.getElementById('drill_einheit').value = '7';
+      w.document.getElementById('drill_duenger').value = '300';
+      w.document.getElementById('drill_hektar').value = '6';
+      w.drillMachineAdd();
+
+      expect(w.state.machineLog.length).toBe(2);
+      expect(w.state.reiter[0].entries.length).toBe(2);
+      expect(w.state.machineLog[0].einheit).toBe(5);
+      expect(w.state.machineLog[1].einheit).toBe(7);
+    });
+
+    it('dünger-only fill (einheit=0, duenger=2000) → one entry, not 2000 phantom entries', () => {
+      // User reported scenario: only Dünger-Wert typed, Einheiten-Feld leer.
+      // Pre-#313 bug: parseInt('') || 1 = 1 (worked here), but if user typed
+      // any number in drill_einheit we'd get N entries.
+      w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000, duenger: 150, entries: [] };
+      w.state.machineLog = [];
+      w.state.activeReiter = 0;
+
+      w.document.getElementById('drill_einheit').value = '1333';
+      w.document.getElementById('drill_duenger').value = '1333,33';
+      w.document.getElementById('drill_hektar').value = '0';
+      w.drillMachineAdd();
+
+      expect(w.state.machineLog.length).toBe(1);
+      expect(w.state.reiter[0].entries.length).toBe(1);
+      // Critical: einheit must be 1333 (full value), not 1333/1333 = 1.
+      expect(w.state.reiter[0].entries[0].einheit).toBe(1333);
+      expect(w.state.reiter[0].entries[0].duenger).toBeCloseTo(1333.33, 2);
+    });
+  });
 });
