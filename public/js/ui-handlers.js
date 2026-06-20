@@ -358,32 +358,19 @@
     // Issue #276: _buildDrillEntry erzeugt das Entry-Objekt für einen
     // Multi-Tab-Drill-Push (mit machineLog-Index) oder einen Single-Tab-
     // Push (mlIdx = -1). Berechnet die cap-bewerteten Mengen für ein Tab.
-    //
-    // Issue #315: Dünger-Cap entfernt. Saatgut wird weiterhin auf die
-    // Tab-Fläche gecappt (unitsForThisTab = min(input, maxUnitsThisTab)),
-    // aber entry.duenger respektiert jetzt den Roh-User-Wert. Der vorherige
-    // Math.min(duengerRaw, duengerPerUnit * unitsForThisTab)-Cap verschluckte
-    // stillschweigend Dünger-Mengen, die von der Tab-Zielmenge abweichen,
-    // und produzierte falsche Verbleibend-Werte.
-    //
-    // Begründung: kg/ha in den Tab-Einstellungen ist eine Zielsetzung des
-    // Landwirts, kein physikalisches Limit. Der Landwirt kann legitimerweise
-    // mehr oder weniger Dünger pro Einheit ausbringen als geplant — die App
-    // soll das respektieren.
-    //
-    // Der Single-Tab-Pfad in drillAdd() überschreibt ohnehin entry.duenger
-    // mit dem Roh-Input, was die Inkonsistenz noch verschärft hat.
     function _buildDrillEntry(tab, unitsRaw, duengerRaw, zaehlerStand, mlIdx) {
       var fgFactor = (tab.fahrgassenEnabled && tab.fahrgassenBreite >= 2)
         ? AppGlobals.computeFahrgassenFaktor(tab.fahrgassenBreite) : 1;
       var perUnit = (tab.koerner * fgFactor) / AppGlobals.state.koernerProEinheit;
       var maxUnitsThisTab = tab.hektar * perUnit;
       var unitsForThisTab = Math.min(unitsRaw, maxUnitsThisTab);
+      var duengerPerUnit = AppGlobals.getDuengerProEinheit(tab, AppGlobals.state.koernerProEinheit);
+      var duengerForThisTab = Math.min(duengerRaw, duengerPerUnit * unitsForThisTab);
       return {
         time: mlIdx >= 0 ? AppGlobals.getTabNextTime(tab) : new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
         mlIdx: mlIdx,
         einheit: Math.round(unitsForThisTab * 100) / 100,
-        duenger: Math.round(duengerRaw * 100) / 100,
+        duenger: Math.round(duengerForThisTab * 100) / 100,
         hektar: tab.hektar, istHektar: 0, zaehlerStand: zaehlerStand,
         koerner: tab.koerner, duengerRate: tab.duenger
       };
@@ -593,13 +580,6 @@
       AppGlobals._internal.drillCalcTimer = setTimeout(AppGlobals.drillCalcAll, 150);
     }
 
-    // Issue #313: drillMachineAdd() previously read parseInt('drill_einheit')
-    // as a repetition count and pushed `count` entries with `einheit / count`
-    // and `duenger / count` each. But drill_einheit is the seed-quantity input
-    // ("Maschine eingefüllt (Einheiten)"), not a count — so any value > 1
-    // produced N phantom entries with einheit=1, duenger=1.
-    //
-    // One click → one entry per side (machineLog + activeTab.entries).
     function drillMachineAdd() {
       var einheitVal = document.getElementById('drill_einheit').value;
       var duengerVal = document.getElementById('drill_duenger').value;
@@ -621,7 +601,11 @@
         isMachineLog: true
       };
       AppGlobals.state.machineLog.push(entry);
-      activeTab.entries.push(entry);
+      var count = parseInt(document.getElementById('drill_einheit').value) || 1;
+      for (var c = 0; c < count; c++) {
+        var e = { time: Date.now() + c, mlIdx: AppGlobals.state.machineLog.length - 1, einheit: einheit / count, duenger: duenger / count, hektar: targetHektar > 0 ? targetHektar : (activeTab.hektar || 0), istHektar: 0, zaehlerStand: targetHektar, koerner: activeTab.koerner, duengerRate: activeTab.duenger };
+        activeTab.entries.push(e);
+      }
       document.getElementById('drill_einheit').value = '';
       document.getElementById('drill_duenger').value = '';
       document.getElementById('drill_hektar').value = '';
