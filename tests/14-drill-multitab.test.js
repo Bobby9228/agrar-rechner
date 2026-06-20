@@ -334,4 +334,65 @@ describe('priority button cycling', () => {
     prioBtn.onclick(); // 3 → maxPrio=3 → 0
     expect(prioBtn.getAttribute('data-prio')).toBe('0');
   });
+
+  // Issue #315 regression: _buildDrillEntry() previously capped entry.duenger
+  // with Math.min(duengerRaw, duengerPerUnit * unitsForThisTab), which silently
+  // truncated the user's duenger input whenever it exceeded the tab's
+  // planned kg/E ratio. User-reported bug (2026-06-20): filling 2x 2000 kg
+  // Dünger across tabs with 12 Einheiten + 2000 kg in a tab whose
+  // duengerPerUnit was 111,11 kg/E → cap reduced the second entry's
+  // duenger to 1333,33 kg → display showed 3.333,33 kg used / 1.266,67 kg
+  // verbleibend instead of expected 4.000 kg / 500 kg.
+  //
+  // Fix: Dünger-Cap removed. entry.duenger now stores the raw user value.
+  // Saatgut-Cap (unitsForThisTab = min(input, maxUnitsThisTab)) is preserved
+  // because it prevents overflowing the tab's planned area.
+  //
+  // We test _buildDrillEntry directly because the multi-tab distribution
+  // path (_calcDrillDistribution) caps separately on tab SOLL duenger —
+  // that cap is a different concern (plan-vs-act) and is preserved.
+  describe('Issue #315 — entry.duenger respects raw user input', () => {
+    function userTab() {
+      // User-Report-Szenario: 10 ha, koerner=90000, duenger=200 kg/ha.
+      // duengerPerUnit = 200 × 50000 / 90000 = 111,11 kg/E.
+      // Max-Einheiten via Saatgut-Cap = 10 × 90000 / 50000 = 18 E.
+      return {
+        name: 'Tab 2', hektar: 10, istHektar: 10.5, koerner: 90000, duenger: 200,
+        entries: [], fahrgassenEnabled: false, fahrgassenBreite: 0
+      };
+    }
+
+    it('drillAdd pushes entry.duenger = raw user value (no cap)', () => {
+      // User-Reported-Szenario: 12 E + 2000 kg Dünger in Tab 2.
+      // duengerPerUnit = 111,11 kg/E, so 111,11 × 12 = 1333,33 (would-be cap).
+      // Post-#315: entry.duenger must be 2000 (raw), not 1333,33.
+      var tab = userTab();
+      var entry = w._buildDrillEntry(tab, 12, 2000, 0, -1);
+
+      expect(entry.einheit).toBe(12);
+      expect(entry.duenger).toBe(2000);  // raw, not 1333,33
+    });
+
+    it('extreme case: 1 E + 99999 kg → entry.duenger = 99999 (no cap)', () => {
+      // 1 E × 111,11 kg/E = 111,11 — would have been capped from 99999 to 111,11.
+      // Post-#315: full 99999 stored. Use case: "I filled a lot of fertilizer
+      // but only 1 sack of seed because I'm top-dressing."
+      var tab = userTab();
+      var entry = w._buildDrillEntry(tab, 1, 99999, 0, -1);
+
+      expect(entry.einheit).toBe(1);
+      expect(entry.duenger).toBe(99999);
+    });
+
+    it('Saatgut-Cap bleibt erhalten (unitsForThisTab = min(input, maxUnitsThisTab))', () => {
+      // Tab hat 10 ha, koerner=90000 → maxUnitsThisTab = 18 E. User tippt 24 E.
+      // Saatgut-Cap greift: entry.einheit = 18, nicht 24.
+      // Dünger-Cap ist weg: entry.duenger = 2000 (raw).
+      var tab = userTab();
+      var entry = w._buildDrillEntry(tab, 24, 2000, 0, -1);
+
+      expect(entry.einheit).toBe(18);     // gecappt auf maxUnitsThisTab
+      expect(entry.duenger).toBe(2000);   // nicht gecappt
+    });
+  });
 });
