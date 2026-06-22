@@ -466,7 +466,7 @@ describe('drillCalcAll()', () => {
     expect(doc.getElementById('dtl_e_1').value).toBe('10,0');
   });
 
-  it('distributes duenger separately from einheit', () => {
+  it('distributes duenger separately from einheit (symmetric to Saat-Pfad, Issue #329)', () => {
     w.state.reiter = [
       { name: 'A', hektar: 10, koerner: 50000, duenger: 100, entries: [] },
       { name: 'B', hektar: 5, koerner: 50000, duenger: 200, entries: [] },
@@ -476,6 +476,9 @@ describe('drillCalcAll()', () => {
     doc.getElementById('drill_einheit').value = '5';
     doc.getElementById('drill_duenger').value = '3000';
     w.drillCalcAll();
+    // Issue #329: Dünger folgt Saat-Prio-Logik. Tab A SOLL = 10*100 = 1000,
+    // Tab B SOLL = 5*200 = 1000. Fill 3000 kg → A nimmt 1000 (cap), B nimmt 1000.
+    // Rest 1000 ist Überschuss und wird in drillAdd() in den machineLog geschrieben.
     expect(doc.getElementById('dtl_d_0').value).toBe('1000,0');
     expect(doc.getElementById('dtl_d_1').value).toBe('1000,0');
   });

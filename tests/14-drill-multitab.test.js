@@ -103,7 +103,7 @@ describe('drillCalcAll (priority distribution)', () => {
     expect(w.parseDE(eB.value)).toBeCloseTo(2);
   });
 
-  it('distributes duenger similarly', () => {
+  it('distributes duenger like Saat (symmetric, Issue #329): Prio-cap per Tab', () => {
     setupMultiTab();
     // Tab A needs 1500 kg (10*150), Tab B needs 500 kg (5*100)
     w.document.getElementById('drill_einheit').value = '0';
@@ -113,9 +113,9 @@ describe('drillCalcAll (priority distribution)', () => {
 
     var dA = w.document.getElementById('dtl_d_0');
     var dB = w.document.getElementById('dtl_d_1');
-    // Tab A gets min(1500, 1800) = 1500
+    // Symmetrisch zu Saat-Pfad: Tab A nimmt min(remD, tabDRem=1500)=1500,
+    // Rest 300 geht zu Tab B (cap=500) → Tab B = 300. Siehe tests/43.
     expect(w.parseDE(dA.value)).toBeCloseTo(1500);
-    // Tab B gets min(500, 1800-1500=300) = 300
     expect(w.parseDE(dB.value)).toBeCloseTo(300);
   });
 
