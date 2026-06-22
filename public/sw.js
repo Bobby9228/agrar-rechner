@@ -1,7 +1,7 @@
 // ⚠️ CACHE_VERSION muss bei jedem Release manuell gebumpet werden!
 // Bei Vergessen bekommen Nutzer die alte Version aus dem Cache.
 // alternativa: Build-Script das Hash/Zeitstempel injiziert.
-const CACHE_VERSION = 'agrar-rechner-v23';
+const CACHE_VERSION = 'agrar-rechner-v24';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
