@@ -466,7 +466,7 @@ describe('drillCalcAll()', () => {
     expect(doc.getElementById('dtl_e_1').value).toBe('10,0');
   });
 
-  it('distributes duenger separately from einheit', () => {
+  it('distributes duenger separately from einheit (Prio-basiert, kein tabDCap)', () => {
     w.state.reiter = [
       { name: 'A', hektar: 10, koerner: 50000, duenger: 100, entries: [] },
       { name: 'B', hektar: 5, koerner: 50000, duenger: 200, entries: [] },
@@ -476,8 +476,11 @@ describe('drillCalcAll()', () => {
     doc.getElementById('drill_einheit').value = '5';
     doc.getElementById('drill_duenger').value = '3000';
     w.drillCalcAll();
-    expect(doc.getElementById('dtl_d_0').value).toBe('1000,0');
-    expect(doc.getElementById('dtl_d_1').value).toBe('1000,0');
+    // Post-fix (2026-06-22, Issue #315 follow-up): tabDCap entfernt.
+    // Tab A (Prio 1) bekommt alle 3000 kg, Tab B = 0.
+    // Vorher: 1000+1000 (weil SOLL=1000 cappt, rest stillschweigend weg).
+    expect(doc.getElementById('dtl_d_0').value).toBe('3000,0');
+    expect(doc.getElementById('dtl_d_1').value).toBe(''); // giveD=0 → leerer String (Issue #277: `_applyDrillPlan` schreibt '' für 0-Werte)
   });
 
   it('handles empty gesamtEinheit', () => {
