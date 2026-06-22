@@ -103,7 +103,7 @@ describe('drillCalcAll (priority distribution)', () => {
     expect(w.parseDE(eB.value)).toBeCloseTo(2);
   });
 
-  it('distributes duenger similarly', () => {
+  it('distributes duenger to highest-priority tab without tabDCap cap (Issue #315 follow-up)', () => {
     setupMultiTab();
     // Tab A needs 1500 kg (10*150), Tab B needs 500 kg (5*100)
     w.document.getElementById('drill_einheit').value = '0';
@@ -113,10 +113,12 @@ describe('drillCalcAll (priority distribution)', () => {
 
     var dA = w.document.getElementById('dtl_d_0');
     var dB = w.document.getElementById('dtl_d_1');
-    // Tab A gets min(1500, 1800) = 1500
-    expect(w.parseDE(dA.value)).toBeCloseTo(1500);
-    // Tab B gets min(500, 1800-1500=300) = 300
-    expect(w.parseDE(dB.value)).toBeCloseTo(300);
+    // Post-fix (2026-06-22): Saat und Dünger sind unabhängige Tanks. Der
+    // tabDCap (SOLL-minus-used) ist weg. Tab A (Prio 1) bekommt die volle
+    // eingefüllte Menge, Tab B = 0. Der User kontrolliert via Prio-Reihenfolge.
+    // Vorher: Tab A=1500 (cap), Tab B=300 (rest). Siehe tests/43.
+    expect(w.parseDE(dA.value)).toBeCloseTo(1800);
+    expect(w.parseDE(dB.value)).toBeCloseTo(0);
   });
 
   it('skips tabs with no priority', () => {

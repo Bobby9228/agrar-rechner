@@ -536,11 +536,13 @@
             remE -= plan[p.idx].giveE;
           }
           if (remD > AppGlobals.EPSILON_QUANTITY) {
-            var tabDUsed = (p.r.entries || []).reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
-            var tabDNeed = Math.max(0, (p.r.hektar || 0) * (p.r.duenger || 0));
-            var tabDCap = Math.max(0, tabDNeed - tabDUsed);
-            plan[p.idx].giveD = Math.min(remD, tabDCap);
-            remD -= plan[p.idx].giveD;
+            // Saat und Dünger sind unabhängige Tanks (siehe Issue #315/#321).
+            // Die Dünger-Verteilung folgt der Priorität, NICHT einem tabDCap
+            // (SOLL minus used) — letzteres würde stillschweigend User-Eingaben
+            // schlucken, wenn ein Tab bereits teil-befüllt ist. Siehe Screenshot
+            // 2026-06-22: 2000 kg eingefüllt → 1333,33 kg gespeichert.
+            plan[p.idx].giveD = remD;
+            remD = 0;
           }
         }
         // Leftover-Absorption im letzten priorisierten Reiter (Issue #266)
