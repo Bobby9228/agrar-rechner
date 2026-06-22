@@ -61,6 +61,10 @@
           sollIstSection.style.display = 'none';
         }
       }
+      // Issue #336: Carryover dieses Tabs (ohne Verrechnung) — drei eigene
+      // Zeilen Ersparnis / Übertrag / Mehrbedarf, jeweils threshold-gegated
+      // (|wert| > 0.05). KEINE Verrechnung mit Verbleibend/Eingefüllt — die
+      // rem-Formel (renderDrillEntriesInline) bleibt unangetastet (Issue #335).
       var carryoverHint = document.getElementById('r_carryover_hint');
       if (!carryoverHint) {
         carryoverHint = document.createElement('div');
@@ -74,24 +78,71 @@
         while (carryoverHint.firstChild) carryoverHint.removeChild(carryoverHint.firstChild);
         var activeIdx = AppGlobals.state.activeReiter || 0;
         var co = AppGlobals.getCarryover(activeIdx);
-        if (co.savedEinheit > 0.05 || co.savedDuenger > 0.05) {
-          var parts = [];
-          if (co.savedEinheit > 0.05) parts.push(AppGlobals.fmt(co.savedEinheit) + ' Einheiten');
-          if (co.savedDuenger > 0.05) parts.push(AppGlobals.fmt(co.savedDuenger) + ' kg Dünger');
-          var savedSpan = document.createElement('span');
-          savedSpan.className = 'carryover-hint';
-          savedSpan.textContent = 'Übertrag aus ersparten Flächen: +' + parts.join(', ');
-          carryoverHint.appendChild(savedSpan);
+        // Roh-Werte für die drei Zeilen — KEINE Verrechnung mit IST/SOLL oder
+        // Carryover, sondern die direkten Differenzen wie _appendTabCarryoverBlocks.
+        // Saat: getTabTotalEinheiten vs getTabIstEinheiten (beide fahrgassen-korrigiert)
+        // Dünger: (hektar - istHektar) × duengerProHa (linear, kein FG-Faktor)
+        // Ersparnis/Mehrbedarf nur sinnvoll wenn istHektar > 0 (sonst ist die
+        // Differenz ein Artefakt: SOLL-0 = SOLL, nicht "Ersparnis"). Matcht
+        // _appendTabCarryoverBlocks in render-drill.js (isSavingsSource check).
+        var savingsE = 0, savingsD = 0, excessE = 0, excessD = 0;
+        if (r.istHektar > 0 && r.hektar > 0) {
+          savingsE = AppGlobals.getTabTotalEinheiten(r) - AppGlobals.getTabIstEinheiten(r);
+          savingsD = (r.hektar - r.istHektar) * (r.duenger || 0);
+          // Excess: IST - SOLL (positiv wenn IST > SOLL). Für Saat verwenden wir
+          // getTabTotalEinheiten (FG-korrigiert), damit die Differenz konsistent
+          // zur Carryover-Quelle in computeAllCarryovers() ist.
+          excessE = AppGlobals.getTabIstEinheiten(r) - AppGlobals.getTabTotalEinheiten(r);
+          excessD = (r.istHektar - r.hektar) * (r.duenger || 0);
         }
-        if (co.excessEinheit > 0.05 || co.excessDuenger > 0.05) {
-          var eparts = [];
-          if (co.excessEinheit > 0.05) eparts.push(AppGlobals.fmt(co.excessEinheit) + ' Einheiten');
-          if (co.excessDuenger > 0.05) eparts.push(AppGlobals.fmt(co.excessDuenger) + ' kg Dünger');
-          if (carryoverHint.firstChild) carryoverHint.appendChild(document.createElement('br'));
-          var excessSpan = document.createElement('span');
-          excessSpan.className = 'excess-hint';
-          excessSpan.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eparts.join(', ');
-          carryoverHint.appendChild(excessSpan);
+        // Ersparnis ist per Definition nur bei SOLL > IST sichtbar (positiv).
+        // Wenn IST > SOLL ist savingsE negativ — das wird bereits durch die
+        // Mehrbedarfs-Zeile abgedeckt. Wir blenden die Ersparnis-Zeile aus,
+        // wenn der Wert negativ ist, damit nicht "Ersparnis: -3" erscheint
+        // während "Mehrbedarf: +3" schon dasteht.
+        var showSavings = savingsE > 0.05 || savingsD > 0.05;
+        var hasCarryover = co.savedEinheit > 0.05 || co.savedDuenger > 0.05;
+        // Mehrbedarf nur zeigen wenn IST > SOLL (positiv).
+        var showExcess = excessE > 0.05 || excessD > 0.05;
+        if (showSavings || hasCarryover || showExcess) {
+          var sectionLabel = document.createElement('div');
+          sectionLabel.className = 'r-carryover-section-label';
+          sectionLabel.textContent = 'Carryover dieses Tabs (ohne Verrechnung)';
+          carryoverHint.appendChild(sectionLabel);
+          // Ersparnis: eigener Bedarf dieses Tabs, der durch nicht-bepflanzte
+          // Fläche frei wurde (SOLL - IST > 0). Wird NICHT mit dem
+          // Verbleibend verrechnet — das ist die Roh-Anzeige.
+          if (showSavings) {
+            var sParts = [];
+            if (savingsE > 0.05) sParts.push(AppGlobals.fmt(savingsE) + ' Einheiten Saatgut');
+            if (savingsD > 0.05) sParts.push(savingsD.toLocaleString('de-DE') + ' kg Dünger');
+            var sDiv = document.createElement('div');
+            sDiv.className = 'r-carryover-row r-carryover-savings';
+            sDiv.textContent = 'Ersparnis: ' + sParts.join(', ');
+            carryoverHint.appendChild(sDiv);
+          }
+          // Übertrag: Carryover, den dieser Tab von anderen Tabs EMPFÄNGT
+          // (computeAllCarryovers().savedEinheit/savedDuenger).
+          if (hasCarryover) {
+            var cParts = [];
+            if (co.savedEinheit > 0.05) cParts.push(AppGlobals.fmt(co.savedEinheit) + ' Einheiten Saatgut');
+            if (co.savedDuenger > 0.05) cParts.push(co.savedDuenger.toLocaleString('de-DE') + ' kg Dünger');
+            var cDiv = document.createElement('div');
+            cDiv.className = 'r-carryover-row r-carryover-carryover';
+            cDiv.textContent = 'Übertrag aus ersparten Flächen: +' + cParts.join(', ');
+            carryoverHint.appendChild(cDiv);
+          }
+          // Mehrbedarf: eigener Mehr-Bedarf dieses Tabs durch überschrittene
+          // Fläche (IST > SOLL). Wird NICHT mit dem Verbleibend verrechnet.
+          if (showExcess) {
+            var eParts = [];
+            if (excessE > 0.05) eParts.push(AppGlobals.fmt(excessE) + ' Einheiten Saatgut');
+            if (excessD > 0.05) eParts.push(excessD.toLocaleString('de-DE') + ' kg Dünger');
+            var eDiv = document.createElement('div');
+            eDiv.className = 'r-carryover-row r-carryover-excess';
+            eDiv.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eParts.join(', ');
+            carryoverHint.appendChild(eDiv);
+          }
         }
       }
     }
