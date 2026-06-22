@@ -1,5 +1,5 @@
 // ============================================================================
-// RENDER-TABS — Tab-Verwaltung, View-Toggle, App-Init, Tab-Remove-Confirm
+// RENDER-TABS — Tab-Verwaltung, App-Init, Tab-Remove-Confirm
 //
 // Lade-Reihenfolge (laut index.html): state.js → calculations.js →
 //   ui-handlers.js → render-tabs.js → render-results.js → render-drill.js
@@ -86,12 +86,6 @@
       if (drillSection) drillSection.style.display = isProtokoll ? 'block' : 'none';
       var drillMask = document.getElementById('drill_mask');
       if (drillMask) drillMask.style.display = isProtokoll ? '' : 'none';
-      var berechnenBtn = document.getElementById('berechnen_btn');
-      if (berechnenBtn) berechnenBtn.style.display = isProtokoll ? 'none' : '';
-      var resetBtn = document.getElementById('reset_btn');
-      if (resetBtn) resetBtn.style.display = isProtokoll ? 'none' : '';
-      var stickyFooter = document.getElementById('sticky_footer');
-      if (stickyFooter) stickyFooter.style.display = isProtokoll ? 'none' : '';
     }
 
     // --- Init: UI (nach DOMContentLoaded) ---
@@ -111,7 +105,6 @@
               AppGlobals.state = remote;
               AppGlobals.syncInputsFromState();
               AppGlobals.renderTabs();
-              renderView();
               AppGlobals.renderResults();
             }
           } catch(err) {
@@ -185,6 +178,7 @@
             AppGlobals.renderTabs();
             AppGlobals.saveState();
             AppGlobals.renderResults();
+            renderView();
             break;
           case 'ENTRY_ADDED':
           case 'ENTRY_REMOVED':
@@ -228,6 +222,7 @@
             AppGlobals.saveState();
             AppGlobals.renderTabs();
             AppGlobals.renderResults();
+            renderView();
             var re3 = document.getElementById('results');
             if (re3) re3.style.display = 'none';
             var ds = document.getElementById('drill_section');
@@ -245,12 +240,14 @@
             AppGlobals.syncInputsFromState();
             AppGlobals.saveState();
             AppGlobals.renderTabs();
+            renderView();
             break;
           case 'TAB_REMOVED':
             AppGlobals.syncInputsFromState();
             AppGlobals.saveState();
             AppGlobals.renderTabs();
             AppGlobals.renderResults();
+            renderView();
             break;
           case 'VIEW_CHANGED':
             AppGlobals.saveState();

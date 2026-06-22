@@ -132,13 +132,13 @@ describe('initUI einheitGroesse restoration', () => {
     const savedState = {
       reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] }],
       activeReiter: 0,
+      activeView: null,
       koernerProEinheit: 40000,
       einheitGroesseEnabled: true,
       fahrgassenEnabled: false,
       fahrgassenBreite: 0,
       zaehlerstand: 0,
       machineLog: [],
-      activeView: null,
     };
     store['agrar_rechner'] = JSON.stringify(savedState);
 
@@ -156,13 +156,13 @@ describe('initUI einheitGroesse restoration', () => {
     const savedState = {
       reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] }],
       activeReiter: 0,
+      activeView: null,
       koernerProEinheit: 50000,
       einheitGroesseEnabled: false,
       fahrgassenEnabled: false,
       fahrgassenBreite: 0,
       zaehlerstand: 0,
       machineLog: [],
-      activeView: null,
     };
     store['agrar_rechner'] = JSON.stringify(savedState);
 

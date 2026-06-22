@@ -46,6 +46,9 @@
       container.innerHTML = '';
 
       // --- Summary across all tabs (IST-basiert wenn verfügbar) ---
+      // Issue #305: per-tab "verbleibend" must net carryover (saved/excess).
+      // Cross-tab aggregation: sum per-tab max(0, basis - used - saved + excess)
+      // — equivalent to Phase A/B in renderDrillSummary() (#302).
       var totalHa = 0;
       var totalEinheitRem = 0, totalDuengerRem = 0;
       var totalEinheitenBasis = 0, totalEinheitenUsed = 0;
@@ -58,9 +61,9 @@
           var basisD = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : r.hektar * r.duenger;
           var usedE = r.entries ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
           var usedD = r.entries ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
-          // remaining = max(0, basis - used) — no carryover subtraction
-          totalEinheitRem += Math.max(0, basisE - usedE);
-          totalDuengerRem += Math.max(0, basisD - usedD);
+          var co = AppGlobals.getCarryover(idx);
+          totalEinheitRem += Math.max(0, basisE - usedE - co.savedEinheit + co.excessEinheit);
+          totalDuengerRem += Math.max(0, basisD - usedD - co.savedDuenger + co.excessDuenger);
           totalEinheitenBasis += basisE;
           totalEinheitenUsed += usedE;
           totalDuengerBasis += basisD;
@@ -165,8 +168,11 @@
           usedEinheit = r.entries ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
           duengerTotal = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : r.hektar * r.duenger;
           usedDuenger = r.entries ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
-          einheitRem = Math.max(0, einheiten - usedEinheit);
-          duengerRem = Math.max(0, duengerTotal - usedDuenger);
+          // Issue #305: subtract carryover savings / add excess from other tabs.
+          // Per-tab formula matches renderDrillSummary() / #302 / #303.
+          var co = AppGlobals.getCarryover(idx);
+          einheitRem = Math.max(0, einheiten - usedEinheit - co.savedEinheit + co.excessEinheit);
+          duengerRem = Math.max(0, duengerTotal - usedDuenger - co.savedDuenger + co.excessDuenger);
           var minFilled = Math.min(
             einheiten > 0 ? usedEinheit / einheiten : 1,
             duengerTotal > 0 ? usedDuenger / duengerTotal : 1

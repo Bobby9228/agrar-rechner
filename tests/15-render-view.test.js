@@ -1,6 +1,13 @@
 /**
  * Tests for renderView() — show/hide logic for field vs. protokoll views.
  * Also tests switchToProtokoll() and related view switching.
+ *
+ * View-Toggle-Pattern (Pre-#291, Issue #291-Revert):
+ *   - state.activeView === 'protokoll' → drill_section sichtbar, alle
+ *     anderen Cards auf display:none (results auch, selbst mit Daten)
+ *   - state.activeView === null → Feld-Ansicht, Cards sichtbar je nach
+ *     vorhandenen Daten
+ *   - protokoll_tab_btn bekommt die `active`-Klasse wenn activeView='protokoll'
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createDom } from './helpers.js';
@@ -77,30 +84,6 @@ describe('renderView', () => {
     w.renderView();
     expect(w.document.getElementById('drill_mask').style.display).toBe('none');
   });
-
-  it('hides berechnen_btn when in protokoll view', () => {
-    w.state.activeView = 'protokoll';
-    w.renderView();
-    expect(w.document.getElementById('berechnen_btn').style.display).toBe('none');
-  });
-
-  it('shows berechnen_btn when not in protokoll view', () => {
-    w.state.activeView = null;
-    w.renderView();
-    expect(w.document.getElementById('berechnen_btn').style.display).toBe('');
-  });
-
-  it('hides reset_btn when in protokoll view', () => {
-    w.state.activeView = 'protokoll';
-    w.renderView();
-    expect(w.document.getElementById('reset_btn').style.display).toBe('none');
-  });
-
-  it('hides sticky_footer when in protokoll view', () => {
-    w.state.activeView = 'protokoll';
-    w.renderView();
-    expect(w.document.getElementById('sticky_footer').style.display).toBe('none');
-  });
 });
 
 describe('switchToProtokoll', () => {
@@ -135,7 +118,7 @@ describe('switchToProtokoll', () => {
     expect(w.document.getElementById('dtl_prio_0')).toBeTruthy();
   });
 
-  it('saves state via sv()', () => {
+  it('saves state via saveState()', () => {
     w.switchToProtokoll();
     var stored = JSON.parse(w.localStorage.getItem('agrar_rechner'));
     expect(stored.activeView).toBe('protokoll');
@@ -152,41 +135,5 @@ describe('switchToProtokoll', () => {
     w.switchToProtokoll();
     var protokollBtn = w.document.getElementById('protokoll_tab_btn');
     expect(protokollBtn.classList.contains('active')).toBe(false);
-  });
-});
-
-describe('mini-result in sticky footer', () => {
-  let w;
-  beforeEach(() => { w = createDom().window; });
-
-  it('shows "Bitte Hektar und Körner eingeben" when no data', () => {
-    w.renderResults();
-    var mini = w.document.getElementById('mini_result');
-    expect(mini.textContent).toContain('Bitte Hektar und Körner eingeben');
-    expect(mini.classList.contains('mini-result-empty')).toBe(true);
-  });
-
-  it('shows einheiten when data exists', () => {
-    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000, duenger: 0, entries: [] };
-    w.renderResults();
-    var mini = w.document.getElementById('mini_result');
-    expect(mini.textContent).toContain('Einheiten');
-    expect(mini.classList.contains('mini-result-empty')).toBe(false);
-  });
-
-  it('shows duenger when duenger > 0', () => {
-    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000, duenger: 150, entries: [] };
-    w.renderResults();
-    var mini = w.document.getElementById('mini_result');
-    expect(mini.textContent).toContain('kg');
-  });
-
-  it('has mr-einheiten span class', () => {
-    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000, duenger: 0, entries: [] };
-    w.renderResults();
-    var mini = w.document.getElementById('mini_result');
-    var einheitSpan = mini.querySelector('.mr-einheiten');
-    expect(einheitSpan).toBeTruthy();
-    expect(einheitSpan.textContent).toContain('Einheiten');
   });
 });

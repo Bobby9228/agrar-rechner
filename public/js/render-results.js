@@ -1,5 +1,5 @@
 // ============================================================================
-// RENDER-RESULTS — Ergebnis-Karte, Mini-Footer, Hauptergebnis-Render
+// RENDER-RESULTS — Ergebnis-Karte, Hauptergebnis-Render
 //
 // Lade-Reihenfolge: state.js → calculations.js → ui-handlers.js → render-tabs.js
 //   → render-results.js (DIESE DATEI) → render-drill.js → render-dashboard.js
@@ -96,31 +96,6 @@
       }
     }
 
-    // --- Render: Mini Footer ---
-
-    function renderMiniFooter() {
-      var mf = document.getElementById('mini_result');
-      if (!mf) return;
-      var activeR = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
-      if (!activeR) return;
-      if (activeR.hektar > 0 && activeR.koerner > 0) {
-        var einheiten = AppGlobals.getActiveTotalEinheiten();
-        var duengerTotal = AppGlobals.getActiveTotalDuenger();
-        var kornerGesamt = AppGlobals.getKornerGesamt();
-        var kornerStr = Math.round(kornerGesamt).toLocaleString('de-DE');
-        var miniResult = mf.querySelector('.mini-result') || mf;
-        var duengerStr = duengerTotal > 0
-          ? ' / ' + duengerTotal.toLocaleString('de-DE') + ' kg'
-          : '';
-        miniResult.innerHTML = 'Bedarf: <span class="mr-einheiten">' + AppGlobals.formatEinheit(einheiten) + '</span> / ' + kornerStr + ' Körner' + duengerStr;
-        miniResult.classList.remove('mini-result-empty');
-      } else {
-        var miniResult = mf.querySelector('.mini-result') || mf;
-        miniResult.textContent = 'Bitte Hektar und Körner eingeben';
-        miniResult.classList.add('mini-result-empty');
-      }
-    }
-
     // --- Render: Results (Hauptergebnis) ---
 
     function renderResults() {
@@ -130,7 +105,6 @@
       AppGlobals.renderDrillLog();
       renderDrillEntriesInline();
       AppGlobals.renderMachineLog();
-      renderMiniFooter();
       var errHektar = document.getElementById('err_hektar');
       var errKoerner = document.getElementById('err_koerner');
       var hektarEl = document.getElementById('hektar');
@@ -180,10 +154,20 @@
       if (rdSection) rdSection.style.display = 'block';
       var usedE = r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
       var usedD = r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
-      var istE = AppGlobals.getTabIstEinheiten(r) || AppGlobals.getTabTotalEinheiten(r);
-      var istD = AppGlobals.getTabIstDuenger(r) || AppGlobals.getTabTotalDuenger(r);
-      var remE = Math.max(0, istE - usedE);
-      var remD = Math.max(0, istD - usedD);
+      // Issue #320: Konsistenz mit render-dashboard.js:60-61, render-drill.js:50-52,143-144,
+      // und renderResultCard oben (alle nutzen `istHa > 0` ternary). Der `||`-Fallback
+      // war im aktuellen Code funktional identisch (verifiziert per Brute-Force), aber die
+      // explizite Ternary-Form ist robuster gegen künftige Refactorings von getTabIstX()
+      // und macht die Code-Basis einheitlich mit den 4 Geschwister-Sites.
+      var istHa = AppGlobals.getTabIstHektar(r);
+      var istE = istHa > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getTabTotalEinheiten(r);
+      var istD = istHa > 0 ? AppGlobals.getTabIstDuenger(r) : AppGlobals.getTabTotalDuenger(r);
+      // Issue #305: subtract carryover savings / add excess from other tabs
+      // so the inline-drill "verbleibend" matches the dashboard + drill summary.
+      var activeIdx = AppGlobals.state.activeReiter || 0;
+      var co = AppGlobals.getCarryover(activeIdx);
+      var remE = Math.max(0, istE - usedE - co.savedEinheit + co.excessEinheit);
+      var remD = Math.max(0, istD - usedD - co.savedDuenger + co.excessDuenger);
       var usedEl = document.getElementById('r_drill_e_used');
       if (usedEl) usedEl.textContent = AppGlobals.formatEinheit(usedE);
       var remEl = document.getElementById('r_drill_e_rem');
@@ -235,7 +219,6 @@
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 Object.assign(window.AppGlobals, {
   renderResultCard: renderResultCard,
-  renderMiniFooter: renderMiniFooter,
   renderResults: renderResults,
   renderDrillEntriesInline: renderDrillEntriesInline,
 });
