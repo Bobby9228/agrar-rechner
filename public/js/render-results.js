@@ -154,8 +154,14 @@
       if (rdSection) rdSection.style.display = 'block';
       var usedE = r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
       var usedD = r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
-      var istE = AppGlobals.getTabIstEinheiten(r) || AppGlobals.getTabTotalEinheiten(r);
-      var istD = AppGlobals.getTabIstDuenger(r) || AppGlobals.getTabTotalDuenger(r);
+      // Issue #320: Konsistenz mit render-dashboard.js:60-61, render-drill.js:50-52,143-144,
+      // und renderResultCard oben (alle nutzen `istHa > 0` ternary). Der `||`-Fallback
+      // war im aktuellen Code funktional identisch (verifiziert per Brute-Force), aber die
+      // explizite Ternary-Form ist robuster gegen künftige Refactorings von getTabIstX()
+      // und macht die Code-Basis einheitlich mit den 4 Geschwister-Sites.
+      var istHa = AppGlobals.getTabIstHektar(r);
+      var istE = istHa > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getTabTotalEinheiten(r);
+      var istD = istHa > 0 ? AppGlobals.getTabIstDuenger(r) : AppGlobals.getTabTotalDuenger(r);
       // Issue #305: subtract carryover savings / add excess from other tabs
       // so the inline-drill "verbleibend" matches the dashboard + drill summary.
       var activeIdx = AppGlobals.state.activeReiter || 0;
