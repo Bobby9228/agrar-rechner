@@ -558,6 +558,33 @@ font-size: 0.75rem;
     .excess-hint {
       color: var(--color-danger-soft);
     }
+    /* Issue #336: drei Carryover-Roh-Wert-Zeilen im Ergebnis-Tab.
+       Visuell getrennt von Verbleibend/Eingefüllt via border-top und
+       kleinerer Schrift. Farben folgen dem Maschinen-Protokoll-Pattern. */
+    .r-carryover-section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--color-text-label-strong);
+      text-transform: uppercase;
+      padding: 6px 0 2px;
+      border-top: 1px solid var(--color-border, #e2e2e2);
+      margin-top: 6px;
+      letter-spacing: 0.04em;
+    }
+    .r-carryover-row {
+      font-size: 0.85rem;
+      padding: 2px 0;
+      font-weight: 600;
+    }
+    .r-carryover-savings {
+      color: var(--color-text-success);
+    }
+    .r-carryover-carryover {
+      color: var(--color-info);
+    }
+    .r-carryover-excess {
+      color: var(--color-danger-soft);
+    }
     .summary-muted {
       font-size: 0.85rem;
       font-weight: 600;
