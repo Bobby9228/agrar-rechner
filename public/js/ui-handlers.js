@@ -536,13 +536,24 @@
             remE -= plan[p.idx].giveE;
           }
           if (remD > AppGlobals.EPSILON_QUANTITY) {
-            // Saat und Dünger sind unabhängige Tanks (siehe Issue #315/#321).
-            // Die Dünger-Verteilung folgt der Priorität, NICHT einem tabDCap
-            // (SOLL minus used) — letzteres würde stillschweigend User-Eingaben
-            // schlucken, wenn ein Tab bereits teil-befüllt ist. Siehe Screenshot
-            // 2026-06-22: 2000 kg eingefüllt → 1333,33 kg gespeichert.
-            plan[p.idx].giveD = remD;
-            remD = 0;
+            // Saat und Dünger folgen derselben Prio-Logik: jedes priorisierte
+            // Tab nimmt bis zu seinem Rest (SOLL - used), der Überschuss geht
+            // an den nächsten Prio-Tab. Symmetrisch zu giveE oben (Zeile 535).
+            //
+            // Hintergrund: User-Feedback 2026-06-22 ("Dünger sollte sich genauso
+            // verhalten wie Saat"). Vorher hatte Dünger entweder gar keinen Cap
+            // (PR #327, issue #326) oder einen restriktiveren Cap, der stillschweigend
+            // Mengen schluckte. Mit diesem Fix verhalten sich Saat und Dünger
+            // identisch: Prio-Reihenfolge, jeder Tab nimmt seinen Rest.
+            //
+            // Wenn used > SOLL (z.B. Phantom-Entry aus Alt-State), wird der
+            // effective-Cap auf 0 geklemmt — der Tab ist über-befüllt, der
+            // neue Dünger geht an Tabs mit echtem Rest.
+            var tabDUsed = (p.r.entries || []).reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
+            var tabDNeed = Math.max(0, (p.r.hektar || 0) * (p.r.duenger || 0));
+            var tabDRem = Math.max(0, tabDNeed - tabDUsed);
+            plan[p.idx].giveD = Math.min(remD, tabDRem);
+            remD -= plan[p.idx].giveD;
           }
         }
         // Leftover-Absorption im letzten priorisierten Reiter (Issue #266)

@@ -466,7 +466,7 @@ describe('drillCalcAll()', () => {
     expect(doc.getElementById('dtl_e_1').value).toBe('10,0');
   });
 
-  it('distributes duenger separately from einheit (Prio-basiert, kein tabDCap)', () => {
+  it('distributes duenger separately from einheit (symmetric to Saat-Pfad, Issue #329)', () => {
     w.state.reiter = [
       { name: 'A', hektar: 10, koerner: 50000, duenger: 100, entries: [] },
       { name: 'B', hektar: 5, koerner: 50000, duenger: 200, entries: [] },
@@ -476,11 +476,11 @@ describe('drillCalcAll()', () => {
     doc.getElementById('drill_einheit').value = '5';
     doc.getElementById('drill_duenger').value = '3000';
     w.drillCalcAll();
-    // Post-fix (2026-06-22, Issue #315 follow-up): tabDCap entfernt.
-    // Tab A (Prio 1) bekommt alle 3000 kg, Tab B = 0.
-    // Vorher: 1000+1000 (weil SOLL=1000 cappt, rest stillschweigend weg).
-    expect(doc.getElementById('dtl_d_0').value).toBe('3000,0');
-    expect(doc.getElementById('dtl_d_1').value).toBe(''); // giveD=0 → leerer String (Issue #277: `_applyDrillPlan` schreibt '' für 0-Werte)
+    // Issue #329: Dünger folgt Saat-Prio-Logik. Tab A SOLL = 10*100 = 1000,
+    // Tab B SOLL = 5*200 = 1000. Fill 3000 kg → A nimmt 1000 (cap), B nimmt 1000.
+    // Rest 1000 ist Überschuss und wird in drillAdd() in den machineLog geschrieben.
+    expect(doc.getElementById('dtl_d_0').value).toBe('1000,0');
+    expect(doc.getElementById('dtl_d_1').value).toBe('1000,0');
   });
 
   it('handles empty gesamtEinheit', () => {
