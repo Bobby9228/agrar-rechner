@@ -2,7 +2,7 @@
  * Tests for remaining blind spots and edge cases found in audit round 2.
  *
  * Includes (original round 2):
- * 1. switchReiter from protokoll view to same tab
+ * 1. switchReiter behavior with the protokoll view (view-toggle, Issue #291)
  * 2. Prognose cumulative calculation with fahrgassen factor
  * 3. Prognose with duenger-only consumption (no einheit)
  * 4. drillTabList needDiv: done with duenger finished but einheit remaining
@@ -18,9 +18,8 @@
  * - drillMachineRemove() — machine log entry removal
  * - Theme — getStoredTheme / setStoredTheme / applyTheme / toggleTheme / initTheme
  * - renderDrillTabList() — row rendering, priority button, input mode
- * - switchToProtokoll() — view toggle
- * - renderView() — visibility in protokoll vs field view
- * - renderTabs() protokoll btn — active class
+ * - switchToProtokoll() — view toggle (Issue #291, Pre-#291 pattern)
+ * - Protokoll tab btn — click triggers switchToProtokoll (active class via renderTabs)
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createDom } from './helpers.js';
@@ -29,20 +28,21 @@ describe('switchReiter from protokoll view', () => {
   let w;
   beforeEach(() => { w = createDom().window; });
 
-  it('allows switching to same tab when currently in protokoll view', () => {
+  // Der Protokoll-Tab ist kein eigener Reiter, sondern ein View-Toggle.
+  // switchReiter() muss aus dem Protokoll in die Feld-Ansicht zurückschalten
+  // (activeView=null) und auf den Ziel-Tab wechseln.
+  it('switches to same tab AND exits protokoll view (activeView → null)', () => {
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
     w.switchToProtokoll();
     expect(w.state.activeView).toBe('protokoll');
     expect(w.state.activeReiter).toBe(0);
 
-    // switchReiter(0) should work even though activeReiter is already 0,
-    // because activeView is 'protokoll'
     w.switchReiter(0);
     expect(w.state.activeView).toBeNull();
     expect(w.state.activeReiter).toBe(0);
   });
 
-  it('switches to different tab from protokoll', () => {
+  it('switches to a different tab AND exits protokoll view', () => {
     w.addReiter();
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
     w.state.reiter[1] = { ...w.state.reiter[1], hektar: 5, koerner: 80000 };
@@ -801,7 +801,7 @@ describe('renderDrillTabList()', () => {
 });
 
 // ---------------------------------------------------------------------------
-// switchToProtokoll
+// switchToProtokoll — view toggle (Issue #291, Pre-#291 pattern)
 // ---------------------------------------------------------------------------
 describe('switchToProtokoll()', () => {
   let w, doc;
@@ -817,7 +817,7 @@ describe('switchToProtokoll()', () => {
     expect(w.state.activeView).toBe('protokoll');
   });
 
-  it('calls renderDrillTabList', () => {
+  it('calls renderDrillTabList (drill-tab-row appears in DOM)', () => {
     w.state.reiter = [{ name: 'A', hektar: 10, koerner: 90000, duenger: 0, entries: [] }];
     w.switchToProtokoll();
     expect(doc.querySelectorAll('.drill-tab-row').length).toBe(1);
@@ -830,13 +830,13 @@ describe('switchToProtokoll()', () => {
     expect(w.state.activeView).toBeNull();
   });
 
-  it('persists state', () => {
+  it('persists state to localStorage', () => {
     w.switchToProtokoll();
     const stored = JSON.parse(w.localStorage.getItem('agrar_rechner'));
     expect(stored.activeView).toBe('protokoll');
   });
 
-  it('syncs current inputs before switching', () => {
+  it('syncs current inputs before switching (syncStateFromInputs runs first)', () => {
     w.state.reiter[0].hektar = 10;
     doc.getElementById('hektar').value = '15';
     w.syncStateFromInputs();
@@ -857,36 +857,38 @@ describe('renderView()', () => {
     doc = w.document;
   });
 
-  it('berechnen_btn hidden in protokoll view', () => {
-    w.state.activeView = 'protokoll';
-    w.renderView();
-    expect(doc.getElementById('berechnen_btn').style.display).toBe('none');
-  });
-
-  it('berechnen_btn shown in field view', () => {
-    w.state.activeView = null;
-    w.renderView();
-    expect(doc.getElementById('berechnen_btn').style.display).toBe('');
-  });
-
-  it('reset_btn hidden in protokoll view', () => {
-    w.state.activeView = 'protokoll';
-    w.renderView();
-    expect(doc.getElementById('reset_btn').style.display).toBe('none');
-  });
-
   it('drill_section shown in protokoll view', () => {
     w.state.activeView = 'protokoll';
     w.renderView();
     expect(doc.getElementById('drill_section').style.display).toBe('block');
   });
 
-  it('results hidden when switching to protokoll', () => {
+  it('results hidden when switching to protokoll (even with data)', () => {
     w.state.reiter[0].hektar = 10;
     w.state.reiter[0].koerner = 90000;
     w.state.activeView = 'protokoll';
     w.renderView();
     expect(doc.getElementById('results').style.display).toBe('none');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Protokoll tab button — click triggers switchToProtokoll (Issue #291)
+// ---------------------------------------------------------------------------
+describe('Protokoll tab button', () => {
+  let w, doc;
+
+  beforeEach(() => {
+    const { window } = createDom();
+    w = window;
+    doc = w.document;
+  });
+
+  it('clicking the Protokoll tab button calls switchToProtokoll (activeView → protokoll)', () => {
+    var tabBtn = doc.getElementById('protokoll_tab_btn');
+    expect(tabBtn).toBeTruthy();
+    tabBtn.click();
+    expect(w.state.activeView).toBe('protokoll');
   });
 });
 

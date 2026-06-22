@@ -197,6 +197,20 @@ describe('loadState() schema validation (Issue #237)', () => {
             expect(typeof tab.toString).toBe('function');
         });
 
+        it('a state without the removed top-level keys is still valid (Issue #291)', () => {
+            // Fresh state from a current build: the field that was removed in
+            // the protokoll-sheet refactor (Issue #291) is no longer in the
+            // schema. loadState must accept a state that does not carry it
+            // and not complain about the missing key.
+            store['agrar_rechner'] = JSON.stringify({
+                reiter: [{ entries: [] }],
+                _lv: 4
+            });
+            expect(() => w.loadState()).not.toThrow();
+            // State should be loadable and the reiter should still be there
+            expect(w.state.reiter.length).toBe(1);
+        });
+
         it('drops unknown keys from entry objects', () => {
             store['agrar_rechner'] = JSON.stringify({
                 reiter: [{
@@ -234,6 +248,55 @@ describe('loadState() schema validation (Issue #237)', () => {
             expect(w.state.injected).toBeUndefined();
             // Recognized field ist noch da
             expect(w.state.activeReiter).toBe(0);
+        });
+    });
+
+    describe('activeView coercion (Pre-#291 View-Toggle pattern)', () => {
+        it('coerces activeView to null unless literally "protokoll"', () => {
+            store['agrar_rechner'] = JSON.stringify({
+                reiter: [{ name: 'Tab 1', entries: [] }],
+                activeView: 'random-string',
+                _lv: 4
+            });
+            w.loadState();
+            expect(w.state.activeView).toBeNull();
+        });
+
+        it('preserves activeView = "protokoll"', () => {
+            store['agrar_rechner'] = JSON.stringify({
+                reiter: [{ name: 'Tab 1', entries: [] }],
+                activeView: 'protokoll',
+                _lv: 4
+            });
+            w.loadState();
+            expect(w.state.activeView).toBe('protokoll');
+        });
+
+        it('coerces non-string activeView values (numbers, objects, arrays) to null', () => {
+            store['agrar_rechner'] = JSON.stringify({
+                reiter: [{ name: 'Tab 1', entries: [] }],
+                activeView: 42,
+                _lv: 4
+            });
+            w.loadState();
+            expect(w.state.activeView).toBeNull();
+
+            store['agrar_rechner'] = JSON.stringify({
+                reiter: [{ name: 'Tab 1', entries: [] }],
+                activeView: { evil: true },
+                _lv: 4
+            });
+            w.loadState();
+            expect(w.state.activeView).toBeNull();
+        });
+
+        it('defaults activeView to null when missing from persisted state', () => {
+            store['agrar_rechner'] = JSON.stringify({
+                reiter: [{ name: 'Tab 1', entries: [] }],
+                _lv: 4
+            });
+            w.loadState();
+            expect(w.state.activeView).toBeNull();
         });
     });
 
@@ -294,16 +357,6 @@ describe('loadState() schema validation (Issue #237)', () => {
             });
             w.loadState();
             expect(w.state.activeReiter).toBe(1);
-        });
-
-        it('coerces activeView to null unless literally "protokoll"', () => {
-            store['agrar_rechner'] = JSON.stringify({
-                reiter: [{ entries: [] }],
-                activeView: '<script>',
-                _lv: 4
-            });
-            w.loadState();
-            expect(w.state.activeView).toBeNull();
         });
 
         it('falls back to 50000 for invalid koernerProEinheit', () => {

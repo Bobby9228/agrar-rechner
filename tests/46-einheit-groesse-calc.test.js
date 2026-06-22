@@ -115,8 +115,8 @@ describe('Variable koernerProEinheit — calculation impact', () => {
    * koernerProEinheit = 100000
    * SOLL=10 ha (8.0 units), IST=7 ha (5.6 units)
    * Entry 3.0 units
-   * remaining = max(0, IST - used) = max(0, 5.6 - 3.0) = 2.6
-   * (Carryover savings are bookkeeping — they reduce total need, NOT remaining display)
+   * Carryover savings = SOLL(8.0) - IST(5.6) = 2.4 Einheiten (Issue #305).
+   * remaining = max(0, 5.6 - 3.0 - 2.4 + 0) = 0.2
    */
   it('carryover savings scaled correctly with koernerProEinheit = 100000', () => {
     doc.getElementById('koerner_pro_einheit').value = '100000';
@@ -128,8 +128,8 @@ describe('Variable koernerProEinheit — calculation impact', () => {
     w.berechne();
     w.getActiveReiter().entries.push({ einheit: 3.0, zaehlerStand: 3.75, duenger: 0, time: '09:00' });
     w.renderResults();
-    // remaining = max(0, IST - used) = max(0, 5.6 - 3.0) = 2.6
-    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('2,6 Einheiten');
+    // remaining = max(0, IST - used - savings) = max(0, 5.6 - 3.0 - 2.4) = 0.2
+    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('0,2 Einheiten');
   });
 
   // ── IST-Fläche-Basis für Remaining (Issue #184) ─────────────────────────
@@ -137,8 +137,10 @@ describe('Variable koernerProEinheit — calculation impact', () => {
   /**
    * Issue #184: Wenn IST gesetzt ist, muss remaining auf IST basieren, nicht SOLL.
    * SOLL=18,5 ha → 33,3 E, IST=18,0 ha → 32,4 E, used=30 E
-   * Erwartet: 32,4 - 30 = 2,4 E (IST-basiert)
-   * FALSCH wäre: 33,3 - 30 = 3,3 E (SOLL-basiert)
+   * Carryover savings = SOLL(33.3) - IST(32.4) = 0.9 E (Issue #305).
+   * Erwartet: max(0, 32,4 - 30 - 0,9) = 1,5 E (IST-basiert + carryover)
+   * FALSCH wäre: 33,3 - 30 = 3,3 E (SOLL-basiert ohne carryover)
+   * FALSCH wäre: 32,4 - 30 = 2,4 E (IST-basiert ohne carryover — pre-#305)
    */
   it('remaining uses IST as basis when IST<SOLL (issue #184)', () => {
     // DE format: hektar='18,5', ist_hektar='18,0', koerner='90.000'
@@ -149,8 +151,8 @@ describe('Variable koernerProEinheit — calculation impact', () => {
     w.berechne();
     w.getActiveReiter().entries.push({ einheit: 30.0, zaehlerStand: 18.0, duenger: 0, time: '09:00' });
     w.renderResults();
-    // IST=18,0 ha → 32,4 E, used=30 → remaining = 2,4 E
-    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('2,4 Einheiten');
+    // IST=18,0 ha → 32,4 E, used=30, savings=0,9 E → remaining = max(0, 32,4 - 30 - 0,9) = 1,5
+    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('1,5 Einheiten');
   });
 
   // ── Changing koernerProEinheit after entries exist ──────────────────────

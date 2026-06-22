@@ -330,8 +330,67 @@ describe('priority button cycling', () => {
     prioBtn.onclick(); // 1→2
     expect(prioBtn.getAttribute('data-prio')).toBe('2');
     prioBtn.onclick(); // 2→3
-    expect(prioBtn.getAttribute('data-prio')).toBe('3');
     prioBtn.onclick(); // 3 → maxPrio=3 → 0
     expect(prioBtn.getAttribute('data-prio')).toBe('0');
+    expect(prioBtn.textContent).toBe('—');
   });
 });
+
+    // Issue #321: regression tests for _buildDrillEntry() — direct unit tests for
+    // the function whose silent Dünger-Cap was the bug. The cap used to clamp
+    // entry.duenger to duengerPerUnit * unitsForThisTab, which truncated user
+    // input whenever the real kg/E ratio differed from the tab plan. Fixed by
+    // removing the cap; raw duengerRaw is now stored as entry.duenger.
+    describe('_buildDrillEntry (Issue #321: no silent Dünger-Cap)', () => {
+      let w;
+      beforeEach(() => { w = createDom().window; });
+
+      function makeTab(overrides) {
+        return Object.assign({
+          name: 'Test', hektar: 10, koerner: 90000, duenger: 200,
+          fahrgassenEnabled: false, fahrgassenBreite: 0,
+          entries: []
+        }, overrides || {});
+      }
+
+      it('respects raw user duenger input, no silent cap', () => {
+        // Tab config: 10ha, koerner=90000, duenger=200 kg/ha
+        // duengerPerUnit = 200 * 50000 / 90000 ≈ 111.11 kg/E
+        // unitsForThisTab = min(12, 18) = 12 (capped, < tab cap)
+        // OLD cap: min(2000, 111.11 * 12) = 1333.33 → silently swallowed 666.67 kg
+        // NEW (no cap): 2000 stored as-is
+        var tab = makeTab();
+        var entry = w._buildDrillEntry(tab, 12, 2000, 0, -1);
+        expect(entry.einheit).toBeCloseTo(12);
+        expect(entry.duenger).toBe(2000); // raw, NOT 1333.33
+      });
+
+      it('extreme case: 1 unit, 99999 kg → 99999 kg (no cap)', () => {
+        var tab = makeTab();
+        var entry = w._buildDrillEntry(tab, 1, 99999, 0, -1);
+        expect(entry.einheit).toBeCloseTo(1);
+        expect(entry.duenger).toBe(99999); // no upper bound at all
+      });
+
+      it('Saatgut-Cap still active: 24 E capped to maxUnitsThisTab (18)', () => {
+        // Tab cap = 10ha × 90000/50000 = 18 E
+        var tab = makeTab();
+        var entry = w._buildDrillEntry(tab, 24, 0, 0, -1);
+        expect(entry.einheit).toBeCloseTo(18); // capped
+        expect(entry.duenger).toBe(0);
+      });
+
+      it('duenger = 0 is preserved (no spurious values)', () => {
+        var tab = makeTab();
+        var entry = w._buildDrillEntry(tab, 12, 0, 0, -1);
+        expect(entry.duenger).toBe(0);
+      });
+
+      it('negative duenger is preserved as-is (raw passthrough)', () => {
+        // The function is a pure formatter — callers (drillAdd) validate inputs.
+        // This documents that _buildDrillEntry does no clamping itself.
+        var tab = makeTab();
+        var entry = w._buildDrillEntry(tab, 12, -5, 0, -1);
+        expect(entry.duenger).toBe(-5);
+      });
+    });

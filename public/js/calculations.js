@@ -194,50 +194,77 @@ function computeAllCarryovers() {
     }
   }
 
-  // === PHASE 1: Ersparnisse verteilen (vorwärts durch Tabs) ===
+  // === PHASE 1: Ersparnisse verteilen — Saat und Dünger getrennt ===
+  //
+  // Issue #315: Saat und Dünger sollen UNABHÄNGIG durch die Carryover-Prios
+  // fließen. Ein Tab, der Saat-Bedarf hat, bekommt nicht automatisch auch
+  // Dünger-Carryover (oder umgekehrt). Wenn der Saat-Pool leer ist, aber der
+  // Dünger-Pool noch was hat, läuft nur der Dünger-Pass weiter.
+  //
+  // Carryover-Bedarf ist IST-basiert (basis = istE/D wenn istHa > 0, sonst
+  // solE/D). Das ist die Original-Semantik aus Phase 0: Tab X hat Bedarf
+  // solange usedX < basisX. Issue #138 (Skip für "fertige" Tabs) wird
+  // beibehalten — eine Quelle MIT eigenem Restbedarf kann Carryover empfangen.
+  //
+  // Skip-Regel (Issue #138): Ersparnis-Quellen, deren IST-Fläche bereits
+  // gedeckt ist (usedE >= istE bei istE > 0), bekommen KEINEN Carryover. Die
+  // Ersparnis war für ANDERE Tabs gedacht — diese Quelle soll nicht "doppelt
+  // profitieren".
   _internal.carryoverCache = result;
-  var remSavedE = totalSavedE, remSavedD = totalSavedD;
-  for (let i = 0; i < AppGlobals.state.reiter.length && (remSavedE > 0.05 || remSavedD > 0.05); i++) {
-    var t = AppGlobals.state.reiter[i];
-    // Need for tab i: max(0, IST - used) wenn IST > 0, sonst max(0, SOLL - used)
-    var istE = getTabIstEinheiten(t);
-    var solE = getTabTotalEinheiten(t);
-    var usedE = getTabUsedEinheiten(t);
-    var istD = getTabIstDuenger(t);
-    var solD = getTabTotalDuenger(t);
-    var usedD = getTabUsedDuenger(t);
-    var basisE = istE > 0 ? istE : solE;
-    var basisD = istD > 0 ? istD : solD;
-    var needE = Math.max(0, basisE - usedE);
-    var needD = Math.max(0, basisD - usedD);
-    // Issue #138: skip if tab would be done with carryover — bereits
-    // implementiert via isTabDone(t, i) weiter unten. Wir verteilen hier
-    // immer und überspringen im nächsten Loop-Durchlauf. Da result[i] sich
-    // ändert während wir durchgehen, berechnen wir isTabDone(t, i) jedes
-    // Mal frisch.
-    var takeE = 0, takeD = 0;
-    if (needE > 0.05 && remSavedE > 0.05) {
-      // Wenn der Tab mit weniger carryover schon fertig wäre, nur so viel
-      // geben wie nötig, damit er genau auf 0 kommt. So bekommt der nächste
-      // Tab mehr vom Carryover (Issue #138).
-      // maxTakeE = min(remSavedE, needE)
-      // Wenn (basisE - usedE - takeE) <= 0 → Tab ist fertig, weniger geben
-      takeE = Math.min(remSavedE, needE);
+  var remSavedE = totalSavedE;
+  var remSavedD = totalSavedD;
+  for (var mat = 0; mat < 2; mat++) {
+    var isSaatPass = (mat === 0);
+    var remSaved = isSaatPass ? remSavedE : remSavedD;
+    while (remSaved > 0.05) {
+      var distributed = false;
+      for (let i = 0; i < AppGlobals.state.reiter.length; i++) {
+        if (remSaved <= 0.05) break;
+        var t = AppGlobals.state.reiter[i];
+        var istE = getTabIstEinheiten(t);
+        var solE = getTabTotalEinheiten(t);
+        var usedE = getTabUsedEinheiten(t);
+        var istD = getTabIstDuenger(t);
+        var solD = getTabTotalDuenger(t);
+        var usedD = getTabUsedDuenger(t);
+        // IST-basiert (Original-Semantik aus Phase 0).
+        var basis = isSaatPass ? (istE > 0 ? istE : solE) : (istD > 0 ? istD : solD);
+        var need = Math.max(0, basis - usedE - result[i].savedEinheit);
+        var needD = Math.max(0, basis - usedD - result[i].savedDuenger);
+        var need_ = isSaatPass ? need : needD;
+        // Issue #138: Skip wenn IST-Fläche bereits gedeckt UND dieser Tab
+        // eine Ersparnis-Quelle für dieses Material ist.
+        var istCovered = isSaatPass
+          ? (istE > 0 && usedE >= istE)
+          : (istD > 0 && usedD >= istD);
+        var isSource = isSaatPass
+          ? (solE > istE && istE > 0)
+          : (solD > istD && istD > 0);
+        if (need_ <= 0.05) continue;
+        if (istCovered && isSource) continue;
+        if (need_ > 0.05 && remSaved > 0.05) {
+          var take = Math.min(remSaved, need_);
+          if (take > 0) {
+            if (isSaatPass) result[i].savedEinheit += take;
+            else result[i].savedDuenger += take;
+            remSaved -= take;
+            distributed = true;
+          }
+        }
+      }
+      // Schutz gegen Endlosschleife: wenn keine Verteilung mehr stattfand
+      // (z.B. weil keiner der Tabs Bedarf hat), brechen wir ab statt zu rotieren.
+      if (!distributed) break;
     }
-    if (needD > 0.05 && remSavedD > 0.05) {
-      takeD = Math.min(remSavedD, needD);
-    }
-    if (takeE > 0) { result[i].savedEinheit = takeE; remSavedE -= takeE; }
-    if (takeD > 0) { result[i].savedDuenger = takeD; remSavedD -= takeD; }
+    if (isSaatPass) remSavedE = remSaved;
+    else remSavedD = remSaved;
   }
 
-  // === PHASE 2: Mehrbedarfe (IST > SOLL) → Tabs absorbieren in Fill-Reihenfolge ===
-  // Tabs die selbst Mehrbedarf haben (diff < 0) kommen zuletzt.
-  // Issue #266-B2: last-filled Tab absorbiert zuerst (Capacity = basis - used > 0),
-  // dann rückwärts in Fill-Chronologie. Capacity wird durch Carryover-Savings
-  // reduziert (savings-empfangende Tabs geben ggf. einen Teil ihrer Ersparnis ab).
-  // Time parsing: time kann String ("10:00") oder Number (Date.now()) sein.
-  // Wir konvertieren zu Minuten-since-midnight für sortierbare Vergleich.
+  // === PHASE 2: Mehrbedarfe absorbieren — Saat und Dünger getrennt ===
+  //
+  // Issue #315: Auch hier entkoppeln. Capacity-Sort und Absorption laufen
+  // für jedes Material separat. Self-Mehrbedarf (used > basis) bleibt
+  // ignoriert wie bisher — keine Verteilung an andere Tabs.
   function _parseEntryTime(t) {
     if (typeof t === 'number') return t;
     if (typeof t === 'string') {
@@ -250,65 +277,63 @@ function computeAllCarryovers() {
     }
     return 0;
   }
-  var tabOrder2 = [];
-  for (let i = 0; i < AppGlobals.state.reiter.length; i++) {
-    var t2 = AppGlobals.state.reiter[i];
-    if (!t2.entries || t2.entries.length === 0) continue;
-    var istE2 = getTabIstEinheiten(t2);
-    var solE2 = getTabTotalEinheiten(t2);
-    var usedE2 = getTabUsedEinheiten(t2);
-    var istD2 = getTabIstDuenger(t2);
-    var solD2 = getTabTotalDuenger(t2);
-    var usedD2 = getTabUsedDuenger(t2);
-    var basisE2 = istE2 > 0 ? istE2 : solE2;
-    var basisD2 = istD2 > 0 ? istD2 : solD2;
-    // Capacity = wie viel Platz dieser Tab noch hat (basis - used, abzgl. bereits erhaltener Savings)
-    // positive capacity → kann Mehrbedarf absorbieren
-    var capE = Math.max(0, basisE2 - usedE2) - result[i].savedEinheit;
-    var capD = Math.max(0, basisD2 - usedD2) - result[i].savedDuenger;
-    // Self-Mehrbedarf (used > basis): der Tab ist selbst überschüssig → kommt zuletzt
-    var selfExcessE = Math.max(0, usedE2 - basisE2);
-    var selfExcessD = Math.max(0, usedD2 - basisD2);
-    var lastEntry2 = t2.entries[t2.entries.length - 1];
-    var ts2 = _parseEntryTime(lastEntry2 ? (lastEntry2.time || 0) : 0);
-    // capacity-positive tabs: group A (sorted by ts DESC → last-filled first)
-    // self-Mehrbedarf tabs: group B (sorted by ts DESC)
-    tabOrder2.push({
-      idx: i, ts: ts2,
-      capE: capE, capD: capD,
-      selfExcessE: selfExcessE, selfExcessD: selfExcessD
-    });
-  }
-  // Sort: tabs mit freier Kapazität zuerst (last-filled first), dann Tabs mit Selbst-Mehrbedarf
-  tabOrder2.sort(function(a, b) {
-    var aHasCap = (a.capE > 0.05 || a.capD > 0.05) ? 1 : 0;
-    var bHasCap = (b.capE > 0.05 || b.capD > 0.05) ? 1 : 0;
-    if (aHasCap !== bHasCap) return bHasCap - aHasCap; // capacity tabs first
-    return b.ts - a.ts; // within group: last-filled first
-  });
+  for (var mat2 = 0; mat2 < 2; mat2++) {
+    var isSaatPass2 = (mat2 === 0);
+    var remExcess = isSaatPass2 ? totalExcessE : totalExcessD;
 
-  var remExcessE2 = totalExcessE, remExcessD2 = totalExcessD;
-  for (var j2 = 0; j2 < tabOrder2.length && (remExcessE2 > 0.05 || remExcessD2 > 0.05); j2++) {
-    var entry2 = tabOrder2[j2];
-    var idx2 = entry2.idx;
-    var hasCap = (entry2.capE > 0.05 || entry2.capD > 0.05);
-    if (hasCap) {
-      // Capacity positive → absorbiere proportional
-      var takeCapE = Math.min(remExcessE2, entry2.capE);
-      var takeCapD = Math.min(remExcessD2, entry2.capD);
-      if (takeCapE > 0.05) {
-        result[idx2].excessEinheit = takeCapE;
-        remExcessE2 -= takeCapE;
+    // Tabs mit Capacity für dieses Material sammeln + sortieren.
+    // Capacity = max(0, basis − used − saved_received) — IST-basiert
+    // (Original-Semantik aus Phase 0). Self-Excess (used > basis):
+    // ignoriert (kein negativer Carryover).
+    var tabOrder2 = [];
+    for (let i = 0; i < AppGlobals.state.reiter.length; i++) {
+      var t2 = AppGlobals.state.reiter[i];
+      if (!t2.entries || t2.entries.length === 0) continue;
+      var istE2 = getTabIstEinheiten(t2);
+      var solE2 = getTabTotalEinheiten(t2);
+      var usedE2 = getTabUsedEinheiten(t2);
+      var istD2 = getTabIstDuenger(t2);
+      var solD2 = getTabTotalDuenger(t2);
+      var usedD2 = getTabUsedDuenger(t2);
+      var basis2 = isSaatPass2
+        ? (istE2 > 0 ? istE2 : solE2)
+        : (istD2 > 0 ? istD2 : solD2);
+      var cap = 0, selfExcess = 0;
+      if (isSaatPass2) {
+        cap = Math.max(0, basis2 - usedE2) - result[i].savedEinheit;
+        selfExcess = Math.max(0, usedE2 - basis2);
+      } else {
+        cap = Math.max(0, basis2 - usedD2) - result[i].savedDuenger;
+        selfExcess = Math.max(0, usedD2 - basis2);
       }
-      if (takeCapD > 0.05) {
-        result[idx2].excessDuenger = takeCapD;
-        remExcessD2 -= takeCapD;
-      }
-    } else if (entry2.selfExcessE > 0.05 || entry2.selfExcessD > 0.05) {
-      // Tab ist selbst über-befüllt → seediert Mehrbedarf (negativer Carryover)
-      // z.B. wenn Tab IST > SOLL aber andere Tabs keine Kapazität haben
-      // Für jetzt: ignorieren (Test-Scope deckt diesen Fall nicht)
+      if (cap <= 0.05 && selfExcess <= 0.05) continue;
+      var lastEntry2 = t2.entries[t2.entries.length - 1];
+      var ts2 = _parseEntryTime(lastEntry2 ? (lastEntry2.time || 0) : 0);
+      tabOrder2.push({ idx: i, ts: ts2, cap: cap, selfExcess: selfExcess });
     }
+    // Sort: capacity-positive zuerst (last-filled first), dann self-excess tabs.
+    tabOrder2.sort(function(a, b) {
+      var aHasCap = a.cap > 0.05 ? 1 : 0;
+      var bHasCap = b.cap > 0.05 ? 1 : 0;
+      if (aHasCap !== bHasCap) return bHasCap - aHasCap;
+      return b.ts - a.ts;
+    });
+
+    for (var j2 = 0; j2 < tabOrder2.length && remExcess > 0.05; j2++) {
+      var entry2 = tabOrder2[j2];
+      var idx2 = entry2.idx;
+      if (entry2.cap > 0.05) {
+        var takeCap = Math.min(remExcess, entry2.cap);
+        if (takeCap > 0.05) {
+          if (isSaatPass2) result[idx2].excessEinheit = takeCap;
+          else result[idx2].excessDuenger = takeCap;
+          remExcess -= takeCap;
+        }
+      }
+      // self-excess: weiter ignoriert (kein negativer Carryover)
+    }
+    if (isSaatPass2) totalExcessE = remExcess;
+    else totalExcessD = remExcess;
   }
 
   _internal.carryoverCache = result;

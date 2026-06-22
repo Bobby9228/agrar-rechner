@@ -8,7 +8,7 @@
 
     // Confirm-Dialog-Wrapper. In Browsern ist `globalThis.confirm` der
     // native window.confirm; in jsdom-Tests wird die Funktion gemockt
-    // (siehe tests/45-reset-modal.test.js).
+    // (siehe tests/28-berechne-confirm.test.js).
     function _askConfirm(message) {
       return globalThis.confirm(message);
     }
@@ -87,13 +87,11 @@
       if (idx === AppGlobals.state.activeReiter && AppGlobals.state.activeView !== 'protokoll') return;
       syncStateFromInputs();
       AppGlobals.state.activeReiter = idx;
+      // Beim Tab-Wechsel aus der Protokoll-Ansicht zurück in die Feld-Ansicht
+      // (Issue #291 View-Toggle-Pattern: Tab-Klick = Feld-Tab zeigen, Protokoll-Tab
+      // ist kein eigener Reiter sondern ein View-Toggle).
       AppGlobals.state.activeView = null;
       AppGlobals.appEmit('TAB_CHANGED', { tabIdx: idx });
-    }
-
-    function renameReiter(idx, name) {
-      AppGlobals.state.reiter[idx].name = name.substring(0, 20);
-      AppGlobals.appEmit('TAB_RENAMED', { tabIdx: idx });
     }
 
     function switchToProtokoll() {
@@ -105,6 +103,11 @@
         AppGlobals.renderDrillTabList();
       }
       AppGlobals.appEmit('VIEW_CHANGED', { view: AppGlobals.state.activeView });
+    }
+
+    function renameReiter(idx, name) {
+      AppGlobals.state.reiter[idx].name = name.substring(0, 20);
+      AppGlobals.appEmit('TAB_RENAMED', { tabIdx: idx });
     }
 
     // --- Fahrgassen ---
@@ -257,7 +260,6 @@
       AppGlobals.state = {
         reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] }],
         activeReiter: 0,
-        activeView: null,
         fahrgassenEnabled: false,
         fahrgassenBreite: 0,
         einheitGroesseEnabled: false,
@@ -356,19 +358,35 @@
     // Issue #276: _buildDrillEntry erzeugt das Entry-Objekt für einen
     // Multi-Tab-Drill-Push (mit machineLog-Index) oder einen Single-Tab-
     // Push (mlIdx = -1). Berechnet die cap-bewerteten Mengen für ein Tab.
+    //
+    // Issue #321: Dünger-Cap entfernt. Saatgut wird weiterhin auf die
+    // Tab-Fläche gecappt (unitsForThisTab = min(input, maxUnitsThisTab)),
+    // aber entry.duenger respektiert jetzt den Roh-User-Wert. Der vorherige
+    // Math.min(duengerRaw, duengerPerUnit * unitsForThisTab)-Cap verschluckte
+    // stillschweigend Dünger-Mengen, die von der Tab-Zielmenge abweichen,
+    // und produzierte falsche Verbleibend-Werte.
+    //
+    // Begründung: kg/ha in den Tab-Einstellungen ist eine Zielsetzung des
+    // Landwirts, kein physikalisches Limit. Der Landwirt kann legitimerweise
+    // mehr oder weniger Dünger pro Einheit ausbringen als geplant — die App
+    // soll das respektieren.
+    //
+    // Pre-Fix-Audit (kanban-comment auf t_b1a25916): 12 Reader von entry.duenger
+    // geprüft, kein Reader bricht — alle cascade korrekt (höhere usedD →
+    // kleinere next tabDCap in _calcDrillDistribution, korrekte Carryover-
+    // Bedarfe in computeAllCarryovers). Render-Pfade zeigen jetzt die echten
+    // kg statt der gecappten Werte.
     function _buildDrillEntry(tab, unitsRaw, duengerRaw, zaehlerStand, mlIdx) {
       var fgFactor = (tab.fahrgassenEnabled && tab.fahrgassenBreite >= 2)
         ? AppGlobals.computeFahrgassenFaktor(tab.fahrgassenBreite) : 1;
       var perUnit = (tab.koerner * fgFactor) / AppGlobals.state.koernerProEinheit;
       var maxUnitsThisTab = tab.hektar * perUnit;
       var unitsForThisTab = Math.min(unitsRaw, maxUnitsThisTab);
-      var duengerPerUnit = AppGlobals.getDuengerProEinheit(tab, AppGlobals.state.koernerProEinheit);
-      var duengerForThisTab = Math.min(duengerRaw, duengerPerUnit * unitsForThisTab);
       return {
         time: mlIdx >= 0 ? AppGlobals.getTabNextTime(tab) : new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
         mlIdx: mlIdx,
         einheit: Math.round(unitsForThisTab * 100) / 100,
-        duenger: Math.round(duengerForThisTab * 100) / 100,
+        duenger: Math.round(duengerRaw * 100) / 100,
         hektar: tab.hektar, istHektar: 0, zaehlerStand: zaehlerStand,
         koerner: tab.koerner, duengerRate: tab.duenger
       };
