@@ -61,12 +61,16 @@
           sollIstSection.style.display = 'none';
         }
       }
-      // Issue #336: Per-Tab-Eigen-Salden des aktiven Tabs (PR #337/#339).
-      // Ersparnis + Mehrbedarf sind Roh-Werte für DIESEN Tab — KEINE Cross-Tab-
-      // Aggregation, KEIN Empfänger-Saldo aus computeAllCarryovers(), KEINE
-      // Verrechnung mit Verbleibend/Eingefüllt (Issue #335 bleibt offen).
-      // Die Cross-Tab-Netto-Aggregation lebt jetzt im Maschinen-Protokoll
-      // (Issue #336 follow-up #3, User-Feedback 2026-06-23).
+      // Issue #336 follow-up #5: Cross-Tab-Saldo (eine Zeile über ALLE reiter)
+      // im Ergebnis-Tab. User-Feedback 2026-06-23 (4. Runde): „Die Ersparnis
+      // soll durch den Saldo aus getauscht werden und der Saldo soll aus
+      // dem Maschinen Protokoll entfernt werden."
+      //   netE = Σ ErsparnisSaat(jeder Tab) − Σ MehrbedarfSaat(jeder Tab)
+      //   netD = Σ ErsparnisDünger(jeder Tab) − Σ MehrbedarfDünger(jeder Tab)
+      // Net > 0 → grüne „Ersparnis"-Zeile. Net < 0 → rote „Mehrbedarf"-Zeile.
+      // KEIN Empfänger-Saldo aus computeAllCarryovers() (User-Decision 2026-06-23).
+      // KEINE Verrechnung mit Verbleibend/Eingefüllt (Issue #335 bleibt offen).
+      // Per-Tab-Drill-Blöcke im Maschinen-Protokoll bleiben unverändert.
       var carryoverHint = document.getElementById('r_carryover_hint');
       if (!carryoverHint) {
         carryoverHint = document.createElement('div');
@@ -78,38 +82,47 @@
       }
       if (carryoverHint) {
         while (carryoverHint.firstChild) carryoverHint.removeChild(carryoverHint.firstChild);
-        var savingsE = 0, savingsD = 0, excessE = 0, excessD = 0;
-        if (r.istHektar > 0 && r.hektar > 0) {
-          savingsE = AppGlobals.getTabTotalEinheiten(r) - AppGlobals.getTabIstEinheiten(r);
-          savingsD = (r.hektar - r.istHektar) * (r.duenger || 0);
-          excessE = AppGlobals.getTabIstEinheiten(r) - AppGlobals.getTabTotalEinheiten(r);
-          excessD = (r.istHektar - r.hektar) * (r.duenger || 0);
+        // Cross-Tab-Saldo aggregieren (Pattern 3 Single Source of Truth mit
+        // _computeTabSelfSaldo in render-drill.js).
+        // eslint-disable-next-line no-undef -- _computeTabSelfSaldo ist in render-drill.js definiert (Modul-globale Funktion, kein AppGlobals-Export)
+        var _selfSaldoHelper = typeof _computeTabSelfSaldo === 'function' ? _computeTabSelfSaldo : null;
+        var totalSavE = 0, totalSavD = 0, totalExcE = 0, totalExcD = 0;
+        var allReiter = AppGlobals.state.reiter || [];
+        for (var ti = 0; ti < allReiter.length; ti++) {
+          if (!_selfSaldoHelper) break;
+          var s = _selfSaldoHelper(allReiter[ti]);
+          if (s.savingsE > 0) totalSavE += s.savingsE;
+          if (s.savingsD > 0) totalSavD += s.savingsD;
+          if (s.excessE > 0) totalExcE += s.excessE;
+          if (s.excessD > 0) totalExcD += s.excessD;
         }
-        var showSavings = savingsE > 0.05 || savingsD > 0.05;
-        var showExcess = excessE > 0.05 || excessD > 0.05;
+        var netE = totalSavE - totalExcE;
+        var netD = totalSavD - totalExcD;
+        var showSavings = netE > 0.05 || netD > 0.05;
+        var showExcess = netE < -0.05 || netD < -0.05;
         if (showSavings || showExcess) {
           var sectionLabel = document.createElement('div');
           sectionLabel.className = 'r-carryover-section-label';
-          sectionLabel.textContent = 'Abweichung dieses Tabs';
+          sectionLabel.textContent = 'Saldo (alle Tabs)';
           carryoverHint.appendChild(sectionLabel);
-          if (showSavings) {
-            var sParts = [];
-            if (savingsE > 0.05) sParts.push(AppGlobals.fmt(savingsE) + ' Einheiten Saatgut');
-            if (savingsD > 0.05) sParts.push(savingsD.toLocaleString('de-DE') + ' kg Dünger');
-            var sDiv = document.createElement('div');
-            sDiv.className = 'r-carryover-row r-carryover-savings';
-            sDiv.textContent = 'Ersparnis: ' + sParts.join(', ');
-            carryoverHint.appendChild(sDiv);
-          }
-          if (showExcess) {
-            var eParts = [];
-            if (excessE > 0.05) eParts.push(AppGlobals.fmt(excessE) + ' Einheiten Saatgut');
-            if (excessD > 0.05) eParts.push(excessD.toLocaleString('de-DE') + ' kg Dünger');
-            var eDiv = document.createElement('div');
-            eDiv.className = 'r-carryover-row r-carryover-excess';
-            eDiv.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eParts.join(', ');
-            carryoverHint.appendChild(eDiv);
-          }
+        }
+        if (showSavings) {
+          var sParts = [];
+          if (netE > 0.05) sParts.push(AppGlobals.fmt(netE) + ' Einheiten Saatgut');
+          if (netD > 0.05) sParts.push(netD.toLocaleString('de-DE') + ' kg Dünger');
+          var sDiv = document.createElement('div');
+          sDiv.className = 'net-totals-line net-totals-savings';
+          sDiv.textContent = 'Ersparnis: ' + sParts.join(', ');
+          carryoverHint.appendChild(sDiv);
+        }
+        if (showExcess) {
+          var eParts = [];
+          if (netE < -0.05) eParts.push(AppGlobals.fmt(-netE) + ' Einheiten Saatgut');
+          if (netD < -0.05) eParts.push((-netD).toLocaleString('de-DE') + ' kg Dünger');
+          var eDiv = document.createElement('div');
+          eDiv.className = 'net-totals-line net-totals-excess';
+          eDiv.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eParts.join(', ');
+          carryoverHint.appendChild(eDiv);
         }
       }
     }
