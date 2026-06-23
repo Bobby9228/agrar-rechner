@@ -486,4 +486,44 @@ describe('IST/SOLL Savings & Carryover', () => {
     expect(sav).not.toBeNull();
     expect(sav.textContent).toContain('Ersparnis');
   });
+
+  it('shows net saldo (Ersparnis minus Mehrbedarf) across tabs in ds_savings', () => {
+    // Tab 0: SOLL=10, IST=8 → Ersparnis 2 ha × 100 kg/ha = +200 kg Dünger
+    // Tab 1: SOLL=5, IST=7 → Mehrbedarf 2 ha × 100 kg/ha = -200 kg Dünger
+    // Net saldo Dünger = 0 → Saldo box should be hidden (within 0.05 tolerance)
+    const { w } = setup();
+    w.addReiter();
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, istHektar: 8, koerner: 50000, duenger: 100, entries: [] };
+    w.state.reiter[0].entries.push({ einheit: 8, zaehlerStand: 8, duenger: 800, time: '09:00' });
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 5, istHektar: 7, koerner: 50000, duenger: 100, entries: [] };
+    w.state.reiter[1].entries.push({ einheit: 5, zaehlerStand: 7, duenger: 500, time: '10:00' });
+    w.state.activeReiter = 0;
+    w.renderResults();
+
+    const savingsEl = w.document.getElementById('ds_savings');
+    expect(savingsEl).not.toBeNull();
+    // Net saldo ≈ 0 for both → box hidden
+    expect(savingsEl.style.display).toBe('none');
+  });
+
+  it('shows net Mehrbedarf when excess outweighs savings', () => {
+    // Tab 0: SOLL=10, IST=9 → Ersparnis 1 ha × 100 = +100 kg Dünger, +1 Einheit
+    // Tab 1: SOLL=5, IST=10 → Mehrbedarf 5 ha × 100 = -500 kg Dünger, -5 Einheiten
+    // Net saldo: -400 kg Dünger, -4 Einheiten → Mehrbedarf
+    const { w } = setup();
+    w.addReiter();
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, istHektar: 9, koerner: 50000, duenger: 100, entries: [] };
+    w.state.reiter[0].entries.push({ einheit: 9, zaehlerStand: 9, duenger: 900, time: '09:00' });
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 5, istHektar: 10, koerner: 50000, duenger: 100, entries: [] };
+    w.state.reiter[1].entries.push({ einheit: 5, zaehlerStand: 10, duenger: 500, time: '10:00' });
+    w.state.activeReiter = 0;
+    w.renderResults();
+
+    const savingsEl = w.document.getElementById('ds_savings');
+    expect(savingsEl).not.toBeNull();
+    expect(savingsEl.style.display).not.toBe('none');
+    expect(savingsEl.textContent).toContain('Mehrbedarf');
+    expect(savingsEl.textContent).toContain('400');
+    expect(savingsEl.textContent).toContain('kg Dünger');
+  });
 });
