@@ -38,6 +38,7 @@
     --color-result-bg: #e8f4dc;
     --color-success-soft: #e8f4dc;
     --color-text: #1a1a1a;
+    --color-text-danger: #c62828;
     --color-text-hint: #616161;
     --color-text-hint-2: #5f6368;
     --color-text-label: #444;
@@ -89,6 +90,7 @@
     --color-result-bg: #2a3320;
     --color-summary-muted: #b0b8a8;
     --color-text: #e0e8d6;
+    --color-text-danger: #ef5350;
     --color-text-hint: #9ca896;
     --color-text-hint-2: #9ca896;
     --color-text-label: #9aa88a;
@@ -546,7 +548,7 @@
     }
     .drill-excess {
 font-size: 0.75rem;
-      color: var(--color-text-hint);
+      color: var(--color-text-danger);
       text-transform: uppercase;
     }
     .drill-excess .entry-text::before {
@@ -561,15 +563,16 @@ font-size: 0.75rem;
     /* Issue #336: drei Carryover-Roh-Wert-Zeilen im Ergebnis-Tab.
        Visuell getrennt von Verbleibend/Eingefüllt via border-top und
        kleinerer Schrift. Farben folgen dem Maschinen-Protokoll-Pattern. */
-    .r-carryover-section-label {
-      font-size: 0.75rem;
+    .net-totals-line {
+      font-size: 0.9rem;
       font-weight: 600;
-      color: var(--color-text-label-strong);
-      text-transform: uppercase;
-      padding: 6px 0 2px;
-      border-top: 1px solid var(--color-border, #e2e2e2);
-      margin-top: 6px;
-      letter-spacing: 0.04em;
+      padding: 2px 0;
+    }
+    .net-totals-savings {
+      color: var(--color-text-success);
+    }
+    .net-totals-excess {
+      color: var(--color-text-danger);
     }
     .r-carryover-row {
       font-size: 0.85rem;
