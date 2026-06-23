@@ -1,18 +1,23 @@
 /**
- * Issue #336: Ersparnis / Übertrag / Mehrbedarf im Ergebnis-Tab (renderResultCard)
+ * Issue #336: Ersparnis / Mehrbedarf im Ergebnis-Tab (renderResultCard)
  * als eigene Zeilen OHNE Verrechnung mit Verbleibend/Eingefüllt.
  *
  * Vor #336 zeigte r_carryover_hint nur Empfänger-Salden (Übertrag + Mehrbedarf)
  * als kompakte Hint-Zeilen und verrechnete sie in der rem-Formel. Issue #335
  * hatte moniert, dass die Verrechnung verwirrend ist. #336 verlangt die
- * drei Roh-Werte als eigene Zeilen mit Threshold-Gating (wert > 0.05).
+ * Roh-Werte als eigene Zeilen mit Threshold-Gating (wert > 0.05).
  *
- * Implementierung: public/js/render-results.js (renderResultCard, ~Z. 64-146)
- *   - .r-carryover-section-label: "Carryover dieses Tabs (ohne Verrechnung)"
+ * Follow-up #336: Die Übertrag-Zeile (Empfänger-Saldo aus computeAllCarryovers)
+ * wurde aus der UI entfernt — der User will nur die Selbst-Salden (Ersparnis +
+ * Mehrbedarf) des aktiven Tabs sehen. Die App-Logik (computeAllCarryovers,
+ * _appendTabCarryoverBlocks im Maschinen-Protokoll) läuft unverändert weiter.
+ *
+ * Implementierung: public/js/render-results.js (renderResultCard, ~Z. 64-148)
+ *   - .r-carryover-section-label: "Abweichung dieses Tabs"
  *   - .r-carryover-row.r-carryover-savings   "Ersparnis: X Einheiten, Y kg Dünger"
- *   - .r-carryover-row.r-carryover-carryover "Übertrag aus ersparten Flächen: +X, Y"
  *   - .r-carryover-row.r-carryover-excess    "Mehrbedarf aus überschrittenen Flächen: -X, Y"
  *   - Jede Zeile unabhängig gegated; Section-Header nur wenn ≥1 Zeile.
+ *   - KEINE .r-carryover-row.r-carryover-carryover mehr (Übertrag-Zeile entfernt)
  *   - KEINE Verrechnung mit Verbleibend (r_drill_e_rem) oder Eingefüllt.
  *
  * Roh-Wert-Formeln (identisch zu _appendTabCarryoverBlocks in render-drill.js,
@@ -21,7 +26,6 @@
  *   Ersparnis Düng:  (hektar - istHektar) × duenger
  *   Mehrbedarf Saat: getTabIstEinheiten(r) - getTabTotalEinheiten(r)     (FG-korrigiert)
  *   Mehrbedarf Düng: (istHektar - hektar) × duenger
- *   Übertrag:        AppGlobals.getCarryover(activeIdx).savedEinheit/savedDuenger
  *
  * Wichtige Geometrie-Constraints (lernen aus dem ersten Test-Run):
  *   - Ersparnis/Mehrbedarf nur sichtbar wenn istHektar > 0 (sonst ist
@@ -30,9 +34,6 @@
  *   - Ersparnis/Mehrbedarf-Werte sind nicht-symmetrisch: bei IST<SOLL zeigt
  *     sich Ersparnis, bei IST>SOLL Mehrbedarf. Die jeweils andere Zeile ist
  *     negativ und wird ausgeblendet.
- *   - Skip-rule (Issue #138): single-tab savings source mit no entries
- *     absorbiert die eigenen Savings als Carryover (weil sie der einzige
- *     Tab mit capacity ist). Skip-rule greift nur wenn usedE >= istE.
  *   - Die kg-Schwelle 0.05 ist sehr niedrig: bei duenger=100 kg/ha
  *     bedeutet 0.01 ha IST<SOLL bereits 1 kg savings > 0.05.
  *     "below threshold"-Tests müssen daher duenger=0 ODER
@@ -94,7 +95,7 @@ describe('Issue #336: Ergebnis-Tab Carryover-Roh-Wert-Zeilen (renderResultCard)'
     w.renderResults();
     const label = sectionLabel();
     expect(label).not.toBeNull();
-    expect(label.textContent).toContain('Carryover dieses Tabs (ohne Verrechnung)');
+    expect(label.textContent).toContain('Abweichung dieses Tabs');
   });
 
   // ── Ersparnis row ──────────────────────────────────────────────────────
@@ -204,9 +205,12 @@ describe('Issue #336: Ergebnis-Tab Carryover-Roh-Wert-Zeilen (renderResultCard)'
     expect(savingsRow()).not.toBeNull();
   });
 
-  // ── Übertrag row (carryover received from other tabs) ─────────────────
+  // ── Übertrag row removed (Issue #336 follow-up) ────────────────────────
 
-  it('shows Übertrag row when this tab receives carryover from another tab', () => {
+  it('does NOT show Übertrag row even when this tab would receive carryover from another tab', () => {
+    // Issue #336 follow-up: User will keine Cross-Tab-Verrechnung in der UI sehen.
+    // Auch wenn computeAllCarryovers() intern einen Empfänger-Saldo zuweisen würde,
+    // wird KEINE .r-carryover-carryover-Zeile gerendert.
     w.addReiter();
     // Tab 0: SOLL=10, IST=8, koerner=50000, duenger=100, entries that fill IST
     // → fertig, savings source
@@ -214,21 +218,20 @@ describe('Issue #336: Ergebnis-Tab Carryover-Roh-Wert-Zeilen (renderResultCard)'
       ...w.state.reiter[0], hektar: 10, istHektar: 8, koerner: 50000, duenger: 100, entries: []
     };
     w.state.reiter[0].entries.push({ einheit: 8, zaehlerStand: 8, duenger: 800, time: '08:00' });
-    // Tab 1: SOLL=10, no IST, not done → receives carryover
+    // Tab 1: SOLL=10, no IST, not done → wäre Empfänger des Carryovers
     w.state.reiter[1] = {
       ...w.state.reiter[1], hektar: 10, koerner: 50000, duenger: 100, entries: []
     };
     w.state.activeReiter = 1;
     w.renderResults();
-    const c = carryoverRow();
-    expect(c).not.toBeNull();
-    expect(c.textContent).toContain('Übertrag aus ersparten Flächen');
-    expect(c.textContent).toContain('+');
-    expect(c.textContent).toContain('Einheiten Saatgut');
-    expect(c.textContent).toContain('kg Dünger');
+    expect(carryoverRow()).toBeNull();
+    // Tab 1 hat kein istHektar → keine Section, keine Zeilen.
+    expect(sectionLabel()).toBeNull();
+    expect(savingsRow()).toBeNull();
+    expect(excessRow()).toBeNull();
   });
 
-  it('hides Übertrag row when no other tab provides carryover to this tab', () => {
+  it('does NOT show Übertrag row when no other tab provides carryover to this tab', () => {
     // Single tab, no carryover.
     w.state.reiter[0] = {
       ...w.state.reiter[0], hektar: 8, istHektar: 8, koerner: 50000, duenger: 100, entries: []
@@ -238,19 +241,20 @@ describe('Issue #336: Ergebnis-Tab Carryover-Roh-Wert-Zeilen (renderResultCard)'
     expect(carryoverRow()).toBeNull();
   });
 
-  it('hides Übertrag row when active tab is a savings source AND has entries covering its own IST (skip-rule Issue #138)', () => {
-    // Tab 0: savings source (IST<SOLL) WITH an entry that fully covers its
-    // own IST (usedE=istE=7.9). Skip-rule: savings source that is itself
-    // already covered does NOT get its own savings as carryover.
-    // Plus there's no other tab to give it to, so it gets nothing.
+  it('does NOT show Übertrag row even when active tab is a savings source (skip-rule Issue #138 scenario)', () => {
+    // Vor #336 follow-up: Tab 0 mit eigenem IST<SOLL + Entry, der IST deckt,
+    // zeigte keine Übertrag-Zeile (Skip-rule: covered savings source spendet
+    // nicht an sich selbst). Nach #336 follow-up ist die Übertrag-Zeile
+    // IMMER entfernt — egal welche Carryover-Logik im Hintergrund läuft.
     w.state.reiter[0] = {
       ...w.state.reiter[0], hektar: 10, istHektar: 7.9, koerner: 50000, duenger: 100, entries: []
     };
     w.state.reiter[0].entries.push({ einheit: 7.9, zaehlerStand: 7.9, duenger: 790, time: '08:00' });
     w.state.activeReiter = 0;
     w.renderResults();
-    // Ersparnis IS shown (own IST<SOLL), but no Übertrag.
+    // Ersparnis bleibt sichtbar (Eigen-Abweichung dieses Tabs).
     expect(savingsRow()).not.toBeNull();
+    // Übertrag bleibt unsichtbar (war nie da, ist nie da).
     expect(carryoverRow()).toBeNull();
   });
 
@@ -276,7 +280,9 @@ describe('Issue #336: Ergebnis-Tab Carryover-Roh-Wert-Zeilen (renderResultCard)'
     expect(excessRow()).not.toBeNull();
   });
 
-  it('shows Ersparnis + Übertrag simultaneously when tab has own savings AND receives carryover from another tab', () => {
+  it('does NOT show Übertrag row even when tab has own savings AND would receive carryover from another tab', () => {
+    // Vor #336 follow-up zeigte Tab 1 in diesem Setup sowohl Ersparnis als
+    // auch Übertrag. Nach #336 follow-up bleibt nur die Eigen-Ersparnis.
     w.addReiter();
     w.addReiter();
     // Tab 0: done, savings source
@@ -284,20 +290,21 @@ describe('Issue #336: Ergebnis-Tab Carryover-Roh-Wert-Zeilen (renderResultCard)'
       ...w.state.reiter[0], hektar: 10, istHektar: 8, koerner: 50000, duenger: 100, entries: []
     };
     w.state.reiter[0].entries.push({ einheit: 8, zaehlerStand: 8, duenger: 800, time: '08:00' });
-    // Tab 1: also a savings source AND not-done → receives carryover from tab 0
-    // AND has own savings to advertise.
+    // Tab 1: istHektar<SOLL → eigene Ersparnis; wäre auch Carryover-Empfänger
     w.state.reiter[1] = {
       ...w.state.reiter[1], hektar: 5, istHektar: 4, koerner: 50000, duenger: 100, entries: []
     };
-    // Tab 2: not done, no savings signal
+    // Tab 2: not done, neutral
     w.state.reiter[2] = {
       ...w.state.reiter[2], hektar: 5, koerner: 50000, duenger: 100, entries: []
     };
     w.state.activeReiter = 1;
     w.renderResults();
-    // Tab 1 has own savings (IST<SOLL). Also receives carryover.
+    // Eigen-Ersparnis weiterhin sichtbar.
     expect(savingsRow()).not.toBeNull();
-    expect(carryoverRow()).not.toBeNull();
+    // Übertrag-Zeile wurde aus der UI entfernt — auch wenn der interne
+    // Carryover-Verteiler etwas zuweisen würde.
+    expect(carryoverRow()).toBeNull();
   });
 
   // ── Verrechnung-Invariante (Issue #335 contract) ─────────────────────
@@ -368,38 +375,37 @@ describe('Issue #336: Ergebnis-Tab Carryover-Roh-Wert-Zeilen (renderResultCard)'
 
   // ── Class structure ────────────────────────────────────────────────────
 
-  it('uses r-carryover-row base class on all three row types', () => {
-    // Setup: tab 0 done with savings source. Tab 1: not-done, gets carryover.
-    w.addReiter();
+  it('uses r-carryover-row base class on Ersparnis and Mehrbedarf rows', () => {
+    // Setup: tab 0 with IST<SOLL (Ersparnis-Quelle) und Tab 0 mit IST>SOLL
+    // (Mehrbedarf-Quelle) — jeder Test-Aufruf nutzt eine eigene Tab-Konfig.
     w.state.reiter[0] = {
       ...w.state.reiter[0], hektar: 8, istHektar: 6, koerner: 50000, duenger: 100, entries: []
     };
-    w.state.reiter[0].entries.push({ einheit: 6, zaehlerStand: 6, duenger: 600, time: '08:00' });
-    w.state.reiter[1] = {
-      ...w.state.reiter[1], hektar: 10, koerner: 50000, duenger: 100, entries: []
-    };
     w.state.activeReiter = 0;
     w.renderResults();
-    // Tab 0: savings source with IST<SOLL AND entry covering it. With no
-    // carryover received (skip-rule applies — covered, plus tab 0 is the
-    // only "fertig" tab but the carryover loop still distributes to tab 1).
+    // Tab 0: Ersparnis-Zeile mit korrekten Klassen.
     const s = savingsRow();
-    if (s) {
-      expect(s.classList.contains('r-carryover-row')).toBe(true);
-      expect(s.classList.contains('r-carryover-savings')).toBe(true);
-    }
-    w.state.activeReiter = 1;
+    expect(s).not.toBeNull();
+    expect(s.classList.contains('r-carryover-row')).toBe(true);
+    expect(s.classList.contains('r-carryover-savings')).toBe(true);
+    // Tab 0 hat keinen Carryover-Empfänger (single tab) — Übertrag-Zeile fehlt.
+    expect(carryoverRow()).toBeNull();
+
+    // Tab 0 umkonfigurieren: IST > SOLL → Mehrbedarf-Zeile.
+    w.state.reiter[0] = {
+      ...w.state.reiter[0], hektar: 8, istHektar: 10, koerner: 50000, duenger: 100, entries: []
+    };
     w.renderResults();
-    const c = carryoverRow();
-    if (c) {
-      expect(c.classList.contains('r-carryover-row')).toBe(true);
-      expect(c.classList.contains('r-carryover-carryover')).toBe(true);
-    }
+    const e = excessRow();
+    expect(e).not.toBeNull();
+    expect(e.classList.contains('r-carryover-row')).toBe(true);
+    expect(e.classList.contains('r-carryover-excess')).toBe(true);
+    expect(carryoverRow()).toBeNull();
   });
 
-  it('renders rows in the order Ersparnis → Übertrag → Mehrbedarf', () => {
-    // Setup with both savings and carryover (and no excess, since the same
-    // tab can't have IST<SOLL AND IST>SOLL).
+  it('renders rows in the order Ersparnis → Mehrbedarf (Übertrag row removed)', () => {
+    // Setup with own savings and possible carryover — only Ersparnis + (hidden)
+    // Mehrbedarf expected. Übertrag-Row existiert nicht mehr in der UI.
     w.addReiter();
     w.addReiter();
     // Tab 0: done, savings source
@@ -407,7 +413,7 @@ describe('Issue #336: Ergebnis-Tab Carryover-Roh-Wert-Zeilen (renderResultCard)'
       ...w.state.reiter[0], hektar: 8, istHektar: 6, koerner: 50000, duenger: 100, entries: []
     };
     w.state.reiter[0].entries.push({ einheit: 6, zaehlerStand: 6, duenger: 600, time: '08:00' });
-    // Tab 1: not done, IST<SOLL → savings source + carryover receiver
+    // Tab 1: not done, IST<SOLL → savings source
     w.state.reiter[1] = {
       ...w.state.reiter[1], hektar: 5, istHektar: 4, koerner: 50000, duenger: 100, entries: []
     };
@@ -417,23 +423,12 @@ describe('Issue #336: Ergebnis-Tab Carryover-Roh-Wert-Zeilen (renderResultCard)'
     };
     w.state.activeReiter = 1;
     w.renderResults();
-    const rows = hintContainer().querySelectorAll('.r-carryover-row');
-    if (rows.length >= 2) {
-      const sIdx = Array.from(rows).findIndex(r => r.classList.contains('r-carryover-savings'));
-      const cIdx = Array.from(rows).findIndex(r => r.classList.contains('r-carryover-carryover'));
-      const eIdx = Array.from(rows).findIndex(r => r.classList.contains('r-carryover-excess'));
-      const indices = [sIdx, cIdx, eIdx].filter(i => i >= 0);
-      for (let i = 1; i < indices.length; i++) {
-        expect(indices[i]).toBeGreaterThan(indices[i - 1]);
-      }
-    }
-    // Ersparnis must appear before Übertrag.
+    // Übertrag-Row darf nirgendwo im Hint-Container sein.
+    expect(hintContainer().querySelectorAll('.r-carryover-carryover').length).toBe(0);
+    // Keine Zeile mit "Übertrag" im Klartext.
+    expect(hintContainer().textContent).not.toContain('Übertrag');
+    // Ersparnis erscheint (Tab 1 hat eigene Ersparnis).
     const s = savingsRow();
-    const c = carryoverRow();
-    if (s && c) {
-      // Following sibling check: c comes after s in document order.
-      const following = (s.compareDocumentPosition(c) & 4) !== 0;
-      expect(following).toBe(true);
-    }
+    expect(s).not.toBeNull();
   });
 });
