@@ -225,36 +225,63 @@
 
     // --- Render: Drill Log ---
 
+    // Issue #336 follow-up #4: gemeinsamer Saldo-Helper für Per-Tab- und
+    // Net-Totals-Anzeige. Berechnet die Roh-Differenzen für einen Tab:
+    //   savingsE = SOLL - IST  (positiv wenn weniger verbraucht als geplant)
+    //   excessE  = IST - SOLL   (positiv wenn mehr verbraucht als geplant)
+    //   savingsD / excessD: kg/ha × Hektar-Differenz
+    // KEINE Gates hier (nicht „nur wenn istHektar > 0") — die Aufrufer
+    // entscheiden was sie anzeigen. _appendTabCarryoverBlocks blendet
+    // negative Werte aus (Per-Tab zeigt nur die positive Seite), und
+    // _appendNetTotalsBlock summiert über alle reiter und bildet das
+    // Net. So bleibt der Net-Totals IMMER konsistent mit dem Per-Tab-
+    // Saldo: was im Maschinen-Protokoll oder Ergebnis-Tab pro Tab als
+    // Mehrbedarf/Ersparnis steht, fließt 1:1 in die Net-Zeile ein.
+    function _computeTabSelfSaldo(rt) {
+      if (!rt) return { savingsE: 0, savingsD: 0, excessE: 0, excessD: 0 };
+      var sE = 0, sD = 0, eE = 0, eD = 0;
+      if (rt.istHektar > 0 && rt.hektar > 0) {
+        sE = AppGlobals.getTabTotalEinheiten(rt) - AppGlobals.getTabIstEinheiten(rt);
+        sD = (rt.hektar - rt.istHektar) * (rt.duenger || 0);
+        eE = AppGlobals.getTabIstEinheiten(rt) - AppGlobals.getTabTotalEinheiten(rt);
+        eD = (rt.istHektar - rt.hektar) * (rt.duenger || 0);
+      }
+      return { savingsE: sE, savingsD: sD, excessE: eE, excessD: eD };
+    }
+
     // Issue #336 follow-up #3: Cross-Tab-Netto-Aggregation für das
     // Maschinen-Protokoll (User-Feedback 2026-06-23: „im Ergebnis Feld vom
-    // Protokoll"). Aggregiert über ALLE reiter:
-    //   netE = Σ (EigenersparnisSaat jedes Tabs) − Σ (EigenmehrbedarfSaat jedes Tabs)
-    //   netD = Σ (EigenersparnisDünger jedes Tabs) − Σ (EigenmehrbedarfDünger jedes Tabs)
-    // Net > 0 → grüne „Ersparnis"-Zeile. Net < 0 → rote „Mehrbedarf"-Zeile.
-    // Formeln identisch zu _appendTabCarryoverBlocks (savings source: SOLL>IST,
-    // excess source: IST>SOLL). KEIN Empfänger-Saldo aus computeAllCarryovers().
-    // Der Helper wird in renderDrillLog() und renderMachineLog() VOR den
-    // Per-Tab-Headern aufgerufen — so sieht der User sofort das Gesamtergebnis
-    // und kann dann die Per-Tab-Details darunter lesen.
+    // Protokoll"). Aggregiert über ALLE reiter mittels _computeTabSelfSaldo
+    // (gleiche Logik wie _appendTabCarryoverBlocks — Pattern 3 Single
+    // Source of Truth). Net > 0 → grüne „Ersparnis"-Zeile. Net < 0 → rote
+    // „Mehrbedarf"-Zeile. Wird in renderDrillLog() und renderMachineLog()
+    // jeweils VOR den Per-Tab-Headern aufgerufen.
+    //
+    // ACHTUNG (Issue #336 follow-up #4): _computeTabSelfSaldo gibt sowohl
+    // savingsE (positiv) ALS AUCH excessE (positiv bei IST>SOLL) zurück,
+    // wobei der jeweils andere Wert negativ ist (z.B. bei einem Savings-
+    // Source ist excessE = -1 für 1 E Ersparnis). Daher summieren wir die
+    // *positiven* Ersparnisse + die *positiven* Mehrbedarfe separat, und
+    // das Net ist die Differenz. NICHT `sumSav - sumExc` (das wäre
+    // 1 - (-1) = 2 statt korrekt 1 - 0 = 1, wenn der gleiche Tab sowohl
+    // Savings als auch einen negativen Excess liefert).
     function _appendNetTotalsBlock(container) {
       if (!container) return;
-      var sumSavE = 0, sumSavD = 0, sumExcE = 0, sumExcD = 0;
+      var totalSavE = 0, totalSavD = 0, totalExcE = 0, totalExcD = 0;
       var allReiter = AppGlobals.state.reiter || [];
       for (var ti = 0; ti < allReiter.length; ti++) {
         var rt = allReiter[ti];
-        if (!rt) continue;
-        var rtIstHa = AppGlobals.getTabIstHektar(rt);
-        if (rtIstHa <= 0 || rt.hektar <= 0) continue;
-        if (rtIstHa < rt.hektar) {
-          sumSavE += AppGlobals.getTabTotalEinheiten(rt) - AppGlobals.getTabIstEinheiten(rt);
-          sumSavD += (rt.hektar - rtIstHa) * (rt.duenger || 0);
-        } else if (rtIstHa > rt.hektar) {
-          sumExcE += AppGlobals.getTabIstEinheiten(rt) - AppGlobals.getTabTotalEinheiten(rt);
-          sumExcD += (rtIstHa - rt.hektar) * (rt.duenger || 0);
-        }
+        var s = _computeTabSelfSaldo(rt);
+        // Nur die positiven Seiten summieren — der jeweils andere Wert
+        // ist automatisch die negative Differenz und gehört nicht zur
+        // aggregierten Gesamtsumme.
+        if (s.savingsE > 0) totalSavE += s.savingsE;
+        if (s.savingsD > 0) totalSavD += s.savingsD;
+        if (s.excessE > 0) totalExcE += s.excessE;
+        if (s.excessD > 0) totalExcD += s.excessD;
       }
-      var netE = sumSavE - sumExcE;
-      var netD = sumSavD - sumExcD;
+      var netE = totalSavE - totalExcE;
+      var netD = totalSavD - totalExcD;
       var showSavings = netE > 0.05 || netD > 0.05;
       var showExcess = netE < -0.05 || netD < -0.05;
       if (!showSavings && !showExcess) return;
@@ -294,24 +321,17 @@
     function _appendTabCarryoverBlocks(tabIdx, ct, container) {
       if (!ct) return;
       var cco = AppGlobals.getCarryover(tabIdx);
-      var isSavingsSource = (ct.istHektar > 0 && ct.hektar > 0 && ct.istHektar < ct.hektar);
-      var isExcessSource = (ct.istHektar > 0 && ct.hektar > 0 && ct.istHektar > ct.hektar);
-      if (isSavingsSource) {
-        // Issue #273: source savings must apply fahrgassenFaktor, same as
-        // the carryover calculation. Use getTabTotalEinheiten - getTabIstEinheiten
-        // (both already apply the per-tab FG factor) so display and
-        // carryover share one formula.
-        var sE = AppGlobals.getTabTotalEinheiten(ct) - AppGlobals.getTabIstEinheiten(ct);
-        var sD = (ct.hektar - ct.istHektar) * (ct.duenger || 0);
+      var s = _computeTabSelfSaldo(ct);
+      // Per-Tab zeigt nur die positive Seite: savings wenn > 0, excess wenn > 0.
+      // (Der Net-Totals summiert beide Seiten und bildet das Net — s. Helper.)
+      if (s.savingsE > 0.05 || s.savingsD > 0.05) {
         var sParts = [];
-        if (sE > 0.05) sParts.push(AppGlobals.fmt(sE) + ' Einheiten Saatgut');
-        if (sD > 0.05) sParts.push(sD.toLocaleString('de-DE') + ' kg Dünger');
-        if (sParts.length > 0) {
-          var sDiv = document.createElement('div');
-          sDiv.className = 'drill-savings';
-          sDiv.textContent = 'Ersparnis: ' + sParts.join(', ');
-          container.appendChild(sDiv);
-        }
+        if (s.savingsE > 0.05) sParts.push(AppGlobals.fmt(s.savingsE) + ' Einheiten Saatgut');
+        if (s.savingsD > 0.05) sParts.push(s.savingsD.toLocaleString('de-DE') + ' kg Dünger');
+        var sDiv = document.createElement('div');
+        sDiv.className = 'drill-savings';
+        sDiv.textContent = 'Ersparnis: ' + sParts.join(', ');
+        container.appendChild(sDiv);
       }
       if (cco.savedEinheit > 0.05 || cco.savedDuenger > 0.05) {
         var cParts = [];
@@ -322,22 +342,14 @@
         cDiv.textContent = 'Übertrag aus ersparten Flächen: +' + cParts.join(', ');
         container.appendChild(cDiv);
       }
-      if (isExcessSource) {
-        // Issue #273: source excess must apply fahrgassenFaktor, same as
-        // the carryover calculation. Use getTabIstEinheiten - getTabTotalEinheiten
-        // (both already apply the per-tab FG factor) so display and
-        // carryover share one formula.
-        var eE = AppGlobals.getTabIstEinheiten(ct) - AppGlobals.getTabTotalEinheiten(ct);
-        var eD = (ct.istHektar - ct.hektar) * (ct.duenger || 0);
+      if (s.excessE > 0.05 || s.excessD > 0.05) {
         var eParts = [];
-        if (eE > 0.05) eParts.push(AppGlobals.fmt(eE) + ' Einheiten Saatgut');
-        if (eD > 0.05) eParts.push(eD.toLocaleString('de-DE') + ' kg Dünger');
-        if (eParts.length > 0) {
-          var eDiv = document.createElement('div');
-          eDiv.className = 'drill-excess';
-          eDiv.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eParts.join(', ');
-          container.appendChild(eDiv);
-        }
+        if (s.excessE > 0.05) eParts.push(AppGlobals.fmt(s.excessE) + ' Einheiten Saatgut');
+        if (s.excessD > 0.05) eParts.push(s.excessD.toLocaleString('de-DE') + ' kg Dünger');
+        var eDiv = document.createElement('div');
+        eDiv.className = 'drill-excess';
+        eDiv.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eParts.join(', ');
+        container.appendChild(eDiv);
       }
     }
 
@@ -347,10 +359,9 @@
       if (!ct) return false;
       var cco = AppGlobals.getCarryover(tabIdx);
       if (cco.savedEinheit > 0.05 || cco.savedDuenger > 0.05) return true;
-      if (ct.istHektar > 0 && ct.hektar > 0) {
-        if (ct.istHektar < ct.hektar) return true;  // savings source
-        if (ct.istHektar > ct.hektar) return true;  // excess source
-      }
+      var s = _computeTabSelfSaldo(ct);
+      if (s.savingsE > 0.05 || s.savingsD > 0.05) return true;
+      if (s.excessE > 0.05 || s.excessD > 0.05) return true;
       return false;
     }
 
