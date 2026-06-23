@@ -187,35 +187,39 @@
       if (dsUsedD) dsUsedD.textContent = usedDuenger > 0 ? usedDuenger.toLocaleString('de-DE') + ' kg' : '—';
       var dsRemD = document.getElementById('ds_duenger_remaining');
       if (dsRemD) dsRemD.textContent = remDuenger > 0 ? remDuenger.toLocaleString('de-DE') + ' kg' : '0 kg';
-      // Issue #266-B2: IST<SOLL savings in #ds_savings (aggregated across all
-      // tabs that are savings sources). Issue #273: apply fahrgassenFaktor via
-      // getTabTotalEinheiten/getTabIstEinheiten so display matches carryover.
+      // Netto-Saldo IST vs SOLL in #ds_savings (aggregated across all tabs
+      // that have IST-Fläche set). Positive = Ersparnis (IST < SOLL),
+      // negative = Mehrbedarf (IST > SOLL). Issue #273: apply fahrgassenFaktor
+      // via getTabTotalEinheiten/getTabIstEinheiten so display matches carryover.
       var dsSav = document.getElementById('ds_savings');
       if (dsSav) {
-        var savETotal = 0;
-        var savDTotal = 0;
-        var anySavings = false;
+        var saldoETotal = 0;
+        var saldoDTotal = 0;
+        var anySaldo = false;
         for (var si = 0; si < allTabs.length; si++) {
           var sr = allTabs[si];
           if (!sr) continue;
           var srIstHa = AppGlobals.getTabIstHektar(sr);
-          if (srIstHa > 0 && sr.hektar > srIstHa) {
-            anySavings = true;
-            savETotal += AppGlobals.getTabTotalEinheiten(sr) - AppGlobals.getTabIstEinheiten(sr);
-            savDTotal += (sr.hektar - srIstHa) * (sr.duenger || 0);
+          if (srIstHa > 0 && sr.hektar > 0) {
+            anySaldo = true;
+            saldoETotal += AppGlobals.getTabTotalEinheiten(sr) - AppGlobals.getTabIstEinheiten(sr);
+            saldoDTotal += (sr.hektar - srIstHa) * (sr.duenger || 0);
           }
         }
-        if (anySavings) {
-          var savParts = [];
-          if (savETotal > 0.05) savParts.push(AppGlobals.fmt(savETotal) + ' Einheiten Saatgut');
-          if (savDTotal > 0.05) savParts.push(savDTotal.toLocaleString('de-DE') + ' kg Dünger');
-          if (savParts.length > 0) {
-            dsSav.textContent = 'Ersparnis: ' + savParts.join(', ');
-            dsSav.style.display = 'block';
-          } else {
-            dsSav.textContent = '';
-            dsSav.style.display = 'none';
+        if (anySaldo && (Math.abs(saldoETotal) > 0.05 || Math.abs(saldoDTotal) > 0.05)) {
+          var parts = [];
+          if (Math.abs(saldoETotal) > 0.05) {
+            parts.push((saldoETotal > 0 ? '+' : '') + AppGlobals.fmt(saldoETotal) + ' Einheiten Saatgut');
           }
+          if (Math.abs(saldoDTotal) > 0.05) {
+            parts.push((saldoDTotal > 0 ? '+' : '') + saldoDTotal.toLocaleString('de-DE') + ' kg Dünger');
+          }
+          if (saldoETotal > 0.05 || saldoDTotal > 0.05) {
+            dsSav.textContent = 'Ersparnis: ' + parts.join(', ');
+          } else {
+            dsSav.textContent = 'Mehrbedarf: ' + parts.join(', ');
+          }
+          dsSav.style.display = 'block';
         } else {
           dsSav.textContent = '';
           dsSav.style.display = 'none';
