@@ -225,6 +225,63 @@
 
     // --- Render: Drill Log ---
 
+    // Issue #336 follow-up #3: Cross-Tab-Netto-Aggregation für das
+    // Maschinen-Protokoll (User-Feedback 2026-06-23: „im Ergebnis Feld vom
+    // Protokoll"). Aggregiert über ALLE reiter:
+    //   netE = Σ (EigenersparnisSaat jedes Tabs) − Σ (EigenmehrbedarfSaat jedes Tabs)
+    //   netD = Σ (EigenersparnisDünger jedes Tabs) − Σ (EigenmehrbedarfDünger jedes Tabs)
+    // Net > 0 → grüne „Ersparnis"-Zeile. Net < 0 → rote „Mehrbedarf"-Zeile.
+    // Formeln identisch zu _appendTabCarryoverBlocks (savings source: SOLL>IST,
+    // excess source: IST>SOLL). KEIN Empfänger-Saldo aus computeAllCarryovers().
+    // Der Helper wird in renderDrillLog() und renderMachineLog() VOR den
+    // Per-Tab-Headern aufgerufen — so sieht der User sofort das Gesamtergebnis
+    // und kann dann die Per-Tab-Details darunter lesen.
+    function _appendNetTotalsBlock(container) {
+      if (!container) return;
+      var sumSavE = 0, sumSavD = 0, sumExcE = 0, sumExcD = 0;
+      var allReiter = AppGlobals.state.reiter || [];
+      for (var ti = 0; ti < allReiter.length; ti++) {
+        var rt = allReiter[ti];
+        if (!rt) continue;
+        var rtIstHa = AppGlobals.getTabIstHektar(rt);
+        if (rtIstHa <= 0 || rt.hektar <= 0) continue;
+        if (rtIstHa < rt.hektar) {
+          sumSavE += AppGlobals.getTabTotalEinheiten(rt) - AppGlobals.getTabIstEinheiten(rt);
+          sumSavD += (rt.hektar - rtIstHa) * (rt.duenger || 0);
+        } else if (rtIstHa > rt.hektar) {
+          sumExcE += AppGlobals.getTabIstEinheiten(rt) - AppGlobals.getTabTotalEinheiten(rt);
+          sumExcD += (rtIstHa - rt.hektar) * (rt.duenger || 0);
+        }
+      }
+      var netE = sumSavE - sumExcE;
+      var netD = sumSavD - sumExcD;
+      var showSavings = netE > 0.05 || netD > 0.05;
+      var showExcess = netE < -0.05 || netD < -0.05;
+      if (!showSavings && !showExcess) return;
+      var label = document.createElement('div');
+      label.className = 'drill-entry-tab-header drill-net-totals-header';
+      label.textContent = 'Gesamt-Saldo (alle Tabs)';
+      container.appendChild(label);
+      if (showSavings) {
+        var sParts = [];
+        if (netE > 0.05) sParts.push(AppGlobals.fmt(netE) + ' Einheiten Saatgut');
+        if (netD > 0.05) sParts.push(netD.toLocaleString('de-DE') + ' kg Dünger');
+        var sDiv = document.createElement('div');
+        sDiv.className = 'net-totals-line net-totals-savings';
+        sDiv.textContent = 'Ersparnis: ' + sParts.join(', ');
+        container.appendChild(sDiv);
+      }
+      if (showExcess) {
+        var eParts = [];
+        if (netE < -0.05) eParts.push(AppGlobals.fmt(-netE) + ' Einheiten Saatgut');
+        if (netD < -0.05) eParts.push((-netD).toLocaleString('de-DE') + ' kg Dünger');
+        var eDiv = document.createElement('div');
+        eDiv.className = 'net-totals-line net-totals-excess';
+        eDiv.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eParts.join(', ');
+        container.appendChild(eDiv);
+      }
+    }
+
     // Issue #309: Per-tab carryover/savings/excess block helper.
     // Appends the three optional divs (.drill-savings / .drill-carryover /
     // .drill-excess) into the given container, in the order savings → carryover
@@ -342,6 +399,10 @@
         if (usedD > 0) parts.push(usedD.toLocaleString('de-DE') + ' kg Dünger');
         totalSummary.textContent = parts.join(' · ');
       }
+      // Issue #336 follow-up #3: Cross-Tab-Netto-Aggregation als erster
+      // Block im Drill-Log, vor den Per-Tab-Headern. Zeigt das Gesamtergebnis
+      // (Ersparnis gesamt − Mehrbedarf gesamt) über ALLE reiter.
+      _appendNetTotalsBlock(container);
       // Iterate per tab in index order. Per-tab #N numbering (Option A):
       // entries[0] = '#1', entries[1] = '#2', etc. Consistent with single-tab
       // behaviour — test 09-blind-spots ('drill entry shows time prefix when
@@ -431,6 +492,9 @@
       header.className = 'drill-entry-tab-header';
       header.textContent = 'Maschinen-Protokoll';
       container.appendChild(header);
+      // Issue #336 follow-up #3: Cross-Tab-Netto-Aggregation als erster
+      // Block im Maschinen-Protokoll, VOR den Per-Tab-Sub-Headern.
+      _appendNetTotalsBlock(container);
       // Issue #309: per-tab carryover sections (Ersparnis / Übertrag / Mehrbedarf)
       // — the machine-log entries themselves are a flat global list (no tabIdx
       // on machineLog entries, by design), but the carryover blocks are
