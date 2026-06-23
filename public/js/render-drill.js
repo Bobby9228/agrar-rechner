@@ -249,6 +249,60 @@
       return { savingsE: sE, savingsD: sD, excessE: eE, excessD: eD };
     }
 
+    // Issue #336 follow-up #5b: Cross-Tab-Saldo für Drill-Log + Maschinen-
+    // Protokoll (User-Feedback 2026-06-23, 5. Runde: „Es soll in den
+    // Ergebnissen Bereich unter dünger verbleibend im Protokoll/drill log").
+    // Aggregiert über ALLE reiter mittels _computeTabSelfSaldo (gleiche
+    // Logik wie _appendTabCarryoverBlocks — Pattern 3 Single Source of
+    // Truth). Net > 0 → grüne „Ersparnis"-Zeile. Net < 0 → rote „Mehrbedarf"-
+    // Zeile. Wird in renderDrillLog() und renderMachineLog() jeweils
+    // VOR den Per-Tab-Headern aufgerufen, unter „Dünger verbleibend".
+    //
+    // ACHTUNG (Issue #336 follow-up #4): _computeTabSelfSaldo gibt sowohl
+    // savingsE (positiv) ALS AUCH excessE (positiv bei IST>SOLL) zurück,
+    // wobei der jeweils andere Wert negativ ist. Wir summieren die
+    // *positiven* Seiten separat, dann net = totalSav - totalExc.
+    function _appendNetTotalsBlock(container) {
+      if (!container) return;
+      var totalSavE = 0, totalSavD = 0, totalExcE = 0, totalExcD = 0;
+      var allReiter = AppGlobals.state.reiter || [];
+      for (var ti = 0; ti < allReiter.length; ti++) {
+        var rt = allReiter[ti];
+        var s = _computeTabSelfSaldo(rt);
+        if (s.savingsE > 0) totalSavE += s.savingsE;
+        if (s.savingsD > 0) totalSavD += s.savingsD;
+        if (s.excessE > 0) totalExcE += s.excessE;
+        if (s.excessD > 0) totalExcD += s.excessD;
+      }
+      var netE = totalSavE - totalExcE;
+      var netD = totalSavD - totalExcD;
+      var showSavings = netE > 0.05 || netD > 0.05;
+      var showExcess = netE < -0.05 || netD < -0.05;
+      if (!showSavings && !showExcess) return;
+      var label = document.createElement('div');
+      label.className = 'drill-entry-tab-header drill-net-totals-header';
+      label.textContent = 'Gesamt-Saldo (alle Tabs)';
+      container.appendChild(label);
+      if (showSavings) {
+        var sParts = [];
+        if (netE > 0.05) sParts.push(AppGlobals.fmt(netE) + ' Einheiten Saatgut');
+        if (netD > 0.05) sParts.push(netD.toLocaleString('de-DE') + ' kg Dünger');
+        var sDiv = document.createElement('div');
+        sDiv.className = 'net-totals-line net-totals-savings';
+        sDiv.textContent = 'Ersparnis: ' + sParts.join(', ');
+        container.appendChild(sDiv);
+      }
+      if (showExcess) {
+        var eParts = [];
+        if (netE < -0.05) eParts.push(AppGlobals.fmt(-netE) + ' Einheiten Saatgut');
+        if (netD < -0.05) eParts.push((-netD).toLocaleString('de-DE') + ' kg Dünger');
+        var eDiv = document.createElement('div');
+        eDiv.className = 'net-totals-line net-totals-excess';
+        eDiv.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eParts.join(', ');
+        container.appendChild(eDiv);
+      }
+    }
+
     // Issue #309: Per-tab carryover/savings/excess block helper.
     // Appends the three optional divs (.drill-savings / .drill-carryover /
     // .drill-excess) into the given container, in the order savings → carryover
@@ -350,10 +404,10 @@
         if (usedD > 0) parts.push(usedD.toLocaleString('de-DE') + ' kg Dünger');
         totalSummary.textContent = parts.join(' · ');
       }
-      // Issue #336 follow-up #5: _appendNetTotalsBlock-Aufruf ENTFERNT.
-      // Cross-Tab-Saldo lebt jetzt im Ergebnis-Tab (renderResultCard).
-      // Maschinen-Protokoll + Drill-Log zeigen nur noch Per-Tab-Sub-Header
-      // und drill-savings/drill-carryover/drill-excess Blöcke.
+      // Issue #336 follow-up #5b: Cross-Tab-Saldo als erster Block im
+      // Drill-Log, vor den Per-Tab-Headern. Steht im „Ergebnisse Bereich"
+      // (unter „Dünger verbleibend" / ds_savings / drill-summary-rows).
+      _appendNetTotalsBlock(container);
       // Iterate per tab in index order. Per-tab #N numbering (Option A):
       // entries[0] = '#1', entries[1] = '#2', etc. Consistent with single-tab
       // behaviour — test 09-blind-spots ('drill entry shows time prefix when
@@ -443,10 +497,10 @@
       header.className = 'drill-entry-tab-header';
       header.textContent = 'Maschinen-Protokoll';
       container.appendChild(header);
-      // Issue #336 follow-up #5: _appendNetTotalsBlock-Aufruf ENTFERNT.
-      // Cross-Tab-Saldo lebt jetzt im Ergebnis-Tab. Maschinen-Protokoll
-      // zeigt hier nur die Per-Tab-Sub-Header + drill-savings/drill-carryover/
-      // drill-excess Blöcke.
+      // Issue #336 follow-up #5b: Cross-Tab-Saldo als erster Block im
+      // Maschinen-Protokoll, VOR den Per-Tab-Sub-Headern. Im „Ergebnisse
+      // Bereich" (zwischen Maschinen-Protokoll-Header und Tab-Sub-Headers).
+      _appendNetTotalsBlock(container);
       // Issue #309: per-tab carryover sections (Ersparnis / Übertrag / Mehrbedarf)
       // — the machine-log entries themselves are a flat global list (no tabIdx
       // on machineLog entries, by design), but the carryover blocks are
