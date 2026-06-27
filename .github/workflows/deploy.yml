@@ -23,7 +23,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Wrangler 4.x requires Node ≥ 22. The runner default has already
+          # moved off Node 20 (deprecated 2025-09); align with it.
+          node-version: '22'
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -39,9 +41,17 @@ jobs:
       - name: Run tests
         run: pnpm test
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Workers (Static Assets)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy public/ --project-name=agrar-rechner-dev
+          # Pin Wrangler ≥ 4 — the action's default 3.90.0 rejects assets-only
+          # workers ("Missing entry-point"), while 4.x deploys them cleanly.
+          wranglerVersion: "4"
+          # Repo deploys via Cloudflare Workers Static Assets (see wrangler.jsonc:
+          # name="agrar-rechner-dev", assets.directory="./public"). `wrangler deploy`
+          # reads the binding from wrangler.jsonc — no --project-name needed.
+          # The previous `wrangler pages deploy public/ --project-name=agrar-rechner-dev`
+          # failed with code 8000007 because no Pages project by that name exists.
+          command: deploy
