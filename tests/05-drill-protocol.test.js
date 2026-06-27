@@ -379,7 +379,21 @@ describe('Drill-Protokoll', () => {
     // Phase B: TotalExcess_E = 9.6, TotalExcess_D = 400.
     //          remEinheit  = max(0, 18.6 - 0 + 9.6) = 28.2
     //          remDuenger  = max(0, 1400 - 0 + 400) = 1800
-    it('renderDrillSummary() nets carryover across tabs (Issue #302)', () => {
+    it('renderDrillSummary() nets carryover across tabs (Issue #302, updated for Issue #347)', () => {
+      // Issue #347 (Netto-Saldo-Fix): Eine Mehrbedarf-Quelle (IST > SOLL) darf
+      // sich in Phase 2 NICHT selbst als Empfänger ihres eigenen Excess
+      // eintragen — sie muss den Rest selbst absorbieren (Eigen-Restbedarf).
+      // Vor #347 hat Phase 2 (`isMehrbedarf2` Skip fehlte) den Mehrbedarf-Pool
+      // auch an die Quelle selbst verteilt, was zu doppelter Zählung führt.
+      //
+      // Szenario: Beide Tabs haben istHektar=2.4 > SOLL=1 → BEIDE sind
+      // Mehrbedarf-Quellen. Mit Fix: BEIDE werden in Phase 2 als Absorber
+      // ausgeschlossen → kein Tab bekommt `excessEinheit/duenger` von sich
+      // selbst. Der `ds_saat_remaining` / `ds_duenger_remaining` zeigt
+      // daher nur den unverteilten Bedarf, NICHT plus Eigen-Excess.
+      //
+      // ALTES Verhalten (vor #347): 28,2 E / 1.800 kg (Tab 0 self-absorbed).
+      // NEUES Verhalten (nach #347): 18,6 E / 500 kg (kein Self-Absorb).
       setupTwoTabs(w);
       // Reset tabs to the user's repro (1 ha / 450.000 K/ha / 1000 kg).
       // setupTwoTabs defaults to 10 ha / 90000 K/ha / 200 kg/ha — too large.
@@ -403,9 +417,12 @@ describe('Drill-Protokoll', () => {
 
       w.renderResults();
 
-      // Phase A + Phase B per Issue #302 spec.
-      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('28,2 Einheiten');
-      expect(doc.getElementById('ds_duenger_remaining').textContent).toBe('1.800 kg');
+      // Phase A + Phase B per Issue #302 spec, MIT Netto-Saldo-Korrektur #347.
+      // TotalNeed_E = (21.6-12) + (9-0) = 9.6 + 9 = 18.6 (kein Tab absorbiert
+      // self-excess, weil beides Mehrbedarf-Quellen sind).
+      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('18,6 Einheiten');
+      // TotalNeed_D = (2400-2000) + (1000-0) = 400 + 1000 = 1400
+      expect(doc.getElementById('ds_duenger_remaining').textContent).toBe('1.400 kg');
 
       // Sanity: total/used are independent of carryover.
       expect(doc.getElementById('ds_saat_total').textContent).toBe('30,6 Einheiten');

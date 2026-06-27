@@ -194,6 +194,26 @@ function computeAllCarryovers() {
     }
   }
 
+  // === NETTO-SALDO (vor Phase 1 und 2) ===
+  //
+  // Fix Issue #XXX: Ersparnis-Pool und Mehrbedarf-Pool werden zuerst
+  // gegenseitig aufgerechnet (Netting). Nur der verbleibende Netto-Saldo
+  // wird an Phase 1 (Ersparnisse) bzw. Phase 2 (Mehrbedarfe) übergeben.
+  //
+  // Ohne Netting: Ein Tab mit IST > SOLL (Mehrbedarf) erhält in Phase 1
+  // fälschlicherweise Ersparnis-Carryover (weil istCovered=FALSE und
+  // isSource=FALSE). Gleichzeitig gibt Phase 2 den vollen totalExcess als
+  // Bürde an Folge-Tabs — saved und excess auf dem Folge-Tab heben sich
+  // NICHT auf, sondern addieren sich als doppelter Fehler.
+  //
+  // Mit Netting: netSaved = max(0, totalSaved - totalExcess).
+  //              netExcess = max(0, totalExcess - totalSaved).
+  // Phase 1 verteilt nur netSaved, Phase 2 vergibt nur netExcess.
+  var netSavedE  = Math.max(0, totalSavedE  - totalExcessE);
+  var netExcessE = Math.max(0, totalExcessE - totalSavedE);
+  var netSavedD  = Math.max(0, totalSavedD  - totalExcessD);
+  var netExcessD = Math.max(0, totalExcessD - totalSavedD);
+
   // === PHASE 1: Ersparnisse verteilen — Saat und Dünger getrennt ===
   //
   // Issue #315: Saat und Dünger sollen UNABHÄNGIG durch die Carryover-Prios
@@ -210,9 +230,13 @@ function computeAllCarryovers() {
   // gedeckt ist (usedE >= istE bei istE > 0), bekommen KEINEN Carryover. Die
   // Ersparnis war für ANDERE Tabs gedacht — diese Quelle soll nicht "doppelt
   // profitieren".
+  //
+  // Zusätzlicher Skip (Netto-Fix): Tabs mit IST > SOLL (Mehrbedarf) dürfen
+  // keine Ersparnis aus Phase 1 empfangen. Ihr Mehrbedarf ist bereits durch
+  // den Netto-Saldo aus dem Excess-Pool herausgerechnet.
   _internal.carryoverCache = result;
-  var remSavedE = totalSavedE;
-  var remSavedD = totalSavedD;
+  var remSavedE = netSavedE;
+  var remSavedD = netSavedD;
   for (var mat = 0; mat < 2; mat++) {
     var isSaatPass = (mat === 0);
     var remSaved = isSaatPass ? remSavedE : remSavedD;
@@ -240,8 +264,20 @@ function computeAllCarryovers() {
         var isSource = isSaatPass
           ? (solE > istE && istE > 0)
           : (solD > istD && istD > 0);
+        // Netto-Fix: Tabs mit IST > SOLL (Mehrbedarf) überspringen.
+        // Ihr Mehrverbrauch ist bereits durch den Netto-Saldo herausgerechnet.
+        var hasMehrbedarf = isSaatPass
+          ? (istE > 0 && istE > solE)
+          : (istD > 0 && istD > solD);
+        // Issue #347 Mini-Korrektur: kein hasNoEntries-Skip in Phase 1.
+        // Leere Empfänger-Tabs sollen Carryover (saved) empfangen können.
+        // Phase 2 hat ihren eigenen t2.entries.length === 0 Skip (für capacity
+        // als Absorber). Phase 1 muss aber leere Tabs als Empfänger zulassen,
+        // damit das SAV-Budget an die nächsten nicht-fertigen Tabs kaskadiert.
+        // Der bestehende `need_ <= 0.05` Skip reicht als Filter.
         if (need_ <= 0.05) continue;
         if (istCovered && isSource) continue;
+        if (hasMehrbedarf) continue;
         if (need_ > 0.05 && remSaved > 0.05) {
           var take = Math.min(remSaved, need_);
           if (take > 0) {
@@ -279,12 +315,15 @@ function computeAllCarryovers() {
   }
   for (var mat2 = 0; mat2 < 2; mat2++) {
     var isSaatPass2 = (mat2 === 0);
-    var remExcess = isSaatPass2 ? totalExcessE : totalExcessD;
+    var remExcess = isSaatPass2 ? netExcessE : netExcessD;
 
     // Tabs mit Capacity für dieses Material sammeln + sortieren.
     // Capacity = max(0, basis − used − saved_received) — IST-basiert
     // (Original-Semantik aus Phase 0). Self-Excess (used > basis):
     // ignoriert (kein negativer Carryover).
+    // Netto-Fix: Tabs mit IST > SOLL (Mehrbedarf-Quellen) werden als Absorber
+    // ausgeschlossen. Ihr Excess ist bereits durch den Netto-Saldo verrechnet —
+    // sie sollen ihn nicht zurückbekommen.
     var tabOrder2 = [];
     for (let i = 0; i < AppGlobals.state.reiter.length; i++) {
       var t2 = AppGlobals.state.reiter[i];
@@ -295,6 +334,11 @@ function computeAllCarryovers() {
       var istD2 = getTabIstDuenger(t2);
       var solD2 = getTabTotalDuenger(t2);
       var usedD2 = getTabUsedDuenger(t2);
+      // Mehrbedarf-Quellen überspringen (Netto-Fix)
+      var isMehrbedarf2 = isSaatPass2
+        ? (istE2 > 0 && istE2 > solE2)
+        : (istD2 > 0 && istD2 > solD2);
+      if (isMehrbedarf2) continue;
       var basis2 = isSaatPass2
         ? (istE2 > 0 ? istE2 : solE2)
         : (istD2 > 0 ? istD2 : solD2);
@@ -325,8 +369,8 @@ function computeAllCarryovers() {
       if (entry2.cap > 0.05) {
         var takeCap = Math.min(remExcess, entry2.cap);
         if (takeCap > 0.05) {
-          if (isSaatPass2) result[idx2].excessEinheit = takeCap;
-          else result[idx2].excessDuenger = takeCap;
+          if (isSaatPass2) result[idx2].excessEinheit += takeCap;
+          else result[idx2].excessDuenger += takeCap;
           remExcess -= takeCap;
         }
       }

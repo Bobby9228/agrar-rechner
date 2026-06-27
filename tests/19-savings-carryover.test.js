@@ -258,25 +258,35 @@ describe('IST/SOLL Savings & Carryover', () => {
     expect(co2.savedDuenger).toBeCloseTo(100, 0);
   });
 
-  it('excess cascades to second-to-last filled tab', () => {
+  it('excess cascades to neutral absorbers only (Issue #347 Netto-Fix)', () => {
+    // Issue #347 (Netto-Saldo-Fix): Eine Mehrbedarf-Quelle (IST > SOLL) wird
+    // in Phase 2 ALS ABSORBER ausgeschlossen (Skip `isMehrbedarf2`). Sie soll
+    // ihren Eigen-Restbedarf NICHT durch Selbst-Absorption in die
+    // `excessEinheit` der Quelle selbst buchen — das verwechselt
+    // Eigen-Restbedarf mit Empfänger-Bereitschaft (Maintainer's diagnose in
+    // Issue #347).
+    //
+    // Vor #347: Tab 0 (Quelle) self-absorbed 1 E Rest → Buggy Doppelt-Zählung.
+    // Nach #347: Tab 0 bekommt 0 (Skip); Tab 1 absorbiert volle 2 E (cap).
     const { w } = setup();
     w.addReiter();
-    // Tab 0: SOLL=5, IST=8 → excess = 3 Einheiten
+    // Tab 0: SOLL=5, IST=8 → Mehrbedarf-Quelle (excess = 3 E)
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 5, istHektar: 8, koerner: 50000, duenger: 100 };
-    // Tab 1: last filled, remaining = 2 Einheiten → absorbs min(3, 2) = 2 excess
+    // Tab 1: neutral, used=2/4, cap = 4-2 = 2 → absorbiert min(3, 2) = 2
     w.state.reiter[1] = { ...w.state.reiter[1], hektar: 4, koerner: 50000, duenger: 100 };
     w.state.reiter[1].entries.push({ einheit: 2, zaehlerStand: 4, duenger: 200, time: '10:00' });
-    // Tab 0: second-to-last, remaining = 5 → absorbs rest 1 excess
+    // Tab 0 entries: usedE=3
     w.state.reiter[0].entries.push({ einheit: 3, zaehlerStand: 3, duenger: 300, time: '09:00' });
 
-    // Excess: SOLL 5 - IST 8 = -3 → 3 Einheiten excess
-    // Tab 1 (last filled): remaining = 4-2 = 2, absorbs min(3, 2) = 2
-    // Tab 0 (prev filled): remaining = 8-3 = 5, absorbs min(1, 5) = 1
+    // Excess-Pool = 3 E. Tab 0 ist Quelle (istE=8 > solE=5) → Skip in Phase 2.
+    // Tab 1 (neutral) absorbiert 2 E (volle Cap). Rest 1 E verfällt.
     var co1 = w.getCarryover(1);
     expect(co1.excessEinheit).toBeCloseTo(2, 1);
 
+    // Tab 0 (Mehrbedarf-Quelle): bekommt KEINEN excessEinheit (Self-Absorb
+    // ist mit Netto-Fix ausgeschlossen).
     var co0 = w.getCarryover(0);
-    expect(co0.excessEinheit).toBeCloseTo(1, 1);
+    expect(co0.excessEinheit).toBeCloseTo(0, 1);
   });
 
   it('savings display applies fahrgassenFaktor (Issue #273)', () => {
