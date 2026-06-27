@@ -52,8 +52,8 @@
           var totalD = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : AppGlobals.getTabTotalDuenger(r);
           var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
           var co = AppGlobals.getCarryover(i);
-          var remaining = totalE - usedE;
-          var remainingD = totalD - usedD;
+          var remaining = Math.max(0, totalE - usedE - co.savedEinheit + co.excessEinheit);
+          var remainingD = Math.max(0, totalD - usedD - co.savedDuenger + co.excessDuenger);
           var statusEl = document.createElement('div');
           statusEl.id = 'dtl_need_' + i;
           statusEl.className = 'drill-tab-need';
