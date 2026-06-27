@@ -6,6 +6,29 @@
 // Keine Seiteneffekte, keine DOM-Manipulation.
 // ============================================================================
 
+// --- Format/Parser Utilities (pure) ---
+
+// fmt — Runde auf 1 Dezimalstelle, deutsche Formatierung mit Komma.
+// DE-Rundung: "round half up" — ab .5 wird aufgerundet.
+// Beispiel: 0.05 → '0,1' (nicht '0,0' wie toFixed default).
+// Issue #9: aus main.js hierher verschoben — pure Funktion, gehört zu den
+// Berechnungs-Helfern und macht die AppGlobals-Abhängigkeit explizit.
+function fmt(n) {
+  if (n === null || n === undefined || isNaN(n)) return '0,0';
+  var x = n * 10;
+  var rounded = (x >= 0 ? Math.floor(x + 0.5) : -Math.floor(-x + 0.5)) / 10;
+  return String(rounded.toFixed(1)).replace('.', ',');
+}
+
+// fmtCompact — wie fmt(), aber lässt das nachstehende ",0" für ganze Zahlen weg.
+// Wird im Dashboard verwendet (Tests 26, 40 erwarten "12" statt "12,0").
+// Issue #9: aus main.js hierher verschoben (pure Funktion).
+function fmtCompact(n) {
+  var s = fmt(n);
+  if (s.endsWith(',0')) s = s.slice(0, -2);
+  return s;
+}
+
 // --- Konstanten ---
 
 // Schwelle für "noch etwas vorhanden" (Einheiten / kg).
@@ -492,6 +515,8 @@ function getTabRates(tabIdx) {
 
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 Object.assign(window.AppGlobals, {
+  fmt: fmt,
+  fmtCompact: fmtCompact,
   EPSILON_QUANTITY: EPSILON_QUANTITY,
   _internal: _internal,
   computeFahrgassenFaktor: computeFahrgassenFaktor,
