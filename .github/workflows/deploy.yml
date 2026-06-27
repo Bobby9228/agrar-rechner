@@ -23,7 +23,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Wrangler 4.x requires Node ≥ 22. The runner default has already
+          # moved off Node 20 (deprecated 2025-09); align with it.
+          node-version: '22'
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
