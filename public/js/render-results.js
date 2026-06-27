@@ -210,7 +210,7 @@
         entryText.className = 'entry-text';
         var parts = [];
         if (entry.time) {
-          var t = typeof entry.time === 'number' ? new Date(entry.time).toLocaleString('de-DE') : entry.time;
+          var t = AppGlobals.formatEntryTime(entry.time);
           parts.push(t + ' –');
         }
         if (entry.istHektar || entry.zaehlerStand) {

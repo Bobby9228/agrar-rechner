@@ -469,7 +469,7 @@
           entryText.appendChild(numSpan);
           var parts2 = [];
           if (entry.time) {
-            var t = typeof entry.time === 'number' ? new Date(entry.time).toLocaleString('de-DE') : entry.time;
+            var t = AppGlobals.formatEntryTime(entry.time);
             parts2.push(t + ' –');
           }
           if (entry.istHektar || entry.zaehlerStand) {
@@ -576,7 +576,7 @@
         entryText.appendChild(numSpan);
         var parts = [];
         if (entry.time) {
-          var t = typeof entry.time === 'number' ? new Date(entry.time).toLocaleString('de-DE') : entry.time;
+          var t = AppGlobals.formatEntryTime(entry.time);
           parts.push(t + ' –');
         }
         // Issue #307: `zaehlerStand` starts at 0; `||` would silently fall through
