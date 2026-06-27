@@ -46,14 +46,16 @@
         label.textContent = r.name || ('Tab ' + (i + 1));
         nameWrap.appendChild(label);
         if (r.hektar > 0 && r.koerner > 0) {
-          var istSum = AppGlobals.getTabIstHektar(r);
-          var totalE = istSum > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getTabTotalEinheiten(r);
-          var usedE = r.entries.reduce(function(s, e) { return s + e.einheit; }, 0);
-          var totalD = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : AppGlobals.getTabTotalDuenger(r);
-          var usedD = r.entries.reduce(function(s, e) { return s + e.duenger; }, 0);
-          var co = AppGlobals.getCarryover(i);
-          var remaining = Math.max(0, totalE - usedE - co.savedEinheit + co.excessEinheit);
-          var remainingD = Math.max(0, totalD - usedD - co.savedDuenger + co.excessDuenger);
+          // Issue 2 (Code-Review): DRY + NaN-Fix. Die alten bare reduces
+          //   r.entries.reduce(function(s, e) { return s + e.einheit; }, 0)
+          //   r.entries.reduce(function(s, e) { return s + e.duenger; }, 0)
+          // hatten KEIN `|| 0`-Guard und produzierten NaN sobald ein Entry
+          // kein `einheit`/`duenger`-Feld hatte. getTabRemaining zieht
+          // getTabUsedEinheiten/Duenger (mit `|| 0` Guards) und liefert
+          // basisE/D + remainingE/D + carryover-genettet in einem Aufruf.
+          var rem = AppGlobals.getTabRemaining(r, i);
+          var remaining = rem.remainingE;
+          var remainingD = rem.remainingD;
           var statusEl = document.createElement('div');
           statusEl.id = 'dtl_need_' + i;
           statusEl.className = 'drill-tab-need';

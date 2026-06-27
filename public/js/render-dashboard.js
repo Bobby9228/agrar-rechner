@@ -57,17 +57,17 @@
         if (r.hektar > 0 && r.koerner > 0) {
           var istSum = AppGlobals.getTabIstHektar(r);
           totalHa += istSum > 0 ? istSum : r.hektar;
-          var basisE = istSum > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getTabTotalEinheiten(r);
-          var basisD = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : r.hektar * r.duenger;
-          var usedE = r.entries ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
-          var usedD = r.entries ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
-          var co = AppGlobals.getCarryover(idx);
-          totalEinheitRem += Math.max(0, basisE - usedE - co.savedEinheit + co.excessEinheit);
-          totalDuengerRem += Math.max(0, basisD - usedD - co.savedDuenger + co.excessDuenger);
-          totalEinheitenBasis += basisE;
-          totalEinheitenUsed += usedE;
-          totalDuengerBasis += basisD;
-          totalDuengerUsed += usedD;
+          // Issue 2 (Code-Review): DRY — alle vier "verbleibend"-Sites ziehen
+          // Basis + Used + Carryover aus getTabRemaining. Die `|| 0`-Guards
+          // in getTabUsedEinheiten/Duenger fixen den NaN-Bug, der vorher bei
+          // fehlendem `e.einheit` über die bare reduce here propagiert wurde.
+          var rem = AppGlobals.getTabRemaining(r, idx);
+          totalEinheitRem += rem.remainingE;
+          totalDuengerRem += rem.remainingD;
+          totalEinheitenBasis += rem.basisE;
+          totalEinheitenUsed += rem.usedE;
+          totalDuengerBasis += rem.basisD;
+          totalDuengerUsed += rem.usedD;
         }
       });
       var totalPct = totalEinheitenBasis > 0 || totalDuengerBasis > 0
@@ -163,16 +163,16 @@
         var pct = 0;
         var statusClass = 'na';
         if (r.hektar > 0 && r.koerner > 0) {
-          var istSum = AppGlobals.getTabIstHektar(r);
-          einheiten = istSum > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getTabTotalEinheiten(r);
-          usedEinheit = r.entries ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
-          duengerTotal = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : r.hektar * r.duenger;
-          usedDuenger = r.entries ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
-          // Issue #305: subtract carryover savings / add excess from other tabs.
-          // Per-tab formula matches renderDrillSummary() / #302 / #303.
-          var co = AppGlobals.getCarryover(idx);
-          einheitRem = Math.max(0, einheiten - usedEinheit - co.savedEinheit + co.excessEinheit);
-          duengerRem = Math.max(0, duengerTotal - usedDuenger - co.savedDuenger + co.excessDuenger);
+          // Issue 2 (Code-Review): DRY — getTabRemaining liefert Basis + Used
+          // + Carryover-genettetes Remaining aus einer Quelle (fix #266-A
+          // Konsistenz + NaN-Bug, der durch bare reduce entstand).
+          var rem = AppGlobals.getTabRemaining(r, idx);
+          einheiten = rem.basisE;
+          usedEinheit = rem.usedE;
+          duengerTotal = rem.basisD;
+          usedDuenger = rem.usedD;
+          einheitRem = rem.remainingE;
+          duengerRem = rem.remainingD;
           var minFilled = Math.min(
             einheiten > 0 ? usedEinheit / einheiten : 1,
             duengerTotal > 0 ? usedDuenger / duengerTotal : 1

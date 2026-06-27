@@ -447,6 +447,34 @@ function getCarryover(tabIndex) {
   return { savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 };
 }
 
+// Issue 2 (Code-Review): DRY-Helper für die "verbleibend"-Formel.
+// Liefert pro Tab die auf Carryover genetteten Restbedarfe (Saatgut + Dünger)
+// sowie Basis + Used, damit Render-Sites die Anzeige konsistent aus einer
+// einzigen Quelle speisen. IST-Fläche hat Vorrang vor SOLL (Issue #186).
+// Nutzt intern getTabUsedEinheiten/getTabUsedDuenger (mit `|| 0` Guards) —
+// das fixt den NaN-Bug in render-drill.js:51+53, wo vorher bare
+// `r.entries.reduce(s + e.einheit, 0)` lief und bei fehlendem `e.einheit`
+// NaN produzierte.
+// NICHT in isTabDone() integrieren (Issue 6 wurde abgelehnt — andere
+// Clamp-Semantik, isTabDone rechnet needE/needD statt max(0, basis-used)).
+function getTabRemaining(r, tabIdx) {
+  var istE = getTabIstEinheiten(r);
+  var istD = getTabIstDuenger(r);
+  var basisE = istE > 0 ? istE : getTabTotalEinheiten(r);
+  var basisD = istD > 0 ? istD : getTabTotalDuenger(r);
+  var usedE  = getTabUsedEinheiten(r);
+  var usedD  = getTabUsedDuenger(r);
+  var co     = getCarryover(tabIdx);
+  return {
+    basisE:     basisE,
+    basisD:     basisD,
+    usedE:      usedE,
+    usedD:      usedD,
+    remainingE: Math.max(0, basisE - usedE - co.savedEinheit + co.excessEinheit),
+    remainingD: Math.max(0, basisD - usedD - co.savedDuenger + co.excessDuenger)
+  };
+}
+
 // --- Tab-Fertig-Check (pure) ---
 
 // Prüft ob ein Tab "fertig" ist (alle Bedarfe gedeckt).
@@ -552,6 +580,7 @@ Object.assign(window.AppGlobals, {
   computeAllCarryovers: computeAllCarryovers,
   invalidateCarryoverCache: invalidateCarryoverCache,
   getCarryover: getCarryover,
+  getTabRemaining: getTabRemaining,
   isTabDone: isTabDone,
   getTabLastEntryTime: getTabLastEntryTime,
   getTabIstHektar: getTabIstHektar,
