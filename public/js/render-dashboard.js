@@ -58,7 +58,7 @@
           var istSum = AppGlobals.getTabIstHektar(r);
           totalHa += istSum > 0 ? istSum : r.hektar;
           var basisE = istSum > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getTabTotalEinheiten(r);
-          var basisD = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : r.hektar * r.duenger;
+          var basisD = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : AppGlobals.getTabTotalDuenger(r);
           var usedE = r.entries ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
           var usedD = r.entries ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
           var co = AppGlobals.getCarryover(idx);
@@ -166,7 +166,7 @@
           var istSum = AppGlobals.getTabIstHektar(r);
           einheiten = istSum > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getTabTotalEinheiten(r);
           usedEinheit = r.entries ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
-          duengerTotal = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : r.hektar * r.duenger;
+          duengerTotal = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : AppGlobals.getTabTotalDuenger(r);
           usedDuenger = r.entries ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
           // Issue #305: subtract carryover savings / add excess from other tabs.
           // Per-tab formula matches renderDrillSummary() / #302 / #303.
