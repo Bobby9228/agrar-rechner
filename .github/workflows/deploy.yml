@@ -49,4 +49,4 @@ jobs:
           # reads the binding from wrangler.jsonc — no --project-name needed.
           # The previous `wrangler pages deploy public/ --project-name=agrar-rechner-dev`
           # failed with code 8000007 because no Pages project by that name exists.
-          command: deploy --commit-dirty=true
+          command: deploy
