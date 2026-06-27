@@ -172,20 +172,18 @@
       if (rdSection) rdSection.style.display = 'block';
       var usedE = r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
       var usedD = r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
-      // Issue #320: Konsistenz mit render-dashboard.js:60-61, render-drill.js:50-52,143-144,
-      // und renderResultCard oben (alle nutzen `istHa > 0` ternary). Der `||`-Fallback
-      // war im aktuellen Code funktional identisch (verifiziert per Brute-Force), aber die
-      // explizite Ternary-Form ist robuster gegen künftige Refactorings von getTabIstX()
-      // und macht die Code-Basis einheitlich mit den 4 Geschwister-Sites.
-      var istHa = AppGlobals.getTabIstHektar(r);
-      var istE = istHa > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getTabTotalEinheiten(r);
-      var istD = istHa > 0 ? AppGlobals.getTabIstDuenger(r) : AppGlobals.getTabTotalDuenger(r);
-      // Issue #305: subtract carryover savings / add excess from other tabs
-      // so the inline-drill "verbleibend" matches the dashboard + drill summary.
+      // Issue #320: Konsistenz mit render-dashboard.js, render-drill.js und
+      // renderResultCard oben — alle ziehen Basis + Used + Carryover aus
+      // derselben Quelle (getTabRemaining), sodass die "verbleibend"-Sites
+      // konsistent sind.
+      // Issue 2 (Code-Review): DRY — getTabRemaining ersetzt die inline-Formel
+      // (Basis + Used + Carryover-genettet in einem Aufruf). Line 23 oben
+      // (renderResultCard) bleibt unangetastet — sie nutzt getActiveTotalEinheiten
+      // mit anderer Semantik (SOLL-Total statt IST-präferiert).
       var activeIdx = AppGlobals.state.activeReiter || 0;
-      var co = AppGlobals.getCarryover(activeIdx);
-      var remE = Math.max(0, istE - usedE - co.savedEinheit + co.excessEinheit);
-      var remD = Math.max(0, istD - usedD - co.savedDuenger + co.excessDuenger);
+      var rem = AppGlobals.getTabRemaining(r, activeIdx);
+      var remE = rem.remainingE;
+      var remD = rem.remainingD;
       var usedEl = document.getElementById('r_drill_e_used');
       if (usedEl) usedEl.textContent = AppGlobals.formatEinheit(usedE);
       var remEl = document.getElementById('r_drill_e_rem');
