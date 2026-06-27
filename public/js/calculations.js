@@ -178,6 +178,51 @@ var _internal = {
   pendingKey: null
 };
 
+// Berechnet die Netto-Carryover-Pools (Phase 0 + Netting) für die reiter-Liste.
+//
+// Phase 0: Bedarfsberechnung
+//   Savings: SOLL - IST wenn IST > 0 && IST < SOLL (Ersparnis = nicht bepflanzte Fläche)
+//   Excess:  IST - SOLL wenn IST > SOLL
+//   Wenn IST=0 → keine Carryover (keine Ersparnis, kein Bedarf jenseits SOLL)
+//
+// Netting: Ersparnis-Pool und Mehrbedarf-Pool werden gegenseitig aufgerechnet.
+//   netSaved  = max(0, totalSaved  - totalExcess)
+//   netExcess = max(0, totalExcess - totalSaved)
+// Phase 1 verteilt nur netSaved, Phase 2 vergibt nur netExcess.
+//
+// Reines Helper-Modul: kein AppGlobals-Zugriff, keine Cache-Mutation.
+// Refactor Issue #8 Phase-0-Extraktion — Phase 1+2 bleiben unverändert
+// (siehe T6-Audit: Phase 1+2 tragen 5+ pinned Specs, die der mat-loop erhält).
+function _computeNetCarryoverPools(reiter) {
+  var totalSavedE = 0, totalSavedD = 0;
+  var totalExcessE = 0, totalExcessD = 0;
+
+  for (let i = 0; i < reiter.length; i++) {
+    var t = reiter[i];
+    var istE = getTabIstEinheiten(t);
+    var solE = getTabTotalEinheiten(t);
+    var istD = getTabIstDuenger(t);
+    var solD = getTabTotalDuenger(t);
+    if (istE > 0) {
+      if (solE > istE) totalSavedE += (solE - istE);
+      else if (istE > solE) totalExcessE += (istE - solE);
+    }
+    if (istD > 0) {
+      if (solD > istD) totalSavedD += (solD - istD);
+      else if (istD > solD) totalExcessD += (istD - solD);
+    }
+  }
+
+  return {
+    totalSavedE: totalSavedE, totalExcessE: totalExcessE,
+    totalSavedD: totalSavedD, totalExcessD: totalExcessD,
+    netSavedE:  Math.max(0, totalSavedE  - totalExcessE),
+    netExcessE: Math.max(0, totalExcessE - totalSavedE),
+    netSavedD:  Math.max(0, totalSavedD  - totalExcessD),
+    netExcessD: Math.max(0, totalExcessD - totalSavedD),
+  };
+}
+
 // Berechnet Carryover (Überschüsse/Ersparnisse) für alle Tabs.
 //
 // Phase 1: Ersparnisse (IST < SOLL → saved = SOLL - IST) werden an unfertige Tabs verteilt.
@@ -194,51 +239,15 @@ function computeAllCarryovers() {
     result.push({ savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 });
   }
 
-  // --- PHASE 0: Bedarfsberechnung ---
-  // Savings: SOLL - IST wenn IST > 0 && IST < SOLL (Ersparnis = nicht bepflanzte Fläche)
-  // Excess: IST - SOLL wenn IST > SOLL
-  // Need: max(0, IST - used) wenn IST > 0 (sonst SOLL - used)
-  // Wenn IST=0 → keine Carryover (keine Ersparnis, kein Bedarf jenseits SOLL)
-  var totalSavedE = 0, totalSavedD = 0;
-  var totalExcessE = 0, totalExcessD = 0;
-
-  for (let i = 0; i < AppGlobals.state.reiter.length; i++) {
-    var t = AppGlobals.state.reiter[i];
-    var istE = getTabIstEinheiten(t);
-    var solE = getTabTotalEinheiten(t);
-    var usedE = getTabUsedEinheiten(t);
-    var istD = getTabIstDuenger(t);
-    var solD = getTabTotalDuenger(t);
-    var usedD = getTabUsedDuenger(t);
-    if (istE > 0) {
-      if (solE > istE) totalSavedE += (solE - istE);
-      else if (istE > solE) totalExcessE += (istE - solE);
-    }
-    if (istD > 0) {
-      if (solD > istD) totalSavedD += (solD - istD);
-      else if (istD > solD) totalExcessD += (istD - solD);
-    }
-  }
-
-  // === NETTO-SALDO (vor Phase 1 und 2) ===
-  //
-  // Fix Issue #XXX: Ersparnis-Pool und Mehrbedarf-Pool werden zuerst
-  // gegenseitig aufgerechnet (Netting). Nur der verbleibende Netto-Saldo
-  // wird an Phase 1 (Ersparnisse) bzw. Phase 2 (Mehrbedarfe) übergeben.
-  //
-  // Ohne Netting: Ein Tab mit IST > SOLL (Mehrbedarf) erhält in Phase 1
-  // fälschlicherweise Ersparnis-Carryover (weil istCovered=FALSE und
-  // isSource=FALSE). Gleichzeitig gibt Phase 2 den vollen totalExcess als
-  // Bürde an Folge-Tabs — saved und excess auf dem Folge-Tab heben sich
-  // NICHT auf, sondern addieren sich als doppelter Fehler.
-  //
-  // Mit Netting: netSaved = max(0, totalSaved - totalExcess).
-  //              netExcess = max(0, totalExcess - totalSaved).
-  // Phase 1 verteilt nur netSaved, Phase 2 vergibt nur netExcess.
-  var netSavedE  = Math.max(0, totalSavedE  - totalExcessE);
-  var netExcessE = Math.max(0, totalExcessE - totalSavedE);
-  var netSavedD  = Math.max(0, totalSavedD  - totalExcessD);
-  var netExcessD = Math.max(0, totalExcessD - totalSavedD);
+  // --- PHASE 0 + NETTING ---
+  // Bedarfsberechnung und gegenseitige Aufrechnung sind in
+  // _computeNetCarryoverPools extrahiert (Issue #8 Phase-0-Refactor).
+  // Phase 1+2 (mat-loops unten) sind unverändert.
+  var _pools = _computeNetCarryoverPools(AppGlobals.state.reiter);
+  var netSavedE  = _pools.netSavedE;
+  var netExcessE = _pools.netExcessE;
+  var netSavedD  = _pools.netSavedD;
+  var netExcessD = _pools.netExcessD;
 
   // === PHASE 1: Ersparnisse verteilen — Saat und Dünger getrennt ===
   //
@@ -390,8 +399,6 @@ function computeAllCarryovers() {
       }
       // self-excess: weiter ignoriert (kein negativer Carryover)
     }
-    if (isSaatPass2) totalExcessE = remExcess;
-    else totalExcessD = remExcess;
   }
 
   _internal.carryoverCache = result;
