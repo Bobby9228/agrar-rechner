@@ -160,8 +160,29 @@
         // global carryover pool; summing across tabs gives the totals the
         // formula needs.
         var cco = AppGlobals.getCarryover(ti);
-        var needE = Math.max(0, tEinheiten - tUsedE);
-        var needD = Math.max(0, tDuenger - tUsedD);
+        // Issue #347 (Folge-Bug zu PR #348): Mehrbedarf-Tabs (istE > solE
+        // bzw. istD > solD) dürfen NICHT als Bedarfsempfänger in needE/needD
+        // zählen. Ihr "Restbedarf" (ist-basis − used) ist konzeptuell
+        // Quellen-Mehraufwand, der bereits durch den Netto-Saldo-Pool in
+        // computeAllCarryovers() (#347) absorbiert wurde. Wenn wir ihn hier
+        // erneut als positiven Bedarf zählen, verdoppelt sich die Cross-Tab-
+        // Aggregations-Formel: totalNeedE enthält dann den Mehrbedarf, und
+        // totalExcessE enthält ihn ebenfalls → remE wird künstlich groß.
+        //
+        // Spec-Anker: Issue #302 definiert "verteilbare_excess_saldi" als
+        // Quellen-Salden, die im Phase-B-Cross-Tab-Pool landen. Bedarfe sind
+        // per Definition "zu wenig" (ist < soll bzw. used < basis). Daher
+        // wird hier analog zu computeAllCarryovers() Phase 1 (hasMehrbedarf-
+        // Skip) jeder Mehrbedarf-Tab als nicht-bedarfs-empfangend markiert.
+        //
+        // NICHT angefasst (Spec #302): Z. 176-177 (Phase-B-Formel
+        // rem = max(0, TotalNeed - TotalSaved + TotalExcess)).
+        var solEForTab = AppGlobals.getTabTotalEinheiten(rt);
+        var solDForTab = AppGlobals.getTabTotalDuenger(rt);
+        var isMehrbedarfE = (tEinheiten > 0 && solEForTab > 0 && tEinheiten > solEForTab);
+        var isMehrbedarfD = (tDuenger > 0 && solDForTab > 0 && tDuenger > solDForTab);
+        var needE = (isMehrbedarfE || tUsedE >= tEinheiten) ? 0 : Math.max(0, tEinheiten - tUsedE);
+        var needD = (isMehrbedarfD || tUsedE >= tDuenger) ? 0 : Math.max(0, tDuenger - tUsedD);
         totalNeedE += needE;
         totalNeedD += needD;
         totalSavedE += cco.savedEinheit;
