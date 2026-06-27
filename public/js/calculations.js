@@ -301,18 +301,6 @@ function computeAllCarryovers() {
   // Issue #315: Auch hier entkoppeln. Capacity-Sort und Absorption laufen
   // für jedes Material separat. Self-Mehrbedarf (used > basis) bleibt
   // ignoriert wie bisher — keine Verteilung an andere Tabs.
-  function _parseEntryTime(t) {
-    if (typeof t === 'number') return t;
-    if (typeof t === 'string') {
-      // Format "HH:MM" oder "HH:MM:SS"
-      var m = t.match(/^(\d{1,2}):(\d{2})/);
-      if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-      // ISO oder andere Formate → Date.parse Fallback
-      var d = Date.parse(t);
-      if (!isNaN(d)) return d;
-    }
-    return 0;
-  }
   for (var mat2 = 0; mat2 < 2; mat2++) {
     var isSaatPass2 = (mat2 === 0);
     var remExcess = isSaatPass2 ? netExcessE : netExcessD;
@@ -352,7 +340,7 @@ function computeAllCarryovers() {
       }
       if (cap <= 0.05 && selfExcess <= 0.05) continue;
       var lastEntry2 = t2.entries[t2.entries.length - 1];
-      var ts2 = _parseEntryTime(lastEntry2 ? (lastEntry2.time || 0) : 0);
+      var ts2 = parseEntryTime(lastEntry2 ? (lastEntry2.time || 0) : 0);
       tabOrder2.push({ idx: i, ts: ts2, cap: cap, selfExcess: selfExcess });
     }
     // Sort: capacity-positive zuerst (last-filled first), dann self-excess tabs.
@@ -382,6 +370,45 @@ function computeAllCarryovers() {
 
   _internal.carryoverCache = result;
   return result;
+}
+
+// --- Entry-Time-Helpers (Issue 5 / Code-Review) ---
+//
+// `parseEntryTime` ist nach `computeAllCarryovers` rausgezogen, weil:
+//   (a) die Logik echte Wert-Berechnung enthält (HH:MM, ISO-Fallback),
+//       die isoliert testbar sein soll;
+//   (b) bei jedem Aufruf neu erzeugte Function-Closures Closure-Overhead
+//       verursachen.
+// `formatEntryTime` ergänzt das Rendering: 3× Inline-Ternary in
+// render-drill.js / render-results.js wird hier zusammengefasst.
+
+// Parst eine Entry-Time in einen vergleichbaren Zahlenwert.
+// Akzeptiert:
+//   - number  → unverändert (typischerweise Date.now() / Timestamp in ms
+//               oder bereits normalisierte Minuten)
+//   - string  "HH:MM" / "HH:MM:SS" → Minuten seit Mitternacht
+//               ISO-8601 oder andere parseable → Date.parse → ms seit Epoch
+//   - sonstiges / leer → 0
+function parseEntryTime(t) {
+  if (typeof t === 'number') return t;
+  if (typeof t === 'string') {
+    // Format "HH:MM" oder "HH:MM:SS"
+    var m = t.match(/^(\d{1,2}):(\d{2})/);
+    if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    // ISO oder andere Formate → Date.parse Fallback
+    var d = Date.parse(t);
+    if (!isNaN(d)) return d;
+  }
+  return 0;
+}
+
+// Formatiert eine Entry-Time für die UI. Number → lokales Datum/Zeit-String,
+// String → unverändert ausgegeben. Leerer Input → leerer String.
+// Verhalten ist identisch zum vorherigen Inline-Ternary in den Render-Files.
+function formatEntryTime(t) {
+  if (!t) return '';
+  if (typeof t === 'number') return new Date(t).toLocaleString('de-DE');
+  return String(t);
 }
 
 function invalidateCarryoverCache() {
@@ -513,4 +540,6 @@ Object.assign(window.AppGlobals, {
   getTabNextTime: getTabNextTime,
   getTabKornerGesamt: getTabKornerGesamt,
   getTabRates: getTabRates,
+  parseEntryTime: parseEntryTime,
+  formatEntryTime: formatEntryTime,
 });
