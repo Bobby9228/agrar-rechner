@@ -418,11 +418,32 @@ describe('Drill-Protokoll', () => {
       w.renderResults();
 
       // Phase A + Phase B per Issue #302 spec, MIT Netto-Saldo-Korrektur #347.
-      // TotalNeed_E = (21.6-12) + (9-0) = 9.6 + 9 = 18.6 (kein Tab absorbiert
-      // self-excess, weil beides Mehrbedarf-Quellen sind).
-      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('18,6 Einheiten');
-      // TotalNeed_D = (2400-2000) + (1000-0) = 400 + 1000 = 1400
-      expect(doc.getElementById('ds_duenger_remaining').textContent).toBe('1.400 kg');
+      //
+      // Fix-Reihenfolge:
+      //   PR #348 → Netto-Saldo in computeAllCarryovers(). Self-Absorb-Skip
+      //             verhindert Doppel-Zählung in der Cross-Tab-Formel.
+      //   PR #<dieser> → Folge-Bug: in renderDrillSummary() Phase A zählte
+      //                  Tab 0 (Mehrbedarf-Quelle, istE=21.6 > solE=9) als
+      //                  Bedarfsempfänger mit needE=9.6 (sein Restbedarf auf
+      //                  IST-Fläche). Das ist konzeptuell Quellen-Mehraufwand,
+      //                  nicht "zu wenig". Mit dem Mehrbedarf-Skip für Phase A
+      //                  landet nur der echte Bedarf von Tab 1 (needE=9) im
+      //                  totalNeedE.
+      //
+      // TotalNeed_E = 0 (Tab 0 ist Mehrbedarf → Skip) + (9-0) (Tab 1)
+      //             = 9
+      // TotalSaved_E = 0, TotalExcess_E = 0 (Tab 0 self-excess,
+      //                Phase 2 verteilt 0 dank Self-Absorb-Skip #348).
+      // → remEinheit = max(0, 9 - 0 + 0) = 9
+      //
+      // HINWEIS: Der vorherige Wert "18,6 Einheiten" (PR #348's Update)
+      // entsprach dem ALTEN Phase-A-Verhalten, in dem Tab 0 als
+      // Bedarfsempfänger mit 9.6 E gezählt wurde. Mit der Issue-#347-Folge-
+      // Korrektur (Mehrbedarf-Tabs zählen NICHT als Bedarfsempfänger) ist
+      // 9,0 der korrekte Wert.
+      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('9,0 Einheiten');
+      // TotalNeed_D = 0 (Tab 0 Mehrbedarf) + (1000-0) (Tab 1) = 1000
+      expect(doc.getElementById('ds_duenger_remaining').textContent).toBe('1.000 kg');
 
       // Sanity: total/used are independent of carryover.
       expect(doc.getElementById('ds_saat_total').textContent).toBe('30,6 Einheiten');
