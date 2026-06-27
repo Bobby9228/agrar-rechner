@@ -58,6 +58,19 @@ function computeFahrgassenFaktor(breite) {
   return (breite - 1) / breite;
 }
 
+// Liefert den Fahrgassen-Faktor für ein Tab-Objekt r.
+// Per-Tab-Override (r.fahrgassenEnabled / r.fahrgassenBreite) fällt auf den
+// globalen Default (AppGlobals.state.*) zurück, wenn nicht gesetzt.
+// Gibt 1 zurück, wenn Fahrgassen deaktiviert oder Breite ≤ 0.
+// (Vorher 4× identisch in getTotalEinheiten, getTabIstEinheiten,
+// getTabKornerGesamt, getTabRates dupliziert — Issue #4.)
+function getTabFahrgassenFaktor(r) {
+  var enabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : AppGlobals.state.fahrgassenEnabled;
+  var breite  = (r.fahrgassenBreite  !== undefined) ? r.fahrgassenBreite  : AppGlobals.state.fahrgassenBreite;
+  if (!enabled || breite <= 0) return 1;
+  return computeFahrgassenFaktor(breite);
+}
+
 // --- Einheiten-Berechnung (SOLL) ---
 
 // Berechnet die Anzahl Einheiten für ein gegebenes Feld.
@@ -74,12 +87,7 @@ function computeFahrgassenFaktor(breite) {
 // Rückgabe: number (Einheiten, immer ≥ 0)
 function getTotalEinheiten(r, koernerProEinheit) {
   if (!r || !r.hektar || !r.koerner || koernerProEinheit <= 0) return 0;
-  var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : AppGlobals.state.fahrgassenEnabled;
-  var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : AppGlobals.state.fahrgassenBreite;
-  var faktor = 1;
-  if (fgEnabled && fgBreite > 0) {
-    faktor = computeFahrgassenFaktor(fgBreite);
-  }
+  var faktor = getTabFahrgassenFaktor(r);
   var einheiten = (r.hektar * r.koerner) / koernerProEinheit;
   return Math.max(0, einheiten * faktor);
 }
@@ -93,12 +101,7 @@ function getTabTotalEinheiten(r) {
 // Nur wenn istHektar > 0 gesetzt ist, wird die IST-Fläche für die Berechnung verwendet.
 function getTabIstEinheiten(r) {
   if (!r || !r.istHektar || !r.koerner || AppGlobals.state.koernerProEinheit <= 0) return 0;
-  var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : AppGlobals.state.fahrgassenEnabled;
-  var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : AppGlobals.state.fahrgassenBreite;
-  var faktor = 1;
-  if (fgEnabled && fgBreite > 0) {
-    faktor = computeFahrgassenFaktor(fgBreite);
-  }
+  var faktor = getTabFahrgassenFaktor(r);
   var einheiten = (r.istHektar * r.koerner) / AppGlobals.state.koernerProEinheit;
   return Math.max(0, einheiten * faktor);
 }
@@ -485,12 +488,7 @@ function getTabNextTime(r) {
 function getTabKornerGesamt(r) {
   if (!r || !r.hektar || !r.koerner) return 0;
   var k = r.hektar * r.koerner;
-  var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : AppGlobals.state.fahrgassenEnabled;
-  var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : AppGlobals.state.fahrgassenBreite;
-  var faktor = 1;
-  if (fgEnabled && fgBreite > 0) {
-    faktor = computeFahrgassenFaktor(fgBreite);
-  }
+  var faktor = getTabFahrgassenFaktor(r);
   return k * faktor;
 }
 
@@ -502,12 +500,7 @@ function getTabKornerGesamt(r) {
 function getTabRates(tabIdx) {
   var r = AppGlobals.state.reiter[tabIdx];
   if (!r) return { unitsPerHa: 0, duengerPerHa: 0 };
-  var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : AppGlobals.state.fahrgassenEnabled;
-  var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : AppGlobals.state.fahrgassenBreite;
-  var fgFactor = 1;
-  if (fgEnabled && fgBreite > 0) {
-    fgFactor = computeFahrgassenFaktor(fgBreite);
-  }
+  var fgFactor = getTabFahrgassenFaktor(r);
   var unitsPerHa = r.koerner * fgFactor / AppGlobals.state.koernerProEinheit;
   var duengerPerHa = r.duenger || 0;
   return { unitsPerHa: unitsPerHa, duengerPerHa: duengerPerHa };
