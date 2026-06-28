@@ -1,18 +1,10 @@
-// ============================================================================
-// BERECHNUNGEN — Pure Functions für alle landwirtschaftlichen Berechnungen
-//
-// Alle Funktionen sind pure: gleiche Eingabe → gleiche Ausgabe, kein State-Zugriff.
-// Das macht sie einfach testbar und vorhersehbar.
-// Keine Seiteneffekte, keine DOM-Manipulation.
-// ============================================================================
+// Pure functions für landwirtschaftliche Berechnungen.
+// Gleiche Eingabe → gleiche Ausgabe, kein State-Zugriff, keine DOM-Manipulation.
 
 // --- Format/Parser Utilities (pure) ---
 
 // fmt — Runde auf 1 Dezimalstelle, deutsche Formatierung mit Komma.
-// DE-Rundung: "round half up" — ab .5 wird aufgerundet.
-// Beispiel: 0.05 → '0,1' (nicht '0,0' wie toFixed default).
-// Issue #9: aus main.js hierher verschoben — pure Funktion, gehört zu den
-// Berechnungs-Helfern und macht die AppGlobals-Abhängigkeit explizit.
+// DE-Rundung: "round half up" — ab .5 wird aufgerundet (0.05 → '0,1', nicht '0,0').
 function fmt(n) {
   if (n === null || n === undefined || isNaN(n)) return '0,0';
   var x = n * 10;
@@ -20,9 +12,7 @@ function fmt(n) {
   return String(rounded.toFixed(1)).replace('.', ',');
 }
 
-// fmtCompact — wie fmt(), aber lässt das nachstehende ",0" für ganze Zahlen weg.
-// Wird im Dashboard verwendet (Tests 26, 40 erwarten "12" statt "12,0").
-// Issue #9: aus main.js hierher verschoben (pure Funktion).
+// fmtCompact — wie fmt(), aber ohne nachstehendes ",0" für ganze Zahlen.
 function fmtCompact(n) {
   var s = fmt(n);
   if (s.endsWith(',0')) s = s.slice(0, -2);
@@ -31,39 +21,21 @@ function fmtCompact(n) {
 
 // --- Konstanten ---
 
-// Schwelle für "noch etwas vorhanden" (Einheiten / kg).
-// Wird verwendet, um Floating-Point-Restwerte unterhalb der Darstellungs-
-// genauigkeit als "nichts" zu behandeln. Refs: Issue #254.
+// Schwelle unter der Floating-Point-Restwerte als "nichts" gelten.
 var EPSILON_QUANTITY = 0.05;
 
 // --- Fahrgassen-Faktor (zentrale Berechnung) ---
 
-// Berechnet den Produktivitätsfaktor für Fahrgassen.
-//
-// Physikalische Grundlage:
-//   Fahrgassen sind 1m breite Fahrspuren, die alle `breite` Meter
-//   (Arbeitsbreite des Geräts) im Feld wiederkehren.
-//   Der produktive Anteil der Fläche ist somit:
-//     (breite - 1) / breite
-//
-//   Beispiel: Arbeitsbreite = 24m → (24-1)/24 = 0.9583 → ~4.2% Verlust
-//             Arbeitsbreite = 4m  → (4-1)/4   = 0.75   → 25% Verlust
-//
-//   Guard: breite < 2 → kein sinnvoller Wert → Faktor 1.0 (keine Korrektur)
-//
-// @param {number} breite — Arbeitsbreite in Metern (≥ 2)
-// @returns {number} Produktivitätsfaktor (0..1); 1 = keine Korrektur
+// Produktivitätsfaktor für Fahrgassen: (breite - 1) / breite.
+// Guard: breite < 2 → 1.0 (keine Korrektur). 1m Fahrspur pro `breite` Meter.
 function computeFahrgassenFaktor(breite) {
   if (!breite || breite < 2) return 1;
   return (breite - 1) / breite;
 }
 
-// Liefert den Fahrgassen-Faktor für ein Tab-Objekt r.
-// Per-Tab-Override (r.fahrgassenEnabled / r.fahrgassenBreite) fällt auf den
-// globalen Default (AppGlobals.state.*) zurück, wenn nicht gesetzt.
-// Gibt 1 zurück, wenn Fahrgassen deaktiviert oder Breite ≤ 0.
-// (Vorher 4× identisch in getTotalEinheiten, getTabIstEinheiten,
-// getTabKornerGesamt, getTabRates dupliziert — Issue #4.)
+// Liefert den Fahrgassen-Faktor für einen Tab r.
+// Per-Tab-Override (r.fahrgassenEnabled/Breite) fällt auf den globalen
+// Default (AppGlobals.state.*) zurück, wenn nicht gesetzt.
 function getTabFahrgassenFaktor(r) {
   var enabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : AppGlobals.state.fahrgassenEnabled;
   var breite  = (r.fahrgassenBreite  !== undefined) ? r.fahrgassenBreite  : AppGlobals.state.fahrgassenBreite;
@@ -73,24 +45,9 @@ function getTabFahrgassenFaktor(r) {
 
 // --- Einheiten-Berechnung (SOLL) ---
 
-// Berechnet die Anzahl Einheiten für ein gegebenes Feld (SOLL).
-// Berücksichtigt: Körner/ha, Körner/Einheit, Hektar, Fahrgassen-Korrektur.
-//
-// Formel:
-//   einheiten = (hektar × koerner) / koernerProEinheit
-//   einheiten × computeFahrgassenFaktor(breite)  falls fahrgassenEnabled
-//
-// Argumente:
-//   r                  — Tab-Objekt mit hektar, koerner, fahrgassenEnabled, fahrgassenBreite, etc.
-//   koernerProEinheit  — Körner pro Einheit (Standard: state.koernerProEinheit)
-//
-// Rückgabe: number (Einheiten, immer ≥ 0)
-//
-// Issue #7: Konsolidierung — dies ist jetzt die *einzige* kanonische Berechnung
-// für SOLL-Einheiten. Vorher gab es zwei redundante Funktionen
-// (getTotalEinheiten + getTabTotalEinheiten), die jeweils die gleiche Logik
-// ausführten. ui-handlers.js exportiert weiterhin getTotalEinheiten() als
-// No-arg-Kompatibilitäts-Wrapper, der an die aktive Reiter delegiert.
+// Berechnet die SOLL-Einheiten für ein Tab-Objekt r.
+// Formel: (hektar × koerner / koernerProEinheit) × Fahrgassen-Faktor.
+// Gibt 0 zurück, wenn r.hektar/koerner fehlen oder kpe ≤ 0.
 function getTabTotalEinheiten(r, koernerProEinheit) {
   var kpe = (koernerProEinheit !== undefined) ? koernerProEinheit : AppGlobals.state.koernerProEinheit;
   if (!r || !r.hektar || !r.koerner || kpe <= 0) return 0;
@@ -99,8 +56,7 @@ function getTabTotalEinheiten(r, koernerProEinheit) {
   return Math.max(0, einheiten * faktor);
 }
 
-// Berechnet die IST-Einheiten basierend auf der IST-Fläche.
-// Nur wenn istHektar > 0 gesetzt ist, wird die IST-Fläche für die Berechnung verwendet.
+// IST-Einheiten basierend auf der IST-Fläche (r.istHektar).
 function getTabIstEinheiten(r) {
   if (!r || !r.istHektar || !r.koerner || AppGlobals.state.koernerProEinheit <= 0) return 0;
   var faktor = getTabFahrgassenFaktor(r);
@@ -110,43 +66,16 @@ function getTabIstEinheiten(r) {
 
 // --- Dünger-Berechnung (SOLL) ---
 
-// Berechnet Düngermenge in kg (kg/ha × ha = kg) für ein Tab-Objekt (SOLL).
-// Formel: r.hektar * r.duenger
-//
-// Issue #191: Vorherige Version dividierte fälschlich durch 50
-// (aus der "1 Einheit = 50 kg" Annahme), was zu 50× zu kleinen kg-Werten
-// im SOLL-Pfad führte. Aufrufer hängen ' kg' an den Wert — die Funktion
-// muss kg liefern. Konsistent mit getTabIstDuenger (PR #190).
-//
-// Issue #7: Konsolidierung — dies ist jetzt die *einzige* kanonische Berechnung
-// für SOLL-Dünger. Vorher gab es getTotalDuenger + getTabTotalDuenger als
-// triviale Wrapper-Duplikate (letztere rief nur erstere auf). ui-handlers.js
-// exportiert weiterhin getTotalDuenger() als No-arg-Kompatibilitäts-Wrapper.
+// Berechnet Düngermenge in kg (kg/ha × ha = kg).
+// Rückgabe ist kg, nicht Einheiten — Aufrufer hängen ' kg' an.
 function getTabTotalDuenger(r) {
   if (!r || !r.hektar || !r.duenger) return 0;
   return Math.max(0, r.hektar * r.duenger);
 }
 
-// Dünger (kg) pro Einheit Saatgut für einen Tab.
-//
-// Physikalische Bedeutung: Wieviel kg Dünger zusammen mit einer Einheit
-// Saatgut ausgebracht werden müssen, damit das Soll-Verhältnis
-// (kg Dünger/ha ÷ Körner/ha × koernerProEinheit) eingehalten wird.
-//
-// Herleitung:
-//   totalDuenger = r.hektar × r.duenger          (kg)
-//   totalEinheit = r.hektar × r.koerner / kpe    (Einheiten)
-//   kgProEinheit = totalDuenger / totalEinheit
-//                = r.duenger × kpe / r.koerner
-//
-// Issue #230: Vorher stand hier `tab.duenger / (tab.hektar || 1) * 50` —
-// ein Überbleibsel der falschen "1 Einheit = 50 kg" Annahme, die in
-// #186/#191 bereits aus getTotalDuenger/getTabIstDuenger entfernt wurde.
-// Die neue Formel ist dimensionsrein (kg/Einheit) und kpe-konsistent.
-//
-// @param {Object} r — Tab-Objekt mit .hektar, .koerner, .duenger
-// @param {number} koernerProEinheit — Körner pro Einheit (Standard 50000)
-// @returns {number} kg Dünger pro Einheit Saatgut (0 wenn r.koerner fehlt)
+// kg Dünger pro Einheit Saatgut für einen Tab.
+// Formel: r.duenger × koernerProEinheit / r.koerner
+// (Herleitung: (hektar × duenger) ÷ (hektar × koerner / kpe) = duenger × kpe / koerner)
 function getDuengerProEinheit(r, koernerProEinheit) {
   if (!r || !r.duenger || !r.koerner || !koernerProEinheit) return 0;
   return r.duenger * koernerProEinheit / r.koerner;
@@ -154,8 +83,6 @@ function getDuengerProEinheit(r, koernerProEinheit) {
 
 // Berechnet IST-Dünger (kg) basierend auf istHektar.
 // Formel: r.istHektar * r.duenger (kg/ha) → kg total.
-// Issue #186: Vorherige Version dividierte fälschlich durch 50
-// (aus der "1 Einheit = 50 kg" Annahme), was zu falschen kg-Werten führte.
 function getTabIstDuenger(r) {
   if (!r || !r.istHektar || !r.duenger) return 0;
   return Math.max(0, r.istHektar * r.duenger);
@@ -163,7 +90,6 @@ function getTabIstDuenger(r) {
 
 // --- Carryover-Berechnung ---
 
-// Liefert die Summe aller verbrauchten Einheiten/Dünger im Tab (aus entries).
 function getTabUsedEinheiten(r) {
   if (!r || !r.entries) return 0;
   return r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
@@ -182,21 +108,12 @@ var _internal = {
   pendingKey: null
 };
 
-// Berechnet die Netto-Carryover-Pools (Phase 0 + Netting) für die reiter-Liste.
+// Netto-Carryover-Pools (Phase 0 + Netting) für die reiter-Liste.
 //
-// Phase 0: Bedarfsberechnung
-//   Savings: SOLL - IST wenn IST > 0 && IST < SOLL (Ersparnis = nicht bepflanzte Fläche)
-//   Excess:  IST - SOLL wenn IST > SOLL
-//   Wenn IST=0 → keine Carryover (keine Ersparnis, kein Bedarf jenseits SOLL)
-//
-// Netting: Ersparnis-Pool und Mehrbedarf-Pool werden gegenseitig aufgerechnet.
-//   netSaved  = max(0, totalSaved  - totalExcess)
-//   netExcess = max(0, totalExcess - totalSaved)
+// Phase 0: Savings = SOLL-IST (IST<SOLL), Excess = IST-SOLL (IST>SOLL), IST=0→0.
+// Netting: netSaved  = max(0, totalSaved  - totalExcess),
+//          netExcess = max(0, totalExcess - totalSaved).
 // Phase 1 verteilt nur netSaved, Phase 2 vergibt nur netExcess.
-//
-// Reines Helper-Modul: kein AppGlobals-Zugriff, keine Cache-Mutation.
-// Refactor Issue #8 Phase-0-Extraktion — Phase 1+2 bleiben unverändert
-// (siehe T6-Audit: Phase 1+2 tragen 5+ pinned Specs, die der mat-loop erhält).
 function _computeNetCarryoverPools(reiter) {
   var totalSavedE = 0, totalSavedD = 0;
   var totalExcessE = 0, totalExcessD = 0;
@@ -227,14 +144,11 @@ function _computeNetCarryoverPools(reiter) {
   };
 }
 
-// Berechnet Carryover (Überschüsse/Ersparnisse) für alle Tabs.
+// Berechnet Carryover (Ersparnisse/Überschüsse) für alle Tabs.
 //
-// Phase 1: Ersparnisse (IST < SOLL → saved = SOLL - IST) werden an unfertige Tabs verteilt.
-//          Tabs die "nur durch Carryover fertig" werden, werden übersprungen.
-// Phase 2: Mehrbedarfe (IST > SOLL → excess) werden aus Mehrbedarfs-Tabs gedeckt.
-//
-// Caching: Ergebnis wird in _internal.carryoverCache gespeichert,
-// bis eine State-Änderung invalidateCarryoverCache() aufruft.
+// Phase 1: Ersparnisse (saved = SOLL - IST bei IST < SOLL) an unfertige Tabs.
+// Phase 2: Mehrbedarfe (excess bei IST > SOLL) aus Mehrbedarfs-Tabs decken.
+// Cached in _internal.carryoverCache; invalidateCarryoverCache() bei Änderung.
 function computeAllCarryovers() {
   if (_internal.carryoverCache !== null) return _internal.carryoverCache;
 
@@ -244,9 +158,6 @@ function computeAllCarryovers() {
   }
 
   // --- PHASE 0 + NETTING ---
-  // Bedarfsberechnung und gegenseitige Aufrechnung sind in
-  // _computeNetCarryoverPools extrahiert (Issue #8 Phase-0-Refactor).
-  // Phase 1+2 (mat-loops unten) sind unverändert.
   var _pools = _computeNetCarryoverPools(AppGlobals.state.reiter);
   var netSavedE  = _pools.netSavedE;
   var netExcessE = _pools.netExcessE;
@@ -255,24 +166,12 @@ function computeAllCarryovers() {
 
   // === PHASE 1: Ersparnisse verteilen — Saat und Dünger getrennt ===
   //
-  // Issue #315: Saat und Dünger sollen UNABHÄNGIG durch die Carryover-Prios
-  // fließen. Ein Tab, der Saat-Bedarf hat, bekommt nicht automatisch auch
-  // Dünger-Carryover (oder umgekehrt). Wenn der Saat-Pool leer ist, aber der
-  // Dünger-Pool noch was hat, läuft nur der Dünger-Pass weiter.
-  //
+  // Saat und Dünger fließen UNABHÄNIG: ein Tab mit Saat-Bedarf bekommt
+  // nicht automatisch Dünger-Carryover (und umgekehrt).
   // Carryover-Bedarf ist IST-basiert (basis = istE/D wenn istHa > 0, sonst
-  // solE/D). Das ist die Original-Semantik aus Phase 0: Tab X hat Bedarf
-  // solange usedX < basisX. Issue #138 (Skip für "fertige" Tabs) wird
-  // beibehalten — eine Quelle MIT eigenem Restbedarf kann Carryover empfangen.
-  //
-  // Skip-Regel (Issue #138): Ersparnis-Quellen, deren IST-Fläche bereits
-  // gedeckt ist (usedE >= istE bei istE > 0), bekommen KEINEN Carryover. Die
-  // Ersparnis war für ANDERE Tabs gedacht — diese Quelle soll nicht "doppelt
-  // profitieren".
-  //
-  // Zusätzlicher Skip (Netto-Fix): Tabs mit IST > SOLL (Mehrbedarf) dürfen
-  // keine Ersparnis aus Phase 1 empfangen. Ihr Mehrbedarf ist bereits durch
-  // den Netto-Saldo aus dem Excess-Pool herausgerechnet.
+  // solE/D). Skip für fertige Quellen (usedE >= istE): Ersparnis nicht
+  // "doppelt" vergeben. Mehrbedarf-Tabs (IST > SOLL) bekommen keinen
+  // Phase-1-Carryover (Netto-Saldo verrechnet ihren Mehrbedarf bereits).
   _internal.carryoverCache = result;
   var remSavedE = netSavedE;
   var remSavedD = netSavedD;
@@ -295,25 +194,18 @@ function computeAllCarryovers() {
         var need = Math.max(0, basis - usedE - result[i].savedEinheit);
         var needD = Math.max(0, basis - usedD - result[i].savedDuenger);
         var need_ = isSaatPass ? need : needD;
-        // Issue #138: Skip wenn IST-Fläche bereits gedeckt UND dieser Tab
-        // eine Ersparnis-Quelle für dieses Material ist.
+        // Skip: IST gedeckt UND Tab ist Ersparnis-Quelle (kein Doppel-Profit).
         var istCovered = isSaatPass
           ? (istE > 0 && usedE >= istE)
           : (istD > 0 && usedD >= istD);
         var isSource = isSaatPass
           ? (solE > istE && istE > 0)
           : (solD > istD && istD > 0);
-        // Netto-Fix: Tabs mit IST > SOLL (Mehrbedarf) überspringen.
-        // Ihr Mehrverbrauch ist bereits durch den Netto-Saldo herausgerechnet.
+        // Skip: Mehrbedarf-Tabs (IST > SOLL) — Netto-Saldo verrechnet bereits.
         var hasMehrbedarf = isSaatPass
           ? (istE > 0 && istE > solE)
           : (istD > 0 && istD > solD);
-        // Issue #347 Mini-Korrektur: kein hasNoEntries-Skip in Phase 1.
-        // Leere Empfänger-Tabs sollen Carryover (saved) empfangen können.
-        // Phase 2 hat ihren eigenen t2.entries.length === 0 Skip (für capacity
-        // als Absorber). Phase 1 muss aber leere Tabs als Empfänger zulassen,
-        // damit das SAV-Budget an die nächsten nicht-fertigen Tabs kaskadiert.
-        // Der bestehende `need_ <= 0.05` Skip reicht als Filter.
+        // Phase 1 erlaubt leere Empfänger-Tabs — SAV-Budget kaskadiert weiter.
         if (need_ <= 0.05) continue;
         if (istCovered && isSource) continue;
         if (hasMehrbedarf) continue;
@@ -337,20 +229,15 @@ function computeAllCarryovers() {
 
   // === PHASE 2: Mehrbedarfe absorbieren — Saat und Dünger getrennt ===
   //
-  // Issue #315: Auch hier entkoppeln. Capacity-Sort und Absorption laufen
-  // für jedes Material separat. Self-Mehrbedarf (used > basis) bleibt
-  // ignoriert wie bisher — keine Verteilung an andere Tabs.
+  // Auch hier entkoppelt: Capacity-Sort + Absorption laufen pro Material.
+  // Self-Mehrbedarf (used > basis) wird ignoriert — keine Verteilung.
   for (var mat2 = 0; mat2 < 2; mat2++) {
     var isSaatPass2 = (mat2 === 0);
     var remExcess = isSaatPass2 ? netExcessE : netExcessD;
 
-    // Tabs mit Capacity für dieses Material sammeln + sortieren.
-    // Capacity = max(0, basis − used − saved_received) — IST-basiert
-    // (Original-Semantik aus Phase 0). Self-Excess (used > basis):
-    // ignoriert (kein negativer Carryover).
-    // Netto-Fix: Tabs mit IST > SOLL (Mehrbedarf-Quellen) werden als Absorber
-    // ausgeschlossen. Ihr Excess ist bereits durch den Netto-Saldo verrechnet —
-    // sie sollen ihn nicht zurückbekommen.
+    // Tabs mit Capacity sammeln + sortieren.
+    // Capacity = max(0, basis − used − saved_received), IST-basiert.
+    // Self-Excess (used > basis) und Mehrbedarf-Quellen (IST > SOLL) ausgeschlossen.
     var tabOrder2 = [];
     for (let i = 0; i < AppGlobals.state.reiter.length; i++) {
       var t2 = AppGlobals.state.reiter[i];
@@ -409,23 +296,11 @@ function computeAllCarryovers() {
   return result;
 }
 
-// --- Entry-Time-Helpers (Issue 5 / Code-Review) ---
-//
-// `parseEntryTime` ist nach `computeAllCarryovers` rausgezogen, weil:
-//   (a) die Logik echte Wert-Berechnung enthält (HH:MM, ISO-Fallback),
-//       die isoliert testbar sein soll;
-//   (b) bei jedem Aufruf neu erzeugte Function-Closures Closure-Overhead
-//       verursachen.
-// `formatEntryTime` ergänzt das Rendering: 3× Inline-Ternary in
-// render-drill.js / render-results.js wird hier zusammengefasst.
+// --- Entry-Time-Helpers ---
 
-// Parst eine Entry-Time in einen vergleichbaren Zahlenwert.
-// Akzeptiert:
-//   - number  → unverändert (typischerweise Date.now() / Timestamp in ms
-//               oder bereits normalisierte Minuten)
-//   - string  "HH:MM" / "HH:MM:SS" → Minuten seit Mitternacht
-//               ISO-8601 oder andere parseable → Date.parse → ms seit Epoch
-//   - sonstiges / leer → 0
+// Parst eine Entry-Time: number → unverändert; "HH:MM"/"HH:MM:SS" → Minuten
+// seit Mitternacht; ISO/anderes parseable → Date.parse → ms seit Epoch;
+// sonstiges/leer → 0.
 function parseEntryTime(t) {
   if (typeof t === 'number') return t;
   if (typeof t === 'string') {
@@ -439,9 +314,8 @@ function parseEntryTime(t) {
   return 0;
 }
 
-// Formatiert eine Entry-Time für die UI. Number → lokales Datum/Zeit-String,
-// String → unverändert ausgegeben. Leerer Input → leerer String.
-// Verhalten ist identisch zum vorherigen Inline-Ternary in den Render-Files.
+// Formatiert eine Entry-Time für die UI: number → lokales Datum/Zeit-String;
+// string → unverändert; leerer Input → leerer String.
 function formatEntryTime(t) {
   if (!t) return '';
   if (typeof t === 'number') return new Date(t).toLocaleString('de-DE');
@@ -458,16 +332,9 @@ function getCarryover(tabIndex) {
   return { savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 };
 }
 
-// Issue 2 (Code-Review): DRY-Helper für die "verbleibend"-Formel.
 // Liefert pro Tab die auf Carryover genetteten Restbedarfe (Saatgut + Dünger)
-// sowie Basis + Used, damit Render-Sites die Anzeige konsistent aus einer
-// einzigen Quelle speisen. IST-Fläche hat Vorrang vor SOLL (Issue #186).
-// Nutzt intern getTabUsedEinheiten/getTabUsedDuenger (mit `|| 0` Guards) —
-// das fixt den NaN-Bug in render-drill.js:51+53, wo vorher bare
-// `r.entries.reduce(s + e.einheit, 0)` lief und bei fehlendem `e.einheit`
-// NaN produzierte.
-// NICHT in isTabDone() integrieren (Issue 6 wurde abgelehnt — andere
-// Clamp-Semantik, isTabDone rechnet needE/needD statt max(0, basis-used)).
+// sowie Basis + Used, damit Render-Sites die Anzeige konsistent speisen.
+// IST-Fläche hat Vorrang vor SOLL. Nutzt getTabUsed* (mit `|| 0`-Guards).
 function getTabRemaining(r, tabIdx) {
   var istE = getTabIstEinheiten(r);
   var istD = getTabIstDuenger(r);
@@ -489,18 +356,15 @@ function getTabRemaining(r, tabIdx) {
 // --- Tab-Fertig-Check (pure) ---
 
 // Prüft ob ein Tab "fertig" ist (alle Bedarfe gedeckt).
-// Berücksichtigt: SOLL-Einheiten, IST-Einheiten, Carryover, bereits verbraucht.
-//
-// Verwendet computeAllCarryovers() für Carryover-Werte (wenn tabIndex mitgegeben).
-// Ohne tabIndex wird Carryover ignoriert (Backward-Compat).
-// Ist nil-safe (fehlende Felder = 0).
+// Carryover wird nur berücksichtigt, wenn tabIndex mitgegeben wird (Backward-Compat).
+// Nil-safe (fehlende Felder = 0).
 function isTabDone(r, tabIndex) {
   if (!r || !r.entries) return true; // Keine Entries = fertig (kein Bedarf)
   // Carryover nur berücksichtigen wenn tabIndex mitgegeben
   var carryover = (tabIndex !== undefined)
     ? getCarryover(tabIndex)
     : { savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0 };
-  // IST > 0 ? IST : SOLL (Issue #186)
+  // IST > 0 ? IST : SOLL
   var istE = getTabIstEinheiten(r);
   var totalE = istE > 0 ? istE : getTabTotalEinheiten(r);
   var usedE = getTabUsedEinheiten(r);
@@ -520,18 +384,14 @@ function isTabDone(r, tabIndex) {
 
 // --- Hilfsfunktionen für Entry-Time ---
 
-// Zeitstempel des letzten Eintrags in einem Tab (für Sortierung).
 function getTabLastEntryTime(r) {
   if (!r || !r.entries || r.entries.length === 0) return 0;
   var last = r.entries[r.entries.length - 1];
   return last ? (last.time || 0) : 0;
 }
 
-// Liefert die IST-Hektar-Summe für einen Tab.
-// Priorität: Direktes r.istHektar (vom Input-Feld) > Summe aus Entries.
-// Issue #186: Das Input-Feld #ist_hektar schreibt via onInputIstHektar in
-// r.istHektar. Wenn das gesetzt ist, IST es die maßgebliche Quelle — nicht
-// die Summe aus entries[].istHektar (die nur ein Legacy-Snapshot ist).
+// IST-Hektar-Summe für einen Tab.
+// Priorität: r.istHektar (Input-Feld) > Summe aus entries[].istHektar.
 function getTabIstHektar(r) {
   if (!r) return 0;
   if (r.istHektar && r.istHektar > 0) return r.istHektar;
@@ -539,7 +399,7 @@ function getTabIstHektar(r) {
   return r.entries.reduce(function(s, e) { return s + (e.istHektar || 0); }, 0);
 }
 
-// Liefert den nächsten Zeitstempel (für Sortierung).
+// Nächster Zeitstempel für Sortierung (letzter Entry + 1 oder now).
 function getTabNextTime(r) {
   if (!r || !r.entries || r.entries.length === 0) return Date.now();
   var last = r.entries[r.entries.length - 1];
@@ -558,11 +418,8 @@ function getTabKornerGesamt(r) {
   return k * faktor;
 }
 
-// Berechnet Verbrauchsraten (Einheiten/ha, Dünger/ha) für einen bestimmten Tab.
-// (portiert aus Inline-Code Z. 2349-2359)
-// Argumente:
-//   tabIdx — Index in AppGlobals.state.reiter
-// Rückgabe: { unitsPerHa, duengerPerHa }
+// Verbrauchsraten (Einheiten/ha, Dünger/ha) für einen Tab.
+// unitsPerHa = koerner × fgFaktor / koernerProEinheit; duengerPerHa = duenger.
 function getTabRates(tabIdx) {
   var r = AppGlobals.state.reiter[tabIdx];
   if (!r) return { unitsPerHa: 0, duengerPerHa: 0 };
@@ -572,7 +429,7 @@ function getTabRates(tabIdx) {
   return { unitsPerHa: unitsPerHa, duengerPerHa: duengerPerHa };
 }
 
-// Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
+// Register exposed globals on AppGlobals.
 Object.assign(window.AppGlobals, {
   fmt: fmt,
   fmtCompact: fmtCompact,
