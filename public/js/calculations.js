@@ -73,7 +73,7 @@ function getTabFahrgassenFaktor(r) {
 
 // --- Einheiten-Berechnung (SOLL) ---
 
-// Berechnet die Anzahl Einheiten für ein gegebenes Feld.
+// Berechnet die Anzahl Einheiten für ein gegebenes Feld (SOLL).
 // Berücksichtigt: Körner/ha, Körner/Einheit, Hektar, Fahrgassen-Korrektur.
 //
 // Formel:
@@ -81,20 +81,22 @@ function getTabFahrgassenFaktor(r) {
 //   einheiten × computeFahrgassenFaktor(breite)  falls fahrgassenEnabled
 //
 // Argumente:
-//   r           — Tab-Objekt mit hektar, koerner, fahrgassenEnabled, fahrgassenBreite, etc.
-//   koernerProEinheit — Körner pro Einheit (Standard: 50000)
+//   r                  — Tab-Objekt mit hektar, koerner, fahrgassenEnabled, fahrgassenBreite, etc.
+//   koernerProEinheit  — Körner pro Einheit (Standard: state.koernerProEinheit)
 //
 // Rückgabe: number (Einheiten, immer ≥ 0)
-function getTotalEinheiten(r, koernerProEinheit) {
-  if (!r || !r.hektar || !r.koerner || koernerProEinheit <= 0) return 0;
+//
+// Issue #7: Konsolidierung — dies ist jetzt die *einzige* kanonische Berechnung
+// für SOLL-Einheiten. Vorher gab es zwei redundante Funktionen
+// (getTotalEinheiten + getTabTotalEinheiten), die jeweils die gleiche Logik
+// ausführten. ui-handlers.js exportiert weiterhin getTotalEinheiten() als
+// No-arg-Kompatibilitäts-Wrapper, der an die aktive Reiter delegiert.
+function getTabTotalEinheiten(r, koernerProEinheit) {
+  var kpe = (koernerProEinheit !== undefined) ? koernerProEinheit : AppGlobals.state.koernerProEinheit;
+  if (!r || !r.hektar || !r.koerner || kpe <= 0) return 0;
   var faktor = getTabFahrgassenFaktor(r);
-  var einheiten = (r.hektar * r.koerner) / koernerProEinheit;
+  var einheiten = (r.hektar * r.koerner) / kpe;
   return Math.max(0, einheiten * faktor);
-}
-
-// Berechnet die Gesamteinheiten für ein Tab-Objekt (SOLL), mit globalen Einstellungen.
-function getTabTotalEinheiten(r) {
-  return getTotalEinheiten(r, AppGlobals.state.koernerProEinheit);
 }
 
 // Berechnet die IST-Einheiten basierend auf der IST-Fläche.
@@ -108,19 +110,21 @@ function getTabIstEinheiten(r) {
 
 // --- Dünger-Berechnung (SOLL) ---
 
-// Berechnet Düngermenge in kg (kg/ha × ha = kg).
+// Berechnet Düngermenge in kg (kg/ha × ha = kg) für ein Tab-Objekt (SOLL).
 // Formel: r.hektar * r.duenger
+//
 // Issue #191: Vorherige Version dividierte fälschlich durch 50
 // (aus der "1 Einheit = 50 kg" Annahme), was zu 50× zu kleinen kg-Werten
 // im SOLL-Pfad führte. Aufrufer hängen ' kg' an den Wert — die Funktion
 // muss kg liefern. Konsistent mit getTabIstDuenger (PR #190).
-function getTotalDuenger(r) {
+//
+// Issue #7: Konsolidierung — dies ist jetzt die *einzige* kanonische Berechnung
+// für SOLL-Dünger. Vorher gab es getTotalDuenger + getTabTotalDuenger als
+// triviale Wrapper-Duplikate (letztere rief nur erstere auf). ui-handlers.js
+// exportiert weiterhin getTotalDuenger() als No-arg-Kompatibilitäts-Wrapper.
+function getTabTotalDuenger(r) {
   if (!r || !r.hektar || !r.duenger) return 0;
   return Math.max(0, r.hektar * r.duenger);
-}
-
-function getTabTotalDuenger(r) {
-  return getTotalDuenger(r);
 }
 
 // Dünger (kg) pro Einheit Saatgut für einen Tab.
@@ -575,10 +579,8 @@ Object.assign(window.AppGlobals, {
   EPSILON_QUANTITY: EPSILON_QUANTITY,
   _internal: _internal,
   computeFahrgassenFaktor: computeFahrgassenFaktor,
-  getTotalEinheiten: getTotalEinheiten,
   getTabTotalEinheiten: getTabTotalEinheiten,
   getTabIstEinheiten: getTabIstEinheiten,
-  getTotalDuenger: getTotalDuenger,
   getTabTotalDuenger: getTabTotalDuenger,
   getDuengerProEinheit: getDuengerProEinheit,
   getTabIstDuenger: getTabIstDuenger,

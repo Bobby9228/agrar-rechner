@@ -167,10 +167,10 @@ function berechne() {
 |---|---|
 | `getKornerGesamt()` | Körner gesamt für aktiven Tab (berücksichtigt Fahrgassen) |
 | `getTabKornerGesamt(r)` | Körner gesamt für Tab `r` (berücksichtigt Fahrgassen) |
-| `getTotalEinheiten()` | Einheiten gesamt für aktiven Tab |
-| `getTabTotalEinheiten(r)` | Einheiten für Tab `r` |
-| `getTotalDuenger()` | Dünger gesamt für aktiven Tab |
-| `getTabTotalDuenger(r)` | Dünger für Tab `r` |
+| `getTotalEinheiten()` | Einheiten gesamt für aktiven Tab (Convenience-Wrapper, delegiert an `getTabTotalEinheiten(activeReiter())`) |
+| `getTabTotalEinheiten(r)` | Einheiten für Tab `r` (kanonische SOLL-Berechnung) |
+| `getTotalDuenger()` | Dünger gesamt für aktiven Tab (Convenience-Wrapper, delegiert an `getTabTotalDuenger(activeReiter())`) |
+| `getTabTotalDuenger(r)` | Dünger für Tab `r` (kanonische SOLL-Berechnung) |
 | `getTabIstHektar(r)` | IST-Fläche von Tab `r` (direkter Wert, nicht aus Entries abgeleitet) |
 | `getTabIstEinheiten(r)` | Einheiten basierend auf IST-Fläche (wenn vorhanden) |
 | `getTabIstDuenger(r)` | Dünger basierend auf IST-Fläche |
