@@ -50,20 +50,23 @@ jobs:
       # bump, account_id pin in wrangler.jsonc, --commit-dirty removal,
       # wranglerVersion pin, pages→workers deploy command). None helped
       # because the underlying cause is the CLOUDFLARE_API_TOKEN secret
-      # itself: it lacks `Workers Scripts:Edit` on the target account
-      # (5e4b9154b488352709fd72f630a7c3ae), OR is revoked/expired.
-      # Dashboard Git-integration deploys keep working because they use
-      # the CF GitHub App token, not this user-supplied API token.
+      # itself: it has zero scopes attached (or lacks
+      # `Workers Scripts:Edit` on account 5e4b9154b488352709fd72f630a7c3ae).
+      # Dashboard Git-integration deploys keep working because they use the
+      # CF GitHub App token, not this user-supplied API token.
       #
-      # This pre-step probes CF's /user/tokens/verify endpoint and
-      # prints the token's actual status + scopes, so the next failed
-      # run shows exactly which permission is missing instead of the
-      # generic "10000" coming out of wrangler 4.x. Fail-fast on the
-      # probe to save ~20s of CI minutes per broken run.
+      # This pre-step probes CF's /user/tokens/verify endpoint and prints
+      # the token's actual status + scopes so each failed run shows exactly
+      # which permission is missing, instead of the generic "10000" that
+      # wrangler 4.x emits. The verify step is a WARNING, not a hard fail:
+      # wrangler deploy runs regardless and surfaces the real CF error, so
+      # (a) we don't cascade a second failure on top of the deploy, and
+      # (b) once the token is rotated, this step passes and the deploy
+      # step itself goes green — same code path, single source of truth.
       #
-      # Fix: dash.cloudflare.com → My Profile → API Tokens → create a
-      # new token using the "Edit Cloudflare Workers" template, scoped
-      # to account 5e4b9154b488352709fd72f630a7c3ae. Update
+      # Fix: dash.cloudflare.com → My Profile → API Tokens → create a new
+      # token using the "Edit Cloudflare Workers" template, scoped to
+      # account 5e4b9154b488352709fd72f630a7c3ae. Update
       # `secrets.CLOUDFLARE_API_TOKEN` in the repo settings.
       # ---------------------------------------------------------------
       - name: Verify Cloudflare API token
@@ -71,8 +74,14 @@ jobs:
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        # Continue-on-error is the GitHub-Actions-level safety net: even
+        # if the inline script exits non-zero for any unforeseen reason,
+        # the wrangler deploy step below still runs and surfaces the
+        # real underlying CF error.
+        continue-on-error: true
         run: |
-          set -euo pipefail
+          # No `set -e`: warnings should not abort CI.
+          set -uo pipefail
           echo "::group::Cloudflare API token diagnostics"
 
           # Redact secrets in any echoed value. Tokens are 40 chars,
@@ -86,16 +95,16 @@ jobs:
           echo
           echo "Probing GET /user/tokens/verify …"
           HTTP_CODE=$(curl -sS -o /tmp/cf_verify.json -w '%{http_code}' \
-            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Authorization: Bearer *** \
             -H "Content-Type: application/json" \
             "https://api.cloudflare.com/client/v4/user/tokens/verify")
           echo "HTTP ${HTTP_CODE}"
           cat /tmp/cf_verify.json | python3 -m json.tool
 
           if [ "${HTTP_CODE}" != "200" ]; then
-            echo "::error::Cloudflare /user/tokens/verify returned HTTP ${HTTP_CODE}. The CLOUDFLARE_API_TOKEN secret is invalid, revoked, or expired."
-            echo "::error::Fix at dash.cloudflare.com → My Profile → API Tokens, then update the repo secret."
-            exit 1
+            echo "::warning::Cloudflare /user/tokens/verify returned HTTP ${HTTP_CODE}. The CLOUDFLARE_API_TOKEN secret may be invalid, revoked, or expired."
+            echo "::endgroup::"
+            exit 0
           fi
 
           python3 - <<'PY'
@@ -120,16 +129,20 @@ jobs:
           missing = required - present
           if missing:
               print()
-              print(f"  ❌ MISSING REQUIRED SCOPES: {sorted(missing)}")
-              print("     The token authenticates, but it cannot deploy this Worker.")
-              print("     Fix: dash.cloudflare.com → My Profile → API Tokens → Edit")
-              print("     → add the 'Workers Scripts:Edit' permission, scoped to")
-              print("     account 5e4b9154b488352709fd72f630a7c3ae.")
-              sys.exit(2)
+              print(f"  ⚠ MISSING REQUIRED SCOPES: {sorted(missing)}")
+              print("    The token authenticates, but it cannot deploy this Worker.")
+              print("    Fix: dash.cloudflare.com → My Profile → API Tokens → Edit")
+              print("    → add the 'Workers Scripts:Edit' permission, scoped to")
+              print("    account 5e4b9154b488352709fd72f630a7c3ae.")
+              # Warning annotation, not error: the wrangler deploy step
+              # below will produce the real underlying CF error.
+              print(f"::warning::CLOUDFLARE_API_TOKEN is missing scopes: {sorted(missing)}. wrangler deploy will fail with code 10000 until the token is rotated.")
+              sys.exit(0)
           if status != 'active':
               print()
-              print(f"  ❌ Token status is '{status}' (expected 'active').")
-              sys.exit(3)
+              print(f"  ⚠ Token status is '{status}' (expected 'active').")
+              print("::warning::CLOUDFLARE_API_TOKEN status is not 'active' — wrangler deploy may fail.")
+              sys.exit(0)
           PY
 
           echo
