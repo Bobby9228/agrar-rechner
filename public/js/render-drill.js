@@ -183,8 +183,21 @@
         var solDForTab = AppGlobals.getTabTotalDuenger(rt);
         var isMehrbedarfE = (tEinheiten > 0 && solEForTab > 0 && tEinheiten > solEForTab);
         var isMehrbedarfD = (tDuenger > 0 && solDForTab > 0 && tDuenger > solDForTab);
-        var needE = (isMehrbedarfE || tUsedE >= tEinheiten) ? 0 : Math.max(0, tEinheiten - tUsedE);
-        var needD = (isMehrbedarfD || tUsedE >= tDuenger) ? 0 : Math.max(0, tDuenger - tUsedD);
+        // Issue #368 (Carryover-Regel 2): Bei sequenzieller Netting-Verteilung
+        // kann ein Mehrbedarf-Tab UNTERDECKT bleiben, wenn der Pool kleiner
+        // ist als die Summe aller Mehrbedarfe. Der ungedeckte Anteil
+        // (istE − solE − cco.nettedEinheit) zählt als real offener Bedarf und
+        // muss in den globalen Drill-Summary-Remaining auftauchen.
+        // Vor #368 (PR #366, pro-rata) verdeckte die Gleichverteilung diese
+        // Lücke nie — der Pool reichte entweder für alle oder niemanden ganz.
+        var uncoveredE = isMehrbedarfE ? Math.max(0, tEinheiten - solEForTab - (cco.nettedEinheit || 0)) : 0;
+        var uncoveredD = isMehrbedarfD ? Math.max(0, tDuenger - solDForTab - (cco.nettedDuenger || 0)) : 0;
+        var needE = uncoveredE > 0
+          ? uncoveredE
+          : (isMehrbedarfE || tUsedE >= tEinheiten ? 0 : Math.max(0, tEinheiten - tUsedE));
+        var needD = uncoveredD > 0
+          ? uncoveredD
+          : (isMehrbedarfD || tUsedE >= tDuenger ? 0 : Math.max(0, tDuenger - tUsedD));
         totalNeedE += needE;
         totalNeedD += needD;
         totalSavedE += cco.savedEinheit;

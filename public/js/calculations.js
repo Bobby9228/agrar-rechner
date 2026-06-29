@@ -166,17 +166,27 @@ function computeAllCarryovers() {
 
   // === PHASE 0.5: Netting-Coverage auf Mehrbedarf-Tabs zurückfließen lassen ===
   //
-  // Ohne diesen Schritt bleibt getCarryover(MehrbedarfTab) = {0,0,0,0} und
-  // getTabRemaining zeigt rohen Mehrbedarf, obwohl das Netting den Bedarf
-  // global bereits abgedeckt hat. Pro-rata Verteilung: jeder Mehrbedarf-Tab
-  // erhält so viel Coverage wie möglich (bis zu seinem eigenen Mehrbedarf).
-  // Coverage-Pool = min(totalExcess, totalSaved) = der Anteil, der von
-  // Ersparnissen absorbiert wird. Pro-rata: coverageRatio = Pool / totalExcess.
-  // Edge: totalSaved == totalExcess → Pool = totalExcess → ratio = 1 → alle
-  // Mehrbedarf-Tabs voll abgedeckt (auch wenn netSaved=0).
+  // Issue #368 (Carryover-Regel 2): Wenn die verfügbaren Ersparnisse nicht für
+  // alle Mehrbedarf-Tabs reichen, erfolgt die Netting-Abdeckung SEQUENZIELL
+  // nach Bearbeitungs-Reihenfolge. Das zuerst bearbeitete Feld wird KOMPLETT
+  // abgedeckt, dann das nächste, bis die Ersparnis aufgebraucht ist.
+  //
+  // Vor #368 (PR #366) war die Verteilung PRO-RATA: jeder Mehrbedarf-Tab
+  // bekam anteilig (Pool / totalExcess) seines Bedarfs. Das verteilte eine
+  // unzureichende Ersparnis gleichmäßig über alle Mehrbedarf-Tabs — was den
+  // später bearbeiteten Tab teilverdeckt ließ, obwohl der erste Tab bereits
+  // genug gehabt hätte. Sequenzielle Verteilung ist die korrekte Semantik:
+  // "wer zuerst da war, wird zuerst bedient".
+  //
+  // Pool-Definition (unverändert): pool = exc - netExcess = min(saved, exc).
+  // Saat und Dünger werden getrennt behandelt (Regel 4 — Pools unabhängig).
+  // Sortierung: parseEntryTime(lastEntry.time) aufsteigend, Tiebreaker
+  // gleicher time: Tab-Index aufsteigend (deterministisch).
   {
-    var moreE = [], excE = 0;
-    var moreD = [], excD = 0;
+    var moreE = [];
+    var moreD = [];
+    var excE = 0;
+    var excD = 0;
     for (let i = 0; i < AppGlobals.state.reiter.length; i++) {
       var mt = AppGlobals.state.reiter[i];
       var mistE = getTabIstEinheiten(mt);
@@ -186,17 +196,42 @@ function computeAllCarryovers() {
       if (mistE > 0 && mistE > msolE) { moreE.push(i); excE += (mistE - msolE); }
       if (mistD > 0 && mistD > msolD) { moreD.push(i); excD += (mistD - msolD); }
     }
-    var poolE = excE - netExcessE; // = min(totalSavedE, totalExcessE) — der Anteil, der bereits abgedeckt ist
-    var poolD = excD - netExcessD;
-    var ratioE = excE > 0 ? Math.min(1, Math.max(0, poolE) / excE) : 0;
-    var ratioD = excD > 0 ? Math.min(1, Math.max(0, poolD) / excD) : 0;
-    for (let k = 0; k < moreE.length; k++) {
-      var mt2 = AppGlobals.state.reiter[moreE[k]];
-      result[moreE[k]].nettedEinheit = (getTabIstEinheiten(mt2) - getTabTotalEinheiten(mt2)) * ratioE;
+    var lastEntryTime = function(i) {
+      var tab = AppGlobals.state.reiter[i];
+      if (!tab.entries || tab.entries.length === 0) return 0;
+      var last = tab.entries[tab.entries.length - 1];
+      return parseEntryTime(last ? (last.time || 0) : 0);
+    };
+    var byTimeAsc = function(a, b) {
+      var ta = lastEntryTime(a), tb = lastEntryTime(b);
+      if (ta !== tb) return ta - tb;
+      return a - b; // Tab-Index aufsteigend als Tiebreaker
+    };
+    // Saat — sequenzielle Greedy-Zuweisung
+    moreE.sort(byTimeAsc);
+    var poolE = Math.max(0, excE - netExcessE);
+    var remPoolE = poolE;
+    for (let k = 0; k < moreE.length && remPoolE > 0.05; k++) {
+      var idx = moreE[k];
+      var mte = AppGlobals.state.reiter[idx];
+      var exc = getTabIstEinheiten(mte) - getTabTotalEinheiten(mte);
+      if (exc <= 0) continue;
+      var take = Math.min(remPoolE, exc);
+      result[idx].nettedEinheit = take;
+      remPoolE -= take;
     }
-    for (let k = 0; k < moreD.length; k++) {
-      var mt3 = AppGlobals.state.reiter[moreD[k]];
-      result[moreD[k]].nettedDuenger = (getTabIstDuenger(mt3) - getTabTotalDuenger(mt3)) * ratioD;
+    // Dünger — sequenzielle Greedy-Zuweisung
+    moreD.sort(byTimeAsc);
+    var poolD = Math.max(0, excD - netExcessD);
+    var remPoolD = poolD;
+    for (let k = 0; k < moreD.length && remPoolD > 0.05; k++) {
+      var idx = moreD[k];
+      var mtd = AppGlobals.state.reiter[idx];
+      var exc = getTabIstDuenger(mtd) - getTabTotalDuenger(mtd);
+      if (exc <= 0) continue;
+      var take = Math.min(remPoolD, exc);
+      result[idx].nettedDuenger = take;
+      remPoolD -= take;
     }
   }
 

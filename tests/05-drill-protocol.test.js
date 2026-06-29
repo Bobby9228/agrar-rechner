@@ -379,7 +379,7 @@ describe('Drill-Protokoll', () => {
     // Phase B: TotalExcess_E = 9.6, TotalExcess_D = 400.
     //          remEinheit  = max(0, 18.6 - 0 + 9.6) = 28.2
     //          remDuenger  = max(0, 1400 - 0 + 400) = 1800
-    it('renderDrillSummary() nets carryover across tabs (Issue #302, updated for Issue #347)', () => {
+    it('renderDrillSummary() nets carryover across tabs (Issue #302, updated for Issue #347, Issue #368)', () => {
       // Issue #347 (Netto-Saldo-Fix): Eine Mehrbedarf-Quelle (IST > SOLL) darf
       // sich in Phase 2 NICHT selbst als Empfänger ihres eigenen Excess
       // eintragen — sie muss den Rest selbst absorbieren (Eigen-Restbedarf).
@@ -392,8 +392,19 @@ describe('Drill-Protokoll', () => {
       // selbst. Der `ds_saat_remaining` / `ds_duenger_remaining` zeigt
       // daher nur den unverteilten Bedarf, NICHT plus Eigen-Excess.
       //
+      // Issue #368 (Carryover-Regel 2 — sequenzielle Netting): Wenn kein
+      // Savings-Pool existiert (alle Tabs sind Mehrbedarf-Quellen), bleibt
+      // jeder Mehrbedarf-Tab vollständig ungedeckt. render-drill.js summiert
+      // jetzt den ungedeckten Mehrbedarf-Anteil (istE − solE − nettedE) in
+      // totalNeedE, damit die globale Drill-Summary die ehrliche Summe aller
+      // offenen Arbeiten zeigt — konsistent mit getTabRemaining().
+      //
       // ALTES Verhalten (vor #347): 28,2 E / 1.800 kg (Tab 0 self-absorbed).
       // NEUES Verhalten (nach #347): 18,6 E / 500 kg (kein Self-Absorb).
+      // NEUERES Verhalten (nach #368 + render-drill.js uncovered): 21,6 E /
+      // 3.000 kg (Tab 0 Mehrbedarf ungedeckt mitgezählt, Tab 1 als normaler
+      // Bedarfsempfänger). Vor #368 (PR #366 pro-rata) war der Effekt gleich,
+      // weil ohne Savings-Pool sowieso nichts gecovered wurde.
       setupTwoTabs(w);
       // Reset tabs to the user's repro (1 ha / 450.000 K/ha / 1000 kg).
       // setupTwoTabs defaults to 10 ha / 90000 K/ha / 200 kg/ha — too large.
@@ -430,20 +441,23 @@ describe('Drill-Protokoll', () => {
       //                  landet nur der echte Bedarf von Tab 1 (needE=9) im
       //                  totalNeedE.
       //
-      // TotalNeed_E = 0 (Tab 0 ist Mehrbedarf → Skip) + (9-0) (Tab 1)
-      //             = 9
+      // Issue #368: Ohne Savings-Pool ist Tab 0 voll ungedeckt (12.6 E
+      // Mehraufwand), sein ungedeckter Mehrbedarf zählt jetzt in totalNeedE.
+      // Tab 1 ist kein Mehrbedarf → sein Bedarf (9 E, da istHektar=0 → tEinheiten=solE)
+      // zählt normal.
+      //
+      // TotalNeed_E = 12.6 (Tab 0 ungedeckter Mehrbedarf, Issue #368) + 9 (Tab 1)
+      //             = 21.6
       // TotalSaved_E = 0, TotalExcess_E = 0 (Tab 0 self-excess,
       //                Phase 2 verteilt 0 dank Self-Absorb-Skip #348).
-      // → remEinheit = max(0, 9 - 0 + 0) = 9
+      // → remEinheit = max(0, 21.6 - 0 + 0) = 21.6
       //
-      // HINWEIS: Der vorherige Wert "18,6 Einheiten" (PR #348's Update)
-      // entsprach dem ALTEN Phase-A-Verhalten, in dem Tab 0 als
-      // Bedarfsempfänger mit 9.6 E gezählt wurde. Mit der Issue-#347-Folge-
-      // Korrektur (Mehrbedarf-Tabs zählen NICHT als Bedarfsempfänger) ist
-      // 9,0 der korrekte Wert.
-      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('9,0 Einheiten');
-      // TotalNeed_D = 0 (Tab 0 Mehrbedarf) + (1000-0) (Tab 1) = 1000
-      expect(doc.getElementById('ds_duenger_remaining').textContent).toBe('1.000 kg');
+      // HINWEIS: Der vorherige Wert "9,0 Einheiten" entsprach dem Verhalten
+      // ohne #368-Korrektur. Mit #368 ist 21,6 der ehrliche Wert, weil Tab 0
+      // keinen Savings-Pool findet und seinen vollen Mehraufwand offen behält.
+      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('21,6 Einheiten');
+      // TotalNeed_D = 1400 (Tab 0 ungedeckter Mehrbedarf: 2400-1000-0) + 1000 (Tab 1) = 2400
+      expect(doc.getElementById('ds_duenger_remaining').textContent).toBe('2.400 kg');
 
       // Sanity: total/used are independent of carryover.
       expect(doc.getElementById('ds_saat_total').textContent).toBe('30,6 Einheiten');

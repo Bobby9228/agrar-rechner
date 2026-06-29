@@ -214,16 +214,19 @@ describe('Mehrbedarf-Tab verbleibend = 0 wenn durch Netting abgedeckt', () => {
     expect(computeRemaining(w.state.reiter[2], 2).remainingD).toBe(0);
   });
 
-  it('Edge case: 3 Mehrbedarf-Tabs à 1E, totalExcess = 3E > totalSaved = 2E → coverageRatio = 2/3, jeder Tab hat 0.33E offen', () => {
+  it('Edge case: 3 Mehrbedarf-Tabs à 1E, totalExcess = 3E > totalSaved = 2E → sequenziell: erste 2 Tabs voll, 3. leer (Issue #368)', () => {
     w.state.koernerProEinheit = 50000;
     w.state.reiter[0] = {
       name: 'A', hektar: 10, istHektar: 9, koerner: 100000, duenger: 200,
       entries: [{ einheit: 18, duenger: 1800, time: '08:00' }],
       fahrgassenEnabled: false, fahrgassenBreite: 0
     };
-    // 3 Mehrbedarf-Tabs. totalExcess = 3E, totalSaved = 2E →
-    // coverageRatio = 2/3 → jeder Mehrbedarf-Tab bekommt 0.67E coverage,
-    // 0.33E bleiben offen (über alle 3 Tabs verteilt = 1E = un-covered netExcess).
+    // 3 Mehrbedarf-Tabs. totalExcess = 3E, totalSaved = 2E → pool = 2E.
+    // Sequenziell nach Bearbeitungs-Reihenfolge (Issue #368, Regel 2):
+    //   Tab B (09:00, FIRST) bekommt 1E (seinen vollen Bedarf aus dem Pool)
+    //   Tab C (09:30, LATER) bekommt 1E (verbleibenden Pool)
+    //   Tab D (10:00, LAST) bekommt 0E (Pool leer) → 1E offen
+    // Summe offen = 1E (= un-covered netExcess), konzentriert auf dem letzten Tab.
     w.state.reiter[1] = {
       name: 'B', hektar: 7.5, istHektar: 8, koerner: 100000, duenger: 200,
       entries: [{ einheit: 15, duenger: 1500, time: '09:00' }],
@@ -243,17 +246,14 @@ describe('Mehrbedarf-Tab verbleibend = 0 wenn durch Netting abgedeckt', () => {
 
     // Tab 0 (Ersparnis-Quelle) → 0E
     expect(computeRemaining(w.state.reiter[0], 0).remainingE).toBe(0);
-    // Tab 1, 2, 3 (Mehrbedarf, partial coverage): each ~0.33E remaining.
-    // Sum über alle 3 = 1E = un-covered netExcess. Test prüft die Summe.
-    const rem1 = computeRemaining(w.state.reiter[1], 1).remainingE;
-    const rem2 = computeRemaining(w.state.reiter[2], 2).remainingE;
-    const rem3 = computeRemaining(w.state.reiter[3], 3).remainingE;
-    const sum = rem1 + rem2 + rem3;
-    // Floating-Point-tolerant: jede Tab bleibt ≈ 1/3, Summe ≈ 1E.
-    expect(Math.abs(sum - 1)).toBeLessThan(0.05);
-    // Kein Tab zeigt den vollen 1E Mehrbedarf (Netting muss wirken).
-    expect(rem1).toBeLessThan(0.5);
-    expect(rem2).toBeLessThan(0.5);
-    expect(rem3).toBeLessThan(0.5);
+    // Sequenzielle Verteilung: B+C voll abgedeckt, D offen.
+    expect(computeRemaining(w.state.reiter[1], 1).remainingE).toBe(0);  // B first → 0
+    expect(computeRemaining(w.state.reiter[2], 2).remainingE).toBe(0);  // C next → 0
+    expect(computeRemaining(w.state.reiter[3], 3).remainingE).toBe(1);  // D last → 1 (pool empty)
+    // Sum = 1 = un-covered netExcess (3E excess − 2E pool = 1E)
+    const sum = computeRemaining(w.state.reiter[1], 1).remainingE
+              + computeRemaining(w.state.reiter[2], 2).remainingE
+              + computeRemaining(w.state.reiter[3], 3).remainingE;
+    expect(sum).toBe(1);
   });
 });
