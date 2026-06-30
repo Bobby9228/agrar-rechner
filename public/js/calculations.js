@@ -178,7 +178,18 @@ function computeAllCarryovers() {
   // genug gehabt hätte. Sequenzielle Verteilung ist die korrekte Semantik:
   // "wer zuerst da war, wird zuerst bedient".
   //
-  // Pool-Definition (unverändert): pool = exc - netExcess = min(saved, exc).
+  // Issue #371 (Carryover-Regel 6): Pool-Definition erweitert. Vorher war der
+  // Pool = min(saved, exc) = max(0, exc − netExcess), i.e. nur die IST<SOLL-
+  // Ersparnis aus neutralen Tabs. Physisch wurde das Mehrbedarf-Material
+  // aber auch aus NOCH-UNGEFÜLLTEN Tabs entnommen (used < basis), nicht nur
+  // aus Ersparnis-Tabs (istE < solE). Korrekt: Pool = Σ tabE_contrib für alle
+  // NICHT-Mehrbedarf-Tabs, wobei
+  //   tabE_contrib = max(0, basis − used)   // unfilled: physisch ungedrillt
+  //                 + max(0, sol − ist)       // Ersparnis: SOLL−IST Überhang
+  // Ein Tab ohne Einträge (used=0, istE=0 → basis=solE) trägt damit seinen
+  // vollen SOLL-Bedarf als "noch nicht angefasst"-Pool bei. Mehrbedarf-Tabs
+  // (IST > SOLL) sind Empfänger und werden ausgeschlossen.
+  //
   // Saat und Dünger werden getrennt behandelt (Regel 4 — Pools unabhängig).
   // Sortierung: parseEntryTime(lastEntry.time) aufsteigend, Tiebreaker
   // gleicher time: Tab-Index aufsteigend (deterministisch).
@@ -187,14 +198,41 @@ function computeAllCarryovers() {
     var moreD = [];
     var excE = 0;
     var excD = 0;
+    // Pool-Größe separat aggregieren (Regel 6, Issue #371):
+    // Σ (unfilled + Ersparnis) für alle NICHT-Mehrbedarf-Tabs.
+    var poolE = 0;
+    var poolD = 0;
     for (let i = 0; i < AppGlobals.state.reiter.length; i++) {
       var mt = AppGlobals.state.reiter[i];
       var mistE = getTabIstEinheiten(mt);
       var msolE = getTabTotalEinheiten(mt);
       var mistD = getTabIstDuenger(mt);
       var msolD = getTabTotalDuenger(mt);
-      if (mistE > 0 && mistE > msolE) { moreE.push(i); excE += (mistE - msolE); }
-      if (mistD > 0 && mistD > msolD) { moreD.push(i); excD += (mistD - msolD); }
+      var musedE = getTabUsedEinheiten(mt);
+      var musedD = getTabUsedDuenger(mt);
+      var mehrbedarfE = (mistE > 0 && mistE > msolE);
+      var mehrbedarfD = (mistD > 0 && mistD > msolD);
+      if (mehrbedarfE) {
+        moreE.push(i);
+        excE += (mistE - msolE);
+      } else {
+        // unfilled + Ersparnis. Nur Tabs mit istHektar>0 (mistE>0) tragen bei —
+        // ein Tab ohne istHektar (mistE=0) hat noch nichts Konkretes
+        // angefasst oder geplant, sein SOLL ist nicht "verfügbar umverteilbar".
+        if (mistE > 0) {
+          var basisE = mistE; // immer istE weil mistE>0
+          poolE += Math.max(0, basisE - musedE) + Math.max(0, msolE - mistE);
+        }
+      }
+      if (mehrbedarfD) {
+        moreD.push(i);
+        excD += (mistD - msolD);
+      } else {
+        if (mistD > 0) {
+          var basisD2 = mistD;
+          poolD += Math.max(0, basisD2 - musedD) + Math.max(0, msolD - mistD);
+        }
+      }
     }
     var lastEntryTime = function(i) {
       var tab = AppGlobals.state.reiter[i];
@@ -209,7 +247,6 @@ function computeAllCarryovers() {
     };
     // Saat — sequenzielle Greedy-Zuweisung
     moreE.sort(byTimeAsc);
-    var poolE = Math.max(0, excE - netExcessE);
     var remPoolE = poolE;
     for (let k = 0; k < moreE.length && remPoolE > 0.05; k++) {
       var idx = moreE[k];
@@ -222,7 +259,6 @@ function computeAllCarryovers() {
     }
     // Dünger — sequenzielle Greedy-Zuweisung
     moreD.sort(byTimeAsc);
-    var poolD = Math.max(0, excD - netExcessD);
     var remPoolD = poolD;
     for (let k = 0; k < moreD.length && remPoolD > 0.05; k++) {
       var idx = moreD[k];
