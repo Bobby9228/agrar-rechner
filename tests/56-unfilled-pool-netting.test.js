@@ -39,6 +39,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createDom } from './helpers.js';
 
+// ── Hinweis: Was dieser Test NICHT deckt (Issue #371 Reopen Teil 2) ────────
+//
+// Die `getTabRemaining === 0`-Assertions unten sind nicht falsch, aber nicht
+// aussagekräftig: für einen voll befüllten Mehrbedarf-Tab ist `getTabRemaining`
+// IMMER 0 (Formel `max(0, basisE − usedE − ... − netted)` mit `basisE=usedE`).
+// Der eigentliche User-Bug — die sichtbare "Mehrbedarf"-Zeile in der Ergebnis-
+// Karte, die trotz remaining=0 weiterhin 1,6 E anzeigt — wird davon NICHT
+// erfasst. Der echte Regressionsschutz für diesen Bug lebt in
+// tests/57-render-excess-netted.test.js, der `computeShownExcess` und die
+// `.r-carryover-excess`-DOM-Zeile direkt prüft.
+// ──────────────────────────────────────────────────────────────────────────
+
 describe('Carryover Regel 6 — unfilled-Pool als Netting-Quelle (Issue #371)', () => {
     let w;
 
