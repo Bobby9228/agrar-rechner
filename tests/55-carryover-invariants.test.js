@@ -62,6 +62,35 @@ function phase0Totals(scenario, w, material) {
     return { totalSaved, totalExcess };
 }
 
+// Phase-0.5-Pool (gespiegelt aus computeAllCarryovers, Issue #371).
+// Pool = Σ (unfilled + Ersparnis) für alle NICHT-Mehrbedarf-Tabs mit istE > 0
+// (bzw. istD > 0 für Dünger). Mehrbedarf-Tabs sind Empfänger und werden
+// ausgeschlossen. Ohne istE/D trägt ein Tab nichts bei (sein SOLL ist kein
+// "verfügbar umverteilbares" Material).
+function phase05Pool(scenario, w, material) {
+    const kpe = scenario.koernerProEinheit;
+    let pool = 0;
+    for (const r of scenario.reiter) {
+        if (material === 'E') {
+            const solE = (r.hektar * r.koerner) / kpe;
+            const istE = r.istHektar > 0 ? (r.istHektar * r.koerner) / kpe : 0;
+            if (istE <= 0) continue;
+            // Mehrbedarf-Tab ist Empfänger → excluded
+            if (istE > solE) continue;
+            const usedE = w.getTabUsedEinheiten(r);
+            pool += Math.max(0, istE - usedE) + Math.max(0, solE - istE);
+        } else {
+            const solD = r.hektar * r.duenger;
+            const istD = r.istHektar > 0 ? r.istHektar * r.duenger : 0;
+            if (istD <= 0) continue;
+            if (istD > solD) continue;
+            const usedD = w.getTabUsedDuenger(r);
+            pool += Math.max(0, istD - usedD) + Math.max(0, solD - istD);
+        }
+    }
+    return pool;
+}
+
 describe('Carryover-Invarianten (5 User-Regeln 2026-06-28)', () => {
     let w;
     const SEED = 0xC0FFEE;
@@ -128,19 +157,21 @@ describe('Carryover-Invarianten (5 User-Regeln 2026-06-28)', () => {
     // ─────────────────────────────────────────────────────────────────────────
     // I2 — Volle Mehrbedarf-Abdeckung (Netting-Back vollständig)
     //
-    // "Wenn totalSaved ≥ totalExcess für ein Material, dann ist remaining für
-    // jeden Mehrbedarf-Tab = 0."
+    // "Wenn der Phase-0.5-Pool ≥ totalExcess für ein Material, dann ist der
+    // Mehrbedarf jedes Mehrbedarf-Tabs komplett genettet."
     //
-    // → Bei voller Deckung (Ersparnis reicht für alle Mehrbedarfe) MUSS der
-    //   Mehrbedarf-Anteil jedes Mehrbedarf-Tabs komplett genettet werden:
-    //   nettedEinheit === exc = istE − solE. Damit ist Σ nettedEinheit über
-    //   alle Mehrbedarf-Tabs === Σ exc (totalExcess).
-    //   (remaining === 0 ist NICHT garantiert, weil remaining noch von basis −
-    //   used abhängt; ein Mehrbedarf-Tab kann noch physische Einträge
-    //   brauchen, auch nachdem der Surplus genettet wurde.)
+    // → Issue #371 (Regel 6): Pool wurde erweitert von min(totalSaved, totalExcess)
+    //   (= nur IST<SOLL-Ersparnis) auf Σ (unfilled + Ersparnis) über alle
+    //   NICHT-Mehrbedarf-Tabs. Damit gilt die volle Abdeckung jetzt auch in
+    //   Szenarien ohne Ersparnis-Tabs, in denen neutrale Tabs un-filled Material
+    //   beitragen (User-Verifikation: Tab3 hat used<basis, deckt Tab1 Mehrbedarf).
+    //   Bestehende Szenarien mit totalSaved ≥ totalExcess bleiben gültig, da
+    //   Ersparnis ⊂ phase05Pool. Neue Szenarien mit Pool aus neutralen
+    //   unfilled-Tabs kommen hinzu.
+    //   Schwächere Bedingung: phase05Pool ≥ totalExcess → volle Abdeckung.
     // ─────────────────────────────────────────────────────────────────────────
     describe('I2 — Volle Mehrbedarf-Abdeckung', () => {
-        it('bei totalSaved ≥ totalExcess: Σ netted === Σ exc für Saat + Dünger', () => {
+        it('bei phase05Pool ≥ totalExcess: Σ netted === Σ exc für Saat + Dünger', () => {
             const scenarios = generateScenarios(SEED, COUNT);
             let fullCoverageSaat = 0;
             let fullCoverageDuenger = 0;
@@ -151,7 +182,8 @@ describe('Carryover-Invarianten (5 User-Regeln 2026-06-28)', () => {
                 const totDuenger = phase0Totals(scenarios[s], w, 'D');
 
                 // SAAT
-                if (totSaat.totalSaved > 0 && totSaat.totalSaved >= totSaat.totalExcess) {
+                const poolSaat = phase05Pool(scenarios[s], w, 'E');
+                if (totSaat.totalExcess > 0 && poolSaat >= totSaat.totalExcess) {
                     fullCoverageSaat++;
                     let sumNetted = 0, sumExc = 0;
                     for (let i = 0; i < scenarios[s].reiter.length; i++) {
@@ -167,13 +199,14 @@ describe('Carryover-Invarianten (5 User-Regeln 2026-06-28)', () => {
                         throw new Error(
                             `I2 Saat-Fehler scenario[${s}]: ` +
                             `Σ nettedEinheit=${sumNetted.toFixed(3)} ≠ Σ exc=${sumExc.toFixed(3)} ` +
-                            `(totalSaved=${totSaat.totalSaved.toFixed(2)}, totalExcess=${totSaat.totalExcess.toFixed(2)})\n` +
+                            `(pool=${poolSaat.toFixed(2)}, totalExcess=${totSaat.totalExcess.toFixed(2)})\n` +
                             dumpScenario(scenarios[s], s, '')
                         );
                     }
                 }
                 // DÜNGER
-                if (totDuenger.totalSaved > 0 && totDuenger.totalSaved >= totDuenger.totalExcess) {
+                const poolDuenger = phase05Pool(scenarios[s], w, 'D');
+                if (totDuenger.totalExcess > 0 && poolDuenger >= totDuenger.totalExcess) {
                     fullCoverageDuenger++;
                     let sumNetted = 0, sumExc = 0;
                     for (let i = 0; i < scenarios[s].reiter.length; i++) {
@@ -189,7 +222,7 @@ describe('Carryover-Invarianten (5 User-Regeln 2026-06-28)', () => {
                         throw new Error(
                             `I2 Dünger-Fehler scenario[${s}]: ` +
                             `Σ nettedDuenger=${sumNetted.toFixed(3)} ≠ Σ exc=${sumExc.toFixed(3)} ` +
-                            `(totalSaved=${totDuenger.totalSaved.toFixed(2)}, totalExcess=${totDuenger.totalExcess.toFixed(2)})\n` +
+                            `(pool=${poolDuenger.toFixed(2)}, totalExcess=${totDuenger.totalExcess.toFixed(2)})\n` +
                             dumpScenario(scenarios[s], s, '')
                         );
                     }
@@ -293,15 +326,19 @@ describe('Carryover-Invarianten (5 User-Regeln 2026-06-28)', () => {
     // ─────────────────────────────────────────────────────────────────────────
     // I4 — Bearbeitungs-Reihenfolge bei Knappheit (Issue #368, PR #369)
     //
-    // "Wenn totalSaved < totalExcess, wird der früher bearbeitete Mehrbedarf-Tab
+    // "Wenn phase05Pool < totalExcess, wird der früher bearbeitete Mehrbedarf-Tab
     // (parseEntryTime) zuerst komplett abgedeckt, bevor der nächste etwas
     // bekommt."
     //
     // → Sequenzielle Greedy-Zuweisung (nicht pro-rata) nach Bearbeitungs-
     //   Reihenfolge (parseEntryTime(lastEntry.time) aufsteigend, Tiebreaker
-    //   Tab-Index aufsteigend). Pool = min(totalSaved, totalExcess).
+    //   Tab-Index aufsteigend). Pool = phase05Pool (Regel 6, Issue #371) =
+    //   Σ (unfilled + Ersparnis) über alle nicht-Mehrbedarf-Tabs mit istE > 0.
     //   Der k-te Tab in der Reihenfolge erhält: netted = min(excK,
     //   max(0, pool − cumExcessVorK)).
+    //   Trigger-Bedingung: Knappheit = phase05Pool < totalExcess. Vor #371
+    //   war es `totalSaved < totalExcess` (äquivalent für Szenarien ohne
+    //   unfilled-Quellen), jetzt umfassender.
     // ─────────────────────────────────────────────────────────────────────────
     describe('I4 — Bearbeitungs-Reihenfolge bei Knappheit (Issue #368)', () => {
         it('Sortierung parseEntryTime aufsteigend mit Tab-Index-Tiebreaker', () => {
@@ -314,7 +351,8 @@ describe('Carryover-Invarianten (5 User-Regeln 2026-06-28)', () => {
 
                 // ── SAAT ─────────────────────────────────────────────────
                 const totSaat = phase0Totals(scenarios[s], w, 'E');
-                if (totSaat.totalSaved > 0 && totSaat.totalExcess > 0 && totSaat.totalSaved < totSaat.totalExcess) {
+                const poolSaat = phase05Pool(scenarios[s], w, 'E');
+                if (totSaat.totalExcess > 0 && poolSaat < totSaat.totalExcess) {
                     scarcityCasesSaat++;
                     const mehrbedarfTabs = [];
                     for (let i = 0; i < scenarios[s].reiter.length; i++) {
@@ -328,18 +366,17 @@ describe('Carryover-Invarianten (5 User-Regeln 2026-06-28)', () => {
                     }
                     if (mehrbedarfTabs.length === 0) continue;
                     mehrbedarfTabs.sort((a, b) => a.time - b.time || a.i - b.i);
-                    const pool = Math.min(totSaat.totalSaved, totSaat.totalExcess);
                     let cumExcess = 0;
                     for (let k = 0; k < mehrbedarfTabs.length; k++) {
                         const t = mehrbedarfTabs[k];
-                        const expectedNetted = Math.min(t.exc, Math.max(0, pool - cumExcess));
+                        const expectedNetted = Math.min(t.exc, Math.max(0, poolSaat - cumExcess));
                         const actualNetted = cos[t.i].nettedEinheit;
                         if (Math.abs(actualNetted - expectedNetted) > TOL) {
                             throw new Error(
                                 `I4 Saat-Fehler scenario[${s}] tab[${t.i}]: ` +
                                 `expected netted=${expectedNetted.toFixed(3)}, got ${actualNetted.toFixed(3)} ` +
                                 `(rank ${k + 1}/${mehrbedarfTabs.length}, exc=${t.exc.toFixed(2)}, ` +
-                                `time=${t.time}, cumExcessBefore=${cumExcess.toFixed(2)}, pool=${pool.toFixed(2)})\n` +
+                                `time=${t.time}, cumExcessBefore=${cumExcess.toFixed(2)}, pool=${poolSaat.toFixed(2)})\n` +
                                 dumpScenario(scenarios[s], s, `tab=${t.i}`)
                             );
                         }
@@ -349,7 +386,8 @@ describe('Carryover-Invarianten (5 User-Regeln 2026-06-28)', () => {
 
                 // ── DÜNGER ───────────────────────────────────────────────
                 const totDuenger = phase0Totals(scenarios[s], w, 'D');
-                if (totDuenger.totalSaved > 0 && totDuenger.totalExcess > 0 && totDuenger.totalSaved < totDuenger.totalExcess) {
+                const poolDuenger = phase05Pool(scenarios[s], w, 'D');
+                if (totDuenger.totalExcess > 0 && poolDuenger < totDuenger.totalExcess) {
                     scarcityCasesDuenger++;
                     const mehrbedarfTabs = [];
                     for (let i = 0; i < scenarios[s].reiter.length; i++) {
@@ -363,18 +401,17 @@ describe('Carryover-Invarianten (5 User-Regeln 2026-06-28)', () => {
                     }
                     if (mehrbedarfTabs.length === 0) continue;
                     mehrbedarfTabs.sort((a, b) => a.time - b.time || a.i - b.i);
-                    const pool = Math.min(totDuenger.totalSaved, totDuenger.totalExcess);
                     let cumExcess = 0;
                     for (let k = 0; k < mehrbedarfTabs.length; k++) {
                         const t = mehrbedarfTabs[k];
-                        const expectedNetted = Math.min(t.exc, Math.max(0, pool - cumExcess));
+                        const expectedNetted = Math.min(t.exc, Math.max(0, poolDuenger - cumExcess));
                         const actualNetted = cos[t.i].nettedDuenger;
                         if (Math.abs(actualNetted - expectedNetted) > TOL) {
                             throw new Error(
                                 `I4 Dünger-Fehler scenario[${s}] tab[${t.i}]: ` +
                                 `expected netted=${expectedNetted.toFixed(3)}, got ${actualNetted.toFixed(3)} ` +
                                 `(rank ${k + 1}/${mehrbedarfTabs.length}, exc=${t.exc.toFixed(2)}, ` +
-                                `time=${t.time}, cumExcessBefore=${cumExcess.toFixed(2)}, pool=${pool.toFixed(2)})\n` +
+                                `time=${t.time}, cumExcessBefore=${cumExcess.toFixed(2)}, pool=${poolDuenger.toFixed(2)})\n` +
                                 dumpScenario(scenarios[s], s, `tab=${t.i}`)
                             );
                         }
