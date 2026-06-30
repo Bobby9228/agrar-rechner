@@ -340,7 +340,16 @@ function computeAllCarryovers() {
   // Self-Mehrbedarf (used > basis) wird ignoriert — keine Verteilung.
   for (var mat2 = 0; mat2 < 2; mat2++) {
     var isSaatPass2 = (mat2 === 0);
-    var remExcess = isSaatPass2 ? netExcessE : netExcessD;
+    // Phase 0.5 hat bereits Σ nettedEinheit/nettedDuenger abgedeckt —
+    // Phase 2 darf nur den REST verteilen (sonst Doppelzählung der unfilled-Capacity).
+    var totalNettedE = 0, totalNettedD = 0;
+    for (var _i = 0; _i < result.length; _i++) {
+      totalNettedE += result[_i].nettedEinheit;
+      totalNettedD += result[_i].nettedDuenger;
+    }
+    var remExcess = isSaatPass2
+      ? Math.max(0, netExcessE - totalNettedE)
+      : Math.max(0, netExcessD - totalNettedD);
 
     // Tabs mit Capacity sammeln + sortieren.
     // Capacity = max(0, basis − used − saved_received), IST-basiert.
