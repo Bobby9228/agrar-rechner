@@ -62,6 +62,7 @@ export function generateScenarios(seed, count) {
                 hektar, istHektar, koerner, duenger,
                 entries,
                 fahrgassenEnabled: false, fahrgassenBreite: 0,
+                done: false  // Issue #378 — Generator muss done emittieren (Regel 7.1: done=Tabs sind raus aus dem Pool)
             });
         }
         scenarios.push({ reiter, koernerProEinheit: kpe });

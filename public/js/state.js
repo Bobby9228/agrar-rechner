@@ -211,6 +211,13 @@ function sanitizeTab(raw) {
     // fertiggefahren wurde und `used` damit nicht mehr im Tank liegt.
     done:      sanitizeBoolean(raw.done, false)
   };
+  // done-Flag (Issue #377/#378): manuell markierter Fertig-Status pro Tab.
+  // Migration _lv 4→5 belegt fehlendes done mit false (idempotent über sanitizeTab).
+  if (raw.done !== undefined) {
+    tab.done = sanitizeBoolean(raw.done, false);
+  } else {
+    tab.done = false;
+  }
   // Per-Tab-Overrides (optional, mit globalen Defaults)
   if (raw.fahrgassenEnabled !== undefined) {
     tab.fahrgassenEnabled = sanitizeBoolean(raw.fahrgassenEnabled, false);

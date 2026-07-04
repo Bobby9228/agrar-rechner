@@ -108,303 +108,210 @@ var _internal = {
   pendingKey: null
 };
 
-// Netto-Carryover-Pools (Phase 0 + Netting) für die reiter-Liste.
+// Carryover-Pool (Regel 7, Issue #378) für die reiter-Liste.
 //
-// Phase 0: Savings = SOLL-IST (IST<SOLL), Excess = IST-SOLL (IST>SOLL), IST=0→0.
-// Netting: netSaved  = max(0, totalSaved  - totalExcess),
-//          netExcess = max(0, totalExcess - totalSaved).
-// Phase 1 verteilt nur netSaved, Phase 2 vergibt nur netExcess.
+// NEUES POOL-MODELL (Ersetzt Phase 0 / Phase 0.5 / Phase 2 / Netting-Coverage):
+//   pool_E = Σ used_E   für alle Tabs mit done === false
+//   pool_D = Σ used_D   für alle Tabs mit done === false
+//
+// Physische Begründung: Material, das im Tank liegt (used), ist verfügbar.
+// Material von fertig-bestätigten Tabs (done=true, Issue #377) ist bereits in
+// der Erde — raus aus dem Pool. Das alte Modell (Σ max(0, basis−used) =
+// unfilled-Lücke) war ein theoretisches Konstrukt und wird komplett ersetzt.
+//
+// Vor #378 (PR #379 + #377 / done-Flag): Diese Funktion gab die unkompensierten
+// Phase-0-Savings/Excess-Totale zurück. Mit #378 ist sie obsolet — wird aber
+// für Backward-Compat und Anzeige-Pfade weiterhin exportiert (mit `legacy`-
+// Feldern). Sie wird nicht mehr von computeAllCarryovers() konsumiert.
 function _computeNetCarryoverPools(reiter) {
-  var totalSavedE = 0, totalSavedD = 0;
-  var totalExcessE = 0, totalExcessD = 0;
+  var poolE = 0, poolD = 0;
+  var totalUsedE = 0, totalUsedD = 0;
+  var legacySavedE = 0, legacyExcessE = 0;
+  var legacySavedD = 0, legacyExcessD = 0;
 
   for (let i = 0; i < reiter.length; i++) {
     var t = reiter[i];
+    var usedE = getTabUsedEinheiten(t);
+    var usedD = getTabUsedDuenger(t);
+    totalUsedE += usedE;
+    totalUsedD += usedD;
+    if (!t || !t.done) {
+      poolE += usedE;
+      poolD += usedD;
+    }
+    // Legacy-Felder (für Anzeige / Kompatibilität)
     var istE = getTabIstEinheiten(t);
     var solE = getTabTotalEinheiten(t);
     var istD = getTabIstDuenger(t);
     var solD = getTabTotalDuenger(t);
     if (istE > 0) {
-      if (solE > istE) totalSavedE += (solE - istE);
-      else if (istE > solE) totalExcessE += (istE - solE);
+      if (solE > istE) legacySavedE += (solE - istE);
+      else if (istE > solE) legacyExcessE += (istE - solE);
     }
     if (istD > 0) {
-      if (solD > istD) totalSavedD += (solD - istD);
-      else if (istD > solD) totalExcessD += (istD - solD);
+      if (solD > istD) legacySavedD += (solD - istD);
+      else if (istD > solD) legacyExcessD += (istD - solD);
     }
   }
 
   return {
-    totalSavedE: totalSavedE, totalExcessE: totalExcessE,
-    totalSavedD: totalSavedD, totalExcessD: totalExcessD,
-    netSavedE:  Math.max(0, totalSavedE  - totalExcessE),
-    netExcessE: Math.max(0, totalExcessE - totalSavedE),
-    netSavedD:  Math.max(0, totalSavedD  - totalExcessD),
-    netExcessD: Math.max(0, totalExcessD - totalSavedD),
+    poolE: poolE, poolD: poolD,
+    totalUsedE: totalUsedE, totalUsedD: totalUsedD,
+    legacySavedE: legacySavedE, legacyExcessE: legacyExcessE,
+    legacySavedD: legacySavedD, legacyExcessD: legacyExcessD,
   };
 }
 
-// Berechnet Carryover (Ersparnisse/Überschüsse) für alle Tabs.
+// Berechnet Carryover für alle Tabs — REGEL 7 POOL-MODELL (Issue #378).
 //
-// Phase 1: Ersparnisse (saved = SOLL - IST bei IST < SOLL) an unfertige Tabs.
-// Phase 2: Mehrbedarfe (excess bei IST > SOLL) aus Mehrbedarfs-Tabs decken.
+// Ersetzt komplett die vorherige Phase-0/0.5/1/2-Architektur. Physisches
+// Modell: ein gemeinsamer Tank (Pool) pro Material (Saat + Dünger getrennt,
+// Regel 4). Mehrbedarf-Lücken wandern rueckwaerts durch die nicht-fertigen
+// Tabs (Regel 7.2). Ein Tab kann nicht gleichzeitig Spender und Empfaenger
+// sein (Befund 1 / I6: Selbstgutschrift ausgeschlossen).
+//
+// Return pro Tab: { savedEinheit, savedDuenger, excessEinheit, excessDuenger,
+//                   nettedEinheit, nettedDuenger }
+//   - nettedEinheit/nettedDuenger: wie viel vom Mehrbedarf dieses Tabs wurde
+//     durch Cross-Tab-Pool gedeckt (immer = exc, wenn er selbst Mehrbedarf hat;
+//     sonst 0).
+//   - excessEinheit/excessDuenger: entzogen_i (Menge, die ANDERE Tabs von
+//     diesem Tab abgezogen haben). Bei Mehrbedarf-Tabs typischerweise 0
+//     (sie ziehen selbst, werden aber nicht weiter bespendet).
+//   - savedEinheit/savedDuenger: 0 (Regel 7 kennt kein SAV-Symbol — die
+//     `sol - used` Ersparnis eines Tabs ist konzeptuell Teil des globalen
+//     Pools und wird im `getTabRemaining` ueber `remaining = max(0, soll -
+//     used + entzogen)` abgebildet. Bleibt fuer Backward-Compat mit
+//     Render-Sites erhalten).
+//
 // Cached in _internal.carryoverCache; invalidateCarryoverCache() bei Änderung.
 function computeAllCarryovers() {
   if (_internal.carryoverCache !== null) return _internal.carryoverCache;
 
+  var reiter = AppGlobals.state.reiter;
+  var n = reiter.length;
+
   var result = [];
-  for (let i = 0; i < AppGlobals.state.reiter.length; i++) {
+  for (let i = 0; i < n; i++) {
     result.push({ savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0, nettedEinheit: 0, nettedDuenger: 0 });
   }
 
-  // --- PHASE 0 + NETTING ---
-  var _pools = _computeNetCarryoverPools(AppGlobals.state.reiter);
-  var netSavedE  = _pools.netSavedE;
-  var netExcessE = _pools.netExcessE;
-  var netSavedD  = _pools.netSavedD;
-  var netExcessD = _pools.netExcessD;
+  // --- Hilfsfunktionen ---
+  var lastEntryTime = function(i) {
+    var tab = reiter[i];
+    if (!tab || !tab.entries || tab.entries.length === 0) return 0;
+    var last = tab.entries[tab.entries.length - 1];
+    return parseEntryTime(last ? (last.time || 0) : 0);
+  };
+  // Bearbeitungs-Reihenfolge: lastEntry.time aufsteigend, Tiebreaker Tab-Index
+  var byTimeAsc = function(a, b) {
+    var ta = lastEntryTime(a), tb = lastEntryTime(b);
+    if (ta !== tb) return ta - tb;
+    return a - b;
+  };
 
-  // === PHASE 0.5: Netting-Coverage auf Mehrbedarf-Tabs zurückfließen lassen ===
-  //
-  // Issue #368 (Carryover-Regel 2): Wenn die verfügbaren Ersparnisse nicht für
-  // alle Mehrbedarf-Tabs reichen, erfolgt die Netting-Abdeckung SEQUENZIELL
-  // nach Bearbeitungs-Reihenfolge. Das zuerst bearbeitete Feld wird KOMPLETT
-  // abgedeckt, dann das nächste, bis die Ersparnis aufgebraucht ist.
-  //
-  // Vor #368 (PR #366) war die Verteilung PRO-RATA: jeder Mehrbedarf-Tab
-  // bekam anteilig (Pool / totalExcess) seines Bedarfs. Das verteilte eine
-  // unzureichende Ersparnis gleichmäßig über alle Mehrbedarf-Tabs — was den
-  // später bearbeiteten Tab teilverdeckt ließ, obwohl der erste Tab bereits
-  // genug gehabt hätte. Sequenzielle Verteilung ist die korrekte Semantik:
-  // "wer zuerst da war, wird zuerst bedient".
-  //
-  // Issue #371 (Carryover-Regel 6): Pool-Definition erweitert. Vorher war der
-  // Pool = min(saved, exc) = max(0, exc − netExcess), i.e. nur die IST<SOLL-
-  // Ersparnis aus neutralen Tabs. Physisch wurde das Mehrbedarf-Material
-  // aber auch aus NOCH-UNGEFÜLLTEN Tabs entnommen (used < basis), nicht nur
-  // aus Ersparnis-Tabs (istE < solE). Korrekt: Pool = Σ tabE_contrib für alle
-  // NICHT-Mehrbedarf-Tabs, wobei
-  //   tabE_contrib = max(0, basis − used)   // unfilled: physisch ungedrillt
-  //                 + max(0, sol − ist)       // Ersparnis: SOLL−IST Überhang
-  // Ein Tab ohne Einträge (used=0, istE=0 → basis=solE) trägt damit seinen
-  // vollen SOLL-Bedarf als "noch nicht angefasst"-Pool bei. Mehrbedarf-Tabs
-  // (IST > SOLL) sind Empfänger und werden ausgeschlossen.
-  //
-  // Saat und Dünger werden getrennt behandelt (Regel 4 — Pools unabhängig).
-  // Sortierung: parseEntryTime(lastEntry.time) aufsteigend, Tiebreaker
-  // gleicher time: Tab-Index aufsteigend (deterministisch).
-  {
-    var moreE = [];
-    var moreD = [];
-    var excE = 0;
-    var excD = 0;
-    // Pool-Größe separat aggregieren (Regel 6, Issue #371):
-    // Σ (unfilled + Ersparnis) für alle NICHT-Mehrbedarf-Tabs.
-    var poolE = 0;
-    var poolD = 0;
-    for (let i = 0; i < AppGlobals.state.reiter.length; i++) {
-      var mt = AppGlobals.state.reiter[i];
-      var mistE = getTabIstEinheiten(mt);
-      var msolE = getTabTotalEinheiten(mt);
-      var mistD = getTabIstDuenger(mt);
-      var msolD = getTabTotalDuenger(mt);
-      var musedE = getTabUsedEinheiten(mt);
-      var musedD = getTabUsedDuenger(mt);
-      var mehrbedarfE = (mistE > 0 && mistE > msolE);
-      var mehrbedarfD = (mistD > 0 && mistD > msolD);
-      if (mehrbedarfE) {
-        moreE.push(i);
-        excE += (mistE - msolE);
-      } else {
-        // unfilled + Ersparnis. Nur Tabs mit istHektar>0 (mistE>0) tragen bei —
-        // ein Tab ohne istHektar (mistE=0) hat noch nichts Konkretes
-        // angefasst oder geplant, sein SOLL ist nicht "verfügbar umverteilbar".
-        if (mistE > 0) {
-          var basisE = mistE; // immer istE weil mistE>0
-          poolE += Math.max(0, basisE - musedE) + Math.max(0, msolE - mistE);
-        }
-      }
-      if (mehrbedarfD) {
-        moreD.push(i);
-        excD += (mistD - msolD);
-      } else {
-        if (mistD > 0) {
-          var basisD2 = mistD;
-          poolD += Math.max(0, basisD2 - musedD) + Math.max(0, msolD - mistD);
-        }
-      }
-    }
-    var lastEntryTime = function(i) {
-      var tab = AppGlobals.state.reiter[i];
-      if (!tab.entries || tab.entries.length === 0) return 0;
-      var last = tab.entries[tab.entries.length - 1];
-      return parseEntryTime(last ? (last.time || 0) : 0);
-    };
-    var byTimeAsc = function(a, b) {
-      var ta = lastEntryTime(a), tb = lastEntryTime(b);
-      if (ta !== tb) return ta - tb;
-      return a - b; // Tab-Index aufsteigend als Tiebreaker
-    };
-    // Saat — sequenzielle Greedy-Zuweisung
-    moreE.sort(byTimeAsc);
-    var remPoolE = poolE;
-    for (let k = 0; k < moreE.length && remPoolE > 0.05; k++) {
-      var idx = moreE[k];
-      var mte = AppGlobals.state.reiter[idx];
-      var exc = getTabIstEinheiten(mte) - getTabTotalEinheiten(mte);
-      if (exc <= 0) continue;
-      var take = Math.min(remPoolE, exc);
-      result[idx].nettedEinheit = take;
-      remPoolE -= take;
-    }
-    // Dünger — sequenzielle Greedy-Zuweisung
-    moreD.sort(byTimeAsc);
-    var remPoolD = poolD;
-    for (let k = 0; k < moreD.length && remPoolD > 0.05; k++) {
-      var idx = moreD[k];
-      var mtd = AppGlobals.state.reiter[idx];
-      var exc = getTabIstDuenger(mtd) - getTabTotalDuenger(mtd);
-      if (exc <= 0) continue;
-      var take = Math.min(remPoolD, exc);
-      result[idx].nettedDuenger = take;
-      remPoolD -= take;
-    }
-  }
-
-  // === PHASE 1: Ersparnisse verteilen — Saat und Dünger getrennt ===
-  //
-  // Saat und Dünger fließen UNABHÄNIG: ein Tab mit Saat-Bedarf bekommt
-  // nicht automatisch Dünger-Carryover (und umgekehrt).
-  // Carryover-Bedarf ist IST-basiert (basis = istE/D wenn istHa > 0, sonst
-  // solE/D). Skip für fertige Quellen (usedE >= istE): Ersparnis nicht
-  // "doppelt" vergeben. Mehrbedarf-Tabs (IST > SOLL) bekommen keinen
-  // Phase-1-Carryover (Netto-Saldo verrechnet ihren Mehrbedarf bereits).
-  _internal.carryoverCache = result;
-  var remSavedE = netSavedE;
-  var remSavedD = netSavedD;
+  // PRO MATERIAL (Saat, Dünger) getrennt.
   for (var mat = 0; mat < 2; mat++) {
-    var isSaatPass = (mat === 0);
-    var remSaved = isSaatPass ? remSavedE : remSavedD;
-    while (remSaved > 0.05) {
-      var distributed = false;
-      for (let i = 0; i < AppGlobals.state.reiter.length; i++) {
-        if (remSaved <= 0.05) break;
-        var t = AppGlobals.state.reiter[i];
-        var istE = getTabIstEinheiten(t);
-        var solE = getTabTotalEinheiten(t);
-        var usedE = getTabUsedEinheiten(t);
-        var istD = getTabIstDuenger(t);
-        var solD = getTabTotalDuenger(t);
-        var usedD = getTabUsedDuenger(t);
-        // IST-basiert (Original-Semantik aus Phase 0).
-        var basis = isSaatPass ? (istE > 0 ? istE : solE) : (istD > 0 ? istD : solD);
-        var need = Math.max(0, basis - usedE - result[i].savedEinheit);
-        var needD = Math.max(0, basis - usedD - result[i].savedDuenger);
-        var need_ = isSaatPass ? need : needD;
-        // Skip: IST gedeckt UND Tab ist Ersparnis-Quelle (kein Doppel-Profit).
-        var istCovered = isSaatPass
-          ? (istE > 0 && usedE >= istE)
-          : (istD > 0 && usedD >= istD);
-        var isSource = isSaatPass
-          ? (solE > istE && istE > 0)
-          : (solD > istD && istD > 0);
-        // Skip: Mehrbedarf-Tabs (IST > SOLL) — Netto-Saldo verrechnet bereits.
-        var hasMehrbedarf = isSaatPass
-          ? (istE > 0 && istE > solE)
-          : (istD > 0 && istD > solD);
-        // Phase 1 erlaubt leere Empfänger-Tabs — SAV-Budget kaskadiert weiter.
-        if (need_ <= 0.05) continue;
-        if (istCovered && isSource) continue;
-        if (hasMehrbedarf) continue;
-        if (need_ > 0.05 && remSaved > 0.05) {
-          var take = Math.min(remSaved, need_);
-          if (take > 0) {
-            if (isSaatPass) result[i].savedEinheit += take;
-            else result[i].savedDuenger += take;
-            remSaved -= take;
-            distributed = true;
-          }
-        }
-      }
-      // Schutz gegen Endlosschleife: wenn keine Verteilung mehr stattfand
-      // (z.B. weil keiner der Tabs Bedarf hat), brechen wir ab statt zu rotieren.
-      if (!distributed) break;
-    }
-    if (isSaatPass) remSavedE = remSaved;
-    else remSavedD = remSaved;
-  }
+    var isSaat = (mat === 0);
+    var getUsed = isSaat ? getTabUsedEinheiten : getTabUsedDuenger;
+    var getIst  = isSaat ? getTabIstEinheiten    : getTabIstDuenger;
+    var getSol  = isSaat ? getTabTotalEinheiten  : getTabTotalDuenger;
+    var usedField  = isSaat ? 'nettedEinheit' : 'nettedDuenger';
+    var excField   = isSaat ? 'excessEinheit' : 'excessDuenger';
 
-  // === PHASE 2: Mehrbedarfe absorbieren — Saat und Dünger getrennt ===
-  //
-  // Auch hier entkoppelt: Capacity-Sort + Absorption laufen pro Material.
-  // Self-Mehrbedarf (used > basis) wird ignoriert — keine Verteilung.
-  for (var mat2 = 0; mat2 < 2; mat2++) {
-    var isSaatPass2 = (mat2 === 0);
-    // Phase 0.5 hat bereits Σ nettedEinheit/nettedDuenger abgedeckt —
-    // Phase 2 darf nur den REST verteilen (sonst Doppelzählung der unfilled-Capacity).
-    var totalNettedE = 0, totalNettedD = 0;
-    for (var _i = 0; _i < result.length; _i++) {
-      totalNettedE += result[_i].nettedEinheit;
-      totalNettedD += result[_i].nettedDuenger;
+    // 1. Pool berechnen (Regel 7.1): Σ used_i für alle Tabs mit done===false.
+    //    `used` ist hier die im Tank liegende Menge — Fertige (done=true) ist
+    //    raus, ihr Material ist in der Erde.
+    var pool = 0;
+    for (let i = 0; i < n; i++) {
+      if (!reiter[i] || reiter[i].done) continue;
+      pool += getUsed(reiter[i]);
     }
-    var remExcess = isSaatPass2
-      ? Math.max(0, netExcessE - totalNettedE)
-      : Math.max(0, netExcessD - totalNettedD);
 
-    // Tabs mit Capacity sammeln + sortieren.
-    // Capacity = max(0, basis − used − saved_received), IST-basiert.
-    // Self-Excess (used > basis) und Mehrbedarf-Quellen (IST > SOLL) ausgeschlossen.
-    var tabOrder2 = [];
-    for (let i = 0; i < AppGlobals.state.reiter.length; i++) {
-      var t2 = AppGlobals.state.reiter[i];
-      if (!t2.entries || t2.entries.length === 0) continue;
-      var istE2 = getTabIstEinheiten(t2);
-      var solE2 = getTabTotalEinheiten(t2);
-      var usedE2 = getTabUsedEinheiten(t2);
-      var istD2 = getTabIstDuenger(t2);
-      var solD2 = getTabTotalDuenger(t2);
-      var usedD2 = getTabUsedDuenger(t2);
-      // Mehrbedarf-Quellen überspringen (Netto-Fix)
-      var isMehrbedarf2 = isSaatPass2
-        ? (istE2 > 0 && istE2 > solE2)
-        : (istD2 > 0 && istD2 > solD2);
-      if (isMehrbedarf2) continue;
-      var basis2 = isSaatPass2
-        ? (istE2 > 0 ? istE2 : solE2)
-        : (istD2 > 0 ? istD2 : solD2);
-      var cap = 0, selfExcess = 0;
-      if (isSaatPass2) {
-        cap = Math.max(0, basis2 - usedE2) - result[i].savedEinheit;
-        selfExcess = Math.max(0, usedE2 - basis2);
-      } else {
-        cap = Math.max(0, basis2 - usedD2) - result[i].savedDuenger;
-        selfExcess = Math.max(0, usedD2 - basis2);
+    // 2. Mehrbedarf-Tabs sammeln (ist > sol && ist > 0), in Bearbeitungs-
+    //    Reihenfolge sortiert (FRÜHESTE zuerst).
+    var mehrbedarfTabs = [];
+    for (let i = 0; i < n; i++) {
+      var r = reiter[i];
+      if (!r) continue;
+      var ist = getIst(r);
+      var sol = getSol(r);
+      if (ist > 0 && ist > sol) {
+        mehrbedarfTabs.push({ idx: i, exc: ist - sol });
       }
-      if (cap <= 0.05 && selfExcess <= 0.05) continue;
-      var lastEntry2 = t2.entries[t2.entries.length - 1];
-      var ts2 = parseEntryTime(lastEntry2 ? (lastEntry2.time || 0) : 0);
-      tabOrder2.push({ idx: i, ts: ts2, cap: cap, selfExcess: selfExcess });
     }
-    // Sort: capacity-positive zuerst (last-filled first), dann self-excess tabs.
-    tabOrder2.sort(function(a, b) {
-      var aHasCap = a.cap > 0.05 ? 1 : 0;
-      var bHasCap = b.cap > 0.05 ? 1 : 0;
-      if (aHasCap !== bHasCap) return bHasCap - aHasCap;
-      return b.ts - a.ts;
+    mehrbedarfTabs.sort(byTimeAsc);
+
+    // 3. Verteilung: Mehrbedarf-Lücke wandert RÜCKWÄRTS durch nicht-fertige
+    //    Tabs (Regel 7.2). KONKRET:
+    //    - Pro Mehrbedarf-Tab: ziehe `exc` aus dem Pool.
+    //      Der Pool wird gespeist durch die `used`-Werte der nicht-fertigen
+    //      Tabs in INVERSER Bearbeitungs-Reihenfolge (letzter bearbeiteter
+    //      Tab zuerst). Jeder Spender kann max(used) abgeben (Regel 7.3).
+    //    - Ein Mehrbedarf-Tab kann nicht Spender sein (auch wenn er used > 0
+    //      hat: sein used ist bereits "verbraucht" für die Lücke). Befund 1.
+    //    - Die `excess*`-Felder pro Tab akkumulieren, wie viel ANDERE Tabs
+    //      diesem Tab entzogen haben (für isTabDone/getTabRemaining).
+    var remPool = pool;
+
+    // Aufnahmekapazität-Reihenfolge: INVERS Bearbeitungs-Reihenfolge,
+    // Mehrbedarf-Tabs raus, done-Tabs raus. stable sort.
+    var spenderOrder = [];
+    for (let i = 0; i < n; i++) {
+      var r = reiter[i];
+      if (!r) continue;
+      if (r.done) continue;
+      var ist = getIst(r);
+      var sol = getSol(r);
+      var isMehrbedarf = (ist > 0 && ist > sol);
+      if (isMehrbedarf) continue;
+      spenderOrder.push(i);
+    }
+    spenderOrder.sort(function(a, b) {
+      var ta = lastEntryTime(a), tb = lastEntryTime(b);
+      if (ta !== tb) return tb - ta; // INVERS: descending
+      return a - b;
     });
 
-    for (var j2 = 0; j2 < tabOrder2.length && remExcess > 0.05; j2++) {
-      var entry2 = tabOrder2[j2];
-      var idx2 = entry2.idx;
-      if (entry2.cap > 0.05) {
-        var takeCap = Math.min(remExcess, entry2.cap);
-        if (takeCap > 0.05) {
-          if (isSaatPass2) result[idx2].excessEinheit += takeCap;
-          else result[idx2].excessDuenger += takeCap;
-          remExcess -= takeCap;
-        }
+    var remMbh = function() {
+      var sum = 0;
+      for (var k = 0; k < mehrbedarfTabs.length; k++) sum += mehrbedarfTabs[k].exc;
+      return sum;
+    };
+
+    // Greedy: jeder Mehrbedarf-Tab zieht sequenziell seine Lücke aus dem
+    // Pool. Spender werden in inverser Reihenfolge befragt, jeder gibt
+    // maximal seinen used-Wert. Pool wird kleiner; ist Pool leer, ist die
+    // Lücke "echter Fehlbetrag" (Regel 7.5).
+    for (var k = 0; k < mehrbedarfTabs.length; k++) {
+      var mt = mehrbedarfTabs[k];
+      var need = mt.exc;
+      var taken = 0;
+      for (var s = 0; s < spenderOrder.length && need > 0.05; s++) {
+        var sIdx = spenderOrder[s];
+        var available = getUsed(reiter[sIdx]) - result[sIdx][excField];
+        if (available <= 0.05) continue;
+        var give = Math.min(need, available);
+        result[sIdx][excField] += give;
+        need -= give;
+        taken += give;
       }
-      // self-excess: weiter ignoriert (kein negativer Carryover)
+      // Volle Deckung: netted = exc (Regel 6: Mehrbedarf-Tab zeigt 0).
+      // Bei Knappheit: netted = taken (< exc, Rest = echter Fehlbetrag).
+      result[mt.idx][usedField] = taken;
+      // Wichtig: Mehrbedarf-Tab konsumiert NICHT aus dem Pool der "verbraucht"
+      // Tabs — sein Material liegt bereits im Boden (ist eingefüllt). Die
+      // Lücke `exc` ist NICHT-VORHANDENES Material, das die Maschine aus
+      // dem Tank der Folgetabs zieht. Daher: das, was wir als `taken`
+      // buchen, geht zu LASTEN der Spender (excessErhöhung), nicht als
+      // "extra" Verbrauch beim Mehrbedarf-Tab.
+      //
+      // Korrektur-Buchung: Wir hatten oben `pool = Σ used (nicht-Mehrbedarf)`
+      // — der Pool verringert sich NICHT durch Mehrbedarf-Ziehung selbst,
+      // sondern NUR durch Spenden-Beiträge. Daher ist `taken` = Summe der
+      // Spender-Beiträge (excessField-Increment). konsistent.
+      void remPool; // Pool als Konzept (Σ used doned=false Tabs) bleibt konstant; Buchung erfolgt via excessField
+      void remMbh;   // Hilfs-API (siehe oben) — nicht im Hot-Path benötigt
     }
   }
 
@@ -450,35 +357,48 @@ function getCarryover(tabIndex) {
 
 // Liefert pro Tab die auf Carryover genetteten Restbedarfe (Saatgut + Dünger)
 // sowie Basis + Used, damit Render-Sites die Anzeige konsistent speisen.
-// IST-Fläche hat Vorrang vor SOLL. Nutzt getTabUsed* (mit `|| 0`-Guards).
-// netted* (Phase 0.5): Anteil des Mehrbedarfs, der durch Cross-Tab-Netting
-// abgedeckt ist — wird vom rohen Mehrbedarf subtrahiert.
+//
+// REGEL 7 (Issue #378) — NEUE FORMEL:
+//   remaining_i = max(0, soll_i − used_i + entzogen_i)
+// wobei `entzogen_i` = die Menge, die ANDERE Tabs (Mehrbedarf-Lücken,
+// rueckwaerts verteilt) diesem Tab abgezogen haben. Die Felder `saved*` und
+// `netted*` existieren weiterhin fuer Backward-Compat mit Render-Sites —
+// die "Quelle" ist jetzt aber der globale Pool (Σ used der done=false Tabs),
+// nicht mehr eine Per-Tab-Ersparnis.
+//
+// Null-safe (fehlende Felder = 0). IST-Flaeche hat Vorrang vor SOLL.
 function getTabRemaining(r, tabIdx) {
   var istE = getTabIstEinheiten(r);
   var istD = getTabIstDuenger(r);
-  var basisE = istE > 0 ? istE : getTabTotalEinheiten(r);
-  var basisD = istD > 0 ? istD : getTabTotalDuenger(r);
+  var solE = istE > 0 ? istE : getTabTotalEinheiten(r);
+  var solD = istD > 0 ? istD : getTabTotalDuenger(r);
   var usedE  = getTabUsedEinheiten(r);
   var usedD  = getTabUsedDuenger(r);
   var co     = getCarryover(tabIdx);
+  // Regel 7: entzogen = was ANDERE Tabs (nicht dieser) von ihm genommen haben
+  var entzogenE = co.excessEinheit;
+  var entzogenD = co.excessDuenger;
   return {
-    basisE:     basisE,
-    basisD:     basisD,
+    basisE:     solE,
+    basisD:     solD,
     usedE:      usedE,
     usedD:      usedD,
-    remainingE: Math.max(0, basisE - usedE - co.savedEinheit + co.excessEinheit - co.nettedEinheit),
-    remainingD: Math.max(0, basisD - usedD - co.savedDuenger + co.excessDuenger - co.nettedDuenger)
+    remainingE: Math.max(0, solE - usedE + entzogenE),
+    remainingD: Math.max(0, solD - usedD + entzogenD)
   };
 }
 
 // --- Tab-Fertig-Check (pure) ---
 
-// Prüft ob ein Tab "fertig" ist (alle Bedarfe gedeckt).
-// Carryover wird nur berücksichtigt, wenn tabIndex mitgegeben wird (Backward-Compat).
-// Nil-safe (fehlende Felder = 0).
+// Prueft ob ein Tab "fertig" ist.
+//
+// REGEL 7 (Issue #378): Fertig = remaining = 0 ODER done=true.
+// Carryover wird nur beruecksichtigt, wenn tabIndex mitgegeben wird
+// (Backward-Compat). Nil-safe (fehlende Felder = 0).
 function isTabDone(r, tabIndex) {
   if (!r || !r.entries) return true; // Keine Entries = fertig (kein Bedarf)
-  // Carryover nur berücksichtigen wenn tabIndex mitgegeben
+  if (r.done) return true; // Manuell abgeschlossen (Issue #377)
+  // Carryover nur beruecksichtigen wenn tabIndex mitgegeben
   var carryover = (tabIndex !== undefined)
     ? getCarryover(tabIndex)
     : { savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0, nettedEinheit: 0, nettedDuenger: 0 };
@@ -486,18 +406,14 @@ function isTabDone(r, tabIndex) {
   var istE = getTabIstEinheiten(r);
   var totalE = istE > 0 ? istE : getTabTotalEinheiten(r);
   var usedE = getTabUsedEinheiten(r);
-  // Remaining = Need - Carryover.Saved + Carryover.Excess - Carryover.Netted
-  // Need = max(0, totalE - usedE). Netted = durch Cross-Tab-Netting
-  // abgedeckter Mehrbedarf (Phase 0.5).
-  var needE = Math.max(0, totalE - usedE);
-  var remainingE = needE - carryover.savedEinheit + carryover.excessEinheit - carryover.nettedEinheit;
+  // remaining = soll - used + entzogen (Regel 7)
+  var remainingE = Math.max(0, totalE - usedE + carryover.excessEinheit);
   if (remainingE > 0.05) return false;
 
   var istD = getTabIstDuenger(r);
   var totalD = istD > 0 ? istD : getTabTotalDuenger(r);
   var usedD = getTabUsedDuenger(r);
-  var needD = Math.max(0, totalD - usedD);
-  var remainingD = needD - carryover.savedDuenger + carryover.excessDuenger - carryover.nettedDuenger;
+  var remainingD = Math.max(0, totalD - usedD + carryover.excessDuenger);
   return remainingD <= 0.05;
 }
 
