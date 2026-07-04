@@ -91,15 +91,16 @@ describe('Issue #186: Ist-Fläche-Änderung synchronisiert Dashboard und Tab-Erg
       w.onInputIstHektar(el);
       // Re-open dashboard to simulate the user reopening it after the change
       w.openDashboard();
-      // Per-tab card: "Einheiten verbl." reflects IST-based calc with carryover (Issue #305).
+      // Per-tab card: "Einheiten verbl." reflects IST-based calc (Issue #186).
       // IST=8 ha, 50000 Körner/ha, 50000 Körner/Einheit → 8 Einheiten basis
-      // Used = 4 → carryover savings = SOLL(10) - IST(8) = 2 Einheiten (own-tab savings).
-      // remaining = max(0, 8 - 4 - 2) = 2.
+      // Used = 4 → under Regel-7 Pool-Modell (Issue #378) gibt es keine
+      // per-Tab-Savings-Subtraktion mehr: `savedEinheit` ist immer 0.
+      // remaining = max(0, basis - used + entzogen) = 8 - 4 + 0 = 4.
       var cards = doc.querySelectorAll('.dashboard-reiter-card');
       expect(cards.length).toBe(1);
       var values = cards[0].querySelectorAll('.dashboard-stat-value');
       // 0: Hektar, 1: Körner/ha, 2: Einheiten verbl., 3: Dünger verbl.
-      expect(values[2].textContent.trim()).toBe('2');
+      expect(values[2].textContent.trim()).toBe('4');
     });
   });
 
@@ -124,26 +125,26 @@ describe('Issue #186: Ist-Fläche-Änderung synchronisiert Dashboard und Tab-Erg
 
     it('Per-Tab-Karte zeigt IST-basierte Einheiten-verbleibend', () => {
       // SOLL=10 ha → 10 Einheiten; IST=8 ha → 8 Einheiten IST-Basis
-      // Used=4, carryover savings = SOLL(10) - IST(8) = 2 (Issue #305).
-      // IST-remaining = max(0, 8 - 4 - 2) = 2
+      // Used=4. Unter Regel-7 (Issue #378): `savedEinheit` ist immer 0,
+      // keine eigene-Ersparnis-Subtraktion. remaining = 8 - 4 + 0 = 4.
       setupTabWithData();
       w.state.reiter[0].istHektar = 8;
       w.openDashboard();
       var cards = doc.querySelectorAll('.dashboard-reiter-card');
       var values = cards[0].querySelectorAll('.dashboard-stat-value');
-      expect(values[2].textContent.trim()).toBe('2');
+      expect(values[2].textContent.trim()).toBe('4');
     });
 
     it('Per-Tab-Karte zeigt IST-basierten Dünger-verbleibend', () => {
       // SOLL=10 ha, 150 kg/ha → 1500 kg. IST=8 ha → 1200 kg
-      // Used=600, carryover savings = SOLL(1500) - IST(1200) = 300 kg (Issue #305).
-      // IST-remaining = max(0, 1200 - 600 - 300) = 300
+      // Used=600. Unter Regel-7 (Issue #378): keine Ersparnis-Subtraktion.
+      // remaining = 1200 - 600 + 0 = 600.
       setupTabWithData();
       w.state.reiter[0].istHektar = 8;
       w.openDashboard();
       var cards = doc.querySelectorAll('.dashboard-reiter-card');
       var values = cards[0].querySelectorAll('.dashboard-stat-value');
-      expect(values[3].textContent).toContain('300');
+      expect(values[3].textContent).toContain('600');
     });
 
     it('SOLL und IST Summary bleibt über Tabs aggregiert korrekt', () => {
