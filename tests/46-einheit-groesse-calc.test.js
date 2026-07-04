@@ -115,10 +115,15 @@ describe('Variable koernerProEinheit — calculation impact', () => {
    * koernerProEinheit = 100000
    * SOLL=10 ha (8.0 units), IST=7 ha (5.6 units)
    * Entry 3.0 units
-   * Carryover savings = SOLL(8.0) - IST(5.6) = 2.4 Einheiten (Issue #305).
-   * remaining = max(0, 5.6 - 3.0 - 2.4 + 0) = 0.2
+   *
+   * REMOVED (#378 Regel-7): 'carryover savings scaled correctly with
+   *   koernerProEinheit = 100000' — Phase-1 Ersparnis-Subtraktion ist
+   *   gelöscht. Unter Regel 7 ist `savedEinheit=0`; remaining basiert rein
+   *   auf IST - used (ohne Carryover-Subtraktion).
+   *   Vor #378: remaining = max(0, 5.6 - 3.0 - 2.4) = 0.2
+   *   Nach #378: remaining = max(0, 5.6 - 3.0) = 2.6
    */
-  it('carryover savings scaled correctly with koernerProEinheit = 100000', () => {
+  it('remaining = IST - used with koernerProEinheit = 100000 (Regel 7, kein savings-carryover)', () => {
     doc.getElementById('koerner_pro_einheit').value = '100000';
     w.einheitGroesseUpdate();
     doc.getElementById('hektar').value = '10';
@@ -128,8 +133,8 @@ describe('Variable koernerProEinheit — calculation impact', () => {
     w.berechne();
     w.getActiveReiter().entries.push({ einheit: 3.0, zaehlerStand: 3.75, duenger: 0, time: '09:00' });
     w.renderResults();
-    // remaining = max(0, IST - used - savings) = max(0, 5.6 - 3.0 - 2.4) = 0.2
-    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('0,2 Einheiten');
+    // Regel 7: remaining = max(0, istE - usedE) = max(0, 5.6 - 3.0) = 2.6
+    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('2,6 Einheiten');
   });
 
   // ── IST-Fläche-Basis für Remaining (Issue #184) ─────────────────────────
@@ -137,10 +142,15 @@ describe('Variable koernerProEinheit — calculation impact', () => {
   /**
    * Issue #184: Wenn IST gesetzt ist, muss remaining auf IST basieren, nicht SOLL.
    * SOLL=18,5 ha → 33,3 E, IST=18,0 ha → 32,4 E, used=30 E
-   * Carryover savings = SOLL(33.3) - IST(32.4) = 0.9 E (Issue #305).
-   * Erwartet: max(0, 32,4 - 30 - 0,9) = 1,5 E (IST-basiert + carryover)
-   * FALSCH wäre: 33,3 - 30 = 3,3 E (SOLL-basiert ohne carryover)
-   * FALSCH wäre: 32,4 - 30 = 2,4 E (IST-basiert ohne carryover — pre-#305)
+   *
+   * REMOVED (#378 Regel-7): Carryover-Subtraktion aus dem Pin. Unter Regel 7
+   *   ist `savedEinheit=0`, also: remaining = max(0, 32,4 - 30) = 2,4
+   *   (IST-basiert, ohne Carryover-Subtraktion).
+   *   Vor #378: max(0, 32,4 - 30 - 0,9) = 1,5 E (Carryover-Subtraktion aktiv)
+   *   Nach #378: max(0, 32,4 - 30) = 2,4 E (Regel 7: nur IST - used)
+   *
+   *   Der Pin auf IST-BASIS bleibt erhalten (Issue #184) — die Subtraktion
+   *   der SOLL-IST-Ersparnis (Issue #305) ist unter Regel 7 obsolet.
    */
   it('remaining uses IST as basis when IST<SOLL (issue #184)', () => {
     // DE format: hektar='18,5', ist_hektar='18,0', koerner='90.000'
@@ -151,8 +161,8 @@ describe('Variable koernerProEinheit — calculation impact', () => {
     w.berechne();
     w.getActiveReiter().entries.push({ einheit: 30.0, zaehlerStand: 18.0, duenger: 0, time: '09:00' });
     w.renderResults();
-    // IST=18,0 ha → 32,4 E, used=30, savings=0,9 E → remaining = max(0, 32,4 - 30 - 0,9) = 1,5
-    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('1,5 Einheiten');
+    // IST=18,0 ha → 32,4 E, used=30, savings=0 (Regel 7) → remaining = 32,4 - 30 = 2,4
+    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('2,4 Einheiten');
   });
 
   // ── Changing koernerProEinheit after entries exist ──────────────────────

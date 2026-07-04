@@ -66,48 +66,15 @@ describe('IST/SOLL Savings & Carryover', () => {
     expect(savingsDiv.textContent).toContain('Ersparnis');
   });
 
-  it('carryover goes to first not-done tab, not distributed', () => {
-    const { w } = setup();
-    w.addReiter();
-    // Tab 0: SOLL=8, IST=7.9 → fertig (7.9 Einheiten cover IST-bedarf of 7.9)
-    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 7.9, koerner: 50000, duenger: 100 };
-    // Tab 1: SOLL=10, no IST, no entries → not done → gets carryover
-    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 10, koerner: 50000, duenger: 120 };
-
-    // Fill tab 0 completely (fertig)
-    w.state.activeReiter = 0;
-    w.document.getElementById('drill_einheit').value = '7,9';
-    w.document.getElementById('drill_hektar').value = '7,9';
-    w.drillAdd();
-
-    const container = w.document.getElementById('drill_entries');
-    const carryDivs = container.querySelectorAll('.drill-carryover');
-    // Tab 1 should show carryover (it's the first not-done tab)
-    expect(carryDivs.length).toBeGreaterThanOrEqual(1);
-    expect(carryDivs[0].textContent).toContain('Übertrag aus ersparten Flächen');
-    expect(carryDivs[0].textContent).toContain('+');
-  });
-
-  it('no carryover when first tab is not done (it gets the savings)', () => {
-    const { w } = setup();
-    w.addReiter();
-    // Tab 0: SOLL=8, IST=7.9, only 5 Einheiten filled → NOT done
-    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 7.9, koerner: 50000, duenger: 100 };
-    // Tab 1: SOLL=10, no IST → not done either
-    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 10, koerner: 50000, duenger: 120 };
-
-    // Fill tab 0 partially (NOT fertig — only 5 of 7.9 needed)
-    w.state.activeReiter = 0;
-    w.document.getElementById('drill_einheit').value = '5';
-    w.document.getElementById('drill_hektar').value = '7,9';
-    w.drillAdd();
-
-    // Tab 0 is first not-done tab → it gets the carryover, not tab 1
-    var co0 = w.getCarryover(0);
-    expect(co0.savedEinheit).toBeCloseTo(0.1, 1);
-    var co1 = w.getCarryover(1);
-    expect(co1.savedEinheit).toBe(0);
-  });
+  // REMOVED (#378 Regel-7): 'carryover goes to first not-done tab, not distributed'
+  //   — Phase-1 Ersparnis-Kaskade existiert unter Regel 7 nicht mehr. Der
+  //   Carryover-Pool reagiert nur noch auf Mehrbedarf-Lücken. Ein Tab mit
+  //   IST < SOLL und vollem Bedarf hat schlicht keinen Carryover-Spender.
+  //
+  // REMOVED (#378 Regel-7): 'no carryover when first tab is not done (it gets the savings)'
+  //   — siehe oben. 'it gets the savings' ist die alte Phase-1-Semantik, in
+  //   der der erste nicht-done Tab die Ersparnis als Gutschrift bekam. Unter
+  //   Regel 7 ist `savedEinheit` immer 0 — das Verhalten ist gelöscht.
 
   it('no carryover shown for first tab when it is done', () => {
     const { w } = setup();
@@ -148,25 +115,10 @@ describe('IST/SOLL Savings & Carryover', () => {
     expect(savingsEl.textContent).toContain('0,5 Einheiten Saatgut');
   });
 
-  it('getCarryover: all savings go to first not-done tab', () => {
-    const { w } = setup();
-    w.addReiter();
-
-    // Tab 0: SOLL=8, IST=7.9, with entries covering full IST → fertig
-    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 7.9, koerner: 50000, duenger: 100 };
-    w.state.reiter[0].entries.push({ einheit: 7.9, zaehlerStand: 7.9, duenger: 790, time: '10:00' });
-    // Tab 1: SOLL=6, no IST, no entries → not done
-    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 6, koerner: 50000, duenger: 80 };
-
-    // Carryover for tab 1: it's the first not-done tab → gets ALL savings from tab 0
-    var co1 = w.getCarryover(1);
-    expect(co1.savedEinheit).toBeCloseTo(0.1, 1);
-    expect(co1.savedDuenger).toBeCloseTo(10, 0);
-
-    // Carryover for tab 0: it's done → 0
-    var co0 = w.getCarryover(0);
-    expect(co0.savedEinheit).toBe(0);
-  });
+  // REMOVED (#378 Regel-7): 'getCarryover: all savings go to first not-done tab'
+  //   — Phase-1 Ersparnis-Kaskade gestrichen. `savedEinheit` ist unter Regel 7
+  //   IMMER 0. Coverage für die neue Pool-Semantik liegt in tests/55
+  //   (Carryover-Invarianten) und tests/56 (Pool-Definition).
 
   it('no savings shown when no istHektar set', () => {
     const { w } = setup();
@@ -233,30 +185,10 @@ describe('IST/SOLL Savings & Carryover', () => {
     expect(co0.excessDuenger).toBe(0);
   });
 
-  it('savings cascade across multiple not-done tabs', () => {
-    const { w } = setup();
-    w.addReiter();
-    w.addReiter();
-    // Tab 0: SOLL=8, IST=6 → savings = 2 Einheiten
-    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 6, koerner: 50000, duenger: 100 };
-    w.state.reiter[0].entries.push({ einheit: 6, zaehlerStand: 6, duenger: 600, time: '09:00' });
-    // Tab 1: SOLL=4, needs 4 Einheiten, only 1 remaining → gets min(4, totalSavings=2) carryover
-    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 4, koerner: 50000, duenger: 100 };
-    w.state.reiter[1].entries.push({ einheit: 3, zaehlerStand: 3, duenger: 300, time: '09:30' });
-    // Tab 2: SOLL=10, needs 10 Einheiten → gets rest of savings
-    w.state.reiter[2] = { ...w.state.reiter[2], hektar: 10, koerner: 50000, duenger: 100 };
-
-    // Savings: SOLL 8 - IST 6 = 2 Einheiten, SOLL 800 - IST 600 = 200 kg Dünger
-    // Tab 1 remaining: 4-3=1 Einheiten, gets min(2, 1)=1 Einheit carryover
-    // Tab 2 remaining: 10 Einheiten, gets min(1, 10)=1 Einheit carryover (rest)
-    var co1 = w.getCarryover(1);
-    expect(co1.savedEinheit).toBeCloseTo(1, 1);
-    expect(co1.savedDuenger).toBeCloseTo(100, 0);
-
-    var co2 = w.getCarryover(2);
-    expect(co2.savedEinheit).toBeCloseTo(1, 1);
-    expect(co2.savedDuenger).toBeCloseTo(100, 0);
-  });
+  // REMOVED (#378 Regel-7): 'savings cascade across multiple not-done tabs'
+  //   — Phase-1 Ersparnis-Kaskade über mehrere Tabs ist semantisch gelöscht.
+  //   Unter Regel 7 wird der Pool (Σ used done=false) nur durch Mehrbedarf-
+  //   Lücken angezapft; eine "Ersparnis" an einen Tab ist kein Pfad mehr.
 
   it('excess cascades to neutral absorbers only (Issue #347 Netto-Fix)', () => {
     // Issue #347 (Netto-Saldo-Fix): Eine Mehrbedarf-Quelle (IST > SOLL) wird
@@ -321,9 +253,15 @@ describe('IST/SOLL Savings & Carryover', () => {
     expect(savingsDivs[0].textContent).toContain('1,9');
     expect(savingsDivs[0].textContent).not.toContain('2,0 Einheiten');
 
-    // Carryover for the receiving tab equals the source savings within tolerance
+    // REMOVED (#378 Regel-7): Carryover-pinning auf `co1.savedEinheit ===
+    // 1.9167`. Unter Regel 7 ist `savedEinheit` immer 0 — Ersparnis ist
+    // konzeptuell Teil des globalen Pools, nicht einer Per-Tab-Gutschrift.
+    // Tab 1 hat keinen Mehrbedarf (kein IST>SOLL), also auch kein
+    // `nettedEinheit` — Carryover ist 0.
     var co1 = w.getCarryover(1);
-    expect(co1.savedEinheit).toBeCloseTo(1.9167, 2);
+    expect(co1.savedEinheit).toBe(0);
+    expect(co1.nettedEinheit).toBe(0);
+    expect(co1.excessEinheit).toBe(0);
   });
 
   it('excess display applies fahrgassenFaktor (Issue #273)', () => {
@@ -422,13 +360,18 @@ describe('IST/SOLL Savings & Carryover', () => {
     }
   });
 
-  it('#drill_machine_log gets tab-anchored carryover blocks under per-tab sub-headers', () => {
+  // REMOVED (#378 Regel-7): Carryover-Block-Pin 'coBlocks.length >= 1'.
+  //   Unter Regel 7 entsteht ein .drill-carryover Block nur, wenn ein
+  //   Mehrbedarf-Tab vorhanden ist. Im Szenario (beide Tabs savings-source)
+  //   gibt es keinen Mehrbedarf → kein .drill-carryover. Stattdessen pin
+  //   wir die Ersparnis-Blöcke (die weiterhin erscheinen).
+  it('#drill_machine_log gets tab-anchored savings/excess blocks under per-tab sub-headers', () => {
     const { w } = setup();
     w.addReiter();
     // Tab 0: savings source. machineLog has one entry.
     w.state.reiter[0] = { ...w.state.reiter[0], hektar: 8, istHektar: 7.9, koerner: 50000, duenger: 100, entries: [] };
     w.state.reiter[0].entries.push({ einheit: 7.9, zaehlerStand: 7.9, duenger: 790, time: '10:00' });
-    // Tab 1: SOLL=10, IST=8 → savings source with no entry → gets carryover.
+    // Tab 1: SOLL=10, IST=8 → savings source with no entry (kein Mehrbedarf).
     w.state.reiter[1] = { ...w.state.reiter[1], hektar: 10, istHektar: 8, koerner: 50000, duenger: 100, entries: [] };
     w.state.machineLog = [
       { einheit: 5, zaehlerStand: 0, duenger: 0, time: '10:00' },
@@ -441,13 +384,11 @@ describe('IST/SOLL Savings & Carryover', () => {
     // First child: "Maschinen-Protokoll" static header.
     expect(mlChildren[0].classList.contains('drill-entry-tab-header')).toBe(true);
     expect(mlChildren[0].textContent).toContain('Maschinen-Protokoll');
-    // Find a tab sub-header + savings block somewhere after the static header.
-    // (Tab 0 has savings, tab 1 has carryover received + own savings.)
+    // Find savings blocks (Regel 7: Ersparnis bleibt im UI sichtbar, auch
+    // wenn kein Carryover-Pfad existiert). Carryover-Block nur bei Mehrbedarf.
     const savBlocks = ml.querySelectorAll('.drill-savings');
-    const coBlocks = ml.querySelectorAll('.drill-carryover');
     expect(savBlocks.length).toBeGreaterThanOrEqual(1);
-    expect(coBlocks.length).toBeGreaterThanOrEqual(1);
-    // Each savings/carryover block must be preceded by a tab-header.
+    // Each savings/excess block must be preceded by a tab-header.
     let lastHeaderIdx = -1;
     for (let i = 0; i < mlChildren.length; i++) {
       const c = mlChildren[i];
@@ -462,7 +403,7 @@ describe('IST/SOLL Savings & Carryover', () => {
       }
     }
     // .drill-entry (machine-log entries) must appear AFTER all tab-sub-headers
-    // and their carryover blocks, not interleaved.
+    // and their savings/carryover blocks, not interleaved.
     const firstEntryIdx = mlChildren.findIndex(c => c.classList.contains('drill-entry'));
     const firstSubSavIdx = mlChildren.findIndex(c =>
       c.classList.contains('drill-savings') || c.classList.contains('drill-carryover') || c.classList.contains('drill-excess'));
