@@ -18,8 +18,11 @@
       if (!container) return;
       container.innerHTML = '';
       AppGlobals.state.reiter.forEach(function(r, i) {
+        // Issue #377: `done` ist ein expliziter User-Toggle (NICHT von used>=SOLL
+        // abgeleitet — das ist nur ein Hinweis). Default false für neue/alte Tabs.
+        var isDone = r.done === true;
         var row = document.createElement('div');
-        row.className = 'drill-tab-row';
+        row.className = 'drill-tab-row' + (isDone ? ' done' : '');
         var prioBtn = document.createElement('button');
         prioBtn.className = 'drill-prio-btn';
         prioBtn.id = 'dtl_prio_' + i;
@@ -59,6 +62,9 @@
           var statusEl = document.createElement('div');
           statusEl.id = 'dtl_need_' + i;
           statusEl.className = 'drill-tab-need';
+          // Issue #377: "✓ fertig"-Hinweis bleibt als visueller Status, wenn
+          // used >= SOLL — ist aber explizit KEIN Hinweis auf den User-Toggle
+          // `done`. Letzterer wird über den grünen Button separat gesetzt.
           if (remaining <= 0.05 && remainingD <= 0.05) {
             statusEl.textContent = '✓ fertig';
             statusEl.classList.add('done');
@@ -74,12 +80,17 @@
           nameWrap.appendChild(statusEl);
         }
         row.appendChild(nameWrap);
+        // Issue #377: Einheiten- und Dünger-Inputs sind reine Anzeige-Felder
+        // (Werte werden aus dem Verteilungsplan in dtl_e_<i>/dtl_d_<i>
+        // geschrieben). `disabled` verhindert User-Eingaben und macht visuell
+        // klar, dass der Tab abgeschlossen ist.
         var einheitIn = document.createElement('input');
         einheitIn.type = 'text';
         einheitIn.inputMode = 'decimal';
         einheitIn.id = 'dtl_e_' + i;
         einheitIn.placeholder = 'Einheiten';
         einheitIn.dataset.tabIdx = String(i);
+        if (isDone) einheitIn.disabled = true;
         einheitIn.oninput = function() {
           AppGlobals.drillCalcDebounced();
         };
@@ -90,10 +101,34 @@
         duengerIn.id = 'dtl_d_' + i;
         duengerIn.placeholder = 'kg Dünger';
         duengerIn.dataset.tabIdx = String(i);
+        if (isDone) duengerIn.disabled = true;
         duengerIn.oninput = function() {
           AppGlobals.drillCalcDebounced();
         };
         row.appendChild(duengerIn);
+        // Issue #377: Toggle-Button "Feld fertig" / "Fertig zurücknehmen".
+        // Setzt state.reiter[i].done, persistiert, rendert neu.
+        var doneBtn = document.createElement('button');
+        doneBtn.type = 'button';
+        doneBtn.id = 'dtl_done_' + i;
+        doneBtn.className = 'drill-done-btn' + (isDone ? ' active' : '');
+        doneBtn.textContent = isDone ? 'Fertig zurücknehmen' : 'Feld fertig';
+        doneBtn.setAttribute('aria-pressed', isDone ? 'true' : 'false');
+        doneBtn.title = isDone
+          ? 'Markierung aufheben — Werte bleiben erhalten'
+          : 'Feld als fertig markieren';
+        doneBtn.onclick = (function(tabIdx, btnRef) {
+          return function() {
+            var tab = AppGlobals.state.reiter[tabIdx];
+            if (!tab) return;
+            tab.done = tab.done === true ? false : true;
+            AppGlobals.saveState();
+            // Vollständiger Re-Render: Liste, Summary, Results und Dashboard,
+            // weil Locking + Status-Anzeige + Verteilungs-Plan berührt sind.
+            AppGlobals.drillCalcAll();
+          };
+        })(i, doneBtn);
+        row.appendChild(doneBtn);
         container.appendChild(row);
       });
     }

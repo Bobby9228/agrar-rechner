@@ -20,7 +20,8 @@ var state = {
     istHektar:  0,
     koerner:    0,
     duenger:    0,
-    entries:    []
+    entries:    [],
+    done:       false
   }],
   activeReiter:   0,
   activeView:     null,
@@ -114,7 +115,8 @@ var ALLOWED_TOP_KEYS = [
 ];
 var ALLOWED_TAB_KEYS = [
   'name', 'hektar', 'istHektar', 'koerner', 'duenger',
-  'entries', 'fahrgassenEnabled', 'fahrgassenBreite'
+  'entries', 'fahrgassenEnabled', 'fahrgassenBreite',
+  'done'
 ];
 var ALLOWED_ENTRY_KEYS = [
   'time', 'einheit', 'duenger', 'hektar', 'istHektar',
@@ -194,7 +196,7 @@ function sanitizeMachineLogEntry(raw) {
 
 function sanitizeTab(raw) {
   if (!isPlainObject(raw)) {
-    return { name: 'Tab', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] };
+    return { name: 'Tab', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false };
   }
   var tab = {
     name:      sanitizeString(raw.name, 'Tab', 64),
@@ -202,7 +204,12 @@ function sanitizeTab(raw) {
     istHektar: sanitizeNumber(raw.istHektar, 0),
     koerner:   sanitizeNumber(raw.koerner, 0),
     duenger:   sanitizeNumber(raw.duenger, 0),
-    entries:   []
+    entries:   [],
+    // Issue #377: manuelles "Feld fertig"-Flag pro Tab.
+    // `used >= SOLL` ist nur ein Hinweis (render-drill.js "✓ fertig");
+    // der Landwirt markiert hier explizit, dass das Feld tatsächlich
+    // fertiggefahren wurde und `used` damit nicht mehr im Tank liegt.
+    done:      sanitizeBoolean(raw.done, false)
   };
   // Per-Tab-Overrides (optional, mit globalen Defaults)
   if (raw.fahrgassenEnabled !== undefined) {
@@ -247,7 +254,7 @@ function loadState() {
     var lv = originalLv;
     // Migration 0→1: Einzelne Felder → Tab-Array
     if (!data.reiter && (data.hektar !== undefined || data.koerner !== undefined)) {
-      data = { reiter: [{ name: 'Tab 1', hektar: data.hektar || 0, istHektar: data.istHektar || 0, koerner: data.koerner || 0, duenger: data.duenger || 0, entries: data.entries || [] }], activeReiter: 0, activeView: null, fahrgassenEnabled: false, fahrgassenBreite: 0, einheitGroesseEnabled: false, koernerProEinheit: 50000, machineLog: data.machineLog || [], drillPriorities: {}, iosInstallHintShown: false, _lv: 1 };
+      data = { reiter: [{ name: 'Tab 1', hektar: data.hektar || 0, istHektar: data.istHektar || 0, koerner: data.koerner || 0, duenger: data.duenger || 0, entries: data.entries || [], done: false }], activeReiter: 0, activeView: null, fahrgassenEnabled: false, fahrgassenBreite: 0, einheitGroesseEnabled: false, koernerProEinheit: 50000, machineLog: data.machineLog || [], drillPriorities: {}, iosInstallHintShown: false, _lv: 1 };
       lv = 1;
     }
     // Migration 1→2: Globale entries → per-Tab entries
@@ -285,6 +292,11 @@ function loadState() {
       // drillPriorities Default
       if (!data.drillPriorities) data.drillPriorities = {};
     }
+    // Migration 4→5 (Issue #377): manuelles "Feld fertig"-Flag pro Tab.
+    // sanitizeTab() vergibt `done: false` als Default, daher sind keine
+    // Daten-Änderungen am reiter-Array nötig — die Persistenz-Schwelle
+    // wird weiter unten auf `_lv = 5` gehoben.
+    if (lv < 5) lv = 5;
     // Validate und übernehmen — Schema-strict ab _lv=4
     if (!Array.isArray(data.reiter) || data.reiter.length === 0) return false;
     var sanitizedReiter = [];
@@ -327,13 +339,13 @@ function loadState() {
         var k = ALLOWED_TOP_KEYS[ki];
         if (data[k] !== undefined) cleaned[k] = data[k];
     }
-    cleaned._lv = 4;
+    cleaned._lv = 5;
     data = cleaned;
     state = data;
-    // Migration-Persistenz: Wenn die Daten nicht bereits _lv=4 waren,
+    // Migration-Persistenz: Wenn die Daten nicht bereits _lv=5 waren,
     // schreibe den migrierten Snapshot einmalig zurück, damit nachfolgende
     // Page-Loads die Migration überspringen können.
-    if (originalLv < 4) {
+    if (originalLv < 5) {
       try {
         localStorage.setItem('agrar_rechner', JSON.stringify(state));
       } catch(e) {
