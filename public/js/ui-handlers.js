@@ -58,7 +58,7 @@
       syncStateFromInputs();
       var maxIdx = 0;
       AppGlobals.state.reiter.forEach(function(r, i) { var m = parseInt(r.name.replace(/\D+/g, '')); if (!isNaN(m) && m > maxIdx) maxIdx = m; });
-      AppGlobals.state.reiter.push({ name: 'Tab ' + (maxIdx + 1), hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled, fahrgassenBreite: AppGlobals.state.fahrgassenBreite });
+      AppGlobals.state.reiter.push({ name: 'Tab ' + (maxIdx + 1), hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled, fahrgassenBreite: AppGlobals.state.fahrgassenBreite });
       AppGlobals.state.activeReiter = AppGlobals.state.reiter.length - 1;
       AppGlobals.appEmit('TAB_ADDED', { tabIdx: AppGlobals.state.activeReiter });
       document.getElementById('hektar').focus();
@@ -600,8 +600,28 @@
       AppGlobals.renderDrillTabList();
       // Plan in die frischen Inputs schreiben
       _applyDrillPlan(plan);
+      // Issue #377: globale Drill-Inputs (drill_einheit / drill_duenger /
+      // drill_hektar) deaktivieren, wenn der aktive Tab als done markiert
+      // ist. Die Felder würden sonst Einträge auf einen abgeschlossenen
+      // Tab schreiben (drillMachineAdd → state.reiter[activeReiter]).
+      _syncActiveTabLock();
       AppGlobals.renderDrillSummary();
       AppGlobals.renderResults();
+    }
+
+    function _syncActiveTabLock() {
+      // Issue #377: sperrt die globalen "Maschine eingefüllt"-Eingabefelder,
+      // wenn der aktuell aktive Reiter `done === true` ist. Die
+      // Per-Tab-Felder (dtl_e_<i>, dtl_d_<i>) werden bereits in
+      // renderDrillTabList() pro-Tab disabled gerendert — dieser Sync
+      // deckt den globalen Eingabeblock ab.
+      var activeTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
+      var isActiveDone = !!(activeTab && activeTab.done === true);
+      var ids = ['drill_einheit', 'drill_duenger', 'drill_hektar'];
+      for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById(ids[i]);
+        if (el) el.disabled = isActiveDone;
+      }
     }
 
     function drillCalcDebounced() {
