@@ -20,7 +20,8 @@ var state = {
     istHektar:  0,
     koerner:    0,
     duenger:    0,
-    entries:    []
+    entries:    [],
+    done:       false
   }],
   activeReiter:   0,
   activeView:     null,
@@ -114,7 +115,8 @@ var ALLOWED_TOP_KEYS = [
 ];
 var ALLOWED_TAB_KEYS = [
   'name', 'hektar', 'istHektar', 'koerner', 'duenger',
-  'entries', 'fahrgassenEnabled', 'fahrgassenBreite'
+  'entries', 'fahrgassenEnabled', 'fahrgassenBreite',
+  'done'
 ];
 var ALLOWED_ENTRY_KEYS = [
   'time', 'einheit', 'duenger', 'hektar', 'istHektar',
@@ -194,7 +196,7 @@ function sanitizeMachineLogEntry(raw) {
 
 function sanitizeTab(raw) {
   if (!isPlainObject(raw)) {
-    return { name: 'Tab', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] };
+    return { name: 'Tab', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false };
   }
   var tab = {
     name:      sanitizeString(raw.name, 'Tab', 64),
@@ -204,6 +206,13 @@ function sanitizeTab(raw) {
     duenger:   sanitizeNumber(raw.duenger, 0),
     entries:   []
   };
+  // done-Flag (Issue #377/#378): manuell markierter Fertig-Status pro Tab.
+  // Migration _lv 4→5 belegt fehlendes done mit false (idempotent über sanitizeTab).
+  if (raw.done !== undefined) {
+    tab.done = sanitizeBoolean(raw.done, false);
+  } else {
+    tab.done = false;
+  }
   // Per-Tab-Overrides (optional, mit globalen Defaults)
   if (raw.fahrgassenEnabled !== undefined) {
     tab.fahrgassenEnabled = sanitizeBoolean(raw.fahrgassenEnabled, false);
@@ -327,13 +336,13 @@ function loadState() {
         var k = ALLOWED_TOP_KEYS[ki];
         if (data[k] !== undefined) cleaned[k] = data[k];
     }
-    cleaned._lv = 4;
+    cleaned._lv = 5;
     data = cleaned;
     state = data;
-    // Migration-Persistenz: Wenn die Daten nicht bereits _lv=4 waren,
+    // Migration-Persistenz: Wenn die Daten nicht bereits _lv=5 waren,
     // schreibe den migrierten Snapshot einmalig zurück, damit nachfolgende
     // Page-Loads die Migration überspringen können.
-    if (originalLv < 4) {
+    if (originalLv < 5) {
       try {
         localStorage.setItem('agrar_rechner', JSON.stringify(state));
       } catch(e) {
