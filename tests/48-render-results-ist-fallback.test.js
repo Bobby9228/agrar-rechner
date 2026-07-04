@@ -1,6 +1,7 @@
 /**
- * Tests for Issue #320: render-results.js renderDrillEntriesInline used
- * `||`-fallback for istE/istD at line 157-158.
+ * Tests for Issue #320, aktualisiert für Regel-7 Pool-Modell (Issue #378):
+ * render-results.js renderDrillEntriesInline uses
+ * `istHa > 0 ? getTabIstX(r) : getTabTotalX(r)` ternary.
  *
  * Background:
  * - Sibling render sites (render-dashboard.js:60-61, render-drill.js:50-52,
@@ -10,19 +11,21 @@
  *
  * Behavioral equivalence:
  *   For all reachable inputs through the public API (istHa, koerner, duenger
- *   all ≥ 0), the `||`-pattern and the ternary produce IDENTICAL values
- *   (verified by exhaustive brute-force over the input space). The change is
- *   a defensive consistency fix — it makes the code uniformly use the same
- *   pattern as all other render sites, which is more robust against future
- *   refactorings of getTabIstX() (e.g. if a future PR returns a non-zero
- *   sentinel for missing inputs).
+ *   all ≥ 0), the `||`-pattern and the ternary produce IDENTICAL values.
  *
- * This test pins the consistency contract:
- *   (a) The inline-drill display values are computed via the canonical
- *       formula `istHa > 0 ? getTabIstX(r) : getTabTotalX(r)` — same as
- *       every other render site.
- *   (b) The function uses the istHa-checked ternary (not `||`, not
- *       `istE > 0`, not `istD > 0`).
+ * Pool-Semantik (Regel 7, #378):
+ *   `savedEinheit`/`savedDuenger` ist IMMER 0. Keine per-Tab-Ersparnis-
+ *   Subtraktion mehr. remaining = max(0, basis - used + entzogen).
+ *
+ *   - Test 1 (Single Tab, istHa=4, solHa=5): Tab ist kein Mehrbedarf
+ *     (ist<sol) → cco.excess=0. remaining = 7,2 - 0,1 + 0 = 7,1.
+ *     Vor #378 wurde 1,8 E eigene-Ersparnis abgezogen → 5,3.
+ *   - Test 3 (3 Tabs, Tab A istMehrbedarf): Pool-Verteilung zieht aus
+ *     "späteren" Tabs (Tab C gibt 0,1 E ab) → Tab C's remaining erhöht
+ *     sich um 0,1. Tab A nimmt nichts von C (Befund 1 / Selbstgutschrift
+ *     ausgeschlossen). C's Wert: 13,5 - 0,1 + 0,1 = 13,5.
+ *     Vor #378 wurde 0,9 E "saved" abgezogen und 0,9 E "excess" addiert
+ *     → 13,4.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createDom } from './helpers.js';
@@ -76,12 +79,12 @@ describe('Issue #320: renderDrillEntriesInline uses istHa>0 ternary (consistency
     // basis.istD = 4 × 200 = 800 kg
     expect(basis.istE).toBeCloseTo(7.2, 1);
     expect(basis.istD).toBe(800);
-    // Carryover-self (single tab): savedE = solE - istE = 9 - 7,2 = 1,8 E
-    //   savedD = 1000 - 800 = 200 kg
-    // remE = max(0, 7,2 - 0,1 - 1,8 + 0) = 5,3 E
-    // remD = max(0, 800 - 10 - 200 + 0) = 590 kg
-    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('5,3 Einheiten');
-    expect(doc.getElementById('r_drill_d_rem').textContent).toContain('590');
+    // Regel 7 (#378): `savedEinheit` ist immer 0. Keine eigene-Ersparnis-
+    // Subtraktion mehr. Single Tab, kein Mehrbedarf → cco.excess=0.
+    // remE = max(0, 7,2 - 0,1 + 0) = 7,1 E
+    // remD = max(0, 800 - 10 + 0) = 790 kg
+    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('7,1 Einheiten');
+    expect(doc.getElementById('r_drill_d_rem').textContent).toContain('790');
   });
 
   // ──────────────────────────────────────────────────────────────────────
@@ -141,13 +144,26 @@ describe('Issue #320: renderDrillEntriesInline uses istHa>0 ternary (consistency
     w.state.activeReiter = 2;
     w.saveState();
     w.renderResults();
-    // Tab C (active): basisD = SOLL 1500 kg (istHa=0 → ternary picks total).
-    // Carryover Saat: A excess 0,9 E → C; B saved 0,9 E → C (need>0, not source).
-    // Carryover Dünger: A excess 100 kg → C; B saved 100 kg → C.
-    // remE_C = max(0, 13,5 - 0,1 - 0,9 + 0,9) = 13,4 E
-    // remD_C = max(0, 1500 - 10 - 100 + 100) = 1490 kg
-    expect(doc.getElementById('r_drill_e_rem').textContent).toMatch(/13,4/);
-    expect(doc.getElementById('r_drill_d_rem').textContent).toContain('1.490');
+    // Regel 7 (#378): Pool-E = 18,9 + 8,1 + 0,1 = 27,1.
+    // Mehrbedarf-Tab A (istE=18,9 > solE=18, diff=0,9 E): zieht aus dem
+    // Pool. Befund 1 (Selbstgutschrift ausgeschlossen) → Tab A ist kein
+    // Spender. Spender-Order: invers nach Bearbeitungs-Zeit → C (10:00),
+    // dann B (09:00). C gibt 0,1 E ab, B gibt 0,8 E ab → deckt 0,9 E.
+    // Tab A: cco.excessE=0, cco.nettedE=0,9.
+    // Tab C (active): cco.excessE=0,1 (=selbst abgegeben). basisD =
+    // SOLL=13,5 E (istHa=0). usedE=0,1. remainingE = 13,5 - 0,1 + 0,1 = 13,5.
+    //
+    // Pool-Dünger: 2100 + 900 + 10 = 3010. Tab A Mehrmbedarf-D = 100.
+    // C gibt 10 kg (alles), B gibt 90 kg → deckt 100 kg. C's cco.excessD=10.
+    // Tab C basisD = 1500 (istHa=0). usedD=10. remainingD = 1500 - 10 + 10 = 1500.
+    //
+    // Vor #378 (Phase-1): C hätte 0,9 E "saved" abgezogen + 0,9 E "excess"
+    // addiert = 13,4. Das Modell ist komplett ausgetauscht — die "Ersparnis
+    // aus IST<SOLL" landet NICHT mehr per Phase-1-Pfad bei Mehrbedarf-Tabs,
+    // sondern im globalen Pool und wird nur bei tatsächlichem Mehrmbedarf
+    // ausgespeist.
+    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('13,5 Einheiten');
+    expect(doc.getElementById('r_drill_d_rem').textContent).toContain('1.500');
   });
 
   // ──────────────────────────────────────────────────────────────────────

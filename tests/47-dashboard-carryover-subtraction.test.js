@@ -1,31 +1,30 @@
 /**
- * Tests for Issue #305: Dashboard-Karte und Inline-Drill-Card müssen
- * den Carryover-Übertrag (savedEinheit/savedDuenger) von der
- * verbleibenden Menge abziehen.
+ * Regression test for Issue #305, aktualisiert für Regel-7 Pool-Modell (#378).
+ *   Dashboard-Karte und Inline-Drill-Card müssen die verbleibende Menge
+ *   konsistent zur neuen Berechnung anzeigen.
  *
- * Background: Commit beb6166 (#302/#303) hat nur renderDrillSummary
- * korrigiert. Drei weitere Render-Pfade mit dem expliziten Kommentar
- * "no carryover subtraction" waren übersehen:
+ * Hintergrund:
+ * Commit beb6166 (#302/#303) hat nur renderDrillSummary korrigiert.
+ * Drei weitere Render-Pfade waren übersehen:
  *   1. render-dashboard.js summary aggregate (Z. 61-63)
  *   2. render-dashboard.js per-tab card (Z. 168-169)
  *   3. render-results.js renderDrillEntriesInline (Z. 159-160)
  *
- * Repro aus Issue #305:
- *   Tab 1 (done mit Ersparnis): 2 ha SOLL, 1.2 ha IST, 90000 K/ha, 1000 kg/ha
- *     → savings: SOLL_E - IST_E = 3.6 - 2.16 = 1.44 E
- *     → savings: SOLL_D - IST_D = 2000 - 1200 = 800 kg
- *   Tab 2 (not-done): 3 ha, 90000 K/ha, 500 kg/ha, leerer/Teil-Eintrag
- *     → basis: 5.4 E, 1500 kg
- *     → after carryover savings: max(0, 5.4 - 1.44) = 3.96 E
- *     → after carryover savings: max(0, 1500 - 800) = 700 kg
- *
- * Issue-Spec sagt "≈ 3,9" / "≈ 667 kg" (annähernd). Wir verwenden die
- * exakt berechneten Werte 3.96 E / 700 kg als Regression-Guard.
+ * Nach #378 (PR #380) gibt es `savedEinheit/savedDuenger` NICHT mehr als
+ * Per-Tab-Felder. Die Subtraktion erfolgt jetzt zentral über
+ * getTabRemaining() (Formel `max(0, basis - used + entzogen)`). Diese
+ * Tests pinnen die neue Pool-Semantik als Regression-Guard:
+ *   - Tab 0 (Ersparnis-Quelle, istHa=1.2 < solHa=2) → basis=ist, used=ist,
+ *     remaining=0 (kein eigener Abzug mehr).
+ *   - Tab 1 (Bedarf, istHa=0) → remaining = basis - used, ohne Cross-Tab-
+ *     Carryover (kein Mehrbedarf im Setup → Pool unverändert).
+ *   - Cross-Tab-Subtraktion ist NUR bei Mehrbedarf-Lücken aktiv
+ *     (ist > sol) und nicht als generische Phase-1-Ersparnis.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createDom } from './helpers.js';
 
-describe('Issue #305: Dashboard + Inline-Drill carryover subtraction', () => {
+describe('Issue #305 (Regel-7 Pool-Modell): Dashboard + Inline-Drill carryover subtraction', () => {
   let w, doc;
 
   beforeEach(() => {
@@ -52,9 +51,8 @@ describe('Issue #305: Dashboard + Inline-Drill carryover subtraction', () => {
       fahrgassenEnabled: false, fahrgassenBreite: 0
     };
     // Single small entry on Tab 1 to make r_drill_section visible (needed
-    // for inline-drill test). Carryover math is unaffected by this entry
-    // because Tab 1's need (5.4 E / 1500 kg) already exceeds what Tab 0
-    // contributes (1.44 E / 800 kg).
+    // for inline-drill test). Pool-Mathematik unverändert: kein Mehrbedarf
+    // in beiden Tabs (Tab 0 ist<sol, Tab 1 ist=0).
     w.state.reiter[1].entries.push({
       einheit: 0.5, duenger: 100, zaehlerStand: 0.166, time: '09:00'
     });
@@ -64,69 +62,70 @@ describe('Issue #305: Dashboard + Inline-Drill carryover subtraction', () => {
 
   // ── Dashboard Summary (render-dashboard.js:61-63) ──────────────────────
 
-  it('Dashboard-Summary zeigt carryover-subtracted Einheiten verbl.', () => {
+  it('Dashboard-Summary zeigt Einheiten verbl. nach Pool-Modell', () => {
     setupRepro();
     w.openDashboard();
     const statsEls = doc.getElementById('dashboard_content')
       .querySelectorAll('.dashboard-summary-stat');
     // 0: Fläche, 1: Einheiten verbl., 2: Dünger verbl.
     const einheitenVal = statsEls[1].querySelector('.dashboard-summary-value').textContent;
-    // Tab 0: max(0, 2.16 - 2.16 - 1.44 + 0) = 0 E
-    // Tab 1: max(0, 5.4 - 0.5 - 1.44 + 0) = 3.46 E
-    // Total: 3.46 → fmtCompact → "3,5" (1-decimal rounded)
-    expect(einheitenVal).toMatch(/3,4|3,5/);
+    // Tab 0: istE=2.16, usedE=2.16, entzogen=0 → remaining=0 (kein Mehrbedarf,
+    //         keine cross-tab Subtraktion unter Regel 7).
+    // Tab 1: basisE=5.4 (istHa=0 → SOLL), usedE=0.5, entzogen=0 → 4,9.
+    // Total: 4,9 → fmtCompact → "4,9".
+    expect(einheitenVal).toBe('4,9');
   });
 
-  it('Dashboard-Summary zeigt carryover-subtracted Dünger verbl.', () => {
+  it('Dashboard-Summary zeigt Dünger verbl. nach Pool-Modell', () => {
     setupRepro();
     w.openDashboard();
     const statsEls = doc.getElementById('dashboard_content')
       .querySelectorAll('.dashboard-summary-stat');
     const duengerVal = statsEls[2].querySelector('.dashboard-summary-value').textContent;
-    // Tab 0: max(0, 1200 - 1200 - 800 + 0) = 0 kg
-    // Tab 1: max(0, 1500 - 100 - 800 + 0) = 600 kg
-    // Total: 600 kg
-    expect(duengerVal).toContain('600');
+    // Tab 0: istD=1200, usedD=1200 → remaining=0.
+    // Tab 1: basisD=1500 (SOLL), usedD=100 → 1400 kg.
+    // Total: 1.400 kg.
+    expect(duengerVal).toContain('1.400');
   });
 
   // ── Dashboard per-tab card (render-dashboard.js:168-169) ───────────────
 
-  it('Dashboard Per-Tab-Karte Acker 2 zeigt carryover-subtracted Einheiten verbl.', () => {
+  it('Dashboard Per-Tab-Karte Acker 2 zeigt Einheiten verbl. nach Pool-Modell', () => {
     setupRepro();
     w.openDashboard();
     const cards = doc.querySelectorAll('.dashboard-reiter-card');
     // Tab 1 (Acker 2) is the second card; values: Hektar, Körner/ha, Einh., Dünger
     const values = cards[1].querySelectorAll('.dashboard-stat-value');
-    // Tab 1: max(0, 5.4 - 0.5 - 1.44 + 0) = 3.46 E → fmtCompact → "3,5"
-    expect(values[2].textContent.trim()).toMatch(/3,4|3,5/);
+    // Tab 1: basisE=5.4 (SOLL, kein IST), usedE=0.5 → max(0, 5.4 - 0.5) = 4,9.
+    expect(values[2].textContent.trim()).toBe('4,9');
   });
 
-  it('Dashboard Per-Tab-Karte Acker 2 zeigt carryover-subtracted Dünger verbl.', () => {
+  it('Dashboard Per-Tab-Karte Acker 2 zeigt Dünger verbl. nach Pool-Modell', () => {
     setupRepro();
     w.openDashboard();
     const cards = doc.querySelectorAll('.dashboard-reiter-card');
     const values = cards[1].querySelectorAll('.dashboard-stat-value');
-    // Tab 1: max(0, 1500 - 100 - 800 + 0) = 600 kg
-    expect(values[3].textContent).toContain('600');
+    // Tab 1: basisD=1500 (SOLL), usedD=100 → max(0, 1500 - 100) = 1400 kg.
+    expect(values[3].textContent).toContain('1.400');
   });
 
   // ── Inline-Drill-Card (render-results.js:159-160) ──────────────────────
 
-  it('Inline-Drill-Card "Dünger verbleibend" zeigt carryover-subtracted Wert', () => {
+  it('Inline-Drill-Card "Dünger verbleibend" zeigt Pool-Modell-Wert', () => {
     setupRepro();
     w.renderResults();
-    // r_drill_d_rem is the "Dünger verbleibend" field for the active tab.
+    // r_drill_d_rem ist das "Dünger verbleibend"-Feld für den aktiven Tab.
     // Active = Tab 1 (Acker 2, not-done).
-    // max(0, 1500 - 100 - 800 + 0) = 600 kg
-    expect(doc.getElementById('r_drill_d_rem').textContent).toContain('600');
+    // max(0, 1500 - 100 - 0 + 0) = 1400 kg.
+    expect(doc.getElementById('r_drill_d_rem').textContent).toContain('1.400');
   });
 
-  it('Inline-Drill-Card "Verbleibend" (Einheiten) zeigt carryover-subtracted Wert', () => {
+  it('Inline-Drill-Card "Verbleibend" (Einheiten) zeigt Pool-Modell-Wert', () => {
     setupRepro();
     w.renderResults();
-    // r_drill_e_rem is the "Verbleibend" field for the active tab.
-    // max(0, 5.4 - 0.5 - 1.44 + 0) = 3.46 E → formatEinheit → "3,5 Einheiten"
-    expect(doc.getElementById('r_drill_e_rem').textContent).toMatch(/3,4|3,5/);
+    // r_drill_e_rem ist das "Verbleibend"-Feld für den aktiven Tab.
+    // max(0, 5.4 - 0.5 - 0 + 0) = 4,9 → formatEinheit → "4,9 Einheiten".
+    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('4,9 Einheiten');
   });
 
   // ── Regression-Guard: ohne carryover (kein IST) bleibt das alte Verhalten ─
