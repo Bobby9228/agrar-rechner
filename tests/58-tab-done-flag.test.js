@@ -219,10 +219,23 @@ describe('Issue #377: manuelle Fertig-Markierung pro Tab', () => {
             w.state.activeReiter = 0;
             w.AppGlobals.drillCalcAll();
             expect(doc.getElementById('drill_einheit').disabled).toBe(false);
-            // Auf done-Tab wechseln
-            w.state.activeReiter = 1;
-            w.AppGlobals.drillCalcAll();
+            // Bug #377/PR #379: Auf done-Tab wechseln über den realistischen Pfad
+            // (User klickt Tab-Pill → switchReiter → appEmit('TAB_CHANGED')).
+            // Vor dem Fix re-synct der render-tabs TAB_CHANGED-Subscriber KEINEN
+            // drillCalcAll, also blieb der Lock auf drill_einheit am vorherigen
+            // activeReiter "verklebt" bis der User irgendetwas anderes tut.
+            // switchReiter(1) muss den Lock ohne zwischenzeitliches drillCalcAll
+            // sofort korrekt setzen.
+            w.switchReiter(1);
             expect(doc.getElementById('drill_einheit').disabled).toBe(true);
+            expect(doc.getElementById('drill_duenger').disabled).toBe(true);
+            expect(doc.getElementById('drill_hektar').disabled).toBe(true);
+            // Zurück auf Tab 0 (nicht done) → Inputs wieder enabled, ebenfalls
+            // ohne zwischenzeitliches drillCalcAll.
+            w.switchReiter(0);
+            expect(doc.getElementById('drill_einheit').disabled).toBe(false);
+            expect(doc.getElementById('drill_duenger').disabled).toBe(false);
+            expect(doc.getElementById('drill_hektar').disabled).toBe(false);
         });
     });
 });

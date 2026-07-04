@@ -92,6 +92,11 @@
       // ist kein eigener Reiter sondern ein View-Toggle).
       AppGlobals.state.activeView = null;
       AppGlobals.appEmit('TAB_CHANGED', { tabIdx: idx });
+      // Issue #377 (PR #379 Follow-up): TAB_CHANGED triggert im render-tabs-Subscriber
+      // KEIN drillCalcAll — also würde der globale Lock auf drill_einheit / drill_duenger /
+      // drill_hektar am vorherigen activeReiter verkleben. Direkt hier syncen ist
+      // minimal-invasiv (kein Event-Coupling, kein Re-Render, vgl. Review-Variante A).
+      AppGlobals._syncActiveTabLock();
     }
 
     function switchToProtokoll() {
@@ -994,6 +999,7 @@ Object.assign(window.AppGlobals, {
   drillRemove: drillRemove,
   _calcDrillDistribution: _calcDrillDistribution,
   _applyDrillPlan: _applyDrillPlan,
+  _syncActiveTabLock: _syncActiveTabLock,
   drillCalcAll: drillCalcAll,
   drillCalcDebounced: drillCalcDebounced,
   drillMachineAdd: drillMachineAdd,
