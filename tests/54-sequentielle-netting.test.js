@@ -74,19 +74,16 @@ describe('Sequenzielle Carryover-Netting (Issue #368, Regel 7)', () => {
     expect(sum).toBe(2);
   });
 
-  // isTabDone: Tab 1: sollE=16 (IST), usedE=14, entzogenE=0 (Quelle) → remE=2.
-  //            ABER nach Netting ist die Lücke gefüllt — der Tab hat alle
-  //            Bedarfe abgedeckt. isTabDone nutzt aber `soll - used + entzogen`
-  //            ohne Netting-Subtraktion → remE=2 > 0.05 → NICHT done.
-  //            Tab 2: sollE=16, usedE=14, entzogenE=0 → remE=2 → NICHT done.
-  it('Mehrbedarf-Tabs bleiben nach Algorithmus isTabDone=false (verbleibend aus IST-used)', () => {
+  // isTabDone (mit Doppelzählungs-Fix − netted):
+  //   Tab 1: istE=16, usedE=14, nettedE=2 (volle Lücke gedeckt) → remE = 16-14-2 = 0 → done.
+  //   Tab 2: istE=16, usedE=14, nettedE=0 (Pool leer, Lücke offen) → remE = 2 → NICHT done.
+  it('Mehrbedarf-Tab: voll genettet → isTabDone=true; ungenettet → isTabDone=false', () => {
     setupPoolKleinerAlsExcess();
-    // Tab 1: istE=16, usedE=14, entzogenE=0 → remE=2 > 0.05 → NICHT done.
-    //         ABER getCarryover dokumentiert: nettedEinheit=2 (Lücke gefüllt).
-    expect(w.isTabDone(w.state.reiter[1], 1)).toBe(false);
-    // Tab 2: gleicher remE → NICHT done.
+    // Tab 1: Lücke 2E wird voll aus dem Pool gedeckt → done.
+    expect(w.isTabDone(w.state.reiter[1], 1)).toBe(true);
+    // Tab 2: Pool leer → Lücke bleibt offen → NICHT done.
     expect(w.isTabDone(w.state.reiter[2], 2)).toBe(false);
-    // Belegen via getCarryover: Tab 1 ist konzeptuell fertig (netted = full).
+    // Belegen via getCarryover: Tab 1 voll genettet, Tab 2 nicht.
     expect(w.getCarryover(1).nettedEinheit).toBe(2);
     expect(w.getCarryover(2).nettedEinheit).toBe(0);
   });
@@ -183,20 +180,19 @@ describe('Sequenzielle Carryover-Netting (Issue #368, Regel 7)', () => {
     expect(w.getCarryover(2).nettedEinheit).toBe(1);
   });
 
-  // ── Render-Site: getTabRemaining reflektiert Netting via entzogen=0 ─────
-  //   Tab 1: sollE=16 (IST), usedE=14, entzogenE=0 (Quelle) → remE = 2.
-  //          ABER nettedE=2 (Lücke gefüllt) → die Lücke aus getTabRemaining-
-  //          Sicht ist nicht sichtbar (Netting ist semantisch eine Deckung,
-  //          keine Reduktion des SOLL-Bedarfs).
-  it('getTabRemaining: Tab 1 remE=2 (Lücke nach IST-used), Tab 2 remE=2 (Mehrbedarf offen)', () => {
+  // ── Render-Site: getTabRemaining reflektiert Netting via − netted ────────
+  //   Doppelzählungs-Fix: remaining = max(0, istE − usedE + entzogen − netted).
+  //   Tab 1: 16-14+0-2 = 0 (Lücke per Pool voll gedeckt → nicht als Bedarf sichtbar).
+  //   Tab 2: 16-14+0-0 = 2 (Mehrbedarf-Lücke offen, kein Netting erfolgt).
+  it('getTabRemaining: Tab 1 remE=0 (voll genettet), Tab 2 remE=2 (Mehrbedarf offen)', () => {
     setupPoolKleinerAlsExcess();
     const rem1 = w.getTabRemaining(w.state.reiter[1], 1);
     const rem2 = w.getTabRemaining(w.state.reiter[2], 2);
-    // getTabRemaining: remE = max(0, istE - usedE + entzogenE).
-    // Tab 1: 16-14+0 = 2. Tab 2: 16-14+0 = 2.
-    expect(rem1.remainingE).toBe(2);
+    // getTabRemaining: remE = max(0, istE - usedE + entzogenE - nettedE).
+    // Tab 1: 16-14+0-2 = 0. Tab 2: 16-14+0-0 = 2.
+    expect(rem1.remainingE).toBe(0);
     expect(rem2.remainingE).toBe(2);
-    // ABER Tab 1 ist netted (Lücke gefüllt), Tab 2 nicht.
+    // Tab 1 ist netted (Lücke gefüllt), Tab 2 nicht.
     expect(w.getCarryover(1).nettedEinheit).toBe(2);
     expect(w.getCarryover(2).nettedEinheit).toBe(0);
   });

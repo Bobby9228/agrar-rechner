@@ -359,12 +359,19 @@ function getCarryover(tabIndex) {
 // sowie Basis + Used, damit Render-Sites die Anzeige konsistent speisen.
 //
 // REGEL 7 (Issue #378) — NEUE FORMEL:
-//   remaining_i = max(0, soll_i − used_i + entzogen_i)
-// wobei `entzogen_i` = die Menge, die ANDERE Tabs (Mehrbedarf-Lücken,
-// rueckwaerts verteilt) diesem Tab abgezogen haben. Die Felder `saved*` und
-// `netted*` existieren weiterhin fuer Backward-Compat mit Render-Sites —
-// die "Quelle" ist jetzt aber der globale Pool (Σ used der done=false Tabs),
-// nicht mehr eine Per-Tab-Ersparnis.
+//   remaining_i = max(0, soll_i − used_i + entzogen_i − netted_i)
+// `entzogen_i` = Menge, die ANDERE Tabs (Mehrbedarf-Lücken, rückwärts
+//   verteilt) DIESEM Tab abgezogen haben (Spender-Tabs, excess*).
+// `netted_i`   = Menge, mit der der Mehrbedarf DIESES Tabs bereits durch
+//   den Cross-Tab-Pool gedeckt wurde (Empfänger-Tabs, netted*).
+//
+// WICHTIG (Doppelzählungs-Fix): entzogen und netted sind zwei Seiten derselben
+// Buchung (Σ entzogen === Σ netted === gedeckter Mehrbedarf). Beide müssen in
+// die Formel eingehen, sonst wird der gedeckte Mehrbedarf zweimal gezählt —
+// einmal in der offenen Lücke des Empfänger-Tabs (remaining nicht um netted
+// reduziert) UND einmal im aufgeblähten remaining des Spender-Tabs (+entzogen).
+// Mit beiden Termen gilt Materialerhaltung:
+//   Σ remaining_i = Σ basis_i − Σ used_i   (da Σ netted − Σ entzogen = 0).
 //
 // Null-safe (fehlende Felder = 0). IST-Flaeche hat Vorrang vor SOLL.
 function getTabRemaining(r, tabIdx) {
@@ -378,13 +385,17 @@ function getTabRemaining(r, tabIdx) {
   // Regel 7: entzogen = was ANDERE Tabs (nicht dieser) von ihm genommen haben
   var entzogenE = co.excessEinheit;
   var entzogenD = co.excessDuenger;
+  // netted = Anteil des eigenen Mehrbedarfs, der bereits durch den Pool
+  // gedeckt ist (muss abgezogen werden, sonst Doppelzählung mit entzogen).
+  var nettedE = co.nettedEinheit;
+  var nettedD = co.nettedDuenger;
   return {
     basisE:     solE,
     basisD:     solD,
     usedE:      usedE,
     usedD:      usedD,
-    remainingE: Math.max(0, solE - usedE + entzogenE),
-    remainingD: Math.max(0, solD - usedD + entzogenD)
+    remainingE: Math.max(0, solE - usedE + entzogenE - nettedE),
+    remainingD: Math.max(0, solD - usedD + entzogenD - nettedD)
   };
 }
 
@@ -395,6 +406,11 @@ function getTabRemaining(r, tabIdx) {
 // REGEL 7 (Issue #378): Fertig = remaining = 0 ODER done=true.
 // Carryover wird nur beruecksichtigt, wenn tabIndex mitgegeben wird
 // (Backward-Compat). Nil-safe (fehlende Felder = 0).
+//
+// Formel (konsistent mit getTabRemaining):
+//   remaining = max(0, soll − used + entzogen − netted)
+// netted wird abgezogen, damit ein Mehrbedarf-Tab, dessen Lücke voll durch
+// den Pool gedeckt ist und dessen Plan-Bedarf erfüllt ist, als fertig gilt.
 function isTabDone(r, tabIndex) {
   if (!r || !r.entries) return true; // Keine Entries = fertig (kein Bedarf)
   if (r.done) return true; // Manuell abgeschlossen (Issue #377)
@@ -406,14 +422,14 @@ function isTabDone(r, tabIndex) {
   var istE = getTabIstEinheiten(r);
   var totalE = istE > 0 ? istE : getTabTotalEinheiten(r);
   var usedE = getTabUsedEinheiten(r);
-  // remaining = soll - used + entzogen (Regel 7)
-  var remainingE = Math.max(0, totalE - usedE + carryover.excessEinheit);
+  // remaining = soll - used + entzogen - netted (Regel 7, Doppelzählungs-Fix)
+  var remainingE = Math.max(0, totalE - usedE + carryover.excessEinheit - carryover.nettedEinheit);
   if (remainingE > 0.05) return false;
 
   var istD = getTabIstDuenger(r);
   var totalD = istD > 0 ? istD : getTabTotalDuenger(r);
   var usedD = getTabUsedDuenger(r);
-  var remainingD = Math.max(0, totalD - usedD + carryover.excessDuenger);
+  var remainingD = Math.max(0, totalD - usedD + carryover.excessDuenger - carryover.nettedDuenger);
   return remainingD <= 0.05;
 }
 

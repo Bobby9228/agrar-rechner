@@ -92,10 +92,12 @@ describe('Issue #347 (Regel 7): Carryover vergibt Salden nicht mehr in Tabs ohne
 
   it('Per-Tab-Verbleibend nach Regel-7-Formel — Issue #347 Endresult umgerechnet', () => {
     setup3Tabs();
-    // expected berechnet mit getTabRemaining(r, i) (Regel-7-Formel):
-    //   T1: 18-18+0 = 0/0
-    //   T2: 16-11+0 = 5/100 (Mehrbedarf-Lücke, physisch offen)
-    //   T3: 10-8+1 = 3/600 (2 Rest + 1 entzogen)
+    // expected berechnet mit getTabRemaining(r, i) (Regel-7-Formel mit
+    // Doppelzählungs-Fix: remaining = max(0, basis − used + entzogen − netted)):
+    //   T1: 18-18+0-0 = 0/0
+    //   T2: 16-11+0-1 = 4/0 (Mehrbedarf-Lücke 1E/100kg voll genettet → 0 sichtbar;
+    //                         T2 braucht 4E für seine Rest-Plan-Fläche)
+    //   T3: 10-8+1-0 = 3/600 (Spender: 2 Rest + 1 entzogen)
     const r1 = AG.state.reiter[0];
     const r2 = AG.state.reiter[1];
     const r3 = AG.state.reiter[2];
@@ -106,8 +108,8 @@ describe('Issue #347 (Regel 7): Carryover vergibt Salden nicht mehr in Tabs ohne
     expect(rem1.remainingE).toBeCloseTo(0, 1);
     expect(rem1.remainingD).toBeCloseTo(0, 1);
 
-    expect(rem2.remainingE).toBeCloseTo(5, 1);
-    expect(rem2.remainingD).toBeCloseTo(100, 0);
+    expect(rem2.remainingE).toBeCloseTo(4, 1);
+    expect(rem2.remainingD).toBeCloseTo(0, 0);
 
     expect(rem3.remainingE).toBeCloseTo(3, 1);
     expect(rem3.remainingD).toBeCloseTo(600, 0);
