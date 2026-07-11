@@ -1,4 +1,4 @@
-name: Deploy to Cloudflare Pages
+name: CI
 
 on:
   push:
@@ -10,11 +10,11 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  test-and-deploy:
+  lint-and-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -39,9 +39,9 @@ jobs:
       - name: Run tests
         run: pnpm test
 
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy public/ --project-name=agrar-rechner-dev
+# Deploy is handled by Cloudflare Dashboard Git integration
+# (Workers Builds for agrar-rechner-dev). The previous wrangler-action
+# deploy step failed with "Authentication error [code: 10000]" because
+# the CLOUDFLARE_API_TOKEN secret lacks Account:Read scope. Since the
+# Dashboard integration already deploys successfully on every push to dev,
+# the GitHub Actions deploy step is redundant and has been removed.

@@ -167,10 +167,10 @@ function berechne() {
 |---|---|
 | `getKornerGesamt()` | Körner gesamt für aktiven Tab (berücksichtigt Fahrgassen) |
 | `getTabKornerGesamt(r)` | Körner gesamt für Tab `r` (berücksichtigt Fahrgassen) |
-| `getTotalEinheiten()` | Einheiten gesamt für aktiven Tab |
-| `getTabTotalEinheiten(r)` | Einheiten für Tab `r` |
-| `getTotalDuenger()` | Dünger gesamt für aktiven Tab |
-| `getTabTotalDuenger(r)` | Dünger für Tab `r` |
+| `getTotalEinheiten()` | Einheiten gesamt für aktiven Tab (Convenience-Wrapper, delegiert an `getTabTotalEinheiten(activeReiter())`) |
+| `getTabTotalEinheiten(r)` | Einheiten für Tab `r` (kanonische SOLL-Berechnung) |
+| `getTotalDuenger()` | Dünger gesamt für aktiven Tab (Convenience-Wrapper, delegiert an `getTabTotalDuenger(activeReiter())`) |
+| `getTabTotalDuenger(r)` | Dünger für Tab `r` (kanonische SOLL-Berechnung) |
 | `getTabIstHektar(r)` | IST-Fläche von Tab `r` (direkter Wert, nicht aus Entries abgeleitet) |
 | `getTabIstEinheiten(r)` | Einheiten basierend auf IST-Fläche (wenn vorhanden) |
 | `getTabIstDuenger(r)` | Dünger basierend auf IST-Fläche |
@@ -570,12 +570,31 @@ Dünger_IST  = istHektar × duenger
 fahrgassenFaktor = (fahrgassenBreite - 1) / fahrgassenBreite
 ```
 
-### Verbleibende Menge
+### Verbleibende Menge (Senken-Modell)
 
 ```
-verbliebene_Einheiten = max(0, Einheiten_IST - usedEinheit - carryover)
-verbliebener_Dünger   = max(0, Dünger_IST  - usedDuenger  - carryover)
+remaining_i = max(0, basis_i − used_i + sinkAdjusted_i)   (für jeden Tab i)
 ```
+
+`basis_i` = `min(SOLL-need_i, IST-need_i)` für bearbeitete Tabs (istHektar>0),
+            sonst `SOLL-need_i`. Das heißt: ein über-bestelltes Feld zeigt
+            SOLL-Basis (Mehrb. weitergeleitet), ein unter-bestelltes Feld
+            zeigt IST-Basis (Feld ist bei IST fertig). Unbearbeitete Felder
+            zeigen Plan-Bedarf.
+
+`sinkAdjusted_i` = der Netto-Saldo (burden), aber nur auf der **Senke**
+(zuletzt befüllter Tab, Prio-Tiebreaker bei gleicher Zeit): der
+**Material-Defizit** Σ(`IST-need − used`) der bearbeiteten Tabs (positiv =
+Mehrbedarf, negativ = Überschuss), abzüglich der Überfüllungen anderer
+Tabs (`absorbiert`), die ihn sonst doppelt zählen würden. Nicht-Senken
+erhalten `sinkAdjusted = 0`; sie zeigen ihren reinen Eigen-Bedarf
+(`basis − used`).
+
+Praktisch heißt das: bearbeitete Tabs sind fertig (ihr Defizit wanderert
+auf die Senke = aktuelle Work-Front), unbearbeitete zeigen SOLL − used.
+Überfüllte Tabs (used > basis) absorbieren den Saldo (verhindert
+Doppelfehler). Die Erhaltung `Σ remaining = Σ IST-need + Σ SOLL-need
+unbearb. − Σ used` bleibt gewahrt.
 
 ### Prognose (Maschinen-Log)
 

@@ -58,7 +58,7 @@
       syncStateFromInputs();
       var maxIdx = 0;
       AppGlobals.state.reiter.forEach(function(r, i) { var m = parseInt(r.name.replace(/\D+/g, '')); if (!isNaN(m) && m > maxIdx) maxIdx = m; });
-      AppGlobals.state.reiter.push({ name: 'Tab ' + (maxIdx + 1), hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled, fahrgassenBreite: AppGlobals.state.fahrgassenBreite });
+      AppGlobals.state.reiter.push({ name: 'Tab ' + (maxIdx + 1), hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled, fahrgassenBreite: AppGlobals.state.fahrgassenBreite });
       AppGlobals.state.activeReiter = AppGlobals.state.reiter.length - 1;
       AppGlobals.appEmit('TAB_ADDED', { tabIdx: AppGlobals.state.activeReiter });
       document.getElementById('hektar').focus();
@@ -92,6 +92,11 @@
       // ist kein eigener Reiter sondern ein View-Toggle).
       AppGlobals.state.activeView = null;
       AppGlobals.appEmit('TAB_CHANGED', { tabIdx: idx });
+      // Issue #377 (PR #379 Follow-up): TAB_CHANGED triggert im render-tabs-Subscriber
+      // KEIN drillCalcAll — also würde der globale Lock auf drill_einheit / drill_duenger /
+      // drill_hektar am vorherigen activeReiter verkleben. Direkt hier syncen ist
+      // minimal-invasiv (kein Event-Coupling, kein Re-Render, vgl. Review-Variante A).
+      AppGlobals._syncActiveTabLock();
     }
 
     function switchToProtokoll() {
@@ -600,8 +605,28 @@
       AppGlobals.renderDrillTabList();
       // Plan in die frischen Inputs schreiben
       _applyDrillPlan(plan);
+      // Issue #377: globale Drill-Inputs (drill_einheit / drill_duenger /
+      // drill_hektar) deaktivieren, wenn der aktive Tab als done markiert
+      // ist. Die Felder würden sonst Einträge auf einen abgeschlossenen
+      // Tab schreiben (drillMachineAdd → state.reiter[activeReiter]).
+      _syncActiveTabLock();
       AppGlobals.renderDrillSummary();
       AppGlobals.renderResults();
+    }
+
+    function _syncActiveTabLock() {
+      // Issue #377: sperrt die globalen "Maschine eingefüllt"-Eingabefelder,
+      // wenn der aktuell aktive Reiter `done === true` ist. Die
+      // Per-Tab-Felder (dtl_e_<i>, dtl_d_<i>) werden bereits in
+      // renderDrillTabList() pro-Tab disabled gerendert — dieser Sync
+      // deckt den globalen Eingabeblock ab.
+      var activeTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
+      var isActiveDone = !!(activeTab && activeTab.done === true);
+      var ids = ['drill_einheit', 'drill_duenger', 'drill_hektar'];
+      for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById(ids[i]);
+        if (el) el.disabled = isActiveDone;
+      }
     }
 
     function drillCalcDebounced() {
@@ -706,10 +731,10 @@
       var usedEinheit = entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
       var usedDuenger = entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
       if (entries.length > 0) {
-        // Use the calculations.js versions (with state.koernerProEinheit as default)
-        // so the arg-overridden wrapper in this file doesn't return NaN when called
-        // with only `r`. See getTotalEinheiten at L697 (arg version) and L52 in
-        // calculations.js (the canonical impl).
+        // Use the calculations.js canonical functions so the result matches the
+        // values displayed in the result card. Issue #7: calculations.js now
+        // exposes only getTabTotalEinheiten / getTabTotalDuenger (the previous
+        // getTotalEinheiten/getTotalDuenger names were absorbed into them).
         var newEinheiten = AppGlobals.getTabTotalEinheiten(r);
         var newDuenger = AppGlobals.getTabTotalDuenger(r);
         var einheitExceeds = newEinheiten > 0 && usedEinheit > newEinheiten + AppGlobals.EPSILON_QUANTITY;
@@ -771,11 +796,10 @@
       return AppGlobals.getTabKornerGesamt(AppGlobals.getActiveReiter());
     }
 
-    // Issue #186: Diese Wrapper schließen die Lücke zwischen calculations.js
-    // (das nur getTabTotalEinheiten(r) etc. exportiert) und render-results.js
-    // (das getTotalEinheiten() ohne Argument aufruft).
-    // WICHTIG: Andere Namen als in calculations.js, um die Funktion
-    // getTotalEinheiten(r, koernerProEinheit) dort nicht zu überschreiben.
+    // Issue #186: Convenience-Wrapper für aktiven Reiter.
+    // delegieren an AppGlobals.getTabTotalEinheiten(r) / getTabTotalDuenger(r)
+    // (Issue #7 — getTabTotalEinheiten/getTabTotalDuenger sind seit dem
+    // Issue-7-Refactor die kanonischen Funktionen in calculations.js).
     function getActiveTotalEinheiten() {
       return AppGlobals.getTabTotalEinheiten(AppGlobals.getActiveReiter());
     }
@@ -787,38 +811,26 @@
     // No-arg API-Kompatibilitäts-Wrapper (Issue #266).
     //
     // Tests rufen getTotalEinheiten() bzw. getTotalDuenger() ohne Argumente
-    // auf. calculations.js exportiert diese Namen mit Argument-Signaturen.
+    // auf. calculations.js exportiert diese Namen nicht mehr direkt
+    // (Issue #7 — Konsolidierung auf getTabTotalEinheiten/getTabTotalDuenger).
     // Da ui-handlers.js NACH calculations.js geladen wird, gewinnen die
     // Wrapper im globalen Scope. Mittels arguments.length wird zwischen
     // Argument- und No-Arg-Aufruf dispatcht.
     //
-    // Die arg-Versionen bleiben über getTabTotalEinheiten(r) / getTabTotalDuenger(r)
-    // für interne Berechnungen verfügbar (anderer Name → kein Konflikt).
-    //
-    // no-arg: rechnet gegen state.koernerProEinheit (der Default 50000,
-    // oder Custom via einheitGroesseUpdate).
+    // No-arg: rechnet gegen state.koernerProEinheit für aktiven Reiter.
+    // Arg-Version: delegiert an calculations.js-Kanone (mit optionalem
+    // kpe-Override für Tests, die explizit einen Wert mitgeben).
     function getTotalEinheiten(r, koernerProEinheit) {
       if (arguments.length === 0) {
-        // No-arg: für aktiven Reiter berechnen
         return AppGlobals.getActiveTotalEinheiten();
       }
-      // Arg-Version: calculations.js-Original (Issue #230)
-      if (!r || !r.hektar || !r.koerner || koernerProEinheit <= 0) return 0;
-      var fgEnabled = (r.fahrgassenEnabled !== undefined) ? r.fahrgassenEnabled : AppGlobals.state.fahrgassenEnabled;
-      var fgBreite = (r.fahrgassenBreite !== undefined) ? r.fahrgassenBreite : AppGlobals.state.fahrgassenBreite;
-      var faktor = 1;
-      if (fgEnabled && fgBreite > 0) {
-        faktor = AppGlobals.computeFahrgassenFaktor(fgBreite);
-      }
-      var e = (r.hektar * r.koerner) / koernerProEinheit;
-      return Math.max(0, e * faktor);
+      return AppGlobals.getTabTotalEinheiten(r, koernerProEinheit);
     }
     function getTotalDuenger(r) {
       if (arguments.length === 0) {
         return AppGlobals.getActiveTotalDuenger();
       }
-      if (!r || !r.hektar || !r.duenger) return 0;
-      return Math.max(0, r.hektar * r.duenger);
+      return AppGlobals.getTabTotalDuenger(r);
     }
 
     // --- Input Formatierung (portiert aus Inline-Code Z. 2438-2546) ---
@@ -987,6 +999,7 @@ Object.assign(window.AppGlobals, {
   drillRemove: drillRemove,
   _calcDrillDistribution: _calcDrillDistribution,
   _applyDrillPlan: _applyDrillPlan,
+  _syncActiveTabLock: _syncActiveTabLock,
   drillCalcAll: drillCalcAll,
   drillCalcDebounced: drillCalcDebounced,
   drillMachineAdd: drillMachineAdd,

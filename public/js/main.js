@@ -11,24 +11,11 @@ var APP_VERSION = 'v1.0.0';
 var APP_BUILD_DATE = 'Mai 2025';
 
 // --- Format/Parser Utilities (used across modules) ---
-
-function fmt(n) {
-  if (n === null || n === undefined || isNaN(n)) return '0,0';
-  // Runde auf 1 Dezimalstelle, deutsche Formatierung mit Komma
-  // DE-Rundung: "round half up" — ab .5 wird aufgerundet.
-  // Beispiel: 0.05 → '0,1' (nicht '0,0' wie toFixed default)
-  var x = n * 10;
-  var rounded = (x >= 0 ? Math.floor(x + 0.5) : -Math.floor(-x + 0.5)) / 10;
-  return String(rounded.toFixed(1)).replace('.', ',');
-}
-
-// fmtCompact — wie fmt(), aber lässt das nachstehende ",0" für ganze Zahlen weg.
-// Wird im Dashboard verwendet (Tests 26, 40 erwarten "12" statt "12,0").
-function fmtCompact(n) {
-  var s = fmt(n);
-  if (s.endsWith(',0')) s = s.slice(0, -2);
-  return s;
-}
+//
+// Issue #9: fmt()/fmtCompact() sind nach calculations.js umgezogen, weil sie
+// pure Funktionen sind und nicht von App-Bootstrap abhängen. parseDE() und
+// formatEinheit() bleiben hier (werden vom Input-Format-Pfad gebraucht, der
+// im App-Init-Block läuft).
 
 // Issue #262: Rückgabe war 'null' für ungültige/leere Eingaben — hat 207 Tests rot
 // gemacht und Null-Werte in den State geschleust. Jetzt wieder 0 mit NaN-Guard.
@@ -169,8 +156,6 @@ Object.assign(window.AppGlobals, {
   APP_BUILD_DATE: APP_BUILD_DATE,
   _stateListeners: _stateListeners,
   _pendingKey: _pendingKey,
-  fmt: fmt,
-  fmtCompact: fmtCompact,
   parseDE: parseDE,
   formatEinheit: formatEinheit,
   appOnStateChange: appOnStateChange,

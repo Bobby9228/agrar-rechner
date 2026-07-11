@@ -38,6 +38,7 @@
     --color-result-bg: #e8f4dc;
     --color-success-soft: #e8f4dc;
     --color-text: #1a1a1a;
+    --color-text-danger: #c62828;
     --color-text-hint: #616161;
     --color-text-hint-2: #5f6368;
     --color-text-label: #444;
@@ -89,6 +90,7 @@
     --color-result-bg: #2a3320;
     --color-summary-muted: #b0b8a8;
     --color-text: #e0e8d6;
+    --color-text-danger: #ef5350;
     --color-text-hint: #9ca896;
     --color-text-hint-2: #9ca896;
     --color-text-label: #9aa88a;
@@ -546,7 +548,7 @@
     }
     .drill-excess {
 font-size: 0.75rem;
-      color: var(--color-text-hint);
+      color: var(--color-text-danger);
       text-transform: uppercase;
     }
     .drill-excess .entry-text::before {
@@ -556,6 +558,34 @@ font-size: 0.75rem;
       color: var(--color-info);
     }
     .excess-hint {
+      color: var(--color-danger-soft);
+    }
+    /* Issue #336: drei Carryover-Roh-Wert-Zeilen im Ergebnis-Tab.
+       Visuell getrennt von Verbleibend/Eingefüllt via border-top und
+       kleinerer Schrift. Farben folgen dem Maschinen-Protokoll-Pattern. */
+    .net-totals-line {
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 2px 0;
+    }
+    .net-totals-savings {
+      color: var(--color-text-success);
+    }
+    .net-totals-excess {
+      color: var(--color-text-danger);
+    }
+    .r-carryover-row {
+      font-size: 0.85rem;
+      padding: 2px 0;
+      font-weight: 600;
+    }
+    .r-carryover-savings {
+      color: var(--color-text-success);
+    }
+    .r-carryover-carryover {
+      color: var(--color-info);
+    }
+    .r-carryover-excess {
       color: var(--color-danger-soft);
     }
     .summary-muted {
@@ -673,6 +703,43 @@ font-size: 0.75rem;
     .drill-tab-row .drill-tab-values input:focus {
       border-color: var(--color-primary);
       outline: none;
+    }
+    .drill-tab-row .drill-tab-values input:disabled {
+      background: var(--color-bg-disabled, #f3f3f3);
+      color: var(--color-text-hint);
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+    /* Issue #377: Toggle-Button "Feld fertig" pro Reiter. Default neutral
+       (grauer Rahmen), aktiv grün gefüllt. Klickbar auch auf Touch. */
+    .drill-done-btn {
+      flex-shrink: 0;
+      padding: 6px 10px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid var(--color-divider);
+      background: var(--color-bg);
+      color: var(--color-text-label-strong);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      touch-action: manipulation;
+      white-space: nowrap;
+    }
+    .drill-done-btn:hover {
+      border-color: var(--color-primary);
+    }
+    .drill-done-btn.active {
+      background: var(--color-primary);
+      border-color: var(--color-primary-dark);
+      color: var(--color-ios-banner-text);
+    }
+    .drill-done-btn:active {
+      transform: scale(0.96);
+    }
+    .drill-tab-row.done {
+      background: rgba(76, 175, 80, 0.06);
+      border: 1px solid rgba(76, 175, 80, 0.25);
     }
     .btn-add {
       width: 100%;

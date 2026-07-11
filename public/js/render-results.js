@@ -13,6 +13,29 @@
 
     // --- Render: Result Card ---
 
+    // Issue #371 (Reopen) Teil 2: Pure-Helper für die "Mehrbedarf"-Anzeige.
+    // Subtrahiert den Cross-Tab-Netting-Anteil (co.nettedEinheit/Duenger)
+    // vom Roh-Mehrbedarf und klemmt bei 0.
+    //
+    // Eingaben:
+    //   raw  = { excessE: number, excessD: number }   (IST - SOLL dieses Tabs, Roh-Wert)
+    //   co   = carryover-Objekt für DIESEN Tab aus AppGlobals.getCarryover(activeIdx)
+    // Rückgabe: { shownExcessE, shownExcessD } — nie negativ.
+    //
+    // Testbar ohne DOM; renderResultCard ruft dies auf, der Test in tests/57
+    // ruft es direkt und assertet auf die Rückgabe (nicht auf getTabRemaining,
+    // weil das für volle Mehrbedarf-Tabs ohnehin 0 ist und den Bug nicht deckt).
+    function computeShownExcess(raw, co) {
+      var re = (raw && typeof raw.excessE === 'number') ? raw.excessE : 0;
+      var rd = (raw && typeof raw.excessD === 'number') ? raw.excessD : 0;
+      var ne = (co && typeof co.nettedEinheit === 'number') ? co.nettedEinheit : 0;
+      var nd = (co && typeof co.nettedDuenger === 'number') ? co.nettedDuenger : 0;
+      return {
+        shownExcessE: Math.max(0, re - ne),
+        shownExcessD: Math.max(0, rd - nd)
+      };
+    }
+
     function renderResultCard() {
       var r = AppGlobals.getActiveReiter();
       var kornerGesamt = AppGlobals.getKornerGesamt();
@@ -61,6 +84,12 @@
           sollIstSection.style.display = 'none';
         }
       }
+      // Issue #336: Per-Tab-Eigen-Salden des aktiven Tabs (PR #337/#339).
+      // Ersparnis + Mehrbedarf sind Roh-Werte für DIESEN Tab — KEINE Cross-Tab-
+      // Aggregation, KEIN Empfänger-Saldo aus computeAllCarryovers(), KEINE
+      // Verrechnung mit Verbleibend/Eingefüllt (Issue #335 bleibt offen).
+      // Der Cross-Tab-Saldo lebt im Drill-Log + Maschinen-Protokoll (Issue
+      // #336 follow-up #5b, User-Feedback 2026-06-23, 5. Runde).
       var carryoverHint = document.getElementById('r_carryover_hint');
       if (!carryoverHint) {
         carryoverHint = document.createElement('div');
@@ -72,26 +101,48 @@
       }
       if (carryoverHint) {
         while (carryoverHint.firstChild) carryoverHint.removeChild(carryoverHint.firstChild);
-        var activeIdx = AppGlobals.state.activeReiter || 0;
-        var co = AppGlobals.getCarryover(activeIdx);
-        if (co.savedEinheit > 0.05 || co.savedDuenger > 0.05) {
-          var parts = [];
-          if (co.savedEinheit > 0.05) parts.push(AppGlobals.fmt(co.savedEinheit) + ' Einheiten');
-          if (co.savedDuenger > 0.05) parts.push(AppGlobals.fmt(co.savedDuenger) + ' kg Dünger');
-          var savedSpan = document.createElement('span');
-          savedSpan.className = 'carryover-hint';
-          savedSpan.textContent = 'Übertrag aus ersparten Flächen: +' + parts.join(', ');
-          carryoverHint.appendChild(savedSpan);
+        var savingsE = 0, savingsD = 0, excessE = 0, excessD = 0;
+        if (r.istHektar > 0 && r.hektar > 0) {
+          savingsE = AppGlobals.getTabTotalEinheiten(r) - AppGlobals.getTabIstEinheiten(r);
+          savingsD = (r.hektar - r.istHektar) * (r.duenger || 0);
+          excessE = AppGlobals.getTabIstEinheiten(r) - AppGlobals.getTabTotalEinheiten(r);
+          excessD = (r.istHektar - r.hektar) * (r.duenger || 0);
         }
-        if (co.excessEinheit > 0.05 || co.excessDuenger > 0.05) {
-          var eparts = [];
-          if (co.excessEinheit > 0.05) eparts.push(AppGlobals.fmt(co.excessEinheit) + ' Einheiten');
-          if (co.excessDuenger > 0.05) eparts.push(AppGlobals.fmt(co.excessDuenger) + ' kg Dünger');
-          if (carryoverHint.firstChild) carryoverHint.appendChild(document.createElement('br'));
-          var excessSpan = document.createElement('span');
-          excessSpan.className = 'excess-hint';
-          excessSpan.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eparts.join(', ');
-          carryoverHint.appendChild(excessSpan);
+        // Issue #371 (Reopen) Teil 2: Die vom User gesehene "Mehrbedarf"-Zeile
+        // muss den Anteil abziehen, der bereits durch den Cross-Tab-Pool
+        // (computeAllCarryovers → Phase 0.5 → nettedEinheit/nettedDuenger)
+        // gedeckt ist. Sonst zeigt sie 1,6 E obwohl remaining = 0 ist.
+        //
+        // Ersparnis bleibt unverändert: Ersparnis IST Eigene-Abweichung dieses
+        // Tabs (Issue #336 Vertrag), keine Cross-Tab-Korrektur.
+        var activeIdxForHint = AppGlobals.state.activeReiter || 0;
+        var coForHint = AppGlobals.getCarryover(activeIdxForHint);
+        var shown = AppGlobals.computeShownExcess({ excessE: excessE, excessD: excessD }, coForHint);
+        var showSavings = savingsE > 0.05 || savingsD > 0.05;
+        var showExcess = shown.shownExcessE > 0.05 || shown.shownExcessD > 0.05;
+        if (showSavings || showExcess) {
+          var sectionLabel = document.createElement('div');
+          sectionLabel.className = 'r-carryover-section-label';
+          sectionLabel.textContent = 'Abweichung dieses Tabs';
+          carryoverHint.appendChild(sectionLabel);
+          if (showSavings) {
+            var sParts = [];
+            if (savingsE > 0.05) sParts.push(AppGlobals.fmt(savingsE) + ' Einheiten Saatgut');
+            if (savingsD > 0.05) sParts.push(savingsD.toLocaleString('de-DE') + ' kg Dünger');
+            var sDiv = document.createElement('div');
+            sDiv.className = 'r-carryover-row r-carryover-savings';
+            sDiv.textContent = 'Ersparnis: ' + sParts.join(', ');
+            carryoverHint.appendChild(sDiv);
+          }
+          if (showExcess) {
+            var eParts = [];
+            if (shown.shownExcessE > 0.05) eParts.push(AppGlobals.fmt(shown.shownExcessE) + ' Einheiten Saatgut');
+            if (shown.shownExcessD > 0.05) eParts.push(shown.shownExcessD.toLocaleString('de-DE') + ' kg Dünger');
+            var eDiv = document.createElement('div');
+            eDiv.className = 'r-carryover-row r-carryover-excess';
+            eDiv.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eParts.join(', ');
+            carryoverHint.appendChild(eDiv);
+          }
         }
       }
     }
@@ -154,20 +205,18 @@
       if (rdSection) rdSection.style.display = 'block';
       var usedE = r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
       var usedD = r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
-      // Issue #320: Konsistenz mit render-dashboard.js:60-61, render-drill.js:50-52,143-144,
-      // und renderResultCard oben (alle nutzen `istHa > 0` ternary). Der `||`-Fallback
-      // war im aktuellen Code funktional identisch (verifiziert per Brute-Force), aber die
-      // explizite Ternary-Form ist robuster gegen künftige Refactorings von getTabIstX()
-      // und macht die Code-Basis einheitlich mit den 4 Geschwister-Sites.
-      var istHa = AppGlobals.getTabIstHektar(r);
-      var istE = istHa > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getTabTotalEinheiten(r);
-      var istD = istHa > 0 ? AppGlobals.getTabIstDuenger(r) : AppGlobals.getTabTotalDuenger(r);
-      // Issue #305: subtract carryover savings / add excess from other tabs
-      // so the inline-drill "verbleibend" matches the dashboard + drill summary.
+      // Issue #320: Konsistenz mit render-dashboard.js, render-drill.js und
+      // renderResultCard oben — alle ziehen Basis + Used + Carryover aus
+      // derselben Quelle (getTabRemaining), sodass die "verbleibend"-Sites
+      // konsistent sind.
+      // Issue 2 (Code-Review): DRY — getTabRemaining ersetzt die inline-Formel
+      // (Basis + Used + Carryover-genettet in einem Aufruf). Line 23 oben
+      // (renderResultCard) bleibt unangetastet — sie nutzt getActiveTotalEinheiten
+      // mit anderer Semantik (SOLL-Total statt IST-präferiert).
       var activeIdx = AppGlobals.state.activeReiter || 0;
-      var co = AppGlobals.getCarryover(activeIdx);
-      var remE = Math.max(0, istE - usedE - co.savedEinheit + co.excessEinheit);
-      var remD = Math.max(0, istD - usedD - co.savedDuenger + co.excessDuenger);
+      var rem = AppGlobals.getTabRemaining(r, activeIdx);
+      var remE = rem.remainingE;
+      var remD = rem.remainingD;
       var usedEl = document.getElementById('r_drill_e_used');
       if (usedEl) usedEl.textContent = AppGlobals.formatEinheit(usedE);
       var remEl = document.getElementById('r_drill_e_rem');
@@ -192,7 +241,7 @@
         entryText.className = 'entry-text';
         var parts = [];
         if (entry.time) {
-          var t = typeof entry.time === 'number' ? new Date(entry.time).toLocaleString('de-DE') : entry.time;
+          var t = AppGlobals.formatEntryTime(entry.time);
           parts.push(t + ' –');
         }
         if (entry.istHektar || entry.zaehlerStand) {
@@ -221,4 +270,5 @@ Object.assign(window.AppGlobals, {
   renderResultCard: renderResultCard,
   renderResults: renderResults,
   renderDrillEntriesInline: renderDrillEntriesInline,
+  computeShownExcess: computeShownExcess,
 });

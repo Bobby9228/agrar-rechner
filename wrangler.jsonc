@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "agrar-rechner-dev",
+  "account_id": "5e4b9154b488352709fd72f630a7c3ae",
   "compatibility_date": "2026-04-24",
   "observability": {
     "enabled": true

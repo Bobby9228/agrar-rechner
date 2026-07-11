@@ -298,31 +298,34 @@ describe('Drill-Protokoll', () => {
       expect(dRemText.includes('0') || dRemText === '—').toBe(true);
     });
 
-    it('renderDrillSummary() — remaining einheiten after carryover is smaller than total need', () => {
+    it('renderDrillSummary() — Tab-1 own savings stay in pool under Regel 7', () => {
       setupTwoTabs(w);
       // Tab 2: SOLL 5ha, IST 3ha → Ersparnis-Quelle.
       // (SOLL 9 Einheiten − IST 5,4 Einheiten = 3,6 Einheiten Ersparnis.)
       // Tab 2 wird via direct entries.push als "befüllt mit 3ha" markiert
       // (gebrauchte Einheiten = 3*90000/50000 = 5,4 → usedE=5,4, fertig via
-      // Carryover-Savings). Tab 1 bleibt offen mit SOLL=18, used=0.
+      // IST-Basis). Tab 1 bleibt offen mit SOLL=18, used=0.
       w.state.reiter[1].istHektar = 3;
       w.state.reiter[1].entries.push({
         einheit: 5.4, istHektar: 3, zaehlerStand: 3, duenger: 0, time: '08:00'
       });
       w.saveState();
 
-      // Total ohne Carryover-Konsum = 18 (Tab 1) + 5,4 (Tab 2) − 0 (used) = 23,4.
-      // Tab 2 ist Ersparnis-Quelle mit 3,6 Einheiten. Nach Verteilung der
-      // Ersparnis auf Tab 1 verbleiben 23,4 − 5,4 − 3,6 = 14,4.
-      // Buggy single-tab-Version zeigt 18 (nur Tab 1: SOLL 18, used 0).
+      // Vor #378 (Phase-1-Subtraktion): remE = 18 - 0 - 3,6 = 14,4.
+      // Nach #378 (Regel-7 Pool-Modell): Tab 1 ist KEIN Mehrbedarf-Tab
+      // (istE=5,4 < solE=9) → keine cross-tab Pool-Verteilung. Tab 2 hat
+      // istE == usedE → remaining=0. Tab 1 behält seine volle SOLL-Lücke
+      // (18 E − 0 used + 0 entzogen = 18 E). Tab 2's "Ersparnis" landet
+      // nicht mehr per Carryover-Pfad bei Tab 1 — sie liegt als `used`
+      // im globalen Pool und wird nur bei tatsächlichem Mehrbedarf
+      // (ist > sol) ausgespeist. Pin als Regression-Guard für #378.
       w.renderResults();
       const remText = doc.getElementById('ds_saat_remaining').textContent;
-      // Erwartetes Format: 'X,Y Einheiten' (formatEinheit-Round auf 1 Dezimalstelle).
       const match = remText.match(/^(\d+),(\d+) Einheiten$/);
       expect(match).not.toBeNull();
       const remValue = parseFloat(match[1] + '.' + match[2]);
-      // Nach Carryover muss remaining strikt kleiner sein als totalNeed (23,4 − 5,4 = 18).
-      expect(remValue).toBeLessThan(18);
+      // Tab 1 18 E + Tab 2 0 E = 18 E (keine Cross-Tab-Subtraktion mehr).
+      expect(remValue).toBeCloseTo(18, 1);
     });
 
     it('renderDrillLog() renders one .drill-entry per entry across all tabs', () => {
@@ -379,7 +382,32 @@ describe('Drill-Protokoll', () => {
     // Phase B: TotalExcess_E = 9.6, TotalExcess_D = 400.
     //          remEinheit  = max(0, 18.6 - 0 + 9.6) = 28.2
     //          remDuenger  = max(0, 1400 - 0 + 400) = 1800
-    it('renderDrillSummary() nets carryover across tabs (Issue #302)', () => {
+    it('renderDrillSummary() nets carryover across tabs (Issue #302, updated for Issue #347, Issue #368)', () => {
+      // Issue #347 (Netto-Saldo-Fix): Eine Mehrbedarf-Quelle (IST > SOLL) darf
+      // sich in Phase 2 NICHT selbst als Empfänger ihres eigenen Excess
+      // eintragen — sie muss den Rest selbst absorbieren (Eigen-Restbedarf).
+      // Vor #347 hat Phase 2 (`isMehrbedarf2` Skip fehlte) den Mehrbedarf-Pool
+      // auch an die Quelle selbst verteilt, was zu doppelter Zählung führt.
+      //
+      // Szenario: Beide Tabs haben istHektar=2.4 > SOLL=1 → BEIDE sind
+      // Mehrbedarf-Quellen. Mit Fix: BEIDE werden in Phase 2 als Absorber
+      // ausgeschlossen → kein Tab bekommt `excessEinheit/duenger` von sich
+      // selbst. Der `ds_saat_remaining` / `ds_duenger_remaining` zeigt
+      // daher nur den unverteilten Bedarf, NICHT plus Eigen-Excess.
+      //
+      // Issue #368 (Carryover-Regel 2 — sequenzielle Netting): Wenn kein
+      // Savings-Pool existiert (alle Tabs sind Mehrbedarf-Quellen), bleibt
+      // jeder Mehrbedarf-Tab vollständig ungedeckt. render-drill.js summiert
+      // jetzt den ungedeckten Mehrbedarf-Anteil (istE − solE − nettedE) in
+      // totalNeedE, damit die globale Drill-Summary die ehrliche Summe aller
+      // offenen Arbeiten zeigt — konsistent mit getTabRemaining().
+      //
+      // ALTES Verhalten (vor #347): 28,2 E / 1.800 kg (Tab 0 self-absorbed).
+      // NEUES Verhalten (nach #347): 18,6 E / 500 kg (kein Self-Absorb).
+      // NEUERES Verhalten (nach #368 + render-drill.js uncovered): 21,6 E /
+      // 3.000 kg (Tab 0 Mehrbedarf ungedeckt mitgezählt, Tab 1 als normaler
+      // Bedarfsempfänger). Vor #368 (PR #366 pro-rata) war der Effekt gleich,
+      // weil ohne Savings-Pool sowieso nichts gecovered wurde.
       setupTwoTabs(w);
       // Reset tabs to the user's repro (1 ha / 450.000 K/ha / 1000 kg).
       // setupTwoTabs defaults to 10 ha / 90000 K/ha / 200 kg/ha — too large.
@@ -403,9 +431,15 @@ describe('Drill-Protokoll', () => {
 
       w.renderResults();
 
-      // Phase A + Phase B per Issue #302 spec.
-      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('28,2 Einheiten');
-      expect(doc.getElementById('ds_duenger_remaining').textContent).toBe('1.800 kg');
+      // Senken-Modell: Σ remaining = Σ(bearb. deficit als Senke + unbearb. SOLL−used).
+      //   Tab 0 (bearb., IST 2.4ha, used 12): Material-Defizit = 21.6−12 = 9.6 E /
+      //     2400−2000 = 400 kg. Sink = Tab 0 (10:00, spätester Entry). sinkAdjusted
+      //     = +9.6 / +400 → remaining 9.6 / 400.
+      //   Tab 1 (unbearb., SOLL 9 E / 1000 kg): own = 9 / 1000, kein sinkAdjusted →
+      //     remaining 9 / 1000.
+      //   Σ Saat = 9.6 + 9 = 18.6. Σ Dünger = 400 + 1000 = 1400.
+      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('18,6 Einheiten');
+      expect(doc.getElementById('ds_duenger_remaining').textContent).toBe('1.400 kg');
 
       // Sanity: total/used are independent of carryover.
       expect(doc.getElementById('ds_saat_total').textContent).toBe('30,6 Einheiten');
