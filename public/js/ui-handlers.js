@@ -26,7 +26,6 @@
       errKoerner: 'err_koerner',
       results: 'results',
       drillSection: 'drill_section',
-      drillOverflowWarn: 'drill_overflow_warn',
       fahrgassenToggle: 'fahrgassen_toggle',
       fahrgassenSettings: 'fahrgassen_settings',
       fahrgassenBreite: 'fahrgassen_breite',
@@ -712,16 +711,11 @@
             // User confirmed: clear the entries so the new calculation sticks.
             r.entries = [];
           } else {
-            // User declined: keep entries, but still warn visually and stop
-            // here so the stale result card stays in sync with the existing
-            // entries (test 03 expects results display to remain 'block').
-            var warnEl = document.getElementById('drill_overflow_warn');
-            if (warnEl) warnEl.style.display = 'block';
+            // User declined: keep entries, but stop here so the stale result
+            // card stays in sync with the existing entries (test 03 expects
+            // results display to remain 'block').
             return;
           }
-        } else {
-          var warnEl2 = document.getElementById('drill_overflow_warn');
-          if (warnEl2) warnEl2.style.display = 'none';
         }
       }
       // 7) Speichern + rendern + Ergebnisse anzeigen
