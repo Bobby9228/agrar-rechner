@@ -16,7 +16,10 @@ describe('Drill-Protokoll', () => {
     doc.getElementById('hektar').value = '10';
     doc.getElementById('koerner').value = '90000';
     doc.getElementById('duenger').value = '150';
-    w.berechne();
+    w.getActiveReiter().hektar = 10;
+    w.getActiveReiter().koerner = 90000;
+    w.getActiveReiter().duenger = 150;
+    w.AppGlobals.renderResults();
   });
 
   describe('drillAdd()', () => {

@@ -514,86 +514,6 @@
       AppGlobals.appEmit('DRILL_ENTRY_REMOVED', { mlIdx: idx });
     }
 
-    // --- Berechnung ---
-
-    function berechne() {
-      var r = AppGlobals.getActiveReiter();
-      if (!r) return;
-      // 1) Werte aus DOM lesen (Tests setzen .value direkt)
-      var h = AppGlobals.parseDE(document.getElementById('hektar').value);
-      var k = AppGlobals.parseDE(document.getElementById('koerner').value);
-      var d = AppGlobals.parseDE(document.getElementById('duenger').value);
-      var ih = AppGlobals.parseDE(document.getElementById('ist_hektar').value) || 0;
-      // 2) Errors clearen
-      document.getElementById('err_hektar').textContent = '';
-      document.getElementById('err_koerner').textContent = '';
-      document.getElementById('hektar').style.borderColor = '';
-      document.getElementById('koerner').style.borderColor = '';
-      // 3) Pro-Feld Validierung mit Plausibilitätscheck
-      if (isNaN(h) || h <= 0) {
-        document.getElementById('err_hektar').textContent = 'Bitte Hektar eingeben';
-        document.getElementById('hektar').style.borderColor = '#d32f2f';
-        return;
-      }
-      if (h > 10000) {
-        document.getElementById('err_hektar').textContent = 'Hektar-Wert ungewöhnlich hoch (max. 10.000)';
-        document.getElementById('hektar').style.borderColor = '#d32f2f';
-        return;
-      }
-      if (isNaN(k) || k <= 0) {
-        document.getElementById('err_koerner').textContent = 'Bitte Körner pro ha eingeben';
-        document.getElementById('koerner').style.borderColor = '#d32f2f';
-        return;
-      }
-      if (k > 1000000) {
-        document.getElementById('err_koerner').textContent = 'Körner-Wert ungewöhnlich hoch (max. 1.000.000)';
-        document.getElementById('koerner').style.borderColor = '#d32f2f';
-        return;
-      }
-      // 5) Werte in State schreiben (state.hektar/koerner/duenger MUSS bereits
-      // gesetzt sein, bevor wir usedEinheit/usedDuenger gegen die neuen
-      // Totals prüfen — sonst lesen wir noch die alten Werte).
-      r.hektar = h;
-      r.koerner = k;
-      r.duenger = (isNaN(d) || d < 0) ? 0 : d;
-      r.istHektar = ih;
-      // 6) Confirm-Dialog wenn bestehende Drill-Entries die NEUEN Totals
-      // überschreiten würden (Issue #266-A / tests 03 + 28). Vor dem
-      // Refactor hat das Original-`berechne` hier einen nativen confirm()
-      // gezeigt; der Phase-3-Refactor hat das in einen visuellen Warn-Banner
-      // umgebaut, der aber nicht dieselbe UX abbildet (kein Clear-Pfad).
-      var entries = r.entries;
-      var usedEinheit = entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
-      var usedDuenger = entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
-      if (entries.length > 0) {
-        // Use the calculations.js canonical functions so the result matches the
-        // values displayed in the result card. Issue #7: calculations.js now
-        // exposes only getTabTotalEinheiten / getTabTotalDuenger (the previous
-        // getTotalEinheiten/getTotalDuenger names were absorbed into them).
-        var newEinheiten = AppGlobals.getTabTotalEinheiten(r);
-        var newDuenger = AppGlobals.getTabTotalDuenger(r);
-        var einheitExceeds = newEinheiten > 0 && usedEinheit > newEinheiten + AppGlobals.EPSILON_QUANTITY;
-        var duengerExceeds = newDuenger > 0 && usedDuenger > newDuenger + AppGlobals.EPSILON_QUANTITY;
-        if (einheitExceeds || duengerExceeds) {
-          if (_askConfirm('Die neuen Werte weichen von den eingetragenen Einheiten ab. Drill-Protokoll zurücksetzen?')) {
-            // User confirmed: clear the entries so the new calculation sticks.
-            r.entries = [];
-          } else {
-            // User declined: keep entries, but stop here so the stale result
-            // card stays in sync with the existing entries (test 03 expects
-            // results display to remain 'block').
-            return;
-          }
-        }
-      }
-      // 7) Speichern + rendern + Ergebnisse anzeigen
-      AppGlobals.saveState();
-      AppGlobals.renderTabs();
-      AppGlobals.renderResults();
-      document.getElementById('results').style.display = 'block';
-      AppGlobals.appEmit('CALCULATION_DONE', { tabIdx: AppGlobals.state.activeReiter });
-    }
-
     // --- Input Binding (reactive writes to state) ---
 
     function onInputHektar(el) {
@@ -829,7 +749,6 @@ Object.assign(window.AppGlobals, {
   drillCalcAll: drillCalcAll,
   drillCalcDebounced: drillCalcDebounced,
   drillMachineRemove: drillMachineRemove,
-  berechne: berechne,
   onInputHektar: onInputHektar,
   onInputIstHektar: onInputIstHektar,
   onInputKoerner: onInputKoerner,

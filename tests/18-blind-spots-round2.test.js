@@ -301,53 +301,6 @@ describe('initUI restores einheitGroesse with custom value', () => {
   });
 });
 
-describe('berechne: OR condition for drill entries exceed check', () => {
-  let w;
-  beforeEach(() => { w = createDom().window; });
-
-  it('asks confirm when usedEinheit exceeds but usedDuenger is fine', () => {
-    var originalConfirm = w.confirm;
-    var confirmed = false;
-    w.confirm = () => { confirmed = true; return false; };
-
-    w.state.reiter[0] = {
-      ...w.state.reiter[0],
-      hektar: 10, koerner: 90000, duenger: 150, entries: [
-        { einheit: 20, duenger: 500, hektar: 5, time: '10:00' }
-      ]
-    };
-    w.document.getElementById('hektar').value = '10';
-    w.document.getElementById('koerner').value = '90000';
-    w.document.getElementById('duenger').value = '150';
-
-    w.berechne();
-    // usedEinheit=20 > getTotalEinheiten()=18, should trigger confirm
-    expect(confirmed).toBe(true);
-
-    w.confirm = originalConfirm;
-  });
-
-  it('clears entries when user confirms after duenger exceeds', () => {
-    var originalConfirm = w.confirm;
-    w.confirm = () => true;
-
-    w.state.reiter[0] = {
-      ...w.state.reiter[0],
-      hektar: 10, koerner: 90000, duenger: 150, entries: [
-        { einheit: 5, duenger: 2000, hektar: 5, time: '10:00' }
-      ]
-    };
-    w.document.getElementById('hektar').value = '10';
-    w.document.getElementById('koerner').value = '90000';
-    w.document.getElementById('duenger').value = '150';
-
-    w.berechne();
-    expect(w.state.reiter[0].entries.length).toBe(0);
-
-    w.confirm = originalConfirm;
-  });
-});
-
 describe('lv() migration: ensures entries array on all reiters', () => {
   let w;
   beforeEach(() => { w = createDom().window; });

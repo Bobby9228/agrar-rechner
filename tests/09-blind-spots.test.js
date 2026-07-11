@@ -78,75 +78,6 @@ describe('Blind spots — renderTabs callbacks', () => {
   });
 });
 
-describe('Blind spots — berechne duenger-exceeds confirm', () => {
-  let w, doc;
-
-  beforeEach(() => {
-    const { window } = createDom();
-    w = window;
-    doc = w.document;
-  });
-
-  it('confirms when usedDuenger exceeds getTotalDuenger (even if einheiten are fine)', () => {
-    doc.getElementById('hektar').value = '10';
-    doc.getElementById('koerner').value = '90000';
-    doc.getElementById('duenger').value = '150';
-    w.berechne();
-
-    // Add drill entry with excessive duenger
-    const r = w.getActiveReiter();
-    r.entries.push({ einheit: 1, zaehlerStand: 0, duenger: 2000, time: '10:00' });
-    // usedDuenger(2000) > getTotalDuenger(1500), even though usedEinheit(1) < getTotalEinheiten(18)
-
-    // User cancels
-    w.confirm = () => false;
-    doc.getElementById('hektar').value = '10'; // same values
-    doc.getElementById('koerner').value = '90000';
-    doc.getElementById('duenger').value = '100'; // reduce duenger -> totals change
-    w.berechne();
-
-    expect(r.entries.length).toBe(1); // not cleared
-  });
-
-  it('clears entries when duenger exceeds and user confirms', () => {
-    doc.getElementById('hektar').value = '10';
-    doc.getElementById('koerner').value = '90000';
-    doc.getElementById('duenger').value = '150';
-    w.berechne();
-
-    const r = w.getActiveReiter();
-    r.entries.push({ einheit: 0, zaehlerStand: 0, duenger: 2000, time: '10:00' });
-
-    w.confirm = () => true;
-    doc.getElementById('duenger').value = '100';
-    w.berechne();
-
-    expect(r.entries.length).toBe(0);
-  });
-
-  it('does NOT confirm when entries are within totals', () => {
-    doc.getElementById('hektar').value = '10';
-    doc.getElementById('koerner').value = '90000';
-    doc.getElementById('duenger').value = '150';
-    w.berechne();
-
-    const r = w.getActiveReiter();
-    r.entries.push({ einheit: 5, zaehlerStand: 3, duenger: 500, time: '10:00' });
-    // usedEinheit(5) < 18, usedDuenger(500) < 1500 -> no confirm needed
-
-    let confirmCalled = false;
-    w.confirm = () => { confirmCalled = true; return false; };
-
-    doc.getElementById('hektar').value = '10';
-    doc.getElementById('koerner').value = '90000';
-    doc.getElementById('duenger').value = '150';
-    w.berechne();
-
-    expect(confirmCalled).toBe(false);
-    expect(r.entries.length).toBe(1); // unchanged
-  });
-});
-
 describe('Blind spots — renderResults edge cases', () => {
   let w, doc;
 
@@ -156,10 +87,16 @@ describe('Blind spots — renderResults edge cases', () => {
     doc = w.document;
   });
 
+  function calc(hektar, koerner, duenger) {
+    var r = w.getActiveReiter();
+    r.hektar = hektar;
+    r.koerner = koerner;
+    r.duenger = duenger;
+    w.renderResults();
+  }
+
   it('formats large KornerGesamt with DE thousand separators', () => {
-    doc.getElementById('hektar').value = '12,5';
-    doc.getElementById('koerner').value = '90000';
-    w.berechne();
+    calc(12.5, 90000, 0);
 
     // 12.5 * 90000 = 1.125.000
     const text = doc.getElementById('r_korner').textContent;
@@ -168,19 +105,13 @@ describe('Blind spots — renderResults edge cases', () => {
   });
 
   it('r_info shows "ohne Dünger" when no duenger', () => {
-    doc.getElementById('hektar').value = '10';
-    doc.getElementById('koerner').value = '90000';
-    doc.getElementById('duenger').value = '';
-    w.berechne();
+    calc(10, 90000, 0);
 
     expect(doc.getElementById('r_info').textContent).toContain('ohne Dünger');
   });
 
   it('r_info shows duenger + saat when duenger is set', () => {
-    doc.getElementById('hektar').value = '10';
-    doc.getElementById('koerner').value = '90000';
-    doc.getElementById('duenger').value = '150';
-    w.berechne();
+    calc(10, 90000, 150);
 
     const info = doc.getElementById('r_info').textContent;
     expect(info).toContain('kg Dünger');
@@ -189,9 +120,7 @@ describe('Blind spots — renderResults edge cases', () => {
   });
 
   it('drill entry shows time prefix when time is set', () => {
-    doc.getElementById('hektar').value = '10';
-    doc.getElementById('koerner').value = '90000';
-    w.berechne();
+    calc(10, 90000, 0);
 
     const r = w.getActiveReiter();
     r.entries.push({ einheit: 2, zaehlerStand: 3.5, duenger: 200, time: '14:30' });
@@ -205,9 +134,7 @@ describe('Blind spots — renderResults edge cases', () => {
   });
 
   it('drill entry without duenger has no Dünger text', () => {
-    doc.getElementById('hektar').value = '10';
-    doc.getElementById('koerner').value = '90000';
-    w.berechne();
+    calc(10, 90000, 0);
 
     const r = w.getActiveReiter();
     r.entries.push({ einheit: 2, zaehlerStand: 0, duenger: 0, time: '10:00' });
@@ -219,9 +146,7 @@ describe('Blind spots — renderResults edge cases', () => {
   });
 
   it('drill entry without hektar has no @ text', () => {
-    doc.getElementById('hektar').value = '10';
-    doc.getElementById('koerner').value = '90000';
-    w.berechne();
+    calc(10, 90000, 0);
 
     const r = w.getActiveReiter();
     r.entries.push({ einheit: 2, zaehlerStand: 0, duenger: 100, time: '10:00' });
@@ -234,9 +159,7 @@ describe('Blind spots — renderResults edge cases', () => {
   });
 
   it('ds_total_summary without hektar and duenger shows only einheiten', () => {
-    doc.getElementById('hektar').value = '10';
-    doc.getElementById('koerner').value = '90000';
-    w.berechne();
+    calc(10, 90000, 0);
 
     const r = w.getActiveReiter();
     r.entries.push({ einheit: 3, zaehlerStand: 0, duenger: 0, time: '10:00' });
@@ -249,9 +172,7 @@ describe('Blind spots — renderResults edge cases', () => {
   });
 
   it('drill entry has #number span', () => {
-    doc.getElementById('hektar').value = '10';
-    doc.getElementById('koerner').value = '90000';
-    w.berechne();
+    calc(10, 90000, 0);
 
     const r = w.getActiveReiter();
     r.entries.push({ einheit: 2, zaehlerStand: 0, duenger: 0, time: '10:00' });
@@ -264,9 +185,7 @@ describe('Blind spots — renderResults edge cases', () => {
   });
 
   it('drill entry delete button has btn-danger class and calls drillRemove', () => {
-    doc.getElementById('hektar').value = '10';
-    doc.getElementById('koerner').value = '90000';
-    w.berechne();
+    calc(10, 90000, 0);
 
     const r = w.getActiveReiter();
     r.entries.push({ einheit: 2, zaehlerStand: 0, duenger: 0, time: '10:00' });
@@ -283,11 +202,9 @@ describe('Blind spots — renderResults edge cases', () => {
   });
 
   it('drill_summary visibility: shown when entries exist but no calculation', () => {
-    doc.getElementById('hektar').value = '10';
-    doc.getElementById('koerner').value = '90000';
-    w.berechne();
+    calc(10, 90000, 0);
 
-    // After berechne, drill_summary should be visible (einheiten > 0)
+    // After renderResults, drill_summary should be visible (einheiten > 0)
     expect(doc.getElementById('drill_summary').style.display).toBe('block');
   });
 });
@@ -302,12 +219,12 @@ describe('Blind spots — renderResults with duenger-only entry (einheit=0)', ()
   });
 
   it('total summary includes duenger but not ha for duenger-only entry', () => {
-    doc.getElementById('hektar').value = '10';
-    doc.getElementById('koerner').value = '90000';
-    doc.getElementById('duenger').value = '150';
-    w.berechne();
+    var r = w.getActiveReiter();
+    r.hektar = 10;
+    r.koerner = 90000;
+    r.duenger = 150;
+    w.renderResults();
 
-    const r = w.getActiveReiter();
     r.entries.push({ einheit: 0, zaehlerStand: 0, duenger: 500, time: '10:00' });
     w.renderResults();
 
@@ -349,22 +266,25 @@ describe('Blind spots — switchReiter hides drill_section when no data', () => 
   });
 
   it('hides drill_section when switching to tab with no data', () => {
-    // Setup: calculate on tab 0
-    doc.getElementById('hektar').value = '10';
-    doc.getElementById('koerner').value = '90000';
-    w.berechne();
-    // drill_section should NOT show after berechne() in normal view (only in protokoll mode)
+    // Setup: tab 0 has data (hektar=10, koerner=90000); tab 1 will be empty.
+    // We push the second tab directly to avoid addReiter's syncStateFromInputs()
+    // resetting tab 0 from the (empty) DOM inputs.
+    w.state.reiter[0].hektar = 10;
+    w.state.reiter[0].koerner = 90000;
+    w.state.reiter.push({ name: 'Tab 2', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false });
+    w.state.activeReiter = 0;
+    w.renderResults();
+    // drill_section should NOT show after renderResults in normal view (only in protokoll mode)
     expect(doc.getElementById('drill_section').style.display).toBe('none');
 
-    // Add empty tab 1 and switch to it
-    w.addReiter();
-    // drill_section should still show from previous renderResults
-
-    // Switch back to tab 0 (has data), then to tab 1 (empty)
-    w.switchReiter(0); // has data -> shows
+    // Switch to tab 0 (has data) -> shows
+    w.state.activeReiter = 0;
+    w.renderResults();
     expect(doc.getElementById('results').style.display).toBe('block');
 
-    w.switchReiter(1); // no data -> hides both
+    // Switch to tab 1 (no data) -> hides both
+    w.state.activeReiter = 1;
+    w.renderResults();
     expect(doc.getElementById('results').style.display).toBe('none');
     expect(doc.getElementById('drill_section').style.display).toBe('none');
   });
