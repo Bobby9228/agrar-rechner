@@ -118,14 +118,6 @@ var ALLOWED_TAB_KEYS = [
   'entries', 'fahrgassenEnabled', 'fahrgassenBreite',
   'done'
 ];
-var ALLOWED_ENTRY_KEYS = [
-  'time', 'einheit', 'duenger', 'hektar', 'istHektar',
-  'koerner', 'duengerRate', 'mlIdx'
-];
-var ALLOWED_MACHINE_LOG_KEYS = [
-  'time', 'einheit', 'duenger', 'hektar', 'istHektar',
-  'koerner', 'duengerRate'
-];
 
 function isPlainObject(v) {
   // Schließt null, Arrays, Klassen-Instanzen und speziell
@@ -424,8 +416,6 @@ Object.assign(window.AppGlobals, {
   LEGACY_KEY_MAP: LEGACY_KEY_MAP,
   ALLOWED_TOP_KEYS: ALLOWED_TOP_KEYS,
   ALLOWED_TAB_KEYS: ALLOWED_TAB_KEYS,
-  ALLOWED_ENTRY_KEYS: ALLOWED_ENTRY_KEYS,
-  ALLOWED_MACHINE_LOG_KEYS: ALLOWED_MACHINE_LOG_KEYS,
   isIOS: isIOS,
   isStandalone: isStandalone,
   UPDATE_CHANGELOG: UPDATE_CHANGELOG,
