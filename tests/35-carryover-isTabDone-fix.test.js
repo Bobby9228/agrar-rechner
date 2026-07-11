@@ -37,19 +37,21 @@ describe('Issue #138: computeAllCarryovers skips carryover-dependent tabs', () =
   // REMOVED (#378 Regel-7): 'isTabDone() berücksichtigt Carryover aus dem Cache'
   //   — unter Regel 7 ist `savedEinheit` immer 0. Stattdessen: isTabDone
   //   triggert Pool-Exclusion: ein done-Tab nimmt NICHT am Pool teil.
-  it('done-Tab wird aus dem Carryover-Pool ausgeschlossen (Regel 7.1)', () => {
+  it('Senken-Modell: Ersparnis + Mehrbedarf; Netto-Defizit landet auf der Senke', () => {
     const { w } = setup();
-    // Tab 0: 10ha SOLL, 8ha IST → savings source (kein Mehrbedarf).
-    // Tab 1: 5ha SOLL, IST=8ha → Mehrbedarf-Quelle (8-5=3 E Lücke).
-    // Tab 2: 5ha SOLL, IST=5ha → leer, done=false.
+    // Tab 0: 10ha SOLL, 8ha IST, used=IST-Bedarf → fertig, Ersparnis 2E/200kg.
+    // Tab 1: 5ha SOLL, 8ha IST, used=SOLL-Bedarf (5) → Mehrbedarf 3E/300kg.
+    // Tab 2: 5ha SOLL/IST, used=5 → zeitlich zuletzt (Senke).
     w.state.reiter = [
       { name: 'A', hektar: 10, istHektar: 8, koerner: 50000, duenger: 100, entries: [
-        { einheit: 8, duenger: 80, zaehlerStand: 8, time: '2026-01-01T10:00' }
+        { einheit: 8, duenger: 800, zaehlerStand: 8, time: '2026-01-01T09:00' }
       ]},
       { name: 'B', hektar: 5, istHektar: 8, koerner: 50000, duenger: 100, entries: [
-        { einheit: 5, duenger: 50, zaehlerStand: 8, time: '2026-01-01T10:00' }
+        { einheit: 5, duenger: 500, zaehlerStand: 8, time: '2026-01-01T10:00' }
       ]},
-      { name: 'C', hektar: 5, istHektar: 5, koerner: 50000, duenger: 100, entries: [] }
+      { name: 'C', hektar: 5, istHektar: 5, koerner: 50000, duenger: 100, entries: [
+        { einheit: 5, duenger: 500, zaehlerStand: 5, time: '2026-01-01T11:00' }
+      ]}
     ];
 
     w.invalidateCarryoverCache();
@@ -57,20 +59,19 @@ describe('Issue #138: computeAllCarryovers skips carryover-dependent tabs', () =
     var co1 = w.getCarryover(1);
     var co2 = w.getCarryover(2);
 
-    // Regel 7: savedEinheit ist IMMER 0.
-    expect(co0.savedEinheit).toBe(0);
-    expect(co1.savedEinheit).toBe(0);
-    expect(co2.savedEinheit).toBe(0);
-    // Tab 1 ist Mehrbedarf-Quelle (Lücke 3 E).
-    // Pool = Σ used(done=false) ohne Mehrbedarf-Tabs = Tab0(8) + Tab2(0) = 8.
-    // Tab 1 Lücke 3 wird voll gedeckt: nettedEinheit = 3.
-    expect(co1.nettedEinheit).toBeCloseTo(3, 1);
-    // Tab 0 spendet 3 E an Tab 1 (inverse Reihenfolge; hier einziger Spender).
-    expect(co0.excessEinheit).toBeCloseTo(3, 1);
-    // Tab 1 (Mehrbedarf-Quelle) kann nicht selbst spenden (Befund 1 / I6).
-    expect(co1.excessEinheit).toBe(0);
-    // Tab 2 hat used=0 → kein Beitrag.
-    expect(co2.excessEinheit).toBe(0);
+    // Selbst-Abweichungen (Hinweis): Tab 0 Ersparnis, Tab 1 Mehrbedarf.
+    expect(co0.savedEinheit).toBeCloseTo(2, 1);
+    expect(co1.excessEinheit).toBeCloseTo(3, 1);
+    // Senke = Tab 2 (11:00, späteste). Netto-Material-Defizit = 0 + 3 = 3 E.
+    expect(co2.isSink).toBe(true);
+    expect(co2.sinkAdjustedE).toBeCloseTo(3, 1);
+    expect(co2.sinkAdjustedD).toBeCloseTo(300, 0);
+    expect(co0.isSink).toBe(false);
+    expect(co1.isSink).toBe(false);
+    // Tab 0/1 fertig (worked, own 0); Tab 2 trägt das Netto-Defizit.
+    expect(w.getTabRemaining(w.state.reiter[0], 0).remainingE).toBeCloseTo(0, 1);
+    expect(w.getTabRemaining(w.state.reiter[1], 1).remainingE).toBeCloseTo(0, 1);
+    expect(w.getTabRemaining(w.state.reiter[2], 2).remainingE).toBeCloseTo(3, 1);
   });
 
   // REMOVED (#378 Regel-7): 'Tab mit Carryover-vollständigem Status wird in
@@ -79,11 +80,10 @@ describe('Issue #138: computeAllCarryovers skips carryover-dependent tabs', () =
   //   ein Tab mit Carryover-vollständigem Status hat remaining=0 → isTabDone
   //   returnt true. Im Algorithmus bedeutet das: der Tab nimmt nicht am
   //   Spender-Pool teil (er ist done).
-  it('isTabDone berücksichtigt entzogen (Regel 7): Tab mit voll gedecktem Mehrbedarf ist done', () => {
+  it('Senken-Modell: Mehrbedarf-Tab ist done (Lücke weitergeleitet), Senke trägt Rest', () => {
     const { w } = setup();
-    // Tab 0: 5ha SOLL, IST=8ha → Mehrbedarf 3 E Saatgut + 300 kg Dünger.
-    //        used=5/500 (Deckung für die ersten 5 ha, Lücke bleibt).
-    // Tab 1: 5ha SOLL, IST=5ha, used=5/500 → fertig (volle Saatgut+Duenger).
+    // Tab 0: 5ha SOLL, IST=8ha → Mehrbedarf 3 E / 300 kg. used=5/500.
+    // Tab 1: 5ha SOLL, IST=5ha, used=5/500 → zeitlich zuletzt (Senke).
     w.state.reiter = [
       { name: 'A', hektar: 5, istHektar: 8, koerner: 50000, duenger: 100, entries: [
         { einheit: 5, duenger: 500, zaehlerStand: 5, time: '2026-01-01T10:00' }
@@ -97,28 +97,16 @@ describe('Issue #138: computeAllCarryovers skips carryover-dependent tabs', () =
     var co0 = w.getCarryover(0);
     var co1 = w.getCarryover(1);
 
-    // Tab 0 (Mehrbedarf): Lücke 3 E / 300 kg Dünger.
-    // Pool Saat: Σ used(done=false) ohne Mehrbedarf-Tabs = Tab1(5) = 5.
-    // Pool Düng: Tab1(500) = 500.
-    // Beide Lücken werden voll gedeckt: nettedEinheit = 3, nettedDuenger = 300.
-    expect(co0.nettedEinheit).toBeCloseTo(3, 1);
-    expect(co0.nettedDuenger).toBeCloseTo(300, 0);
-    // Tab 1 (Pool-Spender): spendet 3 E und 300 kg Dünger aus seinem used.
-    expect(co1.excessEinheit).toBeCloseTo(3, 1);
-    expect(co1.excessDuenger).toBeCloseTo(300, 0);
-    // Tab 0: Mehrbedarf-Quelle, spendet nicht selbst (Befund 1 / I6).
-    expect(co0.excessEinheit).toBe(0);
-    expect(co0.excessDuenger).toBe(0);
-    // savedEinheit ist unter Regel 7 immer 0.
-    expect(co0.savedEinheit).toBe(0);
-    expect(co1.savedEinheit).toBe(0);
-    // isTabDone: Tab 0 ist Mehrbedarf-Quelle, used=5 < istE=8, ABER die Lücke
-    // ist voll per Pool (netted=3) gedeckt → remainingE = max(0, 8-5+0-3) = 0 → done.
+    // Tab 0 Mehrbedarf (Selbst-Abweichung); Tab 1 ist Senke, trägt +3/+300.
+    expect(co0.excessEinheit).toBeCloseTo(3, 1);
+    expect(co0.excessDuenger).toBeCloseTo(300, 0);
+    expect(co1.isSink).toBe(true);
+    expect(co1.sinkAdjustedE).toBeCloseTo(3, 1);
+    expect(co1.sinkAdjustedD).toBeCloseTo(300, 0);
+    // Tab 0: own = SOLL−used = 0, nicht Senke → remaining 0 → done.
     expect(w.isTabDone(w.state.reiter[0], 0)).toBe(true);
-    // Tab 1: used=5/500, aber entzogen=3/300 (Pool-Spender) → remE = 5-5+3 = 3 > 0.
-    // Tab 1 ist NICHT done, weil er 3 E / 300 kg an Tab 0 abgegeben hat.
+    // Tab 1 (Senke): own 0 + sinkAdjusted 3 = 3 > 0 → NICHT done.
     expect(w.isTabDone(w.state.reiter[1], 1)).toBe(false);
-    // getTabRemaining dokumentiert die Restbedarfe.
     var remB = w.getTabRemaining(w.state.reiter[1], 1);
     expect(remB.remainingE).toBeCloseTo(3, 1);
     expect(remB.remainingD).toBeCloseTo(300, 0);
@@ -128,13 +116,14 @@ describe('Issue #138: computeAllCarryovers skips carryover-dependent tabs', () =
   //   isTabDone(t) ignoriert es' — unter Regel 7 ist `savedEinheit` immer 0,
   //   also ist isTabDone(t) === isTabDone(t, i) (beide nutzen `max(0, soll -
   //   used + entzogen)` über getTabRemaining, kein Cache-Split mehr).
-  it('isTabDone(t) und isTabDone(t, i) sind unter Regel 7 konsistent', () => {
+  it('isTabDone(t) und isTabDone(t, i) sind konsistent (kein Carryover)', () => {
     const { w } = setup();
-    // Tab 0: 5ha SOLL, 5ha IST, used=4/400 → noch nicht fertig.
-    // Tab 1: 5ha SOLL, 5ha IST, used=5/500 → fertig (volle Saatgut+Duenger).
+    // Tab 0: 10ha SOLL/IST, used=10 → fertig, kein Defizit.
+    // Tab 1: 5ha SOLL/IST, used=5 (zuletzt befüllt) → fertig, kein Defizit.
+    // burden=0 → sinkAdjusted=0 → beide remaining 0, beide done.
     w.state.reiter = [
-      { name: 'A', hektar: 5, istHektar: 5, koerner: 50000, duenger: 100, entries: [
-        { einheit: 4, duenger: 400, zaehlerStand: 4, time: '2026-01-01T10:00' }
+      { name: 'A', hektar: 10, istHektar: 10, koerner: 50000, duenger: 100, entries: [
+        { einheit: 10, duenger: 1000, zaehlerStand: 10, time: '2026-01-01T10:00' }
       ]},
       { name: 'B', hektar: 5, istHektar: 5, koerner: 50000, duenger: 100, entries: [
         { einheit: 5, duenger: 500, zaehlerStand: 5, time: '2026-01-01T11:00' }
@@ -144,50 +133,39 @@ describe('Issue #138: computeAllCarryovers skips carryover-dependent tabs', () =
     w.invalidateCarryoverCache();
     w.computeAllCarryovers();
 
-    // Tab A: used=4 < sollE=5, usedD=400 < sollD=500. Kein Mehrbedarf, keine
-    // Pool-Entzüge (kein IST>SOLL-Tab). isTabDone(t) und isTabDone(t, i)
-    // MÜSSEN identisch sein (Regel 7).
+    // Senken-Modell: isTabDone(t) ≡ isTabDone(t, i) konsistent.
     expect(w.isTabDone(w.state.reiter[0])).toBe(w.isTabDone(w.state.reiter[0], 0));
-    expect(w.isTabDone(w.state.reiter[0], 0)).toBe(false);
-    // Tab B: used=5/500 === sollE/D → done.
+    expect(w.isTabDone(w.state.reiter[0])).toBe(true);
+    expect(w.isTabDone(w.state.reiter[0], 0)).toBe(true);
+    expect(w.isTabDone(w.state.reiter[1])).toBe(w.isTabDone(w.state.reiter[1], 1));
     expect(w.isTabDone(w.state.reiter[1])).toBe(true);
     expect(w.isTabDone(w.state.reiter[1], 1)).toBe(true);
   });
 
-  it('kein Carryover wenn alle Tabs fertig sind', () => {
+  it('Ersparnis-Tab fertig bei IST; beide Tabs zeigen remaining 0', () => {
     const { w } = setup();
-
-    // Tab A sparet, aber Tab B ist auch ohne Carryover fertig
+    // Tab A: 10ha SOLL, nur 8ha gemacht (IST 8), used 8 → fertig bei IST (Ersparnis).
+    // Tab B: 5ha SOLL/IST, used 5 → fertig.
     w.state.reiter = [
       {
-        name: 'Feld A',
-        hektar: 10,
-        istHektar: 8,
-        koerner: 50000,
-        duenger: 100,
-        entries: [
-          { einheit: 8, duenger: 80, zaehlerStand: 8, time: '2026-01-01T10:00' }
-        ]
+        name: 'Feld A', hektar: 10, istHektar: 8, koerner: 50000, duenger: 100,
+        entries: [{ einheit: 8, duenger: 80, zaehlerStand: 8, time: '2026-01-01T10:00' }]
       },
       {
-        name: 'Feld B',
-        hektar: 5,
-        istHektar: 5,
-        koerner: 50000,
-        duenger: 100,
-        entries: [
-          { einheit: 5, duenger: 50, zaehlerStand: 5, time: '2026-01-01T11:00' }
-        ]
+        name: 'Feld B', hektar: 5, istHektar: 5, koerner: 50000, duenger: 100,
+        entries: [{ einheit: 5, duenger: 50, zaehlerStand: 5, time: '2026-01-01T11:00' }]
       }
     ];
 
     w.invalidateCarryoverCache();
     var co0 = w.getCarryover(0);
     var co1 = w.getCarryover(1);
-
-    // Tab B ist bereits fertig → bekommt keinen Carryover
-    // Ersparnis bleibt unverteilbar (nur 2 Tabs)
-    expect(co0.savedEinheit).toBeCloseTo(0, 1);
-    expect(co1.savedEinheit).toBeCloseTo(0, 1);
+    // Tab A Ersparnis (Selbst-Abweichung, Hinweis); beide Tabs remaining 0.
+    expect(co0.savedEinheit).toBeCloseTo(2, 1);
+    expect(w.getTabRemaining(w.state.reiter[0], 0).remainingE).toBeCloseTo(0, 1);
+    expect(w.getTabRemaining(w.state.reiter[1], 1).remainingE).toBeCloseTo(0, 1);
+    // Senke (Tab B): kein Material-Defizit (beide Tabs used = IST-need) → 0.
+    expect(co1.isSink).toBe(true);
+    expect(co1.sinkAdjustedE).toBeCloseTo(0, 1);
   });
 });

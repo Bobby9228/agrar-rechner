@@ -158,94 +158,25 @@
       //     Umverteilung noch offen?").
       // Beide Perspektiven sind absichtlich — keine Bug-Doppelung.
       var allTabs = AppGlobals.state.reiter || [];
-      var totalEinheiten = 0;   // sum of per-tab SOLL or IST (whichever applies)
+      var totalEinheiten = 0;   // Σ SOLL-Bedarf (Plan)
       var totalDuenger = 0;
-      var usedEinheit = 0;
+      var usedEinheit = 0;      // Σ eingefüllt
       var usedDuenger = 0;
-      // Issue #302: 'verbleibend' must net cross-tab. Phase A collects per-tab
-      // need inside the loop; Phase B (after the loop) sums carryover and applies
-      // rem = max(0, TotalNeed - TotalSaved + TotalExcess) once, globally.
-      // Same fg-factor-aware helpers as renderDrillLog (#273) so display and
-      // carryover source share one formula.
-      var totalNeedE = 0;
-      var totalNeedD = 0;
-      var totalSavedE = 0;
-      var totalSavedD = 0;
-      var totalExcessE = 0;
-      var totalExcessD = 0;
+      var remEinheit = 0;       // Σ verbleibend (inkl. Senken-Saldo)
+      var remDuenger = 0;
       for (var ti = 0; ti < allTabs.length; ti++) {
         var rt = allTabs[ti];
         if (!rt) continue;
-        var tIstHa = AppGlobals.getTabIstHektar(rt);
-        var tEinheiten = tIstHa > 0 ? AppGlobals.getTabIstEinheiten(rt) : AppGlobals.getTabTotalEinheiten(rt);
-        var tDuenger = tIstHa > 0 ? AppGlobals.getTabIstDuenger(rt) : AppGlobals.getTabTotalDuenger(rt);
-        totalEinheiten += tEinheiten;
-        totalDuenger += tDuenger;
-        var tUsedE = 0;
-        var tUsedD = 0;
-        if (rt.entries && rt.entries.length) {
-          for (var ei = 0; ei < rt.entries.length; ei++) {
-            tUsedE += (rt.entries[ei].einheit || 0);
-            tUsedD += (rt.entries[ei].duenger || 0);
-          }
-        }
-        usedEinheit += tUsedE;
-        usedDuenger += tUsedD;
-        // Phase A: per-tab need for this summary. Carryover (saved/excess)
-        // is summed across all tabs in Phase B below — NOT applied per tab
-        // (Issue #302). getCarryover(ti) returns this tab's share of the
-        // global carryover pool; summing across tabs gives the totals the
-        // formula needs.
-        var cco = AppGlobals.getCarryover(ti);
-        // Issue #347 (Folge-Bug zu PR #348): Mehrbedarf-Tabs (istE > solE
-        // bzw. istD > solD) dürfen NICHT als Bedarfsempfänger in needE/needD
-        // zählen. Ihr "Restbedarf" (ist-basis − used) ist konzeptuell
-        // Quellen-Mehraufwand, der bereits durch den Netto-Saldo-Pool in
-        // computeAllCarryovers() (#347) absorbiert wurde. Wenn wir ihn hier
-        // erneut als positiven Bedarf zählen, verdoppelt sich die Cross-Tab-
-        // Aggregations-Formel: totalNeedE enthält dann den Mehrbedarf, und
-        // totalExcessE enthält ihn ebenfalls → remE wird künstlich groß.
-        //
-        // Spec-Anker: Issue #302 definiert "verteilbare_excess_saldi" als
-        // Quellen-Salden, die im Phase-B-Cross-Tab-Pool landen. Bedarfe sind
-        // per Definition "zu wenig" (ist < soll bzw. used < basis). Daher
-        // wird hier analog zu computeAllCarryovers() Phase 1 (hasMehrbedarf-
-        // Skip) jeder Mehrbedarf-Tab als nicht-bedarfs-empfangend markiert.
-        //
-        // NICHT angefasst (Spec #302): Z. 176-177 (Phase-B-Formel
-        // rem = max(0, TotalNeed - TotalSaved + TotalExcess)).
-        var solEForTab = AppGlobals.getTabTotalEinheiten(rt);
-        var solDForTab = AppGlobals.getTabTotalDuenger(rt);
-        var isMehrbedarfE = (tEinheiten > 0 && solEForTab > 0 && tEinheiten > solEForTab);
-        var isMehrbedarfD = (tDuenger > 0 && solDForTab > 0 && tDuenger > solDForTab);
-        // Issue #368 (Carryover-Regel 2): Bei sequenzieller Netting-Verteilung
-        // kann ein Mehrbedarf-Tab UNTERDECKT bleiben, wenn der Pool kleiner
-        // ist als die Summe aller Mehrbedarfe. Der ungedeckte Anteil
-        // (istE − solE − cco.nettedEinheit) zählt als real offener Bedarf und
-        // muss in den globalen Drill-Summary-Remaining auftauchen.
-        // Vor #368 (PR #366, pro-rata) verdeckte die Gleichverteilung diese
-        // Lücke nie — der Pool reichte entweder für alle oder niemanden ganz.
-        var uncoveredE = isMehrbedarfE ? Math.max(0, tEinheiten - solEForTab - (cco.nettedEinheit || 0)) : 0;
-        var uncoveredD = isMehrbedarfD ? Math.max(0, tDuenger - solDForTab - (cco.nettedDuenger || 0)) : 0;
-        var needE = uncoveredE > 0
-          ? uncoveredE
-          : (isMehrbedarfE || tUsedE >= tEinheiten ? 0 : Math.max(0, tEinheiten - tUsedE));
-        var needD = uncoveredD > 0
-          ? uncoveredD
-          : (isMehrbedarfD || tUsedE >= tDuenger ? 0 : Math.max(0, tDuenger - tUsedD));
-        totalNeedE += needE;
-        totalNeedD += needD;
-        totalSavedE += cco.savedEinheit;
-        totalSavedD += cco.savedDuenger;
-        totalExcessE += cco.excessEinheit;
-        totalExcessD += cco.excessDuenger;
+        // Single Source of Truth: getTabRemaining liefert basis (SOLL), used
+        // und remaining (mit Senken-Saldo) konsistent in einem Aufruf.
+        var rem = AppGlobals.getTabRemaining(rt, ti);
+        totalEinheiten += rem.basisE;
+        totalDuenger += rem.basisD;
+        usedEinheit += rem.usedE;
+        usedDuenger += rem.usedD;
+        remEinheit += rem.remainingE;
+        remDuenger += rem.remainingD;
       }
-      // Phase B: cross-tab netting. Mathematically equivalent to summing
-      // per-tab max(0, need - saved + excess) given carryover's invariants
-      // (saved_t ≤ need_t, excess_t ≤ need_t - saved_t), but expressed as
-      // a single global formula per Issue #302 spec.
-      var remEinheit = Math.max(0, totalNeedE - totalSavedE + totalExcessE);
-      var remDuenger = Math.max(0, totalNeedD - totalSavedD + totalExcessD);
       var dsSollE = document.getElementById('ds_saat_total');
       if (dsSollE) dsSollE.textContent = AppGlobals.formatEinheit(totalEinheiten);
       var dsUsedE = document.getElementById('ds_saat_used');

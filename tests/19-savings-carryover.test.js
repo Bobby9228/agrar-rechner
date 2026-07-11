@@ -89,10 +89,10 @@ describe('IST/SOLL Savings & Carryover', () => {
     w.document.getElementById('drill_hektar').value = '7,9';
     w.drillAdd();
 
-    // Tab 0 is done → no carryover for it
+    // Tab 0 IST<SOLL → Ersparnis (Selbst-Abweichung, Hinweis-Feld).
     var co0 = w.getCarryover(0);
-    expect(co0.savedEinheit).toBe(0);
-    expect(co0.savedDuenger).toBe(0);
+    expect(co0.savedEinheit).toBeCloseTo(0.1, 1); // SOLL 8 − IST 7.9
+    expect(co0.savedDuenger).toBeCloseTo(10, 0);  // (8 − 7.9) × 100
   });
 
   it('savings calculation is correct for seed and fertilizer', () => {
@@ -147,14 +147,18 @@ describe('IST/SOLL Savings & Carryover', () => {
     w.state.reiter[1] = { ...w.state.reiter[1], hektar: 6, koerner: 50000, duenger: 80 };
     w.state.reiter[1].entries.push({ einheit: 3, zaehlerStand: 0, duenger: 240, time: '10:00' });
 
-    // Tab 1 has the latest entry → it's the last-filled tab → gets excess deducted
+    // Senken-Modell: Tab 1 (zuletzt befüllt, 10:00) ist die Senke und bekommt
+    // den Mehrbedarf aus Tab 0 als sinkAdjusted. Tab 0 zeigt seine eigene
+    // Mehrbedarf-Abweichung (excessEinheit = IST−SOLL).
     var co1 = w.getCarryover(1);
-    expect(co1.excessEinheit).toBeCloseTo(2, 1);  // 10 - 8 = 2 ha excess
-    expect(co1.excessDuenger).toBeCloseTo(200, 0);
-    // Tab 0 gets nothing
+    expect(co1.isSink).toBe(true);
+    expect(co1.sinkAdjustedE).toBeCloseTo(2, 1);   // burden 2 E landet auf Senke
+    expect(co1.sinkAdjustedD).toBeCloseTo(200, 0);  // (10−8) × 100
+    // Tab 0: eigene Mehrbedarf-Abweichung (Hinweis), kein sinkAdjusted.
     var co0 = w.getCarryover(0);
-    expect(co0.excessEinheit).toBe(0);
+    expect(co0.excessEinheit).toBeCloseTo(2, 1);   // IST 10 − SOLL 8
     expect(co0.savedEinheit).toBe(0);
+    expect(co0.sinkAdjustedE).toBe(0);
   });
 
   it('excess shown as drill-excess div in protocol', () => {
@@ -210,15 +214,16 @@ describe('IST/SOLL Savings & Carryover', () => {
     // Tab 0 entries: usedE=3
     w.state.reiter[0].entries.push({ einheit: 3, zaehlerStand: 3, duenger: 300, time: '09:00' });
 
-    // Excess-Pool = 3 E. Tab 0 ist Quelle (istE=8 > solE=5) → Skip in Phase 2.
-    // Tab 1 (neutral) absorbiert 2 E (volle Cap). Rest 1 E verfällt.
+    // Senken-Modell: Tab 1 (zuletzt befüllt, 10:00) ist Senke. Material-
+    // Defizit aus Tab 0 (IST-Bedarf 8 − used 3 = 5 E) fließt auf die Senke.
     var co1 = w.getCarryover(1);
-    expect(co1.excessEinheit).toBeCloseTo(2, 1);
+    expect(co1.isSink).toBe(true);
+    expect(co1.sinkAdjustedE).toBeCloseTo(5, 1); // 8 − 3 = 5 E Defizit
+    expect(co1.sinkAdjustedD).toBeCloseTo(500, 0); // (800 − 300) = 500 kg
 
-    // Tab 0 (Mehrbedarf-Quelle): bekommt KEINEN excessEinheit (Self-Absorb
-    // ist mit Netto-Fix ausgeschlossen).
+    // Tab 0 (Mehrbedarf-Quelle) zeigt ihre Flächen-Abweichung (Hinweis).
     var co0 = w.getCarryover(0);
-    expect(co0.excessEinheit).toBeCloseTo(0, 1);
+    expect(co0.excessEinheit).toBeCloseTo(3, 1); // IST 8 − SOLL 5
   });
 
   it('savings display applies fahrgassenFaktor (Issue #273)', () => {
