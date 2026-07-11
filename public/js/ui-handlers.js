@@ -608,7 +608,7 @@
       // Issue #377: globale Drill-Inputs (drill_einheit / drill_duenger /
       // drill_hektar) deaktivieren, wenn der aktive Tab als done markiert
       // ist. Die Felder würden sonst Einträge auf einen abgeschlossenen
-      // Tab schreiben (drillMachineAdd → state.reiter[activeReiter]).
+      // Tab schreiben.
       _syncActiveTabLock();
       AppGlobals.renderDrillSummary();
       AppGlobals.renderResults();
@@ -632,38 +632,6 @@
     function drillCalcDebounced() {
       clearTimeout(AppGlobals._internal.drillCalcTimer);
       AppGlobals._internal.drillCalcTimer = setTimeout(AppGlobals.drillCalcAll, 150);
-    }
-
-    function drillMachineAdd() {
-      var einheitVal = document.getElementById('drill_einheit').value;
-      var duengerVal = document.getElementById('drill_duenger').value;
-      var einheit = AppGlobals.parseDE(einheitVal) || 0;
-      var duenger = AppGlobals.parseDE(duengerVal) || 0;
-      var targetHektar = AppGlobals.parseDE(document.getElementById('drill_hektar').value) || 0;
-      if (einheit <= 0 && duenger <= 0) return;
-      var activeTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
-      var entry = {
-        time: Date.now(),
-        mlIdx: AppGlobals.state.machineLog.length,
-        einheit: einheit,
-        duenger: duenger,
-        hektar: targetHektar > 0 ? targetHektar : (activeTab.hektar || 0),
-        istHektar: 0,
-        zaehlerStand: targetHektar,
-        koerner: activeTab.koerner,
-        duengerRate: activeTab.duenger,
-        isMachineLog: true
-      };
-      AppGlobals.state.machineLog.push(entry);
-      var count = parseInt(document.getElementById('drill_einheit').value) || 1;
-      for (var c = 0; c < count; c++) {
-        var e = { time: Date.now() + c, mlIdx: AppGlobals.state.machineLog.length - 1, einheit: einheit / count, duenger: duenger / count, hektar: targetHektar > 0 ? targetHektar : (activeTab.hektar || 0), istHektar: 0, zaehlerStand: targetHektar, koerner: activeTab.koerner, duengerRate: activeTab.duenger };
-        activeTab.entries.push(e);
-      }
-      document.getElementById('drill_einheit').value = '';
-      document.getElementById('drill_duenger').value = '';
-      document.getElementById('drill_hektar').value = '';
-      AppGlobals.appEmit('DRILL_ENTRY_ADDED', { tabIdx: AppGlobals.state.activeReiter });
     }
 
     function drillMachineRemove(idx) {
@@ -1002,7 +970,6 @@ Object.assign(window.AppGlobals, {
   _syncActiveTabLock: _syncActiveTabLock,
   drillCalcAll: drillCalcAll,
   drillCalcDebounced: drillCalcDebounced,
-  drillMachineAdd: drillMachineAdd,
   drillMachineRemove: drillMachineRemove,
   berechne: berechne,
   onInputHektar: onInputHektar,
