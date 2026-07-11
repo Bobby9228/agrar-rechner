@@ -162,28 +162,33 @@ function _computeNetCarryoverPools(reiter) {
   };
 }
 
-// Berechnet Carryover für alle Tabs — REGEL 7 POOL-MODELL (Issue #378).
+// Berechnet Carryover für alle Tabs — SENKEN-MODELL (Prio-Workfront).
 //
-// Ersetzt komplett die vorherige Phase-0/0.5/1/2-Architektur. Physisches
-// Modell: ein gemeinsamer Tank (Pool) pro Material (Saat + Dünger getrennt,
-// Regel 4). Mehrbedarf-Lücken wandern rueckwaerts durch die nicht-fertigen
-// Tabs (Regel 7.2). Ein Tab kann nicht gleichzeitig Spender und Empfaenger
-// sein (Befund 1 / I6: Selbstgutschrift ausgeschlossen).
+// Praxis-Modell (sequenzielle Bearbeitung in Prio-Reihenfolge): Die Felder
+// werden in PRIO-Reihenfolge bearbeitet (Prio 1 zuerst, höchste Prio zuletzt).
+// Weicht ein bearbeitetes Feld von der Planung ab (IST ≠ SOLL), entsteht ein
+// Saldo (Mehrbedarf bei Übergröße, Ersparnis bei Untergröße). Dieser Saldo
+// wandert vorwärts und bleibt am ZULETZT BEFÜLLTEN Tab (der „Senke" = aktuelle
+// Work-Front) hängen — dem Feld, das als Letztes drankam und für das der
+// Restbestand bzw. die Fehlmenge anfällt.
+//
+// Senken-Auswahl: zuletzt befüllter, nicht-done Tab — Sortierung nach
+//   lastEntryTime (absteigend) → drillPriority (absteigend) → Index (absteigend).
+//   Fallback (keine Prio gesetzt): zuletzt befüllt nach Uhrzeit.
+//
+// Pro Material (Saat/Dünger getrennt):
+//   own_i       = SOLL_Bedarf_i − used_i                (Plan-Rest; <0 = überfüllt)
+//   burden      = Σ (IST_Bedarf_i − SOLL_Bedarf_i)      über Tabs mit istHektar>0
+//   absorbiert  = Σ max(0, −own_i)                       über Nicht-Senken (Überfüllungen schlucken)
+//   burden_net  = burden − absorbiert                    (kann negativ sein = Netto-Ersparnis)
+//   remaining_i = max(0, own_i)                          für Nicht-Senken
+//   remaining_Senke = max(0, own_Senke + burden_net)
+//
+// Materialerhaltung: Σ remaining = Σ(IST-Bedarf bearb. + SOLL-Bedarf unbearb.) − Σ used.
 //
 // Return pro Tab: { savedEinheit, savedDuenger, excessEinheit, excessDuenger,
-//                   nettedEinheit, nettedDuenger }
-//   - nettedEinheit/nettedDuenger: wie viel vom Mehrbedarf dieses Tabs wurde
-//     durch Cross-Tab-Pool gedeckt (immer = exc, wenn er selbst Mehrbedarf hat;
-//     sonst 0).
-//   - excessEinheit/excessDuenger: entzogen_i (Menge, die ANDERE Tabs von
-//     diesem Tab abgezogen haben). Bei Mehrbedarf-Tabs typischerweise 0
-//     (sie ziehen selbst, werden aber nicht weiter bespendet).
-//   - savedEinheit/savedDuenger: 0 (Regel 7 kennt kein SAV-Symbol — die
-//     `sol - used` Ersparnis eines Tabs ist konzeptuell Teil des globalen
-//     Pools und wird im `getTabRemaining` ueber `remaining = max(0, soll -
-//     used + entzogen)` abgebildet. Bleibt fuer Backward-Compat mit
-//     Render-Sites erhalten).
-//
+//   nettedEinheit, nettedDuenger (Legacy/Compat), sinkAdjustedE/D (Senken-Zuschlag),
+//   selfDeviationE/D (IST−SOLL für Hinweise), isSink }
 // Cached in _internal.carryoverCache; invalidateCarryoverCache() bei Änderung.
 function computeAllCarryovers() {
   if (_internal.carryoverCache !== null) return _internal.carryoverCache;
@@ -193,8 +198,16 @@ function computeAllCarryovers() {
 
   var result = [];
   for (let i = 0; i < n; i++) {
-    result.push({ savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0, nettedEinheit: 0, nettedDuenger: 0 });
+    result.push({
+      savedEinheit: 0, savedDuenger: 0,
+      excessEinheit: 0, excessDuenger: 0,
+      nettedEinheit: 0, nettedDuenger: 0,
+      sinkAdjustedE: 0, sinkAdjustedD: 0,
+      selfDeviationE: 0, selfDeviationD: 0,
+      isSink: false
+    });
   }
+  if (n === 0) { _internal.carryoverCache = result; return result; }
 
   // --- Hilfsfunktionen ---
   var lastEntryTime = function(i) {
@@ -203,12 +216,30 @@ function computeAllCarryovers() {
     var last = tab.entries[tab.entries.length - 1];
     return parseEntryTime(last ? (last.time || 0) : 0);
   };
-  // Bearbeitungs-Reihenfolge: lastEntry.time aufsteigend, Tiebreaker Tab-Index
-  var byTimeAsc = function(a, b) {
-    var ta = lastEntryTime(a), tb = lastEntryTime(b);
-    if (ta !== tb) return ta - tb;
-    return a - b;
+  var prioOf = function(i) {
+    var p = AppGlobals.state.drillPriorities;
+    if (!p) return 0;
+    var v = p[String(i)];
+    if (v === undefined) v = p[i];
+    return v || 0;
   };
+
+  // Senke = zuletzt befüllter, nicht-done Tab: Zeit desc → Prio desc → Index desc.
+  var sinkIdx = -1, sinkTime = -1, sinkPrio = -1;
+  for (let i = 0; i < n; i++) {
+    var r = reiter[i];
+    if (!r || r.done) continue;
+    var t = lastEntryTime(i);
+    var p = prioOf(i);
+    if (sinkIdx === -1
+        || t > sinkTime
+        || (t === sinkTime && p > sinkPrio)
+        || (t === sinkTime && p === sinkPrio && i > sinkIdx)) {
+      sinkIdx = i; sinkTime = t; sinkPrio = p;
+    }
+  }
+  if (sinkIdx === -1) { _internal.carryoverCache = result; return result; }
+  result[sinkIdx].isSink = true;
 
   // PRO MATERIAL (Saat, Dünger) getrennt.
   for (var mat = 0; mat < 2; mat++) {
@@ -216,103 +247,37 @@ function computeAllCarryovers() {
     var getUsed = isSaat ? getTabUsedEinheiten : getTabUsedDuenger;
     var getIst  = isSaat ? getTabIstEinheiten    : getTabIstDuenger;
     var getSol  = isSaat ? getTabTotalEinheiten  : getTabTotalDuenger;
-    var usedField  = isSaat ? 'nettedEinheit' : 'nettedDuenger';
-    var excField   = isSaat ? 'excessEinheit' : 'excessDuenger';
+    var fldSink   = isSaat ? 'sinkAdjustedE' : 'sinkAdjustedD';
+    var fldDev    = isSaat ? 'selfDeviationE' : 'selfDeviationD';
+    var fldSaved  = isSaat ? 'savedEinheit' : 'savedDuenger';
+    var fldExcess = isSaat ? 'excessEinheit' : 'excessDuenger';
 
-    // 1. Pool berechnen (Regel 7.1): Σ used_i für alle Tabs mit done===false.
-    //    `used` ist hier die im Tank liegende Menge — Fertige (done=true) ist
-    //    raus, ihr Material ist in der Erde.
-    var pool = 0;
+    var burden = 0;
+    var absorbiert = 0;
     for (let i = 0; i < n; i++) {
-      if (!reiter[i] || reiter[i].done) continue;
-      pool += getUsed(reiter[i]);
-    }
-
-    // 2. Mehrbedarf-Tabs sammeln (ist > sol && ist > 0), in Bearbeitungs-
-    //    Reihenfolge sortiert (FRÜHESTE zuerst).
-    var mehrbedarfTabs = [];
-    for (let i = 0; i < n; i++) {
-      var r = reiter[i];
-      if (!r) continue;
-      var ist = getIst(r);
-      var sol = getSol(r);
-      if (ist > 0 && ist > sol) {
-        mehrbedarfTabs.push({ idx: i, exc: ist - sol });
+      var rr = reiter[i];
+      if (!rr) continue;
+      var sol = getSol(rr);
+      var used = getUsed(rr);
+      var own;
+      // Bearbeitete Tabs (istHektar>0): sind fertig → own=0. Ihr Material-
+      // Defizit (IST_Bedarf − used) fließt in den burden (Mehrbedarf bei
+      // Übergröße, Überschuss bei Überfüllung). Flächen-Abweichung nur Hinweis.
+      if (rr.istHektar > 0) {
+        var ist = getIst(rr);
+        burden += (ist - used);
+        var dev = ist - sol;
+        result[i][fldDev] = dev;
+        if (dev < 0) result[i][fldSaved] = -dev;       // Ersparnis (Hinweis)
+        else if (dev > 0) result[i][fldExcess] = dev;   // Mehrbedarf (Hinweis)
+        own = 0;
+      } else {
+        own = sol - used;
       }
+      // Überfüllung der Nicht-Senken schluckt burden (verhindert Doppelfehler).
+      if (i !== sinkIdx && own < 0) absorbiert += -own;
     }
-    mehrbedarfTabs.sort(byTimeAsc);
-
-    // 3. Verteilung: Mehrbedarf-Lücke wandert RÜCKWÄRTS durch nicht-fertige
-    //    Tabs (Regel 7.2). KONKRET:
-    //    - Pro Mehrbedarf-Tab: ziehe `exc` aus dem Pool.
-    //      Der Pool wird gespeist durch die `used`-Werte der nicht-fertigen
-    //      Tabs in INVERSER Bearbeitungs-Reihenfolge (letzter bearbeiteter
-    //      Tab zuerst). Jeder Spender kann max(used) abgeben (Regel 7.3).
-    //    - Ein Mehrbedarf-Tab kann nicht Spender sein (auch wenn er used > 0
-    //      hat: sein used ist bereits "verbraucht" für die Lücke). Befund 1.
-    //    - Die `excess*`-Felder pro Tab akkumulieren, wie viel ANDERE Tabs
-    //      diesem Tab entzogen haben (für isTabDone/getTabRemaining).
-    var remPool = pool;
-
-    // Aufnahmekapazität-Reihenfolge: INVERS Bearbeitungs-Reihenfolge,
-    // Mehrbedarf-Tabs raus, done-Tabs raus. stable sort.
-    var spenderOrder = [];
-    for (let i = 0; i < n; i++) {
-      var r = reiter[i];
-      if (!r) continue;
-      if (r.done) continue;
-      var ist = getIst(r);
-      var sol = getSol(r);
-      var isMehrbedarf = (ist > 0 && ist > sol);
-      if (isMehrbedarf) continue;
-      spenderOrder.push(i);
-    }
-    spenderOrder.sort(function(a, b) {
-      var ta = lastEntryTime(a), tb = lastEntryTime(b);
-      if (ta !== tb) return tb - ta; // INVERS: descending
-      return a - b;
-    });
-
-    var remMbh = function() {
-      var sum = 0;
-      for (var k = 0; k < mehrbedarfTabs.length; k++) sum += mehrbedarfTabs[k].exc;
-      return sum;
-    };
-
-    // Greedy: jeder Mehrbedarf-Tab zieht sequenziell seine Lücke aus dem
-    // Pool. Spender werden in inverser Reihenfolge befragt, jeder gibt
-    // maximal seinen used-Wert. Pool wird kleiner; ist Pool leer, ist die
-    // Lücke "echter Fehlbetrag" (Regel 7.5).
-    for (var k = 0; k < mehrbedarfTabs.length; k++) {
-      var mt = mehrbedarfTabs[k];
-      var need = mt.exc;
-      var taken = 0;
-      for (var s = 0; s < spenderOrder.length && need > 0.05; s++) {
-        var sIdx = spenderOrder[s];
-        var available = getUsed(reiter[sIdx]) - result[sIdx][excField];
-        if (available <= 0.05) continue;
-        var give = Math.min(need, available);
-        result[sIdx][excField] += give;
-        need -= give;
-        taken += give;
-      }
-      // Volle Deckung: netted = exc (Regel 6: Mehrbedarf-Tab zeigt 0).
-      // Bei Knappheit: netted = taken (< exc, Rest = echter Fehlbetrag).
-      result[mt.idx][usedField] = taken;
-      // Wichtig: Mehrbedarf-Tab konsumiert NICHT aus dem Pool der "verbraucht"
-      // Tabs — sein Material liegt bereits im Boden (ist eingefüllt). Die
-      // Lücke `exc` ist NICHT-VORHANDENES Material, das die Maschine aus
-      // dem Tank der Folgetabs zieht. Daher: das, was wir als `taken`
-      // buchen, geht zu LASTEN der Spender (excessErhöhung), nicht als
-      // "extra" Verbrauch beim Mehrbedarf-Tab.
-      //
-      // Korrektur-Buchung: Wir hatten oben `pool = Σ used (nicht-Mehrbedarf)`
-      // — der Pool verringert sich NICHT durch Mehrbedarf-Ziehung selbst,
-      // sondern NUR durch Spenden-Beiträge. Daher ist `taken` = Summe der
-      // Spender-Beiträge (excessField-Increment). konsistent.
-      void remPool; // Pool als Konzept (Σ used doned=false Tabs) bleibt konstant; Buchung erfolgt via excessField
-      void remMbh;   // Hilfs-API (siehe oben) — nicht im Hot-Path benötigt
-    }
+    result[sinkIdx][fldSink] = burden - absorbiert;
   }
 
   _internal.carryoverCache = result;
@@ -352,50 +317,39 @@ function invalidateCarryoverCache() {
 function getCarryover(tabIndex) {
   var all = computeAllCarryovers();
   if (tabIndex >= 0 && tabIndex < all.length) return all[tabIndex];
-  return { savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0, nettedEinheit: 0, nettedDuenger: 0 };
+  return { savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0, nettedEinheit: 0, nettedDuenger: 0, sinkAdjustedE: 0, sinkAdjustedD: 0, selfDeviationE: 0, selfDeviationD: 0, isSink: false };
 }
 
-// Liefert pro Tab die auf Carryover genetteten Restbedarfe (Saatgut + Dünger)
-// sowie Basis + Used, damit Render-Sites die Anzeige konsistent speisen.
+// Liefert pro Tab die Restbedarfe (Saatgut + Dünger) sowie Basis + Used,
+// damit Render-Sites die Anzeige konsistent speisen.
 //
-// REGEL 7 (Issue #378) — NEUE FORMEL:
-//   remaining_i = max(0, soll_i − used_i + entzogen_i − netted_i)
-// `entzogen_i` = Menge, die ANDERE Tabs (Mehrbedarf-Lücken, rückwärts
-//   verteilt) DIESEM Tab abgezogen haben (Spender-Tabs, excess*).
-// `netted_i`   = Menge, mit der der Mehrbedarf DIESES Tabs bereits durch
-//   den Cross-Tab-Pool gedeckt wurde (Empfänger-Tabs, netted*).
+// SENKEN-MODELL: remaining = max(0, SOLL − used + sinkAdjusted)
+//   - SOLL-Basis (Plan-Bedarf), nicht IST — die IST-Abweichung fließt über
+//     den Netto-Saldo (burden) zentral auf die Senke (zuletzt befüllter Tab).
+//   - sinkAdjusted = burden_net für die Senke, sonst 0.
 //
-// WICHTIG (Doppelzählungs-Fix): entzogen und netted sind zwei Seiten derselben
-// Buchung (Σ entzogen === Σ netted === gedeckter Mehrbedarf). Beide müssen in
-// die Formel eingehen, sonst wird der gedeckte Mehrbedarf zweimal gezählt —
-// einmal in der offenen Lücke des Empfänger-Tabs (remaining nicht um netted
-// reduziert) UND einmal im aufgeblähten remaining des Spender-Tabs (+entzogen).
-// Mit beiden Termen gilt Materialerhaltung:
-//   Σ remaining_i = Σ basis_i − Σ used_i   (da Σ netted − Σ entzogen = 0).
-//
-// Null-safe (fehlende Felder = 0). IST-Flaeche hat Vorrang vor SOLL.
+// Materialerhaltung: Σ remaining = Σ(SOLL) − Σ(used) + burden_net =
+//   Σ(IST-Bedarf bearb. + SOLL-Bedarf unbearb.) − Σ used.
+// Null-safe (fehlende Felder = 0).
 function getTabRemaining(r, tabIdx) {
+  var solE = getTabTotalEinheiten(r);
+  var solD = getTabTotalDuenger(r);
   var istE = getTabIstEinheiten(r);
   var istD = getTabIstDuenger(r);
-  var solE = istE > 0 ? istE : getTabTotalEinheiten(r);
-  var solD = istD > 0 ? istD : getTabTotalDuenger(r);
-  var usedE  = getTabUsedEinheiten(r);
-  var usedD  = getTabUsedDuenger(r);
-  var co     = getCarryover(tabIdx);
-  // Regel 7: entzogen = was ANDERE Tabs (nicht dieser) von ihm genommen haben
-  var entzogenE = co.excessEinheit;
-  var entzogenD = co.excessDuenger;
-  // netted = Anteil des eigenen Mehrbedarfs, der bereits durch den Pool
-  // gedeckt ist (muss abgezogen werden, sonst Doppelzählung mit entzogen).
-  var nettedE = co.nettedEinheit;
-  var nettedD = co.nettedDuenger;
+  var usedE = getTabUsedEinheiten(r);
+  var usedD = getTabUsedDuenger(r);
+  var worked = !!(r && r.istHektar > 0);
+  // Bearbeitete Tabs sind fertig (own=0); ihr Defizit liegt im Senken-burden.
+  var ownE = worked ? 0 : (solE - usedE);
+  var ownD = worked ? 0 : (solD - usedD);
+  var co = getCarryover(tabIdx);
   return {
-    basisE:     solE,
-    basisD:     solD,
+    basisE:     worked ? istE : solE,
+    basisD:     worked ? istD : solD,
     usedE:      usedE,
     usedD:      usedD,
-    remainingE: Math.max(0, solE - usedE + entzogenE - nettedE),
-    remainingD: Math.max(0, solD - usedD + entzogenD - nettedD)
+    remainingE: Math.max(0, ownE + co.sinkAdjustedE),
+    remainingD: Math.max(0, ownD + co.sinkAdjustedD)
   };
 }
 
@@ -403,33 +357,30 @@ function getTabRemaining(r, tabIdx) {
 
 // Prueft ob ein Tab "fertig" ist.
 //
-// REGEL 7 (Issue #378): Fertig = remaining = 0 ODER done=true.
-// Carryover wird nur beruecksichtigt, wenn tabIndex mitgegeben wird
-// (Backward-Compat). Nil-safe (fehlende Felder = 0).
+// SENKEN-MODELL: Fertig = remaining = 0 ODER done=true.
+// Carryover (sinkAdjusted) wird nur beruecksichtigt, wenn tabIndex mitgegeben
+// wird (Backward-Compat). Nil-safe (fehlende Felder = 0).
 //
-// Formel (konsistent mit getTabRemaining):
-//   remaining = max(0, soll − used + entzogen − netted)
-// netted wird abgezogen, damit ein Mehrbedarf-Tab, dessen Lücke voll durch
-// den Pool gedeckt ist und dessen Plan-Bedarf erfüllt ist, als fertig gilt.
+// Formel (konsistent mit getTabRemaining): SOLL-Basis.
+//   remaining = max(0, SOLL − used + sinkAdjusted)
 function isTabDone(r, tabIndex) {
   if (!r || !r.entries) return true; // Keine Entries = fertig (kein Bedarf)
   if (r.done) return true; // Manuell abgeschlossen (Issue #377)
   // Carryover nur beruecksichtigen wenn tabIndex mitgegeben
   var carryover = (tabIndex !== undefined)
     ? getCarryover(tabIndex)
-    : { savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0, nettedEinheit: 0, nettedDuenger: 0 };
-  // IST > 0 ? IST : SOLL
-  var istE = getTabIstEinheiten(r);
-  var totalE = istE > 0 ? istE : getTabTotalEinheiten(r);
+    : { sinkAdjustedE: 0, sinkAdjustedD: 0 };
+  var worked = !!(r && r.istHektar > 0);
+  var solE = getTabTotalEinheiten(r);
   var usedE = getTabUsedEinheiten(r);
-  // remaining = soll - used + entzogen - netted (Regel 7, Doppelzählungs-Fix)
-  var remainingE = Math.max(0, totalE - usedE + carryover.excessEinheit - carryover.nettedEinheit);
+  var ownE = worked ? 0 : (solE - usedE);
+  var remainingE = Math.max(0, ownE + carryover.sinkAdjustedE);
   if (remainingE > 0.05) return false;
 
-  var istD = getTabIstDuenger(r);
-  var totalD = istD > 0 ? istD : getTabTotalDuenger(r);
+  var solD = getTabTotalDuenger(r);
   var usedD = getTabUsedDuenger(r);
-  var remainingD = Math.max(0, totalD - usedD + carryover.excessDuenger - carryover.nettedDuenger);
+  var ownD = worked ? 0 : (solD - usedD);
+  var remainingD = Math.max(0, ownD + carryover.sinkAdjustedD);
   return remainingD <= 0.05;
 }
 

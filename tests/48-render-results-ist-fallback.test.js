@@ -157,13 +157,14 @@ describe('Issue #320: renderDrillEntriesInline uses istHa>0 ternary (consistency
     // C gibt 10 kg (alles), B gibt 90 kg → deckt 100 kg. C's cco.excessD=10.
     // Tab C basisD = 1500 (istHa=0). usedD=10. remainingD = 1500 - 10 + 10 = 1500.
     //
-    // Vor #378 (Phase-1): C hätte 0,9 E "saved" abgezogen + 0,9 E "excess"
-    // addiert = 13,4. Das Modell ist komplett ausgetauscht — die "Ersparnis
-    // aus IST<SOLL" landet NICHT mehr per Phase-1-Pfad bei Mehrbedarf-Tabs,
-    // sondern im globalen Pool und wird nur bei tatsächlichem Mehrmbedarf
-    // ausgespeist.
-    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('13,5 Einheiten');
-    expect(doc.getElementById('r_drill_d_rem').textContent).toContain('1.500');
+    // Senken-Modell: burden = Σ(Material-Defizit IST_Bedarf − used) für
+    // bearbeitete Tabs. Tab A (18.9−18.9=0) und Tab B (8.1−8.1=0) tragen kein
+    // Defizit. burden Saat = 0 / Dünger = 0.
+    // Senke = Tab C (10:00). sinkAdjusted Saat = 0, Dünger = 0.
+    // Tab C (unbearb., SOLL 13,5 E / 1500 kg): own = SOLL − used = 13,4 / 1490.
+    // remaining = 13,4 E / 1490 kg.
+    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('13,4 Einheiten');
+    expect(doc.getElementById('r_drill_d_rem').textContent).toContain('1.490');
   });
 
   // ──────────────────────────────────────────────────────────────────────

@@ -431,36 +431,15 @@ describe('Drill-Protokoll', () => {
 
       w.renderResults();
 
-      // Phase A + Phase B per Issue #302 spec, MIT Netto-Saldo-Korrektur #347.
-      //
-      // Fix-Reihenfolge:
-      //   PR #348 → Netto-Saldo in computeAllCarryovers(). Self-Absorb-Skip
-      //             verhindert Doppel-Zählung in der Cross-Tab-Formel.
-      //   PR #<dieser> → Folge-Bug: in renderDrillSummary() Phase A zählte
-      //                  Tab 0 (Mehrbedarf-Quelle, istE=21.6 > solE=9) als
-      //                  Bedarfsempfänger mit needE=9.6 (sein Restbedarf auf
-      //                  IST-Fläche). Das ist konzeptuell Quellen-Mehraufwand,
-      //                  nicht "zu wenig". Mit dem Mehrbedarf-Skip für Phase A
-      //                  landet nur der echte Bedarf von Tab 1 (needE=9) im
-      //                  totalNeedE.
-      //
-      // Issue #368: Ohne Savings-Pool ist Tab 0 voll ungedeckt (12.6 E
-      // Mehraufwand), sein ungedeckter Mehrbedarf zählt jetzt in totalNeedE.
-      // Tab 1 ist kein Mehrbedarf → sein Bedarf (9 E, da istHektar=0 → tEinheiten=solE)
-      // zählt normal.
-      //
-      // TotalNeed_E = 12.6 (Tab 0 ungedeckter Mehrbedarf, Issue #368) + 9 (Tab 1)
-      //             = 21.6
-      // TotalSaved_E = 0, TotalExcess_E = 0 (Tab 0 self-excess,
-      //                Phase 2 verteilt 0 dank Self-Absorb-Skip #348).
-      // → remEinheit = max(0, 21.6 - 0 + 0) = 21.6
-      //
-      // HINWEIS: Der vorherige Wert "9,0 Einheiten" entsprach dem Verhalten
-      // ohne #368-Korrektur. Mit #368 ist 21,6 der ehrliche Wert, weil Tab 0
-      // keinen Savings-Pool findet und seinen vollen Mehraufwand offen behält.
-      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('21,6 Einheiten');
-      // TotalNeed_D = 1400 (Tab 0 ungedeckter Mehrbedarf: 2400-1000-0) + 1000 (Tab 1) = 2400
-      expect(doc.getElementById('ds_duenger_remaining').textContent).toBe('2.400 kg');
+      // Senken-Modell: Σ remaining = Σ(bearb. deficit als Senke + unbearb. SOLL−used).
+      //   Tab 0 (bearb., IST 2.4ha, used 12): Material-Defizit = 21.6−12 = 9.6 E /
+      //     2400−2000 = 400 kg. Sink = Tab 0 (10:00, spätester Entry). sinkAdjusted
+      //     = +9.6 / +400 → remaining 9.6 / 400.
+      //   Tab 1 (unbearb., SOLL 9 E / 1000 kg): own = 9 / 1000, kein sinkAdjusted →
+      //     remaining 9 / 1000.
+      //   Σ Saat = 9.6 + 9 = 18.6. Σ Dünger = 400 + 1000 = 1400.
+      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('18,6 Einheiten');
+      expect(doc.getElementById('ds_duenger_remaining').textContent).toBe('1.400 kg');
 
       // Sanity: total/used are independent of carryover.
       expect(doc.getElementById('ds_saat_total').textContent).toBe('30,6 Einheiten');

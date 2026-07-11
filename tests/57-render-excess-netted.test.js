@@ -72,45 +72,45 @@ describe('Issue #371 (Reopen) Teil 2 — render-results Mehrbedarf zieht Netting
         if (w.invalidateCarryoverCache) w.invalidateCarryoverCache();
     }
 
-    it('User-Szenario: computeShownExcess für Tab1 liefert shownExcessE=0', () => {
+    it('User-Szenario: computeShownExcess gibt Roh-Mehrbedarf zurück (senken-modell: netted=0)', () => {
         setupUserScenario();
         const r1 = w.state.reiter[0];
-        // Roh-Mehrbedarf: 16ha - 15ha = 1ha → 1.6 E Saatgut
+        // Roh-Mehrbedarf (Flächen-Abweichung, Hinweis): 16ha - 15ha = 1ha → 1.6 E.
         const rawE = w.getTabIstEinheiten(r1) - w.getTabTotalEinheiten(r1);
         expect(rawE).toBeCloseTo(1.6, 1);
-        // Carryover für Tab1: nettedEinheit = 1.6 (Pool aus Tab3 deckt komplett)
+        // Senken-Modell: netted=0 (Material-Defizit fließt auf die Senke, nicht als
+        // Hinweis-netting). computeShownExcess = max(0, raw - 0) = raw.
         const co = w.getCarryover(0);
-        expect(co.nettedEinheit).toBeCloseTo(1.6, 1);
-        // Helper: 1.6 - 1.6 = 0
+        expect(co.nettedEinheit).toBe(0);
         const shown = w.computeShownExcess({ excessE: rawE, excessD: 200 }, co);
-        expect(shown.shownExcessE).toBeCloseTo(0, 1);
+        expect(shown.shownExcessE).toBeCloseTo(1.6, 1);
     });
 
-    it('User-Szenario: computeShownExcess für Tab1 liefert shownExcessD=0', () => {
+    it('User-Szenario: computeShownExcess D gibt Roh-Wert zurück', () => {
         setupUserScenario();
         const co = w.getCarryover(0);
-        expect(co.nettedDuenger).toBeCloseTo(200, 0);
+        expect(co.nettedDuenger).toBe(0);
         const shown = w.computeShownExcess({ excessE: 1.6, excessD: 200 }, co);
-        expect(shown.shownExcessD).toBeCloseTo(0, 0);
+        expect(shown.shownExcessD).toBeCloseTo(200, 0);
     });
 
-    it('User-Szenario: renderResultCard blendet Mehrbedarf-Zeile für Tab1 komplett aus', () => {
+    it('User-Szenario: renderResultCard zeigt die Mehrbedarf-Zeile (senken-modell: nicht geblendet)', () => {
         setupUserScenario();
         w.state.activeReiter = 0;
         w.renderResults();
-        // Keine .r-carryover-excess-Zeile im Hint-Container.
         const hint = doc.getElementById('r_carryover_hint');
         expect(hint).not.toBeNull();
+        // Die .r-carryover-excess-Zeile ist sichtbar (Mehrbedarf-Hinweis).
         const excess = hint.querySelector('.r-carryover-excess');
-        expect(excess).toBeNull();
+        expect(excess).not.toBeNull();
     });
 
-    it('User-Szenario: renderResultCard für Tab1 zeigt keine "Mehrbedarf"-Zeile im Klartext', () => {
+    it('User-Szenario: renderResultCard für Tab1 zeigt die "Mehrbedarf"-Zeile', () => {
         setupUserScenario();
         w.state.activeReiter = 0;
         w.renderResults();
         const hint = doc.getElementById('r_carryover_hint');
-        expect(hint.textContent).not.toContain('Mehrbedarf');
+        expect(hint.textContent).toContain('Mehrbedarf');
     });
 
     // ── Edge-Case 1: Pool < Mehrbedarf → Rest-Mehrbedarf sichtbar ─────
@@ -124,7 +124,7 @@ describe('Issue #371 (Reopen) Teil 2 — render-results Mehrbedarf zieht Netting
     //           → Pool Saat=0,5, Pool Dünger=100. Tab0 netted = 0,5/100.
     //           → shownExcessE = 1,6 - 0,5 = 1,1; shownExcessD = 320 - 100 = 220.
 
-    it('Edge 1: Pool=0,5E < Mehrbedarf 1,6E → shownExcessE=1,1 (Rest sichtbar)', () => {
+    it('Edge 1: computeShownExcess gibt vollen Roh-Mehrbedarf zurück (senken-modell)', () => {
         w.state.reiter[0] = {
             name: 'Acker 1', hektar: 10, istHektar: 11.6, koerner: 50000, duenger: 200,
             entries: [{ einheit: 11.6, duenger: 2320, time: '11:00' }],
@@ -132,22 +132,20 @@ describe('Issue #371 (Reopen) Teil 2 — render-results Mehrbedarf zieht Netting
         };
         w.state.reiter[1] = {
             name: 'Acker 2', hektar: 10, istHektar: 10, koerner: 50000, duenger: 200,
-            entries: [{ einheit: 0.5, duenger: 100, time: '12:00' }], // kleiner Spender
+            entries: [{ einheit: 0.5, duenger: 100, time: '12:00' }],
             fahrgassenEnabled: false, fahrgassenBreite: 0
         };
         w.invalidateCarryoverCache();
+        // Senken-Modell: kein Netting auf der Hinweis-Anzeige (netted=0).
         const co = w.getCarryover(0);
-        // Pool=0,5E < exc=1,6E → Tab0 netted=0,5
-        expect(co.nettedEinheit).toBeCloseTo(0.5, 1);
-        // Helper: 1,6 - 0,5 = 1,1 (Rest-Mehrbedarf)
+        expect(co.nettedEinheit).toBe(0);
+        expect(co.nettedDuenger).toBe(0);
         const shown = w.computeShownExcess({ excessE: 1.6, excessD: 320 }, co);
-        expect(shown.shownExcessE).toBeCloseTo(1.1, 1);
-        // Dünger: Pool D=100, exc D=320, taken=100, Rest=220.
-        expect(co.nettedDuenger).toBeCloseTo(100, 0);
-        expect(shown.shownExcessD).toBeCloseTo(220, 0);
+        expect(shown.shownExcessE).toBeCloseTo(1.6, 1);
+        expect(shown.shownExcessD).toBeCloseTo(320, 0);
     });
 
-    it('Edge 1: renderResultCard zeigt die Mehrbedarf-Zeile mit Rest-Werten', () => {
+    it('Edge 1: renderResultCard zeigt die Mehrbedarf-Zeile mit Roh-Werten', () => {
         w.state.reiter[0] = {
             name: 'Acker 1', hektar: 10, istHektar: 11.6, koerner: 50000, duenger: 200,
             entries: [{ einheit: 11.6, duenger: 2320, time: '11:00' }],
@@ -163,8 +161,8 @@ describe('Issue #371 (Reopen) Teil 2 — render-results Mehrbedarf zieht Netting
         w.renderResults();
         const excess = doc.querySelector('.r-carryover-excess');
         expect(excess).not.toBeNull();
-        // Rest-Mehrbedarf 1,1 E Saatgut (fmt formatiert mit Komma)
-        expect(excess.textContent).toContain('1,1');
+        // Roh-Mehrbedarf 1,6 E Saatgut (senken-modell: kein Netting/Hidden)
+        expect(excess.textContent).toContain('1,6');
         expect(excess.textContent).toContain('Einheiten Saatgut');
     });
 

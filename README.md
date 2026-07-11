@@ -570,19 +570,31 @@ Dünger_IST  = istHektar × duenger
 fahrgassenFaktor = (fahrgassenBreite - 1) / fahrgassenBreite
 ```
 
-### Verbleibende Menge
+### Verbleibende Menge (Senken-Modell)
 
 ```
-verbliebene_Einheiten = max(0, Einheiten_IST - usedEinheit + entzogen - netted)
-verbliebener_Dünger   = max(0, Dünger_IST  - usedDuenger  + entzogen - netted)
+remaining_i = max(0, basis_i − used_i + sinkAdjusted_i)   (für jeden Tab i)
 ```
 
-`entzogen` = Anteil, den ANDERE Tabs (Mehrbedarf-Lücken) diesem Tab entzogen
-haben (Spender). `netted` = Anteil des eigenen Mehrbedarfs, der bereits durch
-den Cross-Tab-Pool gedeckt ist (Empfänger). Beide Terme zusammen halten die
-Materialerhaltung: `Σ remaining = Σ basis − Σ used`, da `Σ entzogen = Σ netted`.
-Ohne `− netted` würde der gedeckte Mehrbedarf doppelt gezählt (im Empfänger-
-remaining UND im Spender-remaining via `+ entzogen`).
+`basis_i` = `min(SOLL-need_i, IST-need_i)` für bearbeitete Tabs (istHektar>0),
+            sonst `SOLL-need_i`. Das heißt: ein über-bestelltes Feld zeigt
+            SOLL-Basis (Mehrb. weitergeleitet), ein unter-bestelltes Feld
+            zeigt IST-Basis (Feld ist bei IST fertig). Unbearbeitete Felder
+            zeigen Plan-Bedarf.
+
+`sinkAdjusted_i` = der Netto-Saldo (burden), aber nur auf der **Senke**
+(zuletzt befüllter Tab, Prio-Tiebreaker bei gleicher Zeit): der
+**Material-Defizit** Σ(`IST-need − used`) der bearbeiteten Tabs (positiv =
+Mehrbedarf, negativ = Überschuss), abzüglich der Überfüllungen anderer
+Tabs (`absorbiert`), die ihn sonst doppelt zählen würden. Nicht-Senken
+erhalten `sinkAdjusted = 0`; sie zeigen ihren reinen Eigen-Bedarf
+(`basis − used`).
+
+Praktisch heißt das: bearbeitete Tabs sind fertig (ihr Defizit wanderert
+auf die Senke = aktuelle Work-Front), unbearbeitete zeigen SOLL − used.
+Überfüllte Tabs (used > basis) absorbieren den Saldo (verhindert
+Doppelfehler). Die Erhaltung `Σ remaining = Σ IST-need + Σ SOLL-need
+unbearb. − Σ used` bleibt gewahrt.
 
 ### Prognose (Maschinen-Log)
 
