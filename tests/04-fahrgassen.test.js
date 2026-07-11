@@ -164,7 +164,11 @@ describe('Fahrgassen', () => {
       w.fahrgassenToggle();
       doc.getElementById('fahrgassen_breite').value = '24';
       w.fahrgassenUpdate();
-      w.berechne();
+      w.getActiveReiter().hektar = 10;
+      w.getActiveReiter().koerner = 90000;
+      w.getActiveReiter().duenger = 150;
+      w.AppGlobals.renderResults();
+      doc.getElementById('results').style.display = 'block';
 
       expect(doc.getElementById('results').style.display).toBe('block');
       // Körner = 862.500, Einheiten = 17.25

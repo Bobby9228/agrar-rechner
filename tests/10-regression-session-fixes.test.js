@@ -43,10 +43,11 @@ describe('Regression: entries undefined on reiter', () => {
     expect(Array.isArray(r.entries)).toBe(true);
     expect(r.entries.length).toBe(0);
 
-    // berechne should not throw
+    // renderResults should not throw even when entries was missing
     doc.getElementById('hektar').value = '10';
     doc.getElementById('koerner').value = '90000';
-    expect(() => w.berechne()).not.toThrow();
+    w.syncStateFromInputs();
+    expect(() => w.renderResults()).not.toThrow();
     expect(doc.getElementById('results').style.display).toBe('block');
   });
 
@@ -72,7 +73,8 @@ describe('Regression: entries undefined on reiter', () => {
     // Switch to the tab without entries
     doc.getElementById('hektar').value = '8';
     doc.getElementById('koerner').value = '90000';
-    expect(() => w.berechne()).not.toThrow();
+    w.syncStateFromInputs();
+    expect(() => w.renderResults()).not.toThrow();
     expect(doc.getElementById('r_korner').textContent).toBe('720.000');
   });
 
@@ -125,11 +127,12 @@ describe('Regression: renderTabs creates tab-add button fresh', () => {
     expect(doc.querySelector('.tab-add').textContent).toContain('Tab');
   });
 
-  it('berechne works after adding a tab (renderTabs called from berechne)', () => {
+  it('renderResults works after adding a tab', () => {
     w.addReiter();
     doc.getElementById('hektar').value = '10';
     doc.getElementById('koerner').value = '90000';
-    expect(() => w.berechne()).not.toThrow();
+    w.syncStateFromInputs();
+    expect(() => w.renderResults()).not.toThrow();
     expect(doc.getElementById('results').style.display).toBe('block');
   });
 
@@ -192,7 +195,8 @@ describe('Regression: syncInputsFromState uses DE format', () => {
     doc.getElementById('hektar').value = '9,2';
     doc.getElementById('koerner').value = '90000';
     doc.getElementById('duenger').value = '150';
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
 
     expect(w.state.reiter[0].hektar).toBeCloseTo(9.2);
 
@@ -206,7 +210,8 @@ describe('Regression: syncInputsFromState uses DE format', () => {
     expect(doc.getElementById('hektar').value).toBe('9,2');
 
     // Calculate again — should still be 9.2 ha, not 92 ha
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
     expect(w.state.reiter[0].hektar).toBeCloseTo(9.2);
     // 9.2 * 90000 = 828000, not 92 * 90000 = 8280000
     expect(doc.getElementById('r_korner').textContent).toBe('828.000');
@@ -217,7 +222,8 @@ describe('Regression: syncInputsFromState uses DE format', () => {
     doc.getElementById('hektar').value = '12,5';
     doc.getElementById('koerner').value = '80000';
     doc.getElementById('duenger').value = '200,5';
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
     w.saveState();
 
     // Reload state via lv + syncInputsFromState
@@ -235,7 +241,8 @@ describe('Regression: syncInputsFromState uses DE format', () => {
     expect(doc.getElementById('duenger').value).toBe('200,5');
 
     // Recalculate — must be 12.5 ha not 125 ha
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
     expect(w.state.reiter[0].hektar).toBeCloseTo(12.5);
     // 12.5 * 80000 = 1000000
     expect(doc.getElementById('r_korner').textContent).toBe('1.000.000');
@@ -291,7 +298,8 @@ describe('Regression: integration — old localStorage + tabs + decimals', () =>
     expect(doc.getElementById('hektar').value).toBe('9,2');
 
     // Calculate
-    expect(() => w.berechne()).not.toThrow();
+    w.syncStateFromInputs();
+    expect(() => w.renderResults()).not.toThrow();
     expect(doc.getElementById('results').style.display).toBe('block');
 
     // Add a tab
@@ -302,13 +310,15 @@ describe('Regression: integration — old localStorage + tabs + decimals', () =>
     // Calculate on new tab
     doc.getElementById('hektar').value = '5,5';
     doc.getElementById('koerner').value = '80000';
-    expect(() => w.berechne()).not.toThrow();
+    w.syncStateFromInputs();
+    expect(() => w.renderResults()).not.toThrow();
     expect(w.state.reiter[1].hektar).toBeCloseTo(5.5);
 
     // Switch back to first tab — should still be 9,2 not 92
     w.switchReiter(0);
     expect(doc.getElementById('hektar').value).toBe('9,2');
-    expect(() => w.berechne()).not.toThrow();
+    w.syncStateFromInputs();
+    expect(() => w.renderResults()).not.toThrow();
     expect(w.state.reiter[0].hektar).toBeCloseTo(9.2);
   });
 });

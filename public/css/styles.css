@@ -67,7 +67,6 @@
     --color-bg-success-soft: #1a2e1a;
     --color-border: #3a4030;
     --color-border-soft: #3a4030;
-    --color-btn-secondary: #4a7c23;
     --color-card-bg: #252b20;
     --color-card-text: #e0e8d6;
     --color-carryover-bright: #42a5f5;
@@ -213,12 +212,6 @@
     .btn:active {
       background: var(--color-primary-hover);
       transform: scale(0.98);
-    }
-    .btn-secondary {
-      background: var(--color-primary-active);
-      font-size: 0.95rem;
-      padding: 12px;
-      margin-top: 8px;
     }
     .btn-danger {
       background: var(--color-danger);

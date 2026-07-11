@@ -6,52 +6,6 @@
 // Keine render*-Aufrufe direkt in diesen Funktionen (außer wo sofort nötig).
 // ============================================================================
 
-    // Confirm-Dialog-Wrapper. In Browsern ist `globalThis.confirm` der
-    // native window.confirm; in jsdom-Tests wird die Funktion gemockt
-    // (siehe tests/28-berechne-confirm.test.js).
-    function _askConfirm(message) {
-      return globalThis.confirm(message);
-    }
-
-    // Zentrale DOM-ID-Registry (Issue #281). IDs aus resetAll() und
-    // resetActiveTab() werden hier gebündelt, damit die Reset-Funktionen
-    // nicht mit verstreuten String-Literals arbeiten. Helper `_resetInput`
-    // und `_resetSummary` arbeiten auf dieser Konstante.
-    var DOM_IDS = {
-      hektar: 'hektar',
-      istHektar: 'ist_hektar',
-      koerner: 'koerner',
-      duenger: 'duenger',
-      errHektar: 'err_hektar',
-      errKoerner: 'err_koerner',
-      results: 'results',
-      drillSection: 'drill_section',
-      drillOverflowWarn: 'drill_overflow_warn',
-      fahrgassenToggle: 'fahrgassen_toggle',
-      fahrgassenSettings: 'fahrgassen_settings',
-      fahrgassenBreite: 'fahrgassen_breite',
-      fahrgassenSaved: 'fahrgassen_saved',
-      einheitGroesseToggle: 'einheit_groesse_toggle',
-      einheitGroesseSettings: 'einheit_groesse_settings',
-      einheitGroesseSaved: 'einheit_groesse_saved',
-      koernerProEinheit: 'koerner_pro_einheit',
-      drillSummary: [
-        'ds_saat_total', 'ds_saat_used', 'ds_saat_remaining',
-        'ds_duenger_total', 'ds_duenger_used', 'ds_duenger_remaining',
-        'ds_total_summary'
-      ]
-    };
-
-    // Helper: Input-Feld leeren + dataset.prev/cleaned zurücksetzen.
-    // Wird von resetAll() und resetActiveTab() gemeinsam genutzt.
-    function _resetInput(id) {
-      var el = document.getElementById(id);
-      if (!el) return;
-      el.value = '';
-      el.dataset.prev = '';
-      el.dataset.cleaned = '';
-    }
-
     // --- Tab-Verwaltung ---
 
     function addReiter() {
@@ -221,100 +175,6 @@
         document.getElementById('koerner_pro_einheit').style.borderColor = '#c00';
       }
       AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'koernerProEinheit' });
-    }
-
-    // --- Reset ---
-
-    function resetActiveTab() {
-      var active = AppGlobals.state.activeReiter;
-      AppGlobals.state.reiter[active] = {
-        name: AppGlobals.state.reiter[active].name,
-        hektar: 0, istHektar: 0, koerner: 0, duenger: 0,
-        entries: [],
-        fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled,
-        fahrgassenBreite: AppGlobals.state.fahrgassenBreite
-      };
-      AppGlobals.state.drillPriorities = {};
-      // Clear drill summary values (Issue #281: IDs aus DOM_IDS)
-      for (var si = 0; si < DOM_IDS.drillSummary.length; si++) {
-        var sEl = document.getElementById(DOM_IDS.drillSummary[si]);
-        if (sEl) sEl.textContent = '';
-      }
-      // Hide drill_section after reset
-      var ds = document.getElementById(DOM_IDS.drillSection);
-      if (ds) ds.style.display = 'none';
-      var eh = document.getElementById(DOM_IDS.errHektar);
-      if (eh) eh.textContent = '';
-      var ek = document.getElementById(DOM_IDS.errKoerner);
-      if (ek) ek.textContent = '';
-      var he = document.getElementById(DOM_IDS.hektar);
-      if (he) he.style.borderColor = '';
-      var ke = document.getElementById(DOM_IDS.koerner);
-      if (ke) ke.style.borderColor = '';
-      var re = document.getElementById(DOM_IDS.results);
-      if (re) re.style.display = 'none';
-      // Clear inputs via _resetInput helper
-      _resetInput(DOM_IDS.hektar);
-      _resetInput(DOM_IDS.istHektar);
-      _resetInput(DOM_IDS.koerner);
-      _resetInput(DOM_IDS.duenger);
-      AppGlobals.appEmit('TAB_RESET', { tabIdx: active });
-    }
-
-    function resetAll() {
-      AppGlobals.state = {
-        reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] }],
-        activeReiter: 0,
-        fahrgassenEnabled: false,
-        fahrgassenBreite: 0,
-        einheitGroesseEnabled: false,
-        koernerProEinheit: 50000,
-        machineLog: []
-      };
-      // Input- und Fehlerfelder zurücksetzen
-      _resetInput(DOM_IDS.hektar);
-      _resetInput(DOM_IDS.istHektar);
-      _resetInput(DOM_IDS.koerner);
-      _resetInput(DOM_IDS.duenger);
-      var errH = document.getElementById(DOM_IDS.errHektar);
-      if (errH) errH.textContent = '';
-      var errK = document.getElementById(DOM_IDS.errKoerner);
-      if (errK) errK.textContent = '';
-      var he2 = document.getElementById(DOM_IDS.hektar);
-      if (he2) he2.style.borderColor = '';
-      var ke2 = document.getElementById(DOM_IDS.koerner);
-      if (ke2) ke2.style.borderColor = '';
-      var res = document.getElementById(DOM_IDS.results);
-      if (res) res.style.display = 'none';
-      var ds = document.getElementById(DOM_IDS.drillSection);
-      if (ds) ds.style.display = 'none';
-      // Fahrgassen-Toggle deaktivieren
-      var fgBtn = document.getElementById(DOM_IDS.fahrgassenToggle);
-      if (fgBtn) {
-        fgBtn.classList.remove('active');
-        fgBtn.setAttribute('aria-pressed', 'false');
-      }
-      var fgSet = document.getElementById(DOM_IDS.fahrgassenSettings);
-      if (fgSet) fgSet.classList.remove('open');
-      var fgBr = document.getElementById(DOM_IDS.fahrgassenBreite);
-      if (fgBr) fgBr.value = '';
-      var fgSv = document.getElementById(DOM_IDS.fahrgassenSaved);
-      if (fgSv) fgSv.textContent = '';
-      // Einheit-Groesse-Toggle deaktivieren
-      var egBtn = document.getElementById(DOM_IDS.einheitGroesseToggle);
-      if (egBtn) {
-        egBtn.classList.remove('active');
-        egBtn.setAttribute('aria-pressed', 'false');
-      }
-      var egSet = document.getElementById(DOM_IDS.einheitGroesseSettings);
-      if (egSet) egSet.classList.remove('open');
-      var kp = document.getElementById(DOM_IDS.koernerProEinheit);
-      if (kp) kp.value = '';
-      var egSv = document.getElementById(DOM_IDS.einheitGroesseSaved);
-      if (egSv) egSv.textContent = '';
-      AppGlobals.state.drillPriorities = {};
-      AppGlobals.renderTabs();
-      AppGlobals.saveState();
     }
 
     // --- Drill Protocol ---
@@ -608,7 +468,7 @@
       // Issue #377: globale Drill-Inputs (drill_einheit / drill_duenger /
       // drill_hektar) deaktivieren, wenn der aktive Tab als done markiert
       // ist. Die Felder würden sonst Einträge auf einen abgeschlossenen
-      // Tab schreiben (drillMachineAdd → state.reiter[activeReiter]).
+      // Tab schreiben.
       _syncActiveTabLock();
       AppGlobals.renderDrillSummary();
       AppGlobals.renderResults();
@@ -634,38 +494,6 @@
       AppGlobals._internal.drillCalcTimer = setTimeout(AppGlobals.drillCalcAll, 150);
     }
 
-    function drillMachineAdd() {
-      var einheitVal = document.getElementById('drill_einheit').value;
-      var duengerVal = document.getElementById('drill_duenger').value;
-      var einheit = AppGlobals.parseDE(einheitVal) || 0;
-      var duenger = AppGlobals.parseDE(duengerVal) || 0;
-      var targetHektar = AppGlobals.parseDE(document.getElementById('drill_hektar').value) || 0;
-      if (einheit <= 0 && duenger <= 0) return;
-      var activeTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
-      var entry = {
-        time: Date.now(),
-        mlIdx: AppGlobals.state.machineLog.length,
-        einheit: einheit,
-        duenger: duenger,
-        hektar: targetHektar > 0 ? targetHektar : (activeTab.hektar || 0),
-        istHektar: 0,
-        zaehlerStand: targetHektar,
-        koerner: activeTab.koerner,
-        duengerRate: activeTab.duenger,
-        isMachineLog: true
-      };
-      AppGlobals.state.machineLog.push(entry);
-      var count = parseInt(document.getElementById('drill_einheit').value) || 1;
-      for (var c = 0; c < count; c++) {
-        var e = { time: Date.now() + c, mlIdx: AppGlobals.state.machineLog.length - 1, einheit: einheit / count, duenger: duenger / count, hektar: targetHektar > 0 ? targetHektar : (activeTab.hektar || 0), istHektar: 0, zaehlerStand: targetHektar, koerner: activeTab.koerner, duengerRate: activeTab.duenger };
-        activeTab.entries.push(e);
-      }
-      document.getElementById('drill_einheit').value = '';
-      document.getElementById('drill_duenger').value = '';
-      document.getElementById('drill_hektar').value = '';
-      AppGlobals.appEmit('DRILL_ENTRY_ADDED', { tabIdx: AppGlobals.state.activeReiter });
-    }
-
     function drillMachineRemove(idx) {
       if (!AppGlobals.state.machineLog || idx < 0 || idx >= AppGlobals.state.machineLog.length) return;
       AppGlobals.state.machineLog.splice(idx, 1);
@@ -677,91 +505,6 @@
         }
       });
       AppGlobals.appEmit('DRILL_ENTRY_REMOVED', { mlIdx: idx });
-    }
-
-    // --- Berechnung ---
-
-    function berechne() {
-      var r = AppGlobals.getActiveReiter();
-      if (!r) return;
-      // 1) Werte aus DOM lesen (Tests setzen .value direkt)
-      var h = AppGlobals.parseDE(document.getElementById('hektar').value);
-      var k = AppGlobals.parseDE(document.getElementById('koerner').value);
-      var d = AppGlobals.parseDE(document.getElementById('duenger').value);
-      var ih = AppGlobals.parseDE(document.getElementById('ist_hektar').value) || 0;
-      // 2) Errors clearen
-      document.getElementById('err_hektar').textContent = '';
-      document.getElementById('err_koerner').textContent = '';
-      document.getElementById('hektar').style.borderColor = '';
-      document.getElementById('koerner').style.borderColor = '';
-      // 3) Pro-Feld Validierung mit Plausibilitätscheck
-      if (isNaN(h) || h <= 0) {
-        document.getElementById('err_hektar').textContent = 'Bitte Hektar eingeben';
-        document.getElementById('hektar').style.borderColor = '#d32f2f';
-        return;
-      }
-      if (h > 10000) {
-        document.getElementById('err_hektar').textContent = 'Hektar-Wert ungewöhnlich hoch (max. 10.000)';
-        document.getElementById('hektar').style.borderColor = '#d32f2f';
-        return;
-      }
-      if (isNaN(k) || k <= 0) {
-        document.getElementById('err_koerner').textContent = 'Bitte Körner pro ha eingeben';
-        document.getElementById('koerner').style.borderColor = '#d32f2f';
-        return;
-      }
-      if (k > 1000000) {
-        document.getElementById('err_koerner').textContent = 'Körner-Wert ungewöhnlich hoch (max. 1.000.000)';
-        document.getElementById('koerner').style.borderColor = '#d32f2f';
-        return;
-      }
-      // 5) Werte in State schreiben (state.hektar/koerner/duenger MUSS bereits
-      // gesetzt sein, bevor wir usedEinheit/usedDuenger gegen die neuen
-      // Totals prüfen — sonst lesen wir noch die alten Werte).
-      r.hektar = h;
-      r.koerner = k;
-      r.duenger = (isNaN(d) || d < 0) ? 0 : d;
-      r.istHektar = ih;
-      // 6) Confirm-Dialog wenn bestehende Drill-Entries die NEUEN Totals
-      // überschreiten würden (Issue #266-A / tests 03 + 28). Vor dem
-      // Refactor hat das Original-`berechne` hier einen nativen confirm()
-      // gezeigt; der Phase-3-Refactor hat das in einen visuellen Warn-Banner
-      // umgebaut, der aber nicht dieselbe UX abbildet (kein Clear-Pfad).
-      var entries = r.entries;
-      var usedEinheit = entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
-      var usedDuenger = entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
-      if (entries.length > 0) {
-        // Use the calculations.js canonical functions so the result matches the
-        // values displayed in the result card. Issue #7: calculations.js now
-        // exposes only getTabTotalEinheiten / getTabTotalDuenger (the previous
-        // getTotalEinheiten/getTotalDuenger names were absorbed into them).
-        var newEinheiten = AppGlobals.getTabTotalEinheiten(r);
-        var newDuenger = AppGlobals.getTabTotalDuenger(r);
-        var einheitExceeds = newEinheiten > 0 && usedEinheit > newEinheiten + AppGlobals.EPSILON_QUANTITY;
-        var duengerExceeds = newDuenger > 0 && usedDuenger > newDuenger + AppGlobals.EPSILON_QUANTITY;
-        if (einheitExceeds || duengerExceeds) {
-          if (_askConfirm('Die neuen Werte weichen von den eingetragenen Einheiten ab. Drill-Protokoll zurücksetzen?')) {
-            // User confirmed: clear the entries so the new calculation sticks.
-            r.entries = [];
-          } else {
-            // User declined: keep entries, but still warn visually and stop
-            // here so the stale result card stays in sync with the existing
-            // entries (test 03 expects results display to remain 'block').
-            var warnEl = document.getElementById('drill_overflow_warn');
-            if (warnEl) warnEl.style.display = 'block';
-            return;
-          }
-        } else {
-          var warnEl2 = document.getElementById('drill_overflow_warn');
-          if (warnEl2) warnEl2.style.display = 'none';
-        }
-      }
-      // 7) Speichern + rendern + Ergebnisse anzeigen
-      AppGlobals.saveState();
-      AppGlobals.renderTabs();
-      AppGlobals.renderResults();
-      document.getElementById('results').style.display = 'block';
-      AppGlobals.appEmit('CALCULATION_DONE', { tabIdx: AppGlobals.state.activeReiter });
     }
 
     // --- Input Binding (reactive writes to state) ---
@@ -974,9 +717,6 @@
 
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 Object.assign(window.AppGlobals, {
-  _askConfirm: _askConfirm,
-  DOM_IDS: DOM_IDS,
-  _resetInput: _resetInput,
   addReiter: addReiter,
   removeReiter: removeReiter,
   switchReiter: switchReiter,
@@ -986,8 +726,6 @@ Object.assign(window.AppGlobals, {
   fahrgassenUpdate: fahrgassenUpdate,
   einheitGroesseToggle: einheitGroesseToggle,
   einheitGroesseUpdate: einheitGroesseUpdate,
-  resetActiveTab: resetActiveTab,
-  resetAll: resetAll,
   _parseDrillInputs: _parseDrillInputs,
   _resolvePerTabDistribution: _resolvePerTabDistribution,
   _buildDrillEntry: _buildDrillEntry,
@@ -1002,9 +740,7 @@ Object.assign(window.AppGlobals, {
   _syncActiveTabLock: _syncActiveTabLock,
   drillCalcAll: drillCalcAll,
   drillCalcDebounced: drillCalcDebounced,
-  drillMachineAdd: drillMachineAdd,
   drillMachineRemove: drillMachineRemove,
-  berechne: berechne,
   onInputHektar: onInputHektar,
   onInputIstHektar: onInputIstHektar,
   onInputKoerner: onInputKoerner,

@@ -108,60 +108,6 @@ var _internal = {
   pendingKey: null
 };
 
-// Carryover-Pool (Regel 7, Issue #378) für die reiter-Liste.
-//
-// NEUES POOL-MODELL (Ersetzt Phase 0 / Phase 0.5 / Phase 2 / Netting-Coverage):
-//   pool_E = Σ used_E   für alle Tabs mit done === false
-//   pool_D = Σ used_D   für alle Tabs mit done === false
-//
-// Physische Begründung: Material, das im Tank liegt (used), ist verfügbar.
-// Material von fertig-bestätigten Tabs (done=true, Issue #377) ist bereits in
-// der Erde — raus aus dem Pool. Das alte Modell (Σ max(0, basis−used) =
-// unfilled-Lücke) war ein theoretisches Konstrukt und wird komplett ersetzt.
-//
-// Vor #378 (PR #379 + #377 / done-Flag): Diese Funktion gab die unkompensierten
-// Phase-0-Savings/Excess-Totale zurück. Mit #378 ist sie obsolet — wird aber
-// für Backward-Compat und Anzeige-Pfade weiterhin exportiert (mit `legacy`-
-// Feldern). Sie wird nicht mehr von computeAllCarryovers() konsumiert.
-function _computeNetCarryoverPools(reiter) {
-  var poolE = 0, poolD = 0;
-  var totalUsedE = 0, totalUsedD = 0;
-  var legacySavedE = 0, legacyExcessE = 0;
-  var legacySavedD = 0, legacyExcessD = 0;
-
-  for (let i = 0; i < reiter.length; i++) {
-    var t = reiter[i];
-    var usedE = getTabUsedEinheiten(t);
-    var usedD = getTabUsedDuenger(t);
-    totalUsedE += usedE;
-    totalUsedD += usedD;
-    if (!t || !t.done) {
-      poolE += usedE;
-      poolD += usedD;
-    }
-    // Legacy-Felder (für Anzeige / Kompatibilität)
-    var istE = getTabIstEinheiten(t);
-    var solE = getTabTotalEinheiten(t);
-    var istD = getTabIstDuenger(t);
-    var solD = getTabTotalDuenger(t);
-    if (istE > 0) {
-      if (solE > istE) legacySavedE += (solE - istE);
-      else if (istE > solE) legacyExcessE += (istE - solE);
-    }
-    if (istD > 0) {
-      if (solD > istD) legacySavedD += (solD - istD);
-      else if (istD > solD) legacyExcessD += (istD - solD);
-    }
-  }
-
-  return {
-    poolE: poolE, poolD: poolD,
-    totalUsedE: totalUsedE, totalUsedD: totalUsedD,
-    legacySavedE: legacySavedE, legacyExcessE: legacyExcessE,
-    legacySavedD: legacySavedD, legacyExcessD: legacyExcessD,
-  };
-}
-
 // Berechnet Carryover für alle Tabs — SENKEN-MODELL (Prio-Workfront).
 //
 // Praxis-Modell (sequenzielle Bearbeitung in Prio-Reihenfolge): Die Felder
@@ -386,12 +332,6 @@ function isTabDone(r, tabIndex) {
 
 // --- Hilfsfunktionen für Entry-Time ---
 
-function getTabLastEntryTime(r) {
-  if (!r || !r.entries || r.entries.length === 0) return 0;
-  var last = r.entries[r.entries.length - 1];
-  return last ? (last.time || 0) : 0;
-}
-
 // IST-Hektar-Summe für einen Tab.
 // Priorität: r.istHektar (Input-Feld) > Summe aus entries[].istHektar.
 function getTabIstHektar(r) {
@@ -450,7 +390,6 @@ Object.assign(window.AppGlobals, {
   getCarryover: getCarryover,
   getTabRemaining: getTabRemaining,
   isTabDone: isTabDone,
-  getTabLastEntryTime: getTabLastEntryTime,
   getTabIstHektar: getTabIstHektar,
   getTabNextTime: getTabNextTime,
   getTabKornerGesamt: getTabKornerGesamt,

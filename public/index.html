@@ -208,7 +208,7 @@
     </div><!-- end .scrollable-content -->
   </div><!-- end .app-layout -->
 
-<!-- iOS Install Hint Banner -->
+  <!-- iOS Install Hint Banner -->
   <div class="ios-install-banner" id="ios_install_banner">
     <div class="ios-install-text">
       <strong>App installieren:</strong> Teile-Taste → <strong>Zum Home-Bildschirm</strong>
@@ -268,21 +268,6 @@
       <button class="dashboard-close" onclick="closeDashboard()" aria-label="Schließen">✕</button>
     </div>
     <div class="dashboard-content" id="dashboard_content"></div>
-  </div>
-  <!-- Reset Confirmation Modal (Issue #236) -->
-  <div class="reset-overlay" id="reset_overlay" onclick="_onOverlayClick(event)"></div>
-  <div class="reset-modal" id="reset_modal" role="dialog" aria-modal="true" aria-labelledby="reset_modal_title" aria-describedby="reset_modal_desc">
-    <div class="reset-modal-header">
-      <h2 id="reset_modal_title">Zurücksetzen</h2>
-    </div>
-    <p class="reset-modal-desc" id="reset_modal_desc">
-      Was möchtest du zurücksetzen? Diese Aktion lässt sich nicht rückgängig machen.
-    </p>
-    <div class="reset-modal-actions">
-      <button class="btn btn-secondary" id="reset_modal_tab" onclick="_onResetTab()">Aktuellen Tab zurücksetzen</button>
-      <button class="btn btn-danger" id="reset_modal_confirm_all" onclick="_onResetAll()">Alle Daten löschen</button>
-      <button class="btn btn-cancel" id="reset_modal_cancel" onclick="_onCancel()">Abbrechen</button>
-    </div>
   </div>
 </body>
 </html>

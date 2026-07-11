@@ -138,28 +138,11 @@ Mit Fahrgassen-Korrektur:
 Körner nach Fahrgassen = Körner gesamt × (Fahrgassenbreite - 1) / Fahrgassenbreite
 ```
 
-### `berechne()` — Hauptberechnung
+### Reaktive Eingabe-Verarbeitung
 
-Wird durch `syncStateFromInputs()` und die Eingabe-Change-Handler ausgelöst (z. B. Hektar/Körner-Änderung, Tab-Wechsel). Validiert Eingaben, liest Input-Felder aus, speichert in State, ruft `renderResults()` auf.
+Die App verwendet reaktive `onInput*`-Handler (`onInputHektar`, `onInputKoerner`, `onInputIstHektar`, `onInputDuenger`), die direkt nach jeder Eingabe den State aktualisieren und `appEmit('ENTRY_CHANGED')` auslösen. Render-Sites (Result-Card, Drill-Summary, Drill-Entries) lesen ihre Werte direkt aus `state` — keine separate "Berechnen"-Aktion nötig.
 
-**Validierung:**
-- Hektar > 0 erforderlich (ansonsten rote Fehlermeldung + Border)
-- Körner > 0 erforderlich
-- Dünger darf 0 sein (optional)
-
-**Schutz des Drill-Protokolls:**
-Wenn die neuen SOLL-Werte geringer sind als die bereits eingetragenen Verbräuche (`usedEinheit > istE` oder `usedDuenger > istD`), fragt die App **per `confirm()`**, ob das Drill-Protokoll zurückgesetzt werden soll. Damit wird verhindert, dass versehentlich Verbrauchsdaten verworfen werden.
-
-```javascript
-function berechne() {
-  // 1. Validiere Eingaben (Hektar > 0, Körner > 0)
-  // 2. Lese Werte aus Input-Feldern + schreibe in state
-  // 3. Prüfe: Sind bereits mehr Einheiten eingetragen als neu berechnet?
-  //    → Ja: confirm() → entries.length = 0 (Reset)
-  //    → Nein: mache weiter
-  // 4. sv() + renderTabs() + renderResults() + renderView()
-}
-```
+**Pipeline:** `User Input → syncStateFromInputs() → state-Objekt → renderResults() / renderDrillSummary()` (getriggert durch `appEmit('ENTRY_CHANGED')`).
 
 ### Berechnungs-Hilfsfunktionen
 
@@ -183,7 +166,7 @@ if (state.fahrgassenEnabled && state.fahrgassenBreite > 0) {
 ```
 Beispiel: Bei 24 m Fahrgassenbreite → `23/24 = 0,958` → **~4,2 % weniger Körner**.
 
-**IST vs. SOLL:** Wenn eine IST-Fläche (`r.istHektar > 0`) eingetragen ist, verwendet `berechne()` automatisch diese anstelle der SOLL-Fläche für die Berechnung der verbleibenden Mengen. Das bedeutet: Wenn ein Landwirt 10 ha bestellen wollte, aber nur 9 ha bestellen konnte, werden die Einheiten für 9 ha berechnet. Die Differenz (Ersparnis) wird über das Carryover-System auf andere Felder verteilt.
+**IST vs. SOLL:** Wenn eine IST-Fläche (`r.istHektar > 0`) eingetragen ist, verwenden die Berechnungen automatisch diese anstelle der SOLL-Fläche. Das bedeutet: Wenn ein Landwirt 10 ha bestellen wollte, aber nur 9 ha bestellen konnte, werden die Einheiten für 9 ha berechnet. Die Differenz (Ersparnis) wird über das Carryover-System auf andere Felder verteilt.
 
 ---
 
@@ -680,12 +663,10 @@ Das Projekt hat **35+ Tests** in Vitest. Alle Tests sind im Ordner `tests/` und 
 ```
 01-parseDE-calculations.test.js     → parseDE(), formatDE(), fmt()
 02-onInputFormat.test.js             → onInputFormat()
-03-berechne.test.js                   → berechne() Validierung
 04-fahrgassen.test.js                 → Fahrgassen-Berechnung
 05-drill-protocol.test.js             → drillAdd(), drillRemove()
 06-tab-management.test.js             → addReiter(), removeReiter(), switchReiter()
 07-state-persistence.test.js          → sv(), lv(), Migrationen
-08-reset-init-sync.test.js            → resetActiveTab(), resetAll()
 09-blind-spots.test.js                → Edge Cases (leere Eingaben etc.)
 10-regression-session-fixes.test.js   → Regressionstests für behobene Bugs
 11-dashboard.test.js                  → Dashboard-Rendering
