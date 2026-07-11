@@ -6,13 +6,6 @@
 // Keine render*-Aufrufe direkt in diesen Funktionen (außer wo sofort nötig).
 // ============================================================================
 
-    // Confirm-Dialog-Wrapper. In Browsern ist `globalThis.confirm` der
-    // native window.confirm; in jsdom-Tests wird die Funktion gemockt
-    // (siehe tests/28-berechne-confirm.test.js).
-    function _askConfirm(message) {
-      return globalThis.confirm(message);
-    }
-
     // --- Tab-Verwaltung ---
 
     function addReiter() {
@@ -724,7 +717,6 @@
 
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 Object.assign(window.AppGlobals, {
-  _askConfirm: _askConfirm,
   addReiter: addReiter,
   removeReiter: removeReiter,
   switchReiter: switchReiter,
