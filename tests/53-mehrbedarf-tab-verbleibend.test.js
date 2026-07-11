@@ -93,16 +93,11 @@ describe('Mehrbedarf-Tab verbleibend = 0 wenn durch Netting abgedeckt (Regel 7)'
 
   it('Tab 1 isTabDone === true (Mehrbedarf gedeckt + used < soll)', () => {
     setup3Tabs();
-    // Tab 1: sollE=16, usedE=15, entzogen=0 → remE=1, aber nettedE=1 → effektiv 0.
-    // getTabRemaining: remainingE = max(0, 16-15+0) = 1 → NICHT done by raw remaining!
-    // ABER der "Mehrbedarf gedeckt"-Pfad: wenn usedE >= istE - nettedE, dann done.
-    // Vereinfacht: Tab 1 hat usedE=15, istE=16, Lücke=1, netted=1 → Lücke gefüllt
-    // → der Tab ist konzeptuell fertig (alle Bedarfe abgedeckt).
-    // isTabDone in PR #380 nutzt `remaining = max(0, soll - used + entzogen)`
-    // und returnt false, wenn remaining > 0.05. Hier: remainingE=1 → false.
-    // → Der Test pinnt jetzt explizit das neue Verhalten.
-    expect(w.isTabDone(w.state.reiter[1], 1)).toBe(false);
-    // Stattdessen: getCarryover dokumentiert die Deckung.
+    // Tab 1: istE=16, usedE=15, nettedE=1 → remainingE = max(0, 16-15+0-1) = 0.
+    // Doppelzählungs-Fix (− netted): die per Pool gedeckte Lücke reduziert das
+    // remaining → der Tab ist konzeptuell fertig (alle Bedarfe abgedeckt).
+    expect(w.isTabDone(w.state.reiter[1], 1)).toBe(true);
+    // getCarryover dokumentiert die Deckung.
     expect(w.getCarryover(1).nettedEinheit).toBeCloseTo(1, 1);
   });
 
@@ -143,24 +138,25 @@ describe('Mehrbedarf-Tab verbleibend = 0 wenn durch Netting abgedeckt (Regel 7)'
     expect(el.textContent).toMatch(/braucht|fertig/);
   });
 
-  it('(b) Dashboard Per-Tab-Karte Acker 2 zeigt 1 / 100 (verbleibend, nicht 0!)', () => {
+  it('(b) Dashboard Per-Tab-Karte Acker 2 zeigt 0 / 0 kg (Mehrbedarf per Netting gedeckt)', () => {
     setup3Tabs();
     w.openDashboard();
     const cards = doc.querySelectorAll('.dashboard-reiter-card');
     // Tab 1 ist die zweite Karte. Werte: [Hektar, Körner/ha, Einh. verbl., Dünger verbl.]
     const values = cards[1].querySelectorAll('.dashboard-stat-value');
-    // getTabRemaining: remE = max(0, 16-15+0) = 1; remD = max(0, 1600-1500+0) = 100.
-    expect(values[2].textContent.trim()).toBe('1');
-    expect(values[3].textContent.trim()).toContain('100');
+    // Doppelzählungs-Fix: Tab 1 remaining = 16-15+0-1(netted) = 0 E / 1600-1500-100 = 0 kg.
+    // Die per Pool gedeckte Lücke taucht NICHT als offener Bedarf auf.
+    expect(values[2].textContent.trim()).toBe('0');
+    expect(values[3].textContent.trim()).toContain('0');
   });
 
-  it('(c) Inline-Drill (activeReiter = Tab 1) zeigt 1,0 Einheiten / 100 kg', () => {
+  it('(c) Inline-Drill (activeReiter = Tab 1) zeigt 0,0 Einheiten / — Dünger', () => {
     setup3Tabs();
     w.state.activeReiter = 1;
     w.renderResults();
-    expect(doc.getElementById('r_drill_e_rem').textContent).toContain('1');
+    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('0,0 Einheiten');
     const remDRow = doc.getElementById('r_drill_d_rem');
-    expect(remDRow.textContent).toContain('100');
+    expect(remDRow.textContent).toBe('—');
   });
 
   // ── Edge: 2 Mehrbedarf-Tabs, beide durch Pool gedeckt ──────────────────

@@ -57,15 +57,16 @@ describe('PLANNER VERIFY #378 — Regel-7 Pool-Modell', () => {
                 `excessD=${co.excessDuenger.toFixed(0)}`,
                 `remainingD=${rem.remainingD.toFixed(0)}`);
         }
-        // Tab1 (Mehrbedarf 1,6 E): Pool (Tab2+Tab3=18,4) deckt voll → netted=1,6
-        // used=24 < ist=25,6 → physische Lücke bleibt 1,6 (wird aus dem Pool gefüllt,
-        // bleibt aber in remaining sichtbar, weil sie nie in used landet).
+        // Tab1 (Mehrbedarf 1,6 E): Pool (Tab2+Tab3=18,4) deckt voll → netted=1,6.
+        // used=24 < ist=25,6 → physische Lücke 1,6 wird VOLL durch den Pool
+        // gedeckt (netted) → remaining = basis − used − netted = 0 (Doppelzählungs-
+        // Fix: die gedeckte Lücke bleibt NICHT in remaining stehen).
         const co1 = w.getCarryover(0);
         expect(co1.nettedEinheit).toBeCloseTo(1.6, 1);
         expect(co1.nettedDuenger).toBeCloseTo(200, 0);
         const rem1 = w.getTabRemaining(w.state.reiter[0], 0);
-        expect(rem1.remainingE).toBeCloseTo(1.6, 1);
-        expect(rem1.remainingD).toBeCloseTo(200, 0);
+        expect(rem1.remainingE).toBeCloseTo(0, 1);
+        expect(rem1.remainingD).toBeCloseTo(0, 0);
 
         // Tab2 (neutral voll): keine Entzogen, remaining 0
         const rem2 = w.getTabRemaining(w.state.reiter[1], 1);

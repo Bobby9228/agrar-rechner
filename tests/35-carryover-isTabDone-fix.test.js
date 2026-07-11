@@ -112,8 +112,9 @@ describe('Issue #138: computeAllCarryovers skips carryover-dependent tabs', () =
     // savedEinheit ist unter Regel 7 immer 0.
     expect(co0.savedEinheit).toBe(0);
     expect(co1.savedEinheit).toBe(0);
-    // isTabDone: Tab 0 ist Mehrbedarf-Quelle mit used=5 < sollE=8 → remE=3 > 0.
-    expect(w.isTabDone(w.state.reiter[0], 0)).toBe(false);
+    // isTabDone: Tab 0 ist Mehrbedarf-Quelle, used=5 < istE=8, ABER die Lücke
+    // ist voll per Pool (netted=3) gedeckt → remainingE = max(0, 8-5+0-3) = 0 → done.
+    expect(w.isTabDone(w.state.reiter[0], 0)).toBe(true);
     // Tab 1: used=5/500, aber entzogen=3/300 (Pool-Spender) → remE = 5-5+3 = 3 > 0.
     // Tab 1 ist NICHT done, weil er 3 E / 300 kg an Tab 0 abgegeben hat.
     expect(w.isTabDone(w.state.reiter[1], 1)).toBe(false);

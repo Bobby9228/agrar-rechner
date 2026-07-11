@@ -573,9 +573,16 @@ fahrgassenFaktor = (fahrgassenBreite - 1) / fahrgassenBreite
 ### Verbleibende Menge
 
 ```
-verbliebene_Einheiten = max(0, Einheiten_IST - usedEinheit - carryover)
-verbliebener_Dünger   = max(0, Dünger_IST  - usedDuenger  - carryover)
+verbliebene_Einheiten = max(0, Einheiten_IST - usedEinheit + entzogen - netted)
+verbliebener_Dünger   = max(0, Dünger_IST  - usedDuenger  + entzogen - netted)
 ```
+
+`entzogen` = Anteil, den ANDERE Tabs (Mehrbedarf-Lücken) diesem Tab entzogen
+haben (Spender). `netted` = Anteil des eigenen Mehrbedarfs, der bereits durch
+den Cross-Tab-Pool gedeckt ist (Empfänger). Beide Terme zusammen halten die
+Materialerhaltung: `Σ remaining = Σ basis − Σ used`, da `Σ entzogen = Σ netted`.
+Ohne `− netted` würde der gedeckte Mehrbedarf doppelt gezählt (im Empfänger-
+remaining UND im Spender-remaining via `+ entzogen`).
 
 ### Prognose (Maschinen-Log)
 

@@ -112,15 +112,16 @@ describe('Issue #347 Folge-Bug (Regel 7): Drill-Summary aggregiert Tab-Mehrbedar
     expect(inlineD.textContent).toBe('600 kg');
   });
 
-  it('T2 physische Mehrbedarf-Lücke (5 E / 100 kg) fliesst NICHT als Tab-Bedarf in andere Tabs', () => {
-    // Vor #378: T2 Mehrbedarf konnte Phase-1-Doppelzählung auslösen, weil
-    // es als Quelle UND Empfänger verbucht wurde. Unter Regel 7:
-    //   - T2 ist NUR Empfänger (nettedEinheit=1).
-    //   - T2's physische Lücke 5 E / 100 kg (used 11 vs ist 16) bleibt
-    //     in remaining(2) erhalten, NICHT als Tab-Bedarf in andere Tabs.
+  it('T2 Mehrbedarf-Lücke wird per Netting gedeckt (keine Doppelzählung in andere Tabs)', () => {
+    // Regel 7 + Doppelzählungs-Fix (− netted):
+    //   - T2 ist NUR Empfänger (nettedEinheit=1 / nettedDuenger=100).
+    //   - T2 remaining = basis − used − netted = 16-11-1 = 4 E / 1600-1500-100 = 0 kg.
+    //     Die 1-E-/100-kg-Lücke ist durch den Pool (T3) gedeckt und taucht in T2
+    //     NICHT mehr als offener Bedarf auf — sie wandert als entzogen genau EINMAL
+    //     zu T3 (Spender, der nachfüllen muss). Σ remaining = 0+4+3 = 7 E = Σ basis − Σ used.
     setup3TabsUserScenario();
     const rem2 = AG.getTabRemaining(AG.state.reiter[1], 1);
-    expect(rem2.remainingE).toBeCloseTo(5, 1);
-    expect(rem2.remainingD).toBeCloseTo(100, 0);
+    expect(rem2.remainingE).toBeCloseTo(4, 1);
+    expect(rem2.remainingD).toBeCloseTo(0, 0);
   });
 });

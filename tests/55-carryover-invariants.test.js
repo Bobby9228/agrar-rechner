@@ -104,12 +104,12 @@ describe('Carryover-Invarianten (5+1 User-Regeln, Regel-7-Modell #378)', () => {
     // matched exakt der dokumentierten Formel — Material darf weder entstehen
     // noch verschwinden."
     //
-    // Regel 7 (Issue #378): remaining = max(0, basisE − usedE + entzogenE)
-    //   wobei entzogenE = co.excessEinheit (Anteil, den ANDERE Tabs diesem
-    //   Tab entzogen haben). co.savedEinheit und co.nettedEinheit gehen NICHT
-    //   in remaining ein (Backward-Compat-Felder, die für Anzeige genutzt
-    //   werden, aber rechnerisch Nullsummen-Spiel zwischen
-    //   sol/used/excess/netted sind).
+    // Regel 7 (Issue #378) + Doppelzählungs-Fix: remaining = max(0, basis − used
+    //   + entzogen − netted). entzogen = was ANDERE Tabs diesem Tab abgezogen
+    //   haben (Spender, co.excess*); netted = Anteil des eigenen Mehrbedarfs, der
+    //   bereits durch den Pool gedeckt ist (Empfänger, co.netted*). Beide Terme
+    //   zusammen halten Materialerhaltung: Σ remaining = Σ basis − Σ used
+    //   (da Σ entzogen === Σ netted).
     //
     // Testet: für 200 Szenarien, jeden Tab, dass getTabRemaining exakt der
     // Formel folgt. Materialerhaltung im engeren Sinne (= kein Material
@@ -132,10 +132,10 @@ describe('Carryover-Invarianten (5+1 User-Regeln, Regel-7-Modell #378)', () => {
                     const istD = w.getTabIstDuenger(r);
                     const basisE = istE > 0 ? istE : w.getTabTotalEinheiten(r);
                     const basisD = istD > 0 ? istD : w.getTabTotalDuenger(r);
-                    // Regel 7 (Issue #378): remaining = max(0, basis − used + entzogen)
-                    // entzogen = was ANDERE diesem Tab abgezogen haben = co.excess*
-                    const expectedE = Math.max(0, basisE - usedE + co.excessEinheit);
-                    const expectedD = Math.max(0, basisD - usedD + co.excessDuenger);
+                    // Regel 7 + Doppelzählungs-Fix: remaining = max(0, basis − used
+                    // + entzogen − netted). entzogen = co.excess*, netted = co.netted*.
+                    const expectedE = Math.max(0, basisE - usedE + co.excessEinheit - co.nettedEinheit);
+                    const expectedD = Math.max(0, basisD - usedD + co.excessDuenger - co.nettedDuenger);
                     if (Math.abs(rem.remainingE - expectedE) > TOL) {
                         throw new Error(
                             `I1 Saat-Fehler in scenario[${s}] tab[${i}]: ` +
