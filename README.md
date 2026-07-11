@@ -685,7 +685,6 @@ Das Projekt hat **35+ Tests** in Vitest. Alle Tests sind im Ordner `tests/` und 
 05-drill-protocol.test.js             → drillAdd(), drillRemove()
 06-tab-management.test.js             → addReiter(), removeReiter(), switchReiter()
 07-state-persistence.test.js          → sv(), lv(), Migrationen
-08-reset-init-sync.test.js            → resetActiveTab(), resetAll()
 09-blind-spots.test.js                → Edge Cases (leere Eingaben etc.)
 10-regression-session-fixes.test.js   → Regressionstests für behobene Bugs
 11-dashboard.test.js                  → Dashboard-Rendering

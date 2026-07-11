@@ -411,7 +411,7 @@ function dismissUpdateHint() {
 // bereits in app-globals.js als Live-Alias für die `var state` definiert
 // (Getter/Setter). Ein hier eingefügter `state: state` würde den Getter
 // mit einem Plain-Property überschreiben und Reassignments (loadState,
-// resetAll, Cross-Tab-Sync) brechen.
+// Cross-Tab-Sync) brechen.
 Object.assign(window.AppGlobals, {
   LEGACY_KEY_MAP: LEGACY_KEY_MAP,
   ALLOWED_TOP_KEYS: ALLOWED_TOP_KEYS,
