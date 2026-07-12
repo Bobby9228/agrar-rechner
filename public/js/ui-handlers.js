@@ -6,6 +6,45 @@
 // Keine render*-Aufrufe direkt in diesen Funktionen (außer wo sofort nötig).
 // ============================================================================
 
+    // Zentrale DOM-ID-Registry (Issue #281). IDs aus resetAll() und
+    // resetActiveTab() werden hier gebündelt, damit die Reset-Funktionen
+    // nicht mit verstreuten String-Literals arbeiten. Helper `_resetInput`
+    // und `_resetSummary` arbeiten auf dieser Konstante.
+    var DOM_IDS = {
+      hektar: 'hektar',
+      istHektar: 'ist_hektar',
+      koerner: 'koerner',
+      duenger: 'duenger',
+      errHektar: 'err_hektar',
+      errKoerner: 'err_koerner',
+      results: 'results',
+      drillSection: 'drill_section',
+      drillOverflowWarn: 'drill_overflow_warn',
+      fahrgassenToggle: 'fahrgassen_toggle',
+      fahrgassenSettings: 'fahrgassen_settings',
+      fahrgassenBreite: 'fahrgassen_breite',
+      fahrgassenSaved: 'fahrgassen_saved',
+      einheitGroesseToggle: 'einheit_groesse_toggle',
+      einheitGroesseSettings: 'einheit_groesse_settings',
+      einheitGroesseSaved: 'einheit_groesse_saved',
+      koernerProEinheit: 'koerner_pro_einheit',
+      drillSummary: [
+        'ds_saat_total', 'ds_saat_used', 'ds_saat_remaining',
+        'ds_duenger_total', 'ds_duenger_used', 'ds_duenger_remaining',
+        'ds_total_summary'
+      ]
+    };
+
+    // Helper: Input-Feld leeren + dataset.prev/cleaned zurücksetzen.
+    // Wird von resetAll() und resetActiveTab() gemeinsam genutzt.
+    function _resetInput(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.value = '';
+      el.dataset.prev = '';
+      el.dataset.cleaned = '';
+    }
+
     // --- Tab-Verwaltung ---
 
     function addReiter() {
@@ -175,6 +214,138 @@
         document.getElementById('koerner_pro_einheit').style.borderColor = '#c00';
       }
       AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'koernerProEinheit' });
+    }
+
+    // --- Reset ---
+
+    function resetActiveTab() {
+      var active = AppGlobals.state.activeReiter;
+      AppGlobals.state.reiter[active] = {
+        name: AppGlobals.state.reiter[active].name,
+        hektar: 0, istHektar: 0, koerner: 0, duenger: 0,
+        entries: [],
+        fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled,
+        fahrgassenBreite: AppGlobals.state.fahrgassenBreite
+      };
+      AppGlobals.state.drillPriorities = {};
+      // Clear drill summary values (Issue #281: IDs aus DOM_IDS)
+      for (var si = 0; si < DOM_IDS.drillSummary.length; si++) {
+        var sEl = document.getElementById(DOM_IDS.drillSummary[si]);
+        if (sEl) sEl.textContent = '';
+      }
+      // Hide drill_section after reset
+      var ds = document.getElementById(DOM_IDS.drillSection);
+      if (ds) ds.style.display = 'none';
+      var eh = document.getElementById(DOM_IDS.errHektar);
+      if (eh) eh.textContent = '';
+      var ek = document.getElementById(DOM_IDS.errKoerner);
+      if (ek) ek.textContent = '';
+      var he = document.getElementById(DOM_IDS.hektar);
+      if (he) he.style.borderColor = '';
+      var ke = document.getElementById(DOM_IDS.koerner);
+      if (ke) ke.style.borderColor = '';
+      var re = document.getElementById(DOM_IDS.results);
+      if (re) re.style.display = 'none';
+      // Clear inputs via _resetInput helper
+      _resetInput(DOM_IDS.hektar);
+      _resetInput(DOM_IDS.istHektar);
+      _resetInput(DOM_IDS.koerner);
+      _resetInput(DOM_IDS.duenger);
+      AppGlobals.appEmit('TAB_RESET', { tabIdx: active });
+    }
+
+    function resetAll() {
+      AppGlobals.state = {
+        reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] }],
+        activeReiter: 0,
+        fahrgassenEnabled: false,
+        fahrgassenBreite: 0,
+        einheitGroesseEnabled: false,
+        koernerProEinheit: 50000,
+        machineLog: []
+      };
+      // Input- und Fehlerfelder zurücksetzen
+      _resetInput(DOM_IDS.hektar);
+      _resetInput(DOM_IDS.istHektar);
+      _resetInput(DOM_IDS.koerner);
+      _resetInput(DOM_IDS.duenger);
+      var errH = document.getElementById(DOM_IDS.errHektar);
+      if (errH) errH.textContent = '';
+      var errK = document.getElementById(DOM_IDS.errKoerner);
+      if (errK) errK.textContent = '';
+      var he2 = document.getElementById(DOM_IDS.hektar);
+      if (he2) he2.style.borderColor = '';
+      var ke2 = document.getElementById(DOM_IDS.koerner);
+      if (ke2) ke2.style.borderColor = '';
+      var res = document.getElementById(DOM_IDS.results);
+      if (res) res.style.display = 'none';
+      var ds = document.getElementById(DOM_IDS.drillSection);
+      if (ds) ds.style.display = 'none';
+      // Fahrgassen-Toggle deaktivieren
+      var fgBtn = document.getElementById(DOM_IDS.fahrgassenToggle);
+      if (fgBtn) {
+        fgBtn.classList.remove('active');
+        fgBtn.setAttribute('aria-pressed', 'false');
+      }
+      var fgSet = document.getElementById(DOM_IDS.fahrgassenSettings);
+      if (fgSet) fgSet.classList.remove('open');
+      var fgBr = document.getElementById(DOM_IDS.fahrgassenBreite);
+      if (fgBr) fgBr.value = '';
+      var fgSv = document.getElementById(DOM_IDS.fahrgassenSaved);
+      if (fgSv) fgSv.textContent = '';
+      // Einheit-Groesse-Toggle deaktivieren
+      var egBtn = document.getElementById(DOM_IDS.einheitGroesseToggle);
+      if (egBtn) {
+        egBtn.classList.remove('active');
+        egBtn.setAttribute('aria-pressed', 'false');
+      }
+      var egSet = document.getElementById(DOM_IDS.einheitGroesseSettings);
+      if (egSet) egSet.classList.remove('open');
+      var kp = document.getElementById(DOM_IDS.koernerProEinheit);
+      if (kp) kp.value = '';
+      var egSv = document.getElementById(DOM_IDS.einheitGroesseSaved);
+      if (egSv) egSv.textContent = '';
+      AppGlobals.state.drillPriorities = {};
+      AppGlobals.renderTabs();
+      AppGlobals.saveState();
+    }
+
+    // --- Reset-Modal (Issue #236) ---
+    // Öffnet/schließt das Bestätigungs-Dialogfenster für Reset-Aktionen.
+    // Zeigt/versteckt Overlay + Modal über die 'open'-Klasse (siehe styles.css).
+    function openResetModal() {
+      var overlay = document.getElementById('reset_overlay');
+      var modal = document.getElementById('reset_modal');
+      if (overlay) overlay.classList.add('open');
+      if (modal) modal.classList.add('open');
+    }
+
+    function closeResetModal() {
+      var overlay = document.getElementById('reset_overlay');
+      var modal = document.getElementById('reset_modal');
+      if (overlay) overlay.classList.remove('open');
+      if (modal) modal.classList.remove('open');
+    }
+
+    function _onOverlayClick(event) {
+      // Nur schließen wenn direkt auf das Overlay geklickt wurde (nicht auf ein Kind-Element).
+      if (event && event.target && event.target.id === 'reset_overlay') {
+        closeResetModal();
+      }
+    }
+
+    function _onResetTab() {
+      resetActiveTab();
+      closeResetModal();
+    }
+
+    function _onResetAll() {
+      resetAll();
+      closeResetModal();
+    }
+
+    function _onCancel() {
+      closeResetModal();
     }
 
     // --- Drill Protocol ---
@@ -717,6 +888,8 @@
 
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 Object.assign(window.AppGlobals, {
+  DOM_IDS: DOM_IDS,
+  _resetInput: _resetInput,
   addReiter: addReiter,
   removeReiter: removeReiter,
   switchReiter: switchReiter,
@@ -726,6 +899,14 @@ Object.assign(window.AppGlobals, {
   fahrgassenUpdate: fahrgassenUpdate,
   einheitGroesseToggle: einheitGroesseToggle,
   einheitGroesseUpdate: einheitGroesseUpdate,
+  resetActiveTab: resetActiveTab,
+  resetAll: resetAll,
+  openResetModal: openResetModal,
+  closeResetModal: closeResetModal,
+  _onOverlayClick: _onOverlayClick,
+  _onResetTab: _onResetTab,
+  _onResetAll: _onResetAll,
+  _onCancel: _onCancel,
   _parseDrillInputs: _parseDrillInputs,
   _resolvePerTabDistribution: _resolvePerTabDistribution,
   _buildDrillEntry: _buildDrillEntry,
