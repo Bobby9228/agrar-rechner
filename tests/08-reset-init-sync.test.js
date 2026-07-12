@@ -249,3 +249,56 @@ describe('syncStateFromInputs / syncInputsFromState', () => {
     expect(w.getActiveReiter()).toBe(w.state.reiter[0]);
   });
 });
+
+
+describe('resetActiveTab()', () => {
+  let w, doc;
+
+  beforeEach(() => {
+    const { window } = createDom();
+    w = window;
+    doc = w.document;
+    // Two tabs, both with data + a drill entry on tab 0 (active)
+    w.addReiter();                          // tab 1
+    w.switchReiter(0);                      // active = tab 0
+    doc.getElementById('hektar').value = '10';
+    doc.getElementById('koerner').value = '90000';
+    doc.getElementById('duenger').value = '150';
+    w.syncStateFromInputs();
+    doc.getElementById('drill_einheit').value = '2';
+    doc.getElementById('drill_duenger').value = '200';
+    w.drillAdd();
+    // Put data on tab 1 too
+    w.switchReiter(1);
+    doc.getElementById('hektar').value = '5';
+    doc.getElementById('koerner').value = '80000';
+    w.syncStateFromInputs();
+    w.switchReiter(0);                      // back to tab 0
+  });
+
+  it('clears the active tab inputs', () => {
+    w.resetActiveTab();
+    expect(doc.getElementById('hektar').value).toBe('');
+    expect(doc.getElementById('koerner').value).toBe('');
+  });
+
+  it('clears the active tab state (entries + fields)', () => {
+    expect(w.state.reiter[0].entries.length).toBe(1);
+    w.resetActiveTab();
+    expect(w.state.reiter[0].entries).toEqual([]);
+    expect(w.state.reiter[0].hektar).toBe(0);
+    expect(w.state.reiter[0].koerner).toBe(0);
+  });
+
+  it('leaves other tabs untouched', () => {
+    w.resetActiveTab();
+    expect(w.state.reiter[1].hektar).toBe(5);
+    expect(w.state.reiter[1].koerner).toBe(80000);
+    expect(w.state.reiter.length).toBe(2);
+  });
+
+  it('hides results section', () => {
+    w.resetActiveTab();
+    expect(doc.getElementById('results').style.display).toBe('none');
+  });
+});
