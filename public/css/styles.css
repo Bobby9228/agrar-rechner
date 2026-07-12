@@ -1280,3 +1280,113 @@ font-size: 0.75rem;
         scroll-behavior: auto !important;
       }
     }
+
+    /* ===== Reset confirmation modal (Issue #236) =====
+       shown as a centered modal via the .open class, same as the dashboard
+       sheet pattern. See public/js/ui-handlers.js for openResetModal(). */
+
+    /* Small footer link-style buttons (used by "Daten zurücksetzen") */
+    .link-btn {
+      background: none;
+      border: none;
+      color: var(--color-text-hint);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 10px 14px;
+      border-radius: 10px;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .link-btn:hover {
+      background: var(--color-bg-hover);
+      color: var(--color-text-label-strong);
+    }
+    .footer-actions {
+      display: flex;
+      justify-content: center;
+      margin-top: -8px;
+      margin-bottom: 8px;
+    }
+    .link-btn-danger:hover {
+      color: var(--color-danger);
+      background: rgba(213, 57, 47, 0.08);
+    }
+
+    /* Focus ring for keyboard navigation (Accessibility) */
+    .btn:focus-visible, .btn-add:focus-visible, .btn-danger:focus-visible,
+    .toggle-btn:focus-visible, .tab-btn:focus-visible, .link-btn:focus-visible,
+    input:focus-visible, .drill-prio-btn:focus-visible, .drill-done-btn:focus-visible,
+    .tab-close:focus-visible, .theme-toggle:focus-visible, .dashboard-close:focus-visible {
+      outline: 2.5px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+
+    /* Reset modal: hidden by default, shown via .open class */
+    .reset-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 16, 6, 0.45);
+      z-index: 200;
+      animation: fadeIn 0.18s ease;
+    }
+    .reset-overlay.open {
+      display: block;
+    }
+    .reset-modal {
+      display: none;
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(92vw, 400px);
+      background: var(--color-card-bg);
+      border-radius: 18px;
+      padding: 24px 22px;
+      z-index: 201;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    }
+    .reset-modal.open {
+      display: block;
+      animation: popIn 0.22s ease;
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
+      to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .reset-modal-header h2 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--color-primary-dark);
+      margin-bottom: 10px;
+    }
+    .reset-modal-desc {
+      font-size: 0.92rem;
+      color: var(--color-text-label);
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+    .reset-modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    /* btn-secondary: secondary action style for "Aktuellen Tab zurücksetzen" */
+    .btn-secondary {
+      background: var(--color-primary-active);
+    }
+    .btn-secondary:active {
+      filter: brightness(0.92);
+      transform: scale(0.98);
+    }
+    .btn-cancel {
+      background: var(--color-bg-soft);
+      color: var(--color-text-strong);
+    }
+    .btn-cancel:active {
+      filter: brightness(0.96);
+      transform: scale(0.98);
+    }
