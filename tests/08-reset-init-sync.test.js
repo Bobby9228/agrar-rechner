@@ -288,6 +288,7 @@ describe('resetActiveTab()', () => {
     expect(w.state.reiter[0].entries).toEqual([]);
     expect(w.state.reiter[0].hektar).toBe(0);
     expect(w.state.reiter[0].koerner).toBe(0);
+    expect(w.state.reiter[0].done).toBe(false);
   });
 
   it('leaves other tabs untouched', () => {

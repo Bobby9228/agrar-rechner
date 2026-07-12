@@ -224,6 +224,7 @@
         name: AppGlobals.state.reiter[active].name,
         hektar: 0, istHektar: 0, koerner: 0, duenger: 0,
         entries: [],
+        done: false,
         fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled,
         fahrgassenBreite: AppGlobals.state.fahrgassenBreite
       };
