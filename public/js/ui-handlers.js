@@ -316,10 +316,38 @@
       AppGlobals.saveState();
     }
 
-    // --- Reset-Modal (Issue #236) ---
+    // --- Reset-Modal (Issue #236, redesign v3) ---
     // Öffnet/schließt das Bestätigungs-Dialogfenster für Reset-Aktionen.
     // Zeigt/versteckt Overlay + Modal über die 'open'-Klasse (siehe styles.css).
+    // Beim Öffnen werden Kontext-Infos (Tab-Name, Anzahl Tabs/Einträge) befüllt,
+    // damit der Nutzer sieht, was genau gelöscht wird.
+    function _countAllEntries() {
+      var n = 0;
+      var reiter = AppGlobals.state.reiter || [];
+      for (var i = 0; i < reiter.length; i++) {
+        var e = reiter[i].entries;
+        if (e) n += e.length;
+      }
+      return n;
+    }
+
+    function _populateResetContext() {
+      var tabCtx = document.getElementById('reset_modal_tab_ctx');
+      if (tabCtx) {
+        var active = AppGlobals.getActiveReiter();
+        var name = active && active.name ? active.name : 'Aktueller Tab';
+        tabCtx.textContent = 'Leert Felder & Protokoll von „' + name + '“';
+      }
+      var allCtx = document.getElementById('reset_modal_all_ctx');
+      if (allCtx) {
+        var tabs = (AppGlobals.state.reiter || []).length;
+        var entries = _countAllEntries();
+        allCtx.textContent = tabs + ' Tab' + (tabs === 1 ? '' : 's') + ' · ' + entries + ' ' + (entries === 1 ? 'Eintrag' : 'Einträge');
+      }
+    }
+
     function openResetModal() {
+      _populateResetContext();
       var overlay = document.getElementById('reset_overlay');
       var modal = document.getElementById('reset_modal');
       if (overlay) overlay.classList.add('open');
