@@ -61,20 +61,44 @@
       var rdEl = document.getElementById('r_duenger');
       if (rdEl) rdEl.textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
 
-      // --- Ring-Chart-Werte ---
-      // Verbleibender Anteil = basis (SOLL/IST) - used. used kann nicht negativ sein
-      // (Einträge sind additiv). Bei activeTab ohne Daten: 0% gefüllt.
+      // --- Ring-Chart (neue sichtbare IDs im Bubble) ---
       var basis = einheiten;
       var used = (r && r.entries) ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
       var pct = basis > 0 ? Math.min(100, Math.max(0, (used / basis) * 100)) : 0;
-      var ringValEl = document.getElementById('r_ring_value');
+      // Circumference für r=40: 2*PI*40 ≈ 251.3
+      var circRing = 2 * Math.PI * 40;
+      var ringValEl = document.getElementById('ring_val');
       if (ringValEl) ringValEl.textContent = AppGlobals.fmt(einheiten);
+      var ringFgEl = document.getElementById('ringFill');
+      if (ringFgEl) ringFgEl.setAttribute('stroke-dashoffset', String(circRing - (circRing * pct / 100)));
+      // Legacy r_*-Ring
+      var ringValEl2 = document.getElementById('r_ring_value');
+      if (ringValEl2) ringValEl2.textContent = AppGlobals.fmt(einheiten);
       var ringSubEl = document.getElementById('r_ring_sub');
-      if (ringSubEl) ringSubEl.textContent = einheiten === 1 ? 'EINH.' : 'EINH.';
-      var ringFgEl = document.getElementById('r_ring_fg');
-      if (ringFgEl) ringFgEl.setAttribute('stroke-dashoffset', String(ringStrokeDashoffset(pct)));
+      if (ringSubEl) ringSubEl.textContent = 'EINH.';
+      var ringFgEl2 = document.getElementById('r_ring_fg');
+      if (ringFgEl2) ringFgEl2.setAttribute('stroke-dashoffset', String(ringStrokeDashoffset(pct)));
 
-      // --- Side Text ---
+      // --- Hero Text (im Bubble) ---
+      var heroLine = document.getElementById('hero_line');
+      var heroSub = document.getElementById('hero_sub');
+      var fgSuffix = '';
+      if (r.fahrgassenEnabled && r.fahrgassenBreite && r.fahrgassenBreite >= 2) {
+        fgSuffix = ' (Fahrgassen ' + r.fahrgassenBreite + ' m berücksichtigt)';
+      }
+      if (heroLine) {
+        heroLine.textContent = einheiten > 0
+          ? AppGlobals.fmt(einheiten) + ' Einheiten Saatgut'
+          : '— Einheiten Saatgut';
+      }
+      if (heroSub) {
+        if (einheiten > 0 && r.hektar > 0 && r.koerner > 0) {
+          heroSub.textContent = 'Bei ' + AppGlobals.fmt(r.hektar) + ' ha und ' + AppGlobals.fmtCompact(r.koerner) + ' Körnern pro Hektar' + fgSuffix + '.';
+        } else {
+          heroSub.textContent = 'Trag Hektar und Körner pro Hektar ein.';
+        }
+      }
+      // Legacy side-Text
       var sideTitleEl = document.getElementById('r_side_title');
       var sideSubEl = document.getElementById('r_side_sub');
       if (sideTitleEl) {
@@ -84,20 +108,42 @@
       }
       if (sideSubEl) {
         if (einheiten > 0 && r.hektar > 0 && r.koerner > 0) {
-          var kh = AppGlobals.fmtCompact(r.koerner);
-          sideSubEl.textContent = 'Bei ' + AppGlobals.fmt(r.hektar) + ' ha und ' + kh + ' Körnern pro Hektar.';
+          sideSubEl.textContent = 'Bei ' + AppGlobals.fmt(r.hektar) + ' ha und ' + AppGlobals.fmtCompact(r.koerner) + ' Körnern pro Hektar.';
         } else {
           sideSubEl.textContent = 'Bitte Hektar und Körner/ha eingeben.';
         }
       }
 
-      // --- Bottom Progress Bar ---
+      // --- Bottom Progress Bar (im Bubble) ---
       var duengerUsed = (r && r.entries) ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
       var duengerRemaining = Math.max(0, duengerTotal - duengerUsed);
       var einheitRemaining = Math.max(0, einheiten - used);
-      var progressPct = pct;  // gleiche Prozent wie Ring
+      var rechnerBarEl = document.getElementById('rechner_bar');
+      if (rechnerBarEl) rechnerBarEl.style.width = pct.toFixed(0) + '%';
+      var rechnerUsedEl = document.getElementById('rechner_used');
+      if (rechnerUsedEl) {
+        rechnerUsedEl.textContent = used > 0.05
+          ? AppGlobals.fmt(used) + ' Einh. verbraucht'
+          : '0 verbraucht';
+      }
+      var rechnerRemainingEl = document.getElementById('rechner_remaining');
+      if (rechnerRemainingEl) {
+        var isFertig = r.entries && r.entries.length > 0 && einheitRemaining <= 0.05 && duengerRemaining <= 0.05;
+        if (isFertig) {
+          rechnerRemainingEl.textContent = '✓ fertig';
+        } else if (einheitRemaining > 0.05 && duengerRemaining > 0.05) {
+          rechnerRemainingEl.textContent = AppGlobals.fmt(einheitRemaining) + ' Einh. · ' + Math.round(duengerRemaining).toLocaleString('de-DE') + ' kg offen';
+        } else if (einheitRemaining > 0.05) {
+          rechnerRemainingEl.textContent = AppGlobals.fmt(einheitRemaining) + ' Einh. offen';
+        } else if (duengerRemaining > 0.05) {
+          rechnerRemainingEl.textContent = Math.round(duengerRemaining).toLocaleString('de-DE') + ' kg offen';
+        } else {
+          rechnerRemainingEl.textContent = '— offen';
+        }
+      }
+      // Legacy r_*-progress
       var progressFillEl = document.getElementById('r_progress_fill');
-      if (progressFillEl) progressFillEl.style.width = progressPct.toFixed(0) + '%';
+      if (progressFillEl) progressFillEl.style.width = pct.toFixed(0) + '%';
       var progressUsedEl = document.getElementById('r_progress_used');
       if (progressUsedEl) {
         progressUsedEl.textContent = used > 0.05
@@ -308,35 +354,29 @@
     }
 
     // Rendert die zwei 2-Spalten-Stat-Cards (Körner gesamt / Dünger gesamt)
-    // unter dem Result-Card. Wird von renderResults() aufgerufen, wenn Hektar & Körner gesetzt.
+    // unter dem Result-Card. Wird von renderResults() aufgerufen.
+    // Das HTML hat bereits einen leeren #stat_row_cards Container.
     function renderStatCards(r, kornerGesamt) {
-      var container = document.getElementById('view_rechner');
-      if (!container) return;
       var existing = document.getElementById('stat_row_cards');
-      if (!existing) {
-        existing = document.createElement('div');
-        existing.id = 'stat_row_cards';
-        existing.className = 'stat-row';
-        container.appendChild(existing);
-      }
+      if (!existing) return;
       existing.innerHTML = '';
       var duengerTotal = AppGlobals.getActiveTotalDuenger();
       var c1 = document.createElement('div');
       c1.className = 'stat-card';
       var l1 = document.createElement('div');
-      l1.className = 'stat-card-label';
+      l1.className = 'l';
       l1.textContent = 'Körner gesamt';
       var v1 = document.createElement('div');
-      v1.className = 'stat-card-value';
+      v1.className = 'v';
       v1.textContent = kornerGesamt > 0 ? Math.round(kornerGesamt).toLocaleString('de-DE') : '—';
       c1.appendChild(l1); c1.appendChild(v1); existing.appendChild(c1);
       var c2 = document.createElement('div');
       c2.className = 'stat-card';
       var l2 = document.createElement('div');
-      l2.className = 'stat-card-label';
+      l2.className = 'l';
       l2.textContent = 'Dünger gesamt';
       var v2 = document.createElement('div');
-      v2.className = 'stat-card-value';
+      v2.className = 'v';
       v2.textContent = duengerTotal > 0 ? Math.round(duengerTotal).toLocaleString('de-DE') + ' kg' : '—';
       c2.appendChild(l2); c2.appendChild(v2); existing.appendChild(c2);
     }
