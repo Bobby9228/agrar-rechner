@@ -261,7 +261,7 @@
   <script src="js/main.js"></script>
   <div class="version-footer" id="version_footer"></div>
   <div class="footer-actions">
-    <button class="link-btn link-btn-danger" onclick="openResetModal()">🗑️ Daten zurücksetzen</button>
+    <button class="footer-reset-btn" onclick="openResetModal()" aria-label="Daten zurücksetzen">🗑️ Daten zurücksetzen</button>
   </div>
   <!-- Dashboard overlay + sheet -->
   <div class="dashboard-overlay" id="dashboard_overlay" onclick="closeDashboard()"></div>
@@ -276,9 +276,9 @@
   <div class="reset-overlay" id="reset_overlay" onclick="_onOverlayClick(event)"></div>
   <div class="reset-modal" id="reset_modal" role="dialog" aria-modal="true" aria-labelledby="reset_modal_title" aria-describedby="reset_modal_desc">
     <button class="reset-modal-x" id="reset_modal_cancel" onclick="_onCancel()" aria-label="Schließen">✕</button>
-    <div class="reset-modal-icon" aria-hidden="true">⚠️</div>
-    <h2 id="reset_modal_title">Daten zurücksetzen</h2>
-    <p class="reset-modal-desc" id="reset_modal_desc">
+    <div class="reset-modal-badge" aria-hidden="true">⚠️</div>
+    <h2 class="reset-modal-title" id="reset_modal_title">Daten zurücksetzen</h2>
+    <p class="reset-modal-subtitle" id="reset_modal_desc">
       Wähle, was zurückgesetzt werden soll. Diese Aktion kann nicht rückgängig gemacht werden.
     </p>
     <div class="reset-options">

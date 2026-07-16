@@ -19,6 +19,7 @@
     --color-danger: #d32f2f;
     --color-danger-dark: #b71c1c;
     --color-danger-soft: #c62828;
+    --color-danger-bg-soft: #fdecec;
     --color-dashboard-done: #ffe066;
     --color-dashboard-open-active: #1e3410;
     --color-dashboard-remaining: #ffd700;
@@ -74,6 +75,7 @@
     --color-danger-bright: #ef5350;
     --color-danger-dark: #b71c1c;
     --color-danger-soft: #c62828;
+    --color-danger-bg-soft: #3a2424;
     --color-divider: #3a4030;
     --color-entry-diff-negative: #ef5350;
     --color-entry-diff-positive: #66bb6a;
@@ -1285,35 +1287,16 @@ font-size: 0.75rem;
        shown as a centered modal via the .open class, same as the dashboard
        sheet pattern. See public/js/ui-handlers.js for openResetModal(). */
 
-    /* Small footer link-style buttons (used by "Daten zurücksetzen") */
-    .link-btn {
-      background: none;
-      border: none;
-      color: var(--color-text-hint);
-      font-size: 0.82rem;
-      font-weight: 600;
-      padding: 10px 14px;
-      border-radius: 10px;
-      transition: background 0.15s ease, color 0.15s ease;
-    }
-    .link-btn:hover {
-      background: var(--color-bg-hover);
-      color: var(--color-text-label-strong);
-    }
     .footer-actions {
       display: flex;
       justify-content: center;
       margin-top: -8px;
       margin-bottom: 8px;
     }
-    .link-btn-danger:hover {
-      color: var(--color-danger);
-      background: rgba(213, 57, 47, 0.08);
-    }
 
     /* Focus ring for keyboard navigation (Accessibility) */
     .btn:focus-visible, .btn-add:focus-visible, .btn-danger:focus-visible,
-    .toggle-btn:focus-visible, .tab-btn:focus-visible, .link-btn:focus-visible,
+    .toggle-btn:focus-visible, .tab-btn:focus-visible,
     input:focus-visible, .drill-prio-btn:focus-visible, .drill-done-btn:focus-visible,
     .tab-close:focus-visible, .theme-toggle:focus-visible, .dashboard-close:focus-visible {
       outline: 2.5px solid var(--color-primary);
@@ -1325,33 +1308,33 @@ font-size: 0.75rem;
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(10, 16, 6, 0.45);
+      background: rgba(10, 16, 6, 0.55);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
       z-index: 200;
       animation: fadeIn 0.18s ease;
     }
-    .reset-overlay.open {
-      display: block;
-    }
+    .reset-overlay.open { display: block; }
     .reset-modal {
       display: none;
       position: fixed;
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
-      width: min(92vw, 420px);
+      width: min(94vw, 440px);
       background: var(--color-card-bg);
-      border-radius: 20px;
-      padding: 26px 22px 18px;
+      border-radius: 22px;
+      padding: 28px 24px 18px;
       z-index: 201;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.1);
       text-align: center;
     }
     .reset-modal.open {
       display: block;
-      animation: popIn 0.22s ease;
+      animation: popIn 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.2);
     }
     @keyframes popIn {
-      from { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.92); }
       to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
     }
     @keyframes fadeIn {
@@ -1360,83 +1343,104 @@ font-size: 0.75rem;
     }
     .reset-modal-x {
       position: absolute;
-      top: 12px;
-      right: 12px;
-      width: 32px;
-      height: 32px;
+      top: 14px;
+      right: 14px;
+      width: 36px;
+      height: 36px;
       border: none;
       border-radius: 50%;
       background: var(--color-bg-soft);
       color: var(--color-text-muted);
-      font-size: 0.95rem;
+      font-size: 1rem;
       cursor: pointer;
-      transition: background 0.15s, color 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s, transform 0.1s;
     }
-    .reset-modal-x:active {
+    .reset-modal-x:hover {
       background: var(--color-bg-hover);
-      transform: scale(0.92);
+      color: var(--color-text);
     }
-    .reset-modal-icon {
-      font-size: 2.4rem;
-      line-height: 1;
-      margin-bottom: 8px;
+    .reset-modal-x:active { transform: scale(0.9); }
+    .reset-modal-badge {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--color-warning-bg);
+      color: var(--color-warning-text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin: 0 auto 14px;
+      box-shadow: 0 0 0 6px rgba(255, 193, 7, 0.12);
     }
-    .reset-modal > h2 {
-      font-size: 1.2rem;
+    .reset-modal-title {
+      font-size: 1.25rem;
       font-weight: 800;
       color: var(--color-primary-dark);
-      margin-bottom: 8px;
+      margin: 0 0 6px;
     }
-    .reset-modal-desc {
-      font-size: 0.9rem;
-      color: var(--color-text-label);
-      line-height: 1.5;
-      margin: 0 auto 20px;
+    .reset-modal-subtitle {
+      font-size: 0.88rem;
+      color: var(--color-text-muted);
+      line-height: 1.45;
+      margin: 0 auto 22px;
       max-width: 320px;
     }
     .reset-options {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
       margin-bottom: 14px;
     }
     /* --- Option cards: clickable rows with icon + title + description --- */
     .reset-option {
+      position: relative;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
       width: 100%;
-      padding: 14px 14px;
+      padding: 16px 16px 16px 20px;
       border: 2px solid var(--color-border);
-      border-radius: 14px;
-      background: var(--color-bg-soft);
+      border-radius: 16px;
+      background: var(--color-card-bg);
       text-align: left;
       cursor: pointer;
-      transition: background 0.16s, border-color 0.16s, transform 0.1s;
+      overflow: hidden;
+      transition: transform 0.12s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
     }
-    .reset-option:active {
-      transform: scale(0.985);
+    .reset-option::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+      border-radius: 16px 0 0 16px;
+      transition: width 0.15s;
     }
+    .reset-option:active { transform: scale(0.985); }
     .reset-option-icon {
-      font-size: 1.5rem;
-      line-height: 1;
       flex-shrink: 0;
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 10px;
-      background: var(--color-card-bg);
+      font-size: 1.4rem;
+      background: var(--color-bg-soft);
     }
     .reset-option-body {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 3px;
       min-width: 0;
     }
     .reset-option-title {
-      font-size: 1rem;
+      font-size: 1.02rem;
       font-weight: 700;
       color: var(--color-text);
     }
@@ -1445,33 +1449,45 @@ font-size: 0.75rem;
       color: var(--color-text-muted);
       line-height: 1.35;
     }
-    /* Tab reset: neutral / harmless — primary accent on interaction */
+    /* --- Tab reset: safe option — green accent, neutral card --- */
+    .reset-option-tab::before { background: var(--color-primary); }
     .reset-option-tab:hover {
-      background: var(--color-bg-hover);
       border-color: var(--color-primary);
+      background: var(--color-bg-success-soft);
+      box-shadow: 0 4px 12px rgba(74, 124, 35, 0.15);
     }
+    .reset-option-tab:hover::before { width: 8px; }
     .reset-option-tab .reset-option-icon {
       background: var(--color-success-soft);
+      color: var(--color-text-success-strong);
     }
-    /* All data: destructive — neutral bg, red border + title + red fill on hover */
+    /* --- All-data reset: destructive — red accent + subtle red wash + solid red on hover --- */
     .reset-option-all {
-      background: var(--color-bg-soft);
+      background: var(--color-danger-bg-soft);
       border-color: var(--color-danger-soft);
     }
+    .reset-option-all::before { background: var(--color-danger); }
     .reset-option-all:hover {
-      background: var(--color-danger-soft);
-      border-color: var(--color-danger);
+      background: var(--color-danger);
+      border-color: var(--color-danger-dark);
+      box-shadow: 0 6px 16px rgba(211, 47, 47, 0.3);
     }
+    .reset-option-all:hover::before {
+      width: 8px;
+      background: var(--color-danger-dark);
+    }
+    .reset-option-all:hover .reset-option-icon,
     .reset-option-all:hover .reset-option-title,
     .reset-option-all:hover .reset-option-desc {
+      background: var(--color-danger);
       color: var(--color-card-text);
     }
     .reset-option-all .reset-option-icon {
       background: var(--color-danger-soft);
+      color: var(--color-card-text);
     }
-    .reset-option-all .reset-option-title {
-      color: var(--color-text-danger);
-    }
+    .reset-option-all .reset-option-title { color: var(--color-text-danger); }
+    .reset-option-all .reset-option-desc { color: var(--color-text-danger); }
     .reset-modal-cancel {
       width: 100%;
       padding: 12px;
@@ -1484,23 +1500,30 @@ font-size: 0.75rem;
       cursor: pointer;
       transition: background 0.15s, color 0.15s;
     }
-    .reset-modal-cancel:active {
+    .reset-modal-cancel:hover {
       background: var(--color-bg-soft);
       color: var(--color-text);
     }
-    /* btn-secondary / btn-cancel legacy classes retained for back-compat */
-    .btn-secondary {
-      background: var(--color-primary-active);
+    .reset-modal-cancel:active { background: var(--color-bg-hover); }
+
+    /* --- Footer reset trigger button --- */
+    .footer-reset-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border: 2px solid var(--color-danger-soft);
+      border-radius: 12px;
+      background: var(--color-danger-bg-soft);
+      color: var(--color-text-danger);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
     }
-    .btn-secondary:active {
-      filter: brightness(0.92);
-      transform: scale(0.98);
+    .footer-reset-btn:hover {
+      background: var(--color-danger);
+      border-color: var(--color-danger-dark);
+      color: var(--color-card-text);
     }
-    .btn-cancel {
-      background: var(--color-bg-soft);
-      color: var(--color-text-strong);
-    }
-    .btn-cancel:active {
-      filter: brightness(0.96);
-      transform: scale(0.98);
-    }
+    .footer-reset-btn:active { transform: scale(0.97); }
