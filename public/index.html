@@ -272,20 +272,32 @@
     </div>
     <div class="dashboard-content" id="dashboard_content"></div>
   </div>
-  <!-- Reset Confirmation Modal (Issue #236) -->
+  <!-- Reset Confirmation Modal (Issue #236, redesign v3) -->
   <div class="reset-overlay" id="reset_overlay" onclick="_onOverlayClick(event)"></div>
   <div class="reset-modal" id="reset_modal" role="dialog" aria-modal="true" aria-labelledby="reset_modal_title" aria-describedby="reset_modal_desc">
-    <div class="reset-modal-header">
-      <h2 id="reset_modal_title">Zurücksetzen</h2>
-    </div>
+    <button class="reset-modal-x" id="reset_modal_cancel" onclick="_onCancel()" aria-label="Schließen">✕</button>
+    <div class="reset-modal-icon" aria-hidden="true">⚠️</div>
+    <h2 id="reset_modal_title">Daten zurücksetzen</h2>
     <p class="reset-modal-desc" id="reset_modal_desc">
-      Was möchtest du zurücksetzen? Diese Aktion lässt sich nicht rückgängig machen.
+      Wähle, was zurückgesetzt werden soll. Diese Aktion kann nicht rückgängig gemacht werden.
     </p>
-    <div class="reset-modal-actions">
-      <button class="btn btn-secondary" id="reset_modal_tab" onclick="_onResetTab()">Aktuellen Tab zurücksetzen</button>
-      <button class="btn btn-danger" id="reset_modal_confirm_all" onclick="_onResetAll()">Alle Daten löschen</button>
-      <button class="btn btn-cancel" id="reset_modal_cancel" onclick="_onCancel()">Abbrechen</button>
+    <div class="reset-options">
+      <button class="reset-option reset-option-tab" id="reset_modal_tab" onclick="_onResetTab()">
+        <span class="reset-option-icon" aria-hidden="true">🗂️</span>
+        <span class="reset-option-body">
+          <span class="reset-option-title">Aktuellen Tab</span>
+          <span class="reset-option-desc" id="reset_modal_tab_ctx">Leert Felder &amp; Protokoll dieses Tabs</span>
+        </span>
+      </button>
+      <button class="reset-option reset-option-all" id="reset_modal_confirm_all" onclick="_onResetAll()">
+        <span class="reset-option-icon" aria-hidden="true">🗑️</span>
+        <span class="reset-option-body">
+          <span class="reset-option-title">Alle Daten löschen</span>
+          <span class="reset-option-desc" id="reset_modal_all_ctx">Entfernt alle Tabs &amp; Einstellungen</span>
+        </span>
+      </button>
     </div>
+    <button class="reset-modal-cancel" onclick="_onCancel()">Abbrechen</button>
   </div>
 </body>
 </html>

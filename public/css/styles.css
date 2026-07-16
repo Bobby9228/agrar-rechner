@@ -1338,12 +1338,13 @@ font-size: 0.75rem;
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
-      width: min(92vw, 400px);
+      width: min(92vw, 420px);
       background: var(--color-card-bg);
-      border-radius: 18px;
-      padding: 24px 22px;
+      border-radius: 20px;
+      padding: 26px 22px 18px;
       z-index: 201;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+      text-align: center;
     }
     .reset-modal.open {
       display: block;
@@ -1357,24 +1358,137 @@ font-size: 0.75rem;
       from { opacity: 0; }
       to   { opacity: 1; }
     }
-    .reset-modal-header h2 {
-      font-size: 1.15rem;
+    .reset-modal-x {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 50%;
+      background: var(--color-bg-soft);
+      color: var(--color-text-muted);
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .reset-modal-x:active {
+      background: var(--color-bg-hover);
+      transform: scale(0.92);
+    }
+    .reset-modal-icon {
+      font-size: 2.4rem;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .reset-modal > h2 {
+      font-size: 1.2rem;
       font-weight: 800;
       color: var(--color-primary-dark);
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
     .reset-modal-desc {
-      font-size: 0.92rem;
+      font-size: 0.9rem;
       color: var(--color-text-label);
       line-height: 1.5;
-      margin-bottom: 20px;
+      margin: 0 auto 20px;
+      max-width: 320px;
     }
-    .reset-modal-actions {
+    .reset-options {
       display: flex;
       flex-direction: column;
       gap: 10px;
+      margin-bottom: 14px;
     }
-    /* btn-secondary: secondary action style for "Aktuellen Tab zurücksetzen" */
+    /* --- Option cards: clickable rows with icon + title + description --- */
+    .reset-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 14px 14px;
+      border: 2px solid var(--color-border);
+      border-radius: 14px;
+      background: var(--color-bg-soft);
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.16s, border-color 0.16s, transform 0.1s;
+    }
+    .reset-option:active {
+      transform: scale(0.985);
+    }
+    .reset-option-icon {
+      font-size: 1.5rem;
+      line-height: 1;
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: var(--color-card-bg);
+    }
+    .reset-option-body {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .reset-option-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+    .reset-option-desc {
+      font-size: 0.82rem;
+      color: var(--color-text-muted);
+      line-height: 1.35;
+    }
+    /* Tab reset: neutral / harmless — primary accent on interaction */
+    .reset-option-tab:hover {
+      background: var(--color-bg-hover);
+      border-color: var(--color-primary);
+    }
+    .reset-option-tab .reset-option-icon {
+      background: var(--color-success-soft);
+    }
+    /* All data: destructive — neutral bg, red border + title + red fill on hover */
+    .reset-option-all {
+      background: var(--color-bg-soft);
+      border-color: var(--color-danger-soft);
+    }
+    .reset-option-all:hover {
+      background: var(--color-danger-soft);
+      border-color: var(--color-danger);
+    }
+    .reset-option-all:hover .reset-option-title,
+    .reset-option-all:hover .reset-option-desc {
+      color: var(--color-card-text);
+    }
+    .reset-option-all .reset-option-icon {
+      background: var(--color-danger-soft);
+    }
+    .reset-option-all .reset-option-title {
+      color: var(--color-text-danger);
+    }
+    .reset-modal-cancel {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--color-text-muted);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .reset-modal-cancel:active {
+      background: var(--color-bg-soft);
+      color: var(--color-text);
+    }
+    /* btn-secondary / btn-cancel legacy classes retained for back-compat */
     .btn-secondary {
       background: var(--color-primary-active);
     }
