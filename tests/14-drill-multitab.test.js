@@ -33,11 +33,11 @@ describe('renderDrillTabList', () => {
   it('shows tab name', () => {
     w.renderDrillTabList();
     var name = w.document.getElementById('drill_tab_list').querySelector('.drill-tab-name');
-    expect(name.textContent).toBe('Tab 1');
+    expect(name.textContent).toBe('Schlag 1');
   });
 
   it('shows "fertig" when tab is completely drilled', () => {
-    w.state.reiter[0] = { name: 'Tab 1', hektar: 10, koerner: 90000, duenger: 0, entries: [
+    w.state.reiter[0] = { name: 'Schlag 1', hektar: 10, koerner: 90000, duenger: 0, entries: [
       { einheit: 18, duenger: 0, hektar: 10, time: '12:00' }
     ]};
     w.renderDrillTabList();
@@ -47,7 +47,7 @@ describe('renderDrillTabList', () => {
   });
 
   it('shows remaining need when partially drilled', () => {
-    w.state.reiter[0] = { name: 'Tab 1', hektar: 10, koerner: 90000, duenger: 150, entries: [
+    w.state.reiter[0] = { name: 'Schlag 1', hektar: 10, koerner: 90000, duenger: 150, entries: [
       { einheit: 5, duenger: 500, hektar: 3, time: '12:00' }
     ]};
     w.renderDrillTabList();

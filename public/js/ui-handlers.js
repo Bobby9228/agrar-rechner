@@ -50,8 +50,17 @@
     function addReiter() {
       syncStateFromInputs();
       var maxIdx = 0;
-      AppGlobals.state.reiter.forEach(function(r, i) { var m = parseInt(r.name.replace(/\D+/g, '')); if (!isNaN(m) && m > maxIdx) maxIdx = m; });
-      AppGlobals.state.reiter.push({ name: 'Tab ' + (maxIdx + 1), hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled, fahrgassenBreite: AppGlobals.state.fahrgassenBreite });
+      AppGlobals.state.reiter.forEach(function(r, i) {
+        var m = parseInt((r.name || '').replace(/\D+/g, ''));
+        if (!isNaN(m) && m > maxIdx) maxIdx = m;
+      });
+      AppGlobals.state.reiter.push({
+        name: 'Schlag ' + (maxIdx + 1),
+        hektar: 0, istHektar: 0, koerner: 0, duenger: 0,
+        entries: [], done: false,
+        fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled,
+        fahrgassenBreite: AppGlobals.state.fahrgassenBreite
+      });
       AppGlobals.state.activeReiter = AppGlobals.state.reiter.length - 1;
       AppGlobals.appEmit('TAB_ADDED', { tabIdx: AppGlobals.state.activeReiter });
       document.getElementById('hektar').focus();
@@ -101,6 +110,85 @@
         AppGlobals.renderDrillTabList();
       }
       AppGlobals.appEmit('VIEW_CHANGED', { view: AppGlobals.state.activeView });
+    }
+
+    function switchToRechner() {
+      // Rechner-View = Default. setView('rechner') == activeView = null.
+      if (AppGlobals.state.activeView === null) return;
+      syncStateFromInputs();
+      AppGlobals.state.activeView = null;
+      AppGlobals.appEmit('VIEW_CHANGED', { view: null });
+    }
+
+    function switchToUebersicht() {
+      syncStateFromInputs();
+      if (AppGlobals.state.activeView === 'uebersicht') return;
+      AppGlobals.state.activeView = 'uebersicht';
+      AppGlobals.renderDashboard();
+      AppGlobals.appEmit('VIEW_CHANGED', { view: 'uebersicht' });
+    }
+
+    function switchView(view) {
+      if (view === 'rechner' || view === null) return AppGlobals.switchToRechner();
+      if (view === 'protokoll') return AppGlobals.switchToProtokoll();
+      if (view === 'uebersicht') return AppGlobals.switchToUebersicht();
+    }
+
+    // --- Settings Modal (Issue: Redesign) ---
+    function openSettings() {
+      var ov = document.getElementById('settings_overlay');
+      var mo = document.getElementById('settings_modal');
+      if (ov) ov.classList.add('open');
+      if (mo) mo.classList.add('open');
+      // Sync dark-mode button text with current state
+      var isDark = document.documentElement.classList.contains('dark');
+      var icon = document.getElementById('settings_dark_icon');
+      var title = document.getElementById('settings_dark_title');
+      var desc = document.getElementById('settings_dark_desc');
+      var state = document.getElementById('settings_dark_state');
+      if (icon) icon.textContent = isDark ? '☀️' : '🌙';
+      if (title) title.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+      if (desc) desc.textContent = isDark ? 'Helles Farbschema aktivieren' : 'Dunkles Farbschema aktivieren';
+      if (state) state.textContent = isDark ? 'An' : 'Aus';
+      // Version
+      var v = document.getElementById('settings_version');
+      if (v) v.textContent = (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '—');
+      // Reset-confirmation contexts
+      var tabCtx = document.getElementById('reset_modal_tab_ctx');
+      var ar = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
+      if (tabCtx) tabCtx.textContent = ar ? ('Leert Felder & Protokoll von "' + ar.name + '"') : 'Leert Felder & Protokoll dieses Schlags';
+    }
+    function _onSettingsCancel() {
+      var ov = document.getElementById('settings_overlay');
+      var mo = document.getElementById('settings_modal');
+      if (ov) ov.classList.remove('open');
+      if (mo) mo.classList.remove('open');
+    }
+    function _onSettingsOverlayClick(e) {
+      if (e && e.target && e.target.id === 'settings_overlay') _onSettingsCancel();
+    }
+    function _onSettingsDarkMode() {
+      // toggleTheme() setzt die html.dark-Klasse + localStorage + theme_toggle.
+      // theme_toggle ist im HTML hidden, Klick funktioniert trotzdem programmatisch.
+      AppGlobals.toggleTheme();
+      // Refresh button-label
+      var isDark = document.documentElement.classList.contains('dark');
+      var icon = document.getElementById('settings_dark_icon');
+      var title = document.getElementById('settings_dark_title');
+      var desc = document.getElementById('settings_dark_desc');
+      var state = document.getElementById('settings_dark_state');
+      if (icon) icon.textContent = isDark ? '☀️' : '🌙';
+      if (title) title.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+      if (desc) desc.textContent = isDark ? 'Helles Farbschema aktivieren' : 'Dunkles Farbschema aktivieren';
+      if (state) state.textContent = isDark ? 'An' : 'Aus';
+    }
+    function _onSettingsResetTab() {
+      _onSettingsCancel();
+      AppGlobals.resetActiveTab();
+    }
+    function _onSettingsResetAll() {
+      _onSettingsCancel();
+      AppGlobals.openResetModal();
     }
 
     function renameReiter(idx, name) {
@@ -259,7 +347,7 @@
       // Preserve UI-prefs that "Daten zurücksetzen" should NOT wipe.
       var keepIosHint = AppGlobals.state.iosInstallHintShown;
       AppGlobals.state = {
-        reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: false, fahrgassenBreite: 0 }],
+        reiter: [{ name: 'Schlag 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: false, fahrgassenBreite: 0 }],
         activeReiter: 0,
         activeView: null,
         fahrgassenEnabled: false,
@@ -929,6 +1017,15 @@ Object.assign(window.AppGlobals, {
   switchReiter: switchReiter,
   renameReiter: renameReiter,
   switchToProtokoll: switchToProtokoll,
+  switchToRechner: switchToRechner,
+  switchToUebersicht: switchToUebersicht,
+  switchView: switchView,
+  openSettings: openSettings,
+  _onSettingsCancel: _onSettingsCancel,
+  _onSettingsOverlayClick: _onSettingsOverlayClick,
+  _onSettingsDarkMode: _onSettingsDarkMode,
+  _onSettingsResetTab: _onSettingsResetTab,
+  _onSettingsResetAll: _onSettingsResetAll,
   fahrgassenToggle: fahrgassenToggle,
   fahrgassenUpdate: fahrgassenUpdate,
   einheitGroesseToggle: einheitGroesseToggle,

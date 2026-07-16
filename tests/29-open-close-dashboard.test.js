@@ -60,7 +60,7 @@ describe('Dashboard open/close', () => {
     w.openDashboard();
     const cards = doc.querySelectorAll('.dashboard-reiter-card');
     expect(cards.length).toBe(1);
-    expect(doc.getElementById('dashboard_content').textContent).toContain('Tab 1');
+    expect(doc.getElementById('dashboard_content').textContent).toContain('Schlag 1');
   });
 
   it('dashboard shows multiple tabs correctly', () => {

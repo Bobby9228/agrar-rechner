@@ -15,7 +15,7 @@
 
 var state = {
   reiter: [{
-    name:       'Tab 1',
+    name:       'Schlag 1',
     hektar:     0,
     istHektar:  0,
     koerner:    0,
@@ -253,7 +253,7 @@ function loadState() {
     var lv = originalLv;
     // Migration 0→1: Einzelne Felder → Tab-Array
     if (!data.reiter && (data.hektar !== undefined || data.koerner !== undefined)) {
-      data = { reiter: [{ name: 'Tab 1', hektar: data.hektar || 0, istHektar: data.istHektar || 0, koerner: data.koerner || 0, duenger: data.duenger || 0, entries: data.entries || [], done: false }], activeReiter: 0, activeView: null, fahrgassenEnabled: false, fahrgassenBreite: 0, einheitGroesseEnabled: false, koernerProEinheit: 50000, machineLog: data.machineLog || [], drillPriorities: {}, iosInstallHintShown: false, _lv: 1 };
+      data = { reiter: [{ name: 'Schlag 1', hektar: data.hektar || 0, istHektar: data.istHektar || 0, koerner: data.koerner || 0, duenger: data.duenger || 0, entries: data.entries || [], done: false }], activeReiter: 0, activeView: null, fahrgassenEnabled: false, fahrgassenBreite: 0, einheitGroesseEnabled: false, koernerProEinheit: 50000, machineLog: data.machineLog || [], drillPriorities: {}, iosInstallHintShown: false, _lv: 1 };
       lv = 1;
     }
     // Migration 1→2: Globale entries → per-Tab entries
@@ -296,6 +296,20 @@ function loadState() {
     // Daten-Änderungen am reiter-Array nötig — die Persistenz-Schwelle
     // wird weiter unten auf `_lv = 5` gehoben.
     if (lv < 5) lv = 5;
+    // Migration 5→6 (Redesign): bestehende Tabs mit Name "Tab N" werden zu
+    // "Schlag N" umbenannt (Regex /^Tab\s*(\d+)$/). Persistenz-Schwelle auf
+    // _lv = 6 gehoben; das Bump erfolgt weiter unten in der
+    // Whitelist-Übernahme.
+    if (lv < 6 && Array.isArray(data.reiter)) {
+      for (var rnI = 0; rnI < data.reiter.length; rnI++) {
+        var rnTab = data.reiter[rnI];
+        if (rnTab && typeof rnTab.name === 'string') {
+          var rnMatch = rnTab.name.match(/^Tab\s*(\d+)$/);
+          if (rnMatch) rnTab.name = 'Schlag ' + rnMatch[1];
+        }
+      }
+      lv = 6;
+    }
     // Validate und übernehmen — Schema-strict ab _lv=4
     if (!Array.isArray(data.reiter) || data.reiter.length === 0) return false;
     var sanitizedReiter = [];
@@ -307,7 +321,7 @@ function loadState() {
     data.activeReiter = activeReiterRaw >= 0 && activeReiterRaw < sanitizedReiter.length
       ? Math.floor(activeReiterRaw)
       : 0;
-    data.activeView = (data.activeView === 'protokoll') ? 'protokoll' : null;
+    data.activeView = (data.activeView === 'protokoll' || data.activeView === 'uebersicht') ? data.activeView : null;
     if (data.fahrgassenEnabled === undefined) data.fahrgassenEnabled = false;
     if (data.fahrgassenBreite === undefined) data.fahrgassenBreite = 0;
     data.fahrgassenEnabled = sanitizeBoolean(data.fahrgassenEnabled, false);
@@ -338,13 +352,13 @@ function loadState() {
         var k = ALLOWED_TOP_KEYS[ki];
         if (data[k] !== undefined) cleaned[k] = data[k];
     }
-    cleaned._lv = 5;
+    cleaned._lv = 6;
     data = cleaned;
     state = data;
-    // Migration-Persistenz: Wenn die Daten nicht bereits _lv=5 waren,
+    // Migration-Persistenz: Wenn die Daten nicht bereits _lv=6 waren,
     // schreibe den migrierten Snapshot einmalig zurück, damit nachfolgende
     // Page-Loads die Migration überspringen können.
-    if (originalLv < 5) {
+    if (originalLv < 6) {
       try {
         localStorage.setItem('agrar_rechner', JSON.stringify(state));
       } catch(e) {

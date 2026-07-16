@@ -19,7 +19,7 @@ describe('Tab management', () => {
       w.addReiter();
       expect(w.state.reiter.length).toBe(2);
       expect(w.state.activeReiter).toBe(1);
-      expect(w.state.reiter[1].name).toBe('Tab 2');
+      expect(w.state.reiter[1].name).toBe('Schlag 2');
     });
 
     it('new tab has default values', () => {
@@ -36,9 +36,9 @@ describe('Tab management', () => {
       w.addReiter();
       w.addReiter();
       expect(w.state.reiter.length).toBe(4);
-      expect(w.state.reiter[1].name).toBe('Tab 2');
-      expect(w.state.reiter[2].name).toBe('Tab 3');
-      expect(w.state.reiter[3].name).toBe('Tab 4');
+      expect(w.state.reiter[1].name).toBe('Schlag 2');
+      expect(w.state.reiter[2].name).toBe('Schlag 3');
+      expect(w.state.reiter[3].name).toBe('Schlag 4');
     });
 
     it('preserves first tab data when adding new tab', () => {
@@ -239,7 +239,7 @@ describe('Tab management', () => {
       w.renderTabs();
       const spans = doc.querySelectorAll('.tab-name');
       expect(spans.length).toBe(1);
-      expect(spans[0].textContent).toBe('Tab 1');
+      expect(spans[0].textContent).toBe('Schlag 1');
       // Simulate renaming by setting textContent and triggering blur
       spans[0].textContent = 'Mein Feld';
       spans[0].onblur();
