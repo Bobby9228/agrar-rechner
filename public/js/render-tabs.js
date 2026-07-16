@@ -16,14 +16,18 @@
       var bar = document.getElementById('tab_bar_left');
       bar.innerHTML = '';
       AppGlobals.state.reiter.forEach(function(r, i) {
-        var isActive = i === AppGlobals.state.activeReiter && AppGlobals.state.activeView !== 'protokoll';
+        var isActive = i === AppGlobals.state.activeReiter && AppGlobals.state.activeView !== 'protokoll' && AppGlobals.state.activeView !== 'uebersicht';
         var btn = document.createElement('button');
         btn.className = 'tab-btn field-tab' + (isActive ? ' active' : '');
-        btn.setAttribute('aria-label', 'Tab ' + (i+1));
+        btn.setAttribute('aria-label', 'Schlag ' + (i + 1));
         btn.onclick = function() { AppGlobals.switchReiter(i); };
+        // Pill-tab: farbiger Punkt vor dem Namen
+        var dot = document.createElement('span');
+        dot.className = 'pill-tab-dot';
+        btn.appendChild(dot);
         var span = document.createElement('span');
         span.className = 'tab-name';
-        span.setAttribute('aria-label', 'Tab-Name');
+        span.setAttribute('aria-label', 'Schlag-Name');
         span.setAttribute('role', 'textbox');
         span.setAttribute('tabindex', '0');
         span.setAttribute('contenteditable', 'true');
@@ -64,28 +68,79 @@
       addBtn.textContent = '+ Tab';
       addBtn.onclick = function() { AppGlobals.addReiter(); };
       bar.appendChild(addBtn);
+      // Legacy protokoll-tab button (hidden; Bottom-Nav bn_protokoll triggers
+      // die echte View-Switch). Tests prüfen weiterhin die active-Klasse.
       var protokollBtn = document.getElementById('protokoll_tab_btn');
       if (protokollBtn) protokollBtn.classList.toggle('active', AppGlobals.state.activeView === 'protokoll');
     }
 
-    // --- Render: View (Feld vs. Protokoll) ---
+    // --- Render: View (Rechner / Protokoll / Übersicht) ---
 
     function renderView() {
       var r = AppGlobals.getActiveReiter();
       var hasData = r.hektar > 0 && r.koerner > 0;
       var isProtokoll = AppGlobals.state.activeView === 'protokoll';
+      var isUebersicht = AppGlobals.state.activeView === 'uebersicht';
+      var isRechner = !isProtokoll && !isUebersicht;
+
+      // 1) View-Container sichtbar schalten
+      var vr = document.getElementById('view_rechner');
+      var vp = document.getElementById('view_protokoll');
+      var vu = document.getElementById('view_uebersicht');
+      if (vr) vr.style.display = isRechner ? 'block' : 'none';
+      if (vp) vp.style.display = isProtokoll ? 'block' : 'none';
+      if (vu) vu.style.display = isUebersicht ? 'block' : 'none';
+
+      // 2) Bottom-Nav active-Class
+      var bnR = document.getElementById('bn_rechner');
+      var bnP = document.getElementById('bn_protokoll');
+      var bnU = document.getElementById('bn_uebersicht');
+      if (bnR) bnR.classList.toggle('active', isRechner);
+      if (bnP) bnP.classList.toggle('active', isProtokoll);
+      if (bnU) bnU.classList.toggle('active', isUebersicht);
+
+      // 3) Tab-Bar nur in Rechner-View zeigen (Schlag-Auswahl gilt nicht in Drill/Übersicht)
+      var tabBar = document.getElementById('tab_bar');
+      if (tabBar) tabBar.style.display = isRechner ? '' : 'none';
+
+      // 4) Cards-Toggle (alte Logik für Test-Kompatibilität in tests/15-render-view.test.js).
+      // Karten in Rechner-View sichtbar (per data-driven-Style), in Protokoll/Übersicht
+      // sind die Rechner-Karten display:none. Drill-Cards sind in Protokoll sichtbar.
       var skipIds = { r_soll_ist_section: true };
       var cards = document.querySelectorAll('.card');
       cards.forEach(function(c) {
         if (skipIds[c.id]) return;
-        c.style.display = isProtokoll ? 'none' : 'block';
+        if (isProtokoll) {
+          // drill_section + Maschinen-Log sind erlaubt
+          c.style.display = (c.id === 'drill_section') ? 'block' : 'none';
+        } else if (isUebersicht) {
+          // In Übersicht sind nur die Dashboard-Cards sichtbar (renderDashboard())
+          c.style.display = 'none';
+        } else {
+          // Rechner-View: Karten sichtbar, einzelne werden durch data-driven-Logik
+          // (renderResults/renderResults/renderDrillSummary) weiter ein-/ausgeblendet.
+          c.style.display = '';
+        }
       });
+      // results-Card ist datenabhängig (renderResults setzt sie)
       var resultsEl = document.getElementById('results');
-      if (resultsEl) resultsEl.style.display = (hasData && !isProtokoll) ? 'block' : 'none';
+      if (resultsEl && isRechner) {
+        resultsEl.style.display = (hasData) ? 'block' : 'none';
+      }
       var drillSection = document.getElementById('drill_section');
       if (drillSection) drillSection.style.display = isProtokoll ? 'block' : 'none';
       var drillMask = document.getElementById('drill_mask');
       if (drillMask) drillMask.style.display = isProtokoll ? '' : 'none';
+
+      // 5) Re-render Übersicht, wenn aktiv
+      if (isUebersicht && typeof AppGlobals.renderDashboard === 'function') {
+        AppGlobals.renderDashboard();
+      }
+
+      // 6) Hide drill_section in Rechner (drill_section-Karte muss im Drill-Render-Pfad
+      // neu sichtbar werden)
+      var drillSummEl = document.getElementById('drill_summary');
+      if (drillSummEl) drillSummEl.style.display = '';
     }
 
     // --- Init: UI (nach DOMContentLoaded) ---
@@ -188,11 +243,8 @@
             AppGlobals.renderTabs();
             AppGlobals.renderResults();
             renderView();
-            // Issue #186: Dashboard muss bei State-Änderungen mit-synchronisieren.
-            // Wenn das Dashboard-Sheet offen ist, sofort neu rendern, damit
-            // verbleibende Einheiten/Dünger konsistent mit Tab-Ergebnis sind.
-            var dashSheet = document.getElementById('dashboard_sheet');
-            if (dashSheet && dashSheet.classList.contains('open')) {
+            // Bei state-Änderungen Übersicht re-rendern, falls sichtbar.
+            if (AppGlobals.state.activeView === 'uebersicht') {
               AppGlobals.renderDashboard();
             }
             if (type === 'ENTRY_CHANGED' && AppGlobals.state.reiter[AppGlobals.state.activeReiter].hektar > 0 && AppGlobals.state.reiter[AppGlobals.state.activeReiter].koerner > 0) {
@@ -254,6 +306,7 @@
             AppGlobals.renderTabs();
             renderView();
             if (AppGlobals.state.activeView === 'protokoll') AppGlobals.renderDrillTabList();
+            if (AppGlobals.state.activeView === 'uebersicht') AppGlobals.renderDashboard();
             AppGlobals.renderResults();
             break;
           case 'DRILL_ENTRY_ADDED':
@@ -280,9 +333,9 @@
       var hasEntries = tab.entries && tab.entries.length > 0;
       var hasData = tab.hektar > 0 || tab.koerner > 0 || tab.duenger > 0 || tab.istHektar > 0;
       if (hasEntries || hasData) {
-        if (!confirm('Tab "' + tab.name + '" wirklich löschen? Daten vorhanden — alle Eingaben gehen verloren.')) return;
+        if (!confirm('Schlag "' + tab.name + '" wirklich löschen? Daten vorhanden — alle Eingaben gehen verloren.')) return;
       } else {
-        if (!confirm('Tab "' + tab.name + '" wirklich löschen? Alle Eingaben gehen verloren.')) return;
+        if (!confirm('Schlag "' + tab.name + '" wirklich löschen? Alle Eingaben gehen verloren.')) return;
       }
       AppGlobals.removeReiter(idx);
     }

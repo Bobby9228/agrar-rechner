@@ -10,3 +10,8 @@ node_modules/
 
 # test
 coverage/
+
+# pnpm transient artifacts (not part of the repo, regenerated on install)
+.pnpm-approve-builds
+pnpm-workspace.yaml
+pnpm-workspace.yaml.tmp

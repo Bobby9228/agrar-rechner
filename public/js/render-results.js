@@ -36,29 +36,100 @@
       };
     }
 
+    // Berechnet den Render-Anteil für die Ring-Chart.
+    //   percent (0..100) → stroke-dashoffset Wert.
+    //   Circumference des Kreises: 2*PI*r = 2*PI*44 ≈ 276.46.
+    // Helper pur, damit Tests isoliert bleiben.
+    function ringStrokeDashoffset(percent) {
+      var circ = 2 * Math.PI * 44;  // ≈ 276.46
+      var p = Math.max(0, Math.min(100, percent));
+      return circ - (circ * p / 100);
+    }
+
     function renderResultCard() {
       var r = AppGlobals.getActiveReiter();
       var kornerGesamt = AppGlobals.getKornerGesamt();
-      // Issue #186: IST-Fläche (vom Input-Feld) hat Vorrang vor SOLL.
-      // r_einheiten/r_duenger zeigen die tatsächlichen IST-Bedarfe, wenn
-      // r.istHektar > 0 — konsistent mit Dashboard, Drill-Summary, etc.
       var istSum = AppGlobals.getTabIstHektar(r);
       var einheiten = istSum > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getActiveTotalEinheiten();
       var duengerTotal = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : AppGlobals.getActiveTotalDuenger();
+
+      // --- Legacy r_*-Elemente (für Test-Kompatibilität) ---
       var rkEl = document.getElementById('r_korner');
       if (rkEl) rkEl.textContent = Math.round(kornerGesamt).toLocaleString('de-DE');
       var reEl = document.getElementById('r_einheiten');
       if (reEl) reEl.textContent = AppGlobals.formatEinheit(einheiten);
       var rdEl = document.getElementById('r_duenger');
       if (rdEl) rdEl.textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
-      var riEl = document.getElementById('r_info');
-      if (riEl) {
-        if (duengerTotal > 0) {
-          riEl.textContent = duengerTotal.toLocaleString('de-DE') + ' kg Dünger, ' + AppGlobals.formatEinheit(einheiten) + ' Saat';
+
+      // --- Ring-Chart-Werte ---
+      // Verbleibender Anteil = basis (SOLL/IST) - used. used kann nicht negativ sein
+      // (Einträge sind additiv). Bei activeTab ohne Daten: 0% gefüllt.
+      var basis = einheiten;
+      var used = (r && r.entries) ? r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0) : 0;
+      var pct = basis > 0 ? Math.min(100, Math.max(0, (used / basis) * 100)) : 0;
+      var ringValEl = document.getElementById('r_ring_value');
+      if (ringValEl) ringValEl.textContent = AppGlobals.fmt(einheiten);
+      var ringSubEl = document.getElementById('r_ring_sub');
+      if (ringSubEl) ringSubEl.textContent = einheiten === 1 ? 'EINH.' : 'EINH.';
+      var ringFgEl = document.getElementById('r_ring_fg');
+      if (ringFgEl) ringFgEl.setAttribute('stroke-dashoffset', String(ringStrokeDashoffset(pct)));
+
+      // --- Side Text ---
+      var sideTitleEl = document.getElementById('r_side_title');
+      var sideSubEl = document.getElementById('r_side_sub');
+      if (sideTitleEl) {
+        sideTitleEl.textContent = einheiten > 0
+          ? AppGlobals.fmt(einheiten) + ' Einheiten Saatgut'
+          : 'Ergebnis';
+      }
+      if (sideSubEl) {
+        if (einheiten > 0 && r.hektar > 0 && r.koerner > 0) {
+          var kh = AppGlobals.fmtCompact(r.koerner);
+          sideSubEl.textContent = 'Bei ' + AppGlobals.fmt(r.hektar) + ' ha und ' + kh + ' Körnern pro Hektar.';
         } else {
-          riEl.textContent = AppGlobals.formatEinheit(einheiten) + ' Saat (ohne Dünger)';
+          sideSubEl.textContent = 'Bitte Hektar und Körner/ha eingeben.';
         }
       }
+
+      // --- Bottom Progress Bar ---
+      var duengerUsed = (r && r.entries) ? r.entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0) : 0;
+      var duengerRemaining = Math.max(0, duengerTotal - duengerUsed);
+      var einheitRemaining = Math.max(0, einheiten - used);
+      var progressPct = pct;  // gleiche Prozent wie Ring
+      var progressFillEl = document.getElementById('r_progress_fill');
+      if (progressFillEl) progressFillEl.style.width = progressPct.toFixed(0) + '%';
+      var progressUsedEl = document.getElementById('r_progress_used');
+      if (progressUsedEl) {
+        progressUsedEl.textContent = used > 0.05
+          ? AppGlobals.fmt(used) + (used === 1 ? ' Einh. verbraucht' : ' Einh. verbraucht')
+          : '— verbraucht';
+      }
+      var progressOpenEl = document.getElementById('r_progress_open');
+      if (progressOpenEl) {
+        if (einheitRemaining > 0.05 && duengerRemaining > 0.05) {
+          progressOpenEl.textContent = AppGlobals.fmt(einheitRemaining) + ' Einh. · ' + Math.round(duengerRemaining).toLocaleString('de-DE') + ' kg offen';
+        } else if (einheitRemaining > 0.05) {
+          progressOpenEl.textContent = AppGlobals.fmt(einheitRemaining) + ' Einh. offen';
+        } else if (duengerRemaining > 0.05) {
+          progressOpenEl.textContent = Math.round(duengerRemaining).toLocaleString('de-DE') + ' kg offen';
+        } else {
+          progressOpenEl.textContent = 'Vollständig';
+        }
+      }
+
+      // --- Header-Meta (legacy r_info slot) ---
+      var riEl = document.getElementById('r_info');
+      if (riEl) {
+        if (einheiten > 0 && duengerTotal > 0) {
+          riEl.textContent = Math.round(duengerTotal).toLocaleString('de-DE') + ' kg Dünger, ' + AppGlobals.fmt(einheiten) + ' Einheiten Saat';
+        } else if (einheiten > 0) {
+          riEl.textContent = AppGlobals.fmt(einheiten) + ' Einheiten Saat (ohne Dünger)';
+        } else {
+          riEl.textContent = '';
+        }
+      }
+
+      // --- SOLL/IST/Abweichung (legacy IDs, für test/48-render-results-ist-fallback) ---
       var sollHa = r.hektar;
       var istHa = AppGlobals.getTabIstHektar(r);
       var diff = istHa - sollHa;
@@ -79,25 +150,20 @@
               rDiffEl.className = 'value small negative';
             }
           }
-          sollIstSection.style.display = 'block';
+          sollIstSection.style.display = '';
         } else {
           sollIstSection.style.display = 'none';
         }
       }
-      // Issue #336: Per-Tab-Eigen-Salden des aktiven Tabs (PR #337/#339).
-      // Ersparnis + Mehrbedarf sind Roh-Werte für DIESEN Tab — KEINE Cross-Tab-
-      // Aggregation, KEIN Empfänger-Saldo aus computeAllCarryovers(), KEINE
-      // Verrechnung mit Verbleibend/Eingefüllt (Issue #335 bleibt offen).
-      // Der Cross-Tab-Saldo lebt im Drill-Log + Maschinen-Protokoll (Issue
-      // #336 follow-up #5b, User-Feedback 2026-06-23, 5. Runde).
+
+      // --- Carryover hint (legacy) ---
       var carryoverHint = document.getElementById('r_carryover_hint');
       if (!carryoverHint) {
         carryoverHint = document.createElement('div');
         carryoverHint.id = 'r_carryover_hint';
         carryoverHint.style.cssText = 'font-size:0.85rem;padding:4px 0;';
-        if (sollIstSection && sollIstSection.parentNode) {
-          sollIstSection.parentNode.insertBefore(carryoverHint, sollIstSection.nextSibling);
-        }
+        var parentEl = document.getElementById('results');
+        if (parentEl) parentEl.appendChild(carryoverHint);
       }
       if (carryoverHint) {
         while (carryoverHint.firstChild) carryoverHint.removeChild(carryoverHint.firstChild);
@@ -108,13 +174,6 @@
           excessE = AppGlobals.getTabIstEinheiten(r) - AppGlobals.getTabTotalEinheiten(r);
           excessD = (r.istHektar - r.hektar) * (r.duenger || 0);
         }
-        // Issue #371 (Reopen) Teil 2: Die vom User gesehene "Mehrbedarf"-Zeile
-        // muss den Anteil abziehen, der bereits durch den Cross-Tab-Pool
-        // (computeAllCarryovers → Phase 0.5 → nettedEinheit/nettedDuenger)
-        // gedeckt ist. Sonst zeigt sie 1,6 E obwohl remaining = 0 ist.
-        //
-        // Ersparnis bleibt unverändert: Ersparnis IST Eigene-Abweichung dieses
-        // Tabs (Issue #336 Vertrag), keine Cross-Tab-Korrektur.
         var activeIdxForHint = AppGlobals.state.activeReiter || 0;
         var coForHint = AppGlobals.getCarryover(activeIdxForHint);
         var shown = AppGlobals.computeShownExcess({ excessE: excessE, excessD: excessD }, coForHint);
@@ -146,21 +205,14 @@
         }
       }
 
-      // Issue (User-Feedback 2026-07-11): Cross-Tab-Netting (Senken-Modell)
-      // war bisher unsichtbar — ein Tab mit Mehrbedarf zeigte "verbleibend: 0",
-      // aber nirgends stand, DASS und WOHIN dieser Mehrbedarf wandert. Und die
-      // Senke (der Tab, der den Mehrbedarf/die Ersparnis anderer Tabs
-      // übernimmt) bekam plötzlich einen höheren/niedrigeren "verbleibend"-Wert
-      // ohne Erklärung. Diese beiden Hinweise machen die Verrechnung
-      // nachvollziehbar, ohne die Rechenlogik selbst zu ändern.
+      // --- Net hint (legacy) ---
       var netHint = document.getElementById('r_net_hint');
       if (!netHint) {
         netHint = document.createElement('div');
         netHint.id = 'r_net_hint';
         netHint.style.cssText = 'font-size:0.85rem;padding:4px 0;';
-        if (carryoverHint && carryoverHint.parentNode) {
-          carryoverHint.parentNode.insertBefore(netHint, carryoverHint.nextSibling);
-        }
+        var resultsEl = document.getElementById('results');
+        if (resultsEl) resultsEl.appendChild(netHint);
       }
       if (netHint) {
         while (netHint.firstChild) netHint.removeChild(netHint.firstChild);
@@ -176,9 +228,6 @@
           && (AppGlobals.getTabIstEinheiten(r) - AppGlobals.getTabTotalEinheiten(r) > 0.05
               || (r.istHektar - r.hektar) * (r.duenger || 0) > 0.05);
         if (!coForNet.isSink && hasOwnOverage && sinkIdx !== -1 && sinkIdx !== activeIdxForNet) {
-          // Dieser Tab hat selbst Mehrbedarf, ist aber nicht die Senke —
-          // sein Mehrbedarf wird unsichtbar auf einen anderen Tab (die
-          // Senke) verrechnet. Zeige, welcher das ist.
           var sinkTab = AppGlobals.state.reiter[sinkIdx];
           var sinkName = (sinkTab && sinkTab.name) || ('Tab ' + (sinkIdx + 1));
           var noteDiv = document.createElement('div');
@@ -187,8 +236,6 @@
           netHint.appendChild(noteDiv);
           netHint.style.display = 'block';
         } else if (coForNet.isSink && (Math.abs(coForNet.sinkAdjustedE) > 0.05 || Math.abs(coForNet.sinkAdjustedD) > 0.05)) {
-          // Dieser Tab IST die Senke: er übernimmt Mehrbedarf/Ersparnis aus
-          // anderen Tabs in sein eigenes "verbleibend". Zeige wie viel.
           var label2 = document.createElement('div');
           label2.className = 'r-carryover-section-label';
           label2.textContent = 'Ausgleich mit anderen Tabs';
@@ -251,9 +298,47 @@
         return;
       }
       if (drillSummaryEl) drillSummaryEl.style.display = 'block';
-      if (AppGlobals.state.activeView !== 'protokoll') {
+      if (AppGlobals.state.activeView !== 'protokoll' && AppGlobals.state.activeView !== 'uebersicht') {
         if (resultsEl) resultsEl.style.display = 'block';
       }
+      // 2-Spalten-Stat-Cards (Körner gesamt / Dünger gesamt) — gerendert direkt
+      // unter dem Result-Card in #view_rechner. Bleiben sichtbar in Rechner-View
+      // wenn Daten vorhanden sind.
+      renderStatCards(r, AppGlobals.getKornerGesamt());
+    }
+
+    // Rendert die zwei 2-Spalten-Stat-Cards (Körner gesamt / Dünger gesamt)
+    // unter dem Result-Card. Wird von renderResults() aufgerufen, wenn Hektar & Körner gesetzt.
+    function renderStatCards(r, kornerGesamt) {
+      var container = document.getElementById('view_rechner');
+      if (!container) return;
+      var existing = document.getElementById('stat_row_cards');
+      if (!existing) {
+        existing = document.createElement('div');
+        existing.id = 'stat_row_cards';
+        existing.className = 'stat-row';
+        container.appendChild(existing);
+      }
+      existing.innerHTML = '';
+      var duengerTotal = AppGlobals.getActiveTotalDuenger();
+      var c1 = document.createElement('div');
+      c1.className = 'stat-card';
+      var l1 = document.createElement('div');
+      l1.className = 'stat-card-label';
+      l1.textContent = 'Körner gesamt';
+      var v1 = document.createElement('div');
+      v1.className = 'stat-card-value';
+      v1.textContent = kornerGesamt > 0 ? Math.round(kornerGesamt).toLocaleString('de-DE') : '—';
+      c1.appendChild(l1); c1.appendChild(v1); existing.appendChild(c1);
+      var c2 = document.createElement('div');
+      c2.className = 'stat-card';
+      var l2 = document.createElement('div');
+      l2.className = 'stat-card-label';
+      l2.textContent = 'Dünger gesamt';
+      var v2 = document.createElement('div');
+      v2.className = 'stat-card-value';
+      v2.textContent = duengerTotal > 0 ? Math.round(duengerTotal).toLocaleString('de-DE') + ' kg' : '—';
+      c2.appendChild(l2); c2.appendChild(v2); existing.appendChild(c2);
     }
 
     // Inline drill-entries im Result-Card-Body (r_drill_entries)
@@ -341,5 +426,7 @@ Object.assign(window.AppGlobals, {
   renderResultCard: renderResultCard,
   renderResults: renderResults,
   renderDrillEntriesInline: renderDrillEntriesInline,
+  renderStatCards: renderStatCards,
+  ringStrokeDashoffset: ringStrokeDashoffset,
   computeShownExcess: computeShownExcess,
 });
