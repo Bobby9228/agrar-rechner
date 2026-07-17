@@ -237,7 +237,7 @@ describe('loadState() schema validation (Issue #237)', () => {
 
         it('strips unknown top-level state fields but keeps recognized ones', () => {
             store['agrar_rechner'] = JSON.stringify({
-                reiter: [{ name: 'Schlag 1', entries: [] }],
+                reiter: [{ name: 'Tab 1', entries: [] }],
                 _lv: 4,
                 xss: 'top-level',
                 injected: { evil: true },
@@ -254,7 +254,7 @@ describe('loadState() schema validation (Issue #237)', () => {
     describe('activeView coercion (Pre-#291 View-Toggle pattern)', () => {
         it('coerces activeView to null unless literally "protokoll"', () => {
             store['agrar_rechner'] = JSON.stringify({
-                reiter: [{ name: 'Schlag 1', entries: [] }],
+                reiter: [{ name: 'Tab 1', entries: [] }],
                 activeView: 'random-string',
                 _lv: 4
             });
@@ -264,7 +264,7 @@ describe('loadState() schema validation (Issue #237)', () => {
 
         it('preserves activeView = "protokoll"', () => {
             store['agrar_rechner'] = JSON.stringify({
-                reiter: [{ name: 'Schlag 1', entries: [] }],
+                reiter: [{ name: 'Tab 1', entries: [] }],
                 activeView: 'protokoll',
                 _lv: 4
             });
@@ -274,7 +274,7 @@ describe('loadState() schema validation (Issue #237)', () => {
 
         it('coerces non-string activeView values (numbers, objects, arrays) to null', () => {
             store['agrar_rechner'] = JSON.stringify({
-                reiter: [{ name: 'Schlag 1', entries: [] }],
+                reiter: [{ name: 'Tab 1', entries: [] }],
                 activeView: 42,
                 _lv: 4
             });
@@ -282,7 +282,7 @@ describe('loadState() schema validation (Issue #237)', () => {
             expect(w.state.activeView).toBeNull();
 
             store['agrar_rechner'] = JSON.stringify({
-                reiter: [{ name: 'Schlag 1', entries: [] }],
+                reiter: [{ name: 'Tab 1', entries: [] }],
                 activeView: { evil: true },
                 _lv: 4
             });
@@ -292,7 +292,7 @@ describe('loadState() schema validation (Issue #237)', () => {
 
         it('defaults activeView to null when missing from persisted state', () => {
             store['agrar_rechner'] = JSON.stringify({
-                reiter: [{ name: 'Schlag 1', entries: [] }],
+                reiter: [{ name: 'Tab 1', entries: [] }],
                 _lv: 4
             });
             w.loadState();
@@ -423,7 +423,7 @@ describe('loadState() schema validation (Issue #237)', () => {
             expect(() => w.loadState()).not.toThrow();
             // State unverändert (Default bleibt)
             expect(w.state.reiter.length).toBe(1);
-            expect(w.state.reiter[0].name).toBe('Schlag 1');
+            expect(w.state.reiter[0].name).toBe('Tab 1');
 
             store['agrar_rechner'] = '42';
             expect(() => w.loadState()).not.toThrow();

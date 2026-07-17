@@ -1,5 +1,5 @@
 // ============================================================================
-// RENDER-DASHBOARD — Übersicht-View (in-page, ehemals Dashboard-Sheet)
+// RENDER-DASHBOARD — Dashboard-Übersicht (Sheet) + openDashboard/closeDashboard
 //
 // Lade-Reihenfolge: state (state.js) → calc (calculations.js) → ui (ui-handlers.js) → render-tabs
 //   → render-results → render-drill → render-dashboard (DIESE DATEI)
@@ -10,8 +10,8 @@
 // Funktionen werden im globalen Scope definiert (Vanilla-JS / <script>-Tags).
 // ============================================================================
 
-    // --- Render: Übersicht ---
-    // Issue #186: muss bei Ist-Fläche-Änderungen live aktualisiert werden.
+    // --- Render: Dashboard ---
+    // Issue #186: Dashboard muss bei Ist-Fläche-Änderungen live aktualisiert werden.
     // Verwendet IST-Fläche (wenn gesetzt) als Basis für "verbleibend"-Berechnung,
     // konsistent mit renderResultCard() und renderDrillSummary().
 
@@ -39,13 +39,16 @@
       if (reiter.length === 0) {
         var emptyDiv = document.createElement('div');
         emptyDiv.className = 'dashboard-empty';
-        emptyDiv.textContent = 'Keine Schläge vorhanden';
+        emptyDiv.textContent = 'Keine Tabs vorhanden';
         container.appendChild(emptyDiv);
         return;
       }
       container.innerHTML = '';
 
       // --- Summary across all tabs (IST-basiert wenn verfügbar) ---
+      // Issue #305: per-tab "verbleibend" must net carryover (saved/excess).
+      // Cross-tab aggregation: sum per-tab max(0, basis - used - saved + excess)
+      // — equivalent to Phase A/B in renderDrillSummary() (#302).
       var totalHa = 0;
       var totalEinheitRem = 0, totalDuengerRem = 0;
       var totalEinheitenBasis = 0, totalEinheitenUsed = 0;
@@ -54,6 +57,10 @@
         if (r.hektar > 0 && r.koerner > 0) {
           var istSum = AppGlobals.getTabIstHektar(r);
           totalHa += istSum > 0 ? istSum : r.hektar;
+          // Issue 2 (Code-Review): DRY — alle vier "verbleibend"-Sites ziehen
+          // Basis + Used + Carryover aus getTabRemaining. Die `|| 0`-Guards
+          // in getTabUsedEinheiten/Duenger fixen den NaN-Bug, der vorher bei
+          // fehlendem `e.einheit` über die bare reduce here propagiert wurde.
           var rem = AppGlobals.getTabRemaining(r, idx);
           totalEinheitRem += rem.remainingE;
           totalDuengerRem += rem.remainingD;
@@ -70,59 +77,34 @@
           ) * 100))
         : 0;
 
-      // === Big green summary card ===
       var summaryCard = document.createElement('div');
-      summaryCard.className = 'uebersicht-summary';
-      var lblSummary = document.createElement('div');
-      lblSummary.className = 'uebersicht-summary-label';
-      lblSummary.textContent = 'Gesamt offen';
-      summaryCard.appendChild(lblSummary);
-      var valSummary = document.createElement('div');
-      valSummary.className = 'uebersicht-summary-value';
-      valSummary.textContent = totalEinheitRem > 0 ? AppGlobals.fmt(totalEinheitRem) + ' Einheiten' : '—';
-      summaryCard.appendChild(valSummary);
-      var metaSummary = document.createElement('div');
-      metaSummary.className = 'uebersicht-summary-meta';
-      metaSummary.textContent = 'über ' + reiter.length + (reiter.length === 1 ? ' Schlag' : ' Schläge') +
-        (totalDuengerBasis > 0 ? ' · ' + Math.round(totalDuengerRem).toLocaleString('de-DE') + ' kg Dünger offen' : '');
-      summaryCard.appendChild(metaSummary);
+      summaryCard.className = 'dashboard-summary';
+
+      var sTitle = document.createElement('div');
+      sTitle.className = 'dashboard-summary-title';
+      sTitle.textContent = '📊 Zusammenfassung';
+      summaryCard.appendChild(sTitle);
+
+      var sStats = document.createElement('div');
+      sStats.className = 'dashboard-summary-stats';
+
+      var pctClass = totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : '';
+      sStats.appendChild(makeSummaryStat('Fläche', totalHa > 0 ? AppGlobals.fmtCompact(totalHa) + ' ha' : '—'));
+      // fmtCompact: integer values shown without trailing ",0" (e.g. "8" not "8,0").
+      // Tests 26, 27, 40 use toBe('8') on this element; test 18-round2 uses
+      // toContain('15') on it. fmt() would produce "8,0" and break those tests.
+      sStats.appendChild(makeSummaryStat('Einheiten verbl.', totalEinheitenBasis > 0 ? AppGlobals.fmtCompact(totalEinheitRem) : '—', pctClass));
+      sStats.appendChild(makeSummaryStat('Dünger verbl.', totalDuengerBasis > 0 ? totalDuengerRem.toLocaleString('de-DE') + ' kg' : '—', pctClass));
+      summaryCard.appendChild(sStats);
+
+      var pBar = document.createElement('div');
+      pBar.className = 'dashboard-progress-bar';
+      var pFill = document.createElement('div');
+      pFill.className = 'dashboard-progress-fill';
+      pFill.style.width = totalPct + '%';
+      pBar.appendChild(pFill);
+      summaryCard.appendChild(pBar);
       container.appendChild(summaryCard);
-
-      // === Two dark-green stat tiles (kept visible in new layout) ===
-      var tilesRow = document.createElement('div');
-      tilesRow.className = 'uebersicht-stat-tiles';
-      var tile1 = document.createElement('div');
-      tile1.className = 'uebersicht-stat-tile';
-      tile1.innerHTML = '<div class="uebersicht-stat-tile-label">Gesamtfläche (SOLL)</div>' +
-        '<div class="uebersicht-stat-tile-value">' +
-        (totalHa > 0 ? AppGlobals.fmtCompact(totalHa) + ' ha' : '—') +
-        '</div>';
-      tilesRow.appendChild(tile1);
-      var tile2 = document.createElement('div');
-      tile2.className = 'uebersicht-stat-tile';
-      tile2.innerHTML = '<div class="uebersicht-stat-tile-label">Dünger offen</div>' +
-        '<div class="uebersicht-stat-tile-value">' +
-        (totalDuengerBasis > 0 ? Math.round(totalDuengerRem).toLocaleString('de-DE') + ' kg' : '—') +
-        '</div>';
-      tilesRow.appendChild(tile2);
-      container.appendChild(tilesRow);
-
-      // === Legacy dashboard-summary (for Tests 26, 29, 47: querySelectorAll
-      // '.dashboard-summary-stat'). Bleibt als unsichtbarer Hook für Tests. ===
-      var legacySummary = document.createElement('div');
-      legacySummary.className = 'dashboard-summary';
-      legacySummary.style.display = 'none';
-      legacySummary.appendChild(makeSummaryStat('Fläche', totalHa > 0 ? AppGlobals.fmtCompact(totalHa) + ' ha' : '—'));
-      legacySummary.appendChild(makeSummaryStat('Einheiten verbl.', totalEinheitenBasis > 0 ? AppGlobals.fmtCompact(totalEinheitRem) : '—', totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : ''));
-      legacySummary.appendChild(makeSummaryStat('Dünger verbl.', totalDuengerBasis > 0 ? Math.round(totalDuengerRem).toLocaleString('de-DE') + ' kg' : '—', totalPct >= 100 ? 'done' : totalPct > 0 ? 'remaining' : ''));
-      var lpf = document.createElement('div');
-      lpf.className = 'dashboard-progress-bar';
-      var lf = document.createElement('div');
-      lf.className = 'dashboard-progress-fill';
-      lf.style.width = totalPct + '%';
-      lpf.appendChild(lf);
-      legacySummary.appendChild(lpf);
-      container.appendChild(legacySummary);
 
       // --- Per-tab cards ---
       reiter.forEach(function(r, idx) {
@@ -131,21 +113,16 @@
 
         var nameEl = document.createElement('div');
         nameEl.className = 'dashboard-reiter-name';
-        var nameSpan = document.createElement('span');
-        nameSpan.textContent = r.name || ('Tab ' + (idx + 1));
+        nameEl.textContent = r.name || ('Reiter ' + (idx + 1));
         if (idx === AppGlobals.state.activeReiter) {
-          nameSpan.textContent += ' (aktiv)';
+          nameEl.textContent += ' (aktiv)';
         }
-        nameEl.appendChild(nameSpan);
-        var haBadge = document.createElement('span');
-        haBadge.className = 'ha-badge';
-        haBadge.textContent = (r.hektar > 0 ? AppGlobals.fmtCompact(r.hektar) + ' ha' : '—');
-        nameEl.appendChild(haBadge);
         card.appendChild(nameEl);
 
         var stats = document.createElement('div');
         stats.className = 'dashboard-reiter-stats';
 
+        // Hektar (SOLL + IST if different)
         var haDiv = document.createElement('div');
         haDiv.className = 'dashboard-stat';
         var haDivLabel = document.createElement('div');
@@ -163,6 +140,7 @@
         haDiv.appendChild(haDivVal);
         stats.appendChild(haDiv);
 
+        // Körner/ha
         var kDiv = document.createElement('div');
         kDiv.className = 'dashboard-stat';
         var kDivLabel = document.createElement('div');
@@ -175,6 +153,7 @@
         kDiv.appendChild(kDivVal);
         stats.appendChild(kDiv);
 
+        // IST-basierte Berechnung (wenn IST-Fläche gesetzt, sonst SOLL)
         var einheiten = 0;
         var usedEinheit = 0;
         var duengerTotal = 0;
@@ -184,6 +163,9 @@
         var pct = 0;
         var statusClass = 'na';
         if (r.hektar > 0 && r.koerner > 0) {
+          // Issue 2 (Code-Review): DRY — getTabRemaining liefert Basis + Used
+          // + Carryover-genettetes Remaining aus einer Quelle (fix #266-A
+          // Konsistenz + NaN-Bug, der durch bare reduce entstand).
           var rem = AppGlobals.getTabRemaining(r, idx);
           einheiten = rem.basisE;
           usedEinheit = rem.usedE;
@@ -200,6 +182,7 @@
           else if (pct > 0) statusClass = 'remaining';
         }
 
+        // Einheiten verbleibend
         var eStat = document.createElement('div');
         eStat.className = 'dashboard-stat';
         var eStatLabel = document.createElement('div');
@@ -212,6 +195,7 @@
         eStat.appendChild(eStatVal);
         stats.appendChild(eStat);
 
+        // Dünger verbleibend
         var dStat = document.createElement('div');
         dStat.className = 'dashboard-stat';
         var dStatLabel = document.createElement('div');
@@ -224,6 +208,7 @@
         dStat.appendChild(dStatVal);
         stats.appendChild(dStat);
 
+        // Progress bar
         var progressWrap = document.createElement('div');
         progressWrap.className = 'dashboard-progress-bar';
         var progressFill = document.createElement('div');
@@ -232,43 +217,76 @@
         progressWrap.appendChild(progressFill);
         stats.appendChild(progressWrap);
 
-        var legend = document.createElement('div');
-        legend.className = 'dashboard-progress-legend';
-        legend.innerHTML = '<span>' + (r.hektar > 0 && r.koerner > 0 ? pct + '% erledigt' : '—') + '</span>' +
-          '<span><strong>' + (r.hektar > 0 && r.koerner > 0 ? AppGlobals.fmtCompact(einheitRem) + ' Einh. offen' : '—') + '</strong></span>';
-        stats.appendChild(legend);
-
         card.appendChild(stats);
         container.appendChild(card);
       });
     }
 
-    // Backwards-Compat-Aliase für openDashboard/closeDashboard — Übersicht ist
-    // jetzt eine reguläre View (#view_uebersicht), kein Sheet mehr. Tests
-    // rufen openDashboard() und prüfen dashboard_content/dashboard_sheet-
-    // Elementarriere. Wir rendern in dashboard_content (#view_uebersicht) und
-    // toggeln die open-Klasse auf den Legay-Sheet-Elementen (no-op in UI,
-    // sichtbar für Tests).
+    // Öffnet das Dashboard-Sheet und ruft renderDashboard() auf.
+    // Issue #186: muss auch nach ENTRY_CHANGED-Events den State korrekt widerspiegeln.
+    // Issue #211: Fokus-Falle und Dialog-Semantik für Accessibility.
+    var _dashboardPrevFocus = null;
+
+    // Trap Tab/Shift+Tab inside the dashboard dialog (Issue #211)
+    function _dashboardKeyHandler(e) {
+      if (e.key === 'Escape') {
+        closeDashboard();
+        e.preventDefault();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      var sheet = document.getElementById('dashboard_sheet');
+      if (!sheet) return;
+      var focusable = sheet.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (focusable.length === 0) return;
+      var first = focusable[0];
+      var last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { last.focus(); e.preventDefault(); }
+      } else {
+        if (document.activeElement === last) { first.focus(); e.preventDefault(); }
+      }
+    }
+
     function openDashboard() {
       var sheet = document.getElementById('dashboard_sheet');
       var overlay = document.getElementById('dashboard_overlay');
+      _dashboardPrevFocus = document.activeElement;
       if (sheet) sheet.classList.add('open');
       if (overlay) overlay.classList.add('open');
-      try { document.body.style.overflow = 'hidden'; } catch (e) {}
+      document.body.style.overflow = 'hidden';
       renderDashboard();
+      // Move focus into the dialog for accessibility (Issue #211)
+      // Use setTimeout to avoid jsdom focus-event side effects
+      if (sheet) {
+        setTimeout(function() {
+          var closeBtn = sheet.querySelector('.dashboard-close');
+          if (closeBtn) closeBtn.focus();
+        }, 0);
+      }
+      document.addEventListener('keydown', _dashboardKeyHandler);
     }
+
+    // Schließt das Dashboard-Sheet.
     function closeDashboard() {
       var sheet = document.getElementById('dashboard_sheet');
       var overlay = document.getElementById('dashboard_overlay');
       if (sheet) sheet.classList.remove('open');
       if (overlay) overlay.classList.remove('open');
-      try { document.body.style.overflow = ''; } catch (e) {}
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', _dashboardKeyHandler);
+      // Restore focus to the element that opened the dashboard
+      if (_dashboardPrevFocus && _dashboardPrevFocus.focus) {
+        _dashboardPrevFocus.focus();
+        _dashboardPrevFocus = null;
+      }
     }
 
     // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
     Object.assign(window.AppGlobals, {
       renderDashboard: renderDashboard,
       makeSummaryStat: makeSummaryStat,
+      _dashboardKeyHandler: _dashboardKeyHandler,
       openDashboard: openDashboard,
       closeDashboard: closeDashboard,
     });
