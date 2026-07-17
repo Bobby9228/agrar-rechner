@@ -35,7 +35,7 @@ describe('Update Banner ("What\'s New")', () => {
       delete store['agrar_rechner_version_seen'];
       w.initUI();
       const verEl = doc.getElementById('update_version');
-      expect(verEl.textContent).toBe('v1.1.0');
+      expect(verEl.textContent).toBe('v1.0.0');
     });
 
     it('fills changelog text correctly', () => {
@@ -66,7 +66,7 @@ describe('Update Banner ("What\'s New")', () => {
     it('saves current version to localStorage after dismiss', () => {
       delete store['agrar_rechner_version_seen'];
       w.dismissUpdateHint();
-      expect(store['agrar_rechner_version_seen']).toBe('v1.1.0');
+      expect(store['agrar_rechner_version_seen']).toBe('v1.0.0');
     });
 
     it('second initUI does not re-show banner after dismiss', () => {
@@ -80,8 +80,8 @@ describe('Update Banner ("What\'s New")', () => {
   });
 
   describe('APP_VERSION constant', () => {
-    it('APP_VERSION is defined as v1.1.0', () => {
-      expect(w.APP_VERSION).toBe('v1.1.0');
+    it('APP_VERSION is defined as v1.0.0', () => {
+      expect(w.APP_VERSION).toBe('v1.0.0');
     });
 
     it('APP_BUILD_DATE is a non-empty string', () => {
@@ -101,7 +101,7 @@ describe('Update Banner ("What\'s New")', () => {
       w.initUI();
       const footer = doc.getElementById('version_footer');
       expect(footer).toBeTruthy();
-      expect(footer.textContent).toBe('v1.1.0 · Juli 2026');
+      expect(footer.textContent).toBe('v1.0.0 · Mai 2025');
     });
   });
 });

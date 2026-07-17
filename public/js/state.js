@@ -400,7 +400,7 @@ function dismissIosInstallHint() {
 // Zeigt einmalig einen Hinweis nach App-Updates (neue SW-Version).
 // currentVersion muss bei jedem Release manuell aktualisiert werden.
 // (APP_VERSION + APP_BUILD_DATE sind in main.js definiert.)
-var UPDATE_CHANGELOG = 'Neues Design mit Bottom-Navigation und Ring-Chart. Bestehende Schläge werden automatisch zu "Schlag N" umbenannt.';
+var UPDATE_CHANGELOG = 'Erste Veröffentlichung der App.';
 function maybeShowUpdateHint() {
   var seenVersion = null;
   try { seenVersion = localStorage.getItem('agrar_rechner_version_seen'); } catch(e) {}
