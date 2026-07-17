@@ -17,27 +17,10 @@
       var container = document.getElementById('drill_tab_list');
       if (!container) return;
       container.innerHTML = '';
-      // Bestimme den Senken-Tab (zuletzt befüllt, nicht done) für AUSGLEICHSFELD-Badge.
-      // Konsistent mit calculations.js :: computeAllCarryovers().
-      var sinkIdx = -1;
-      AppGlobals.state.reiter.forEach(function(r, j) {
-        if (!r || r.done) return;
-        if (r.entries && r.entries.length > 0) {
-          var lastT = (r.entries[r.entries.length - 1] || {}).time || 0;
-          if (sinkIdx === -1 || lastT > ((AppGlobals.state.reiter[sinkIdx].entries[AppGlobals.state.reiter[sinkIdx].entries.length - 1] || {}).time || 0)) {
-            sinkIdx = j;
-          }
-        }
-      });
-      if (AppGlobals.state.reiter.some(function(r) { return r && r.entries && r.entries.length > 0; }) && sinkIdx === -1) {
-        // Fallback: erster Tab mit Entries, wenn keine Zeit-Sortierung möglich
-        for (var fi = 0; fi < AppGlobals.state.reiter.length; fi++) {
-          if (AppGlobals.state.reiter[fi].entries && AppGlobals.state.reiter[fi].entries.length > 0) { sinkIdx = fi; break; }
-        }
-      }
       AppGlobals.state.reiter.forEach(function(r, i) {
+        // Issue #377: `done` ist ein expliziter User-Toggle (NICHT von used>=SOLL
+        // abgeleitet — das ist nur ein Hinweis). Default false für neue/alte Tabs.
         var isDone = r.done === true;
-        var isSink = (i === sinkIdx);
         var row = document.createElement('div');
         row.className = 'drill-tab-row' + (isDone ? ' done' : '');
         var prioBtn = document.createElement('button');
@@ -63,35 +46,44 @@
         nameWrap.className = 'drill-tab-name-wrap';
         var label = document.createElement('div');
         label.className = 'drill-tab-name';
-        label.textContent = r.name || ('Schlag ' + (i + 1));
-        if (isSink) {
-          var badge = document.createElement('span');
-          badge.className = 'drill-prio-badge';
-          badge.textContent = 'AUSGLEICHSFELD';
-          label.appendChild(badge);
-        }
+        label.textContent = r.name || ('Tab ' + (i + 1));
         nameWrap.appendChild(label);
         if (r.hektar > 0 && r.koerner > 0) {
+          // Issue 2 (Code-Review): DRY + NaN-Fix. Die alten bare reduces
+          //   r.entries.reduce(function(s, e) { return s + e.einheit; }, 0)
+          //   r.entries.reduce(function(s, e) { return s + e.duenger; }, 0)
+          // hatten KEIN `|| 0`-Guard und produzierten NaN sobald ein Entry
+          // kein `einheit`/`duenger`-Feld hatte. getTabRemaining zieht
+          // getTabUsedEinheiten/Duenger (mit `|| 0` Guards) und liefert
+          // basisE/D + remainingE/D + carryover-genettet in einem Aufruf.
           var rem = AppGlobals.getTabRemaining(r, i);
           var remaining = rem.remainingE;
           var remainingD = rem.remainingD;
           var statusEl = document.createElement('div');
           statusEl.id = 'dtl_need_' + i;
           statusEl.className = 'drill-tab-need';
+          // Issue #377: "✓ fertig"-Hinweis bleibt als visueller Status, wenn
+          // used >= SOLL — ist aber explizit KEIN Hinweis auf den User-Toggle
+          // `done`. Letzterer wird über den grünen Button separat gesetzt.
           if (remaining <= 0.05 && remainingD <= 0.05) {
             statusEl.textContent = '✓ fertig';
             statusEl.classList.add('done');
           } else if (remainingD <= 0.05) {
+            // Nur Saatgut übrig — Dünger-Anteil weglassen (Issue #266)
             statusEl.textContent = 'braucht ' + AppGlobals.fmt(Math.max(0, remaining)) + ' Einheiten';
           } else if (remaining <= 0.05) {
+            // Nur Dünger übrig (seltener Fall, abgedeckt für Vollständigkeit)
             statusEl.textContent = 'braucht ' + AppGlobals.fmt(Math.max(0, remainingD)) + ' kg Dünger';
           } else {
-            statusEl.textContent = 'braucht ' + AppGlobals.fmt(Math.max(0, remaining)) + ' Einheiten · ' + AppGlobals.fmt(Math.max(0, remainingD)) + ' kg Dünger';
+            statusEl.textContent = 'braucht ' + AppGlobals.fmt(Math.max(0, remaining)) + ' Einheiten, ' + AppGlobals.fmt(Math.max(0, remainingD)) + ' kg Dünger';
           }
           nameWrap.appendChild(statusEl);
         }
         row.appendChild(nameWrap);
-        // Hidden per-tab inputs (kept for tests; CSS display:none).
+        // Issue #377: Einheiten- und Dünger-Inputs sind reine Anzeige-Felder
+        // (Werte werden aus dem Verteilungsplan in dtl_e_<i>/dtl_d_<i>
+        // geschrieben). `disabled` verhindert User-Eingaben und macht visuell
+        // klar, dass der Tab abgeschlossen ist.
         var einheitIn = document.createElement('input');
         einheitIn.type = 'text';
         einheitIn.inputMode = 'decimal';
@@ -99,7 +91,9 @@
         einheitIn.placeholder = 'Einheiten';
         einheitIn.dataset.tabIdx = String(i);
         if (isDone) einheitIn.disabled = true;
-        einheitIn.oninput = function() { AppGlobals.drillCalcDebounced(); };
+        einheitIn.oninput = function() {
+          AppGlobals.drillCalcDebounced();
+        };
         row.appendChild(einheitIn);
         var duengerIn = document.createElement('input');
         duengerIn.type = 'text';
@@ -108,25 +102,32 @@
         duengerIn.placeholder = 'kg Dünger';
         duengerIn.dataset.tabIdx = String(i);
         if (isDone) duengerIn.disabled = true;
-        duengerIn.oninput = function() { AppGlobals.drillCalcDebounced(); };
+        duengerIn.oninput = function() {
+          AppGlobals.drillCalcDebounced();
+        };
         row.appendChild(duengerIn);
-        // "Feld fertig" Toggle-Button
+        // Issue #377: Toggle-Button "Feld fertig" / "Fertig zurücknehmen".
+        // Setzt state.reiter[i].done, persistiert, rendert neu.
         var doneBtn = document.createElement('button');
         doneBtn.type = 'button';
         doneBtn.id = 'dtl_done_' + i;
         doneBtn.className = 'drill-done-btn' + (isDone ? ' active' : '');
         doneBtn.textContent = isDone ? 'Fertig zurücknehmen' : 'Feld fertig';
         doneBtn.setAttribute('aria-pressed', isDone ? 'true' : 'false');
-        doneBtn.title = isDone ? 'Fertig zurücknehmen' : 'Feld fertig';
-        doneBtn.onclick = (function(tabIdx) {
+        doneBtn.title = isDone
+          ? 'Markierung aufheben — Werte bleiben erhalten'
+          : 'Feld als fertig markieren';
+        doneBtn.onclick = (function(tabIdx, btnRef) {
           return function() {
             var tab = AppGlobals.state.reiter[tabIdx];
             if (!tab) return;
             tab.done = tab.done === true ? false : true;
             AppGlobals.saveState();
+            // Vollständiger Re-Render: Liste, Summary, Results und Dashboard,
+            // weil Locking + Status-Anzeige + Verteilungs-Plan berührt sind.
             AppGlobals.drillCalcAll();
           };
-        })(i);
+        })(i, doneBtn);
         row.appendChild(doneBtn);
         container.appendChild(row);
       });

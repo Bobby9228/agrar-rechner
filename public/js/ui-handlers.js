@@ -50,17 +50,8 @@
     function addReiter() {
       syncStateFromInputs();
       var maxIdx = 0;
-      AppGlobals.state.reiter.forEach(function(r, i) {
-        var m = parseInt((r.name || '').replace(/\D+/g, ''));
-        if (!isNaN(m) && m > maxIdx) maxIdx = m;
-      });
-      AppGlobals.state.reiter.push({
-        name: 'Schlag ' + (maxIdx + 1),
-        hektar: 0, istHektar: 0, koerner: 0, duenger: 0,
-        entries: [], done: false,
-        fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled,
-        fahrgassenBreite: AppGlobals.state.fahrgassenBreite
-      });
+      AppGlobals.state.reiter.forEach(function(r, i) { var m = parseInt(r.name.replace(/\D+/g, '')); if (!isNaN(m) && m > maxIdx) maxIdx = m; });
+      AppGlobals.state.reiter.push({ name: 'Tab ' + (maxIdx + 1), hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled, fahrgassenBreite: AppGlobals.state.fahrgassenBreite });
       AppGlobals.state.activeReiter = AppGlobals.state.reiter.length - 1;
       AppGlobals.appEmit('TAB_ADDED', { tabIdx: AppGlobals.state.activeReiter });
       document.getElementById('hektar').focus();
@@ -101,165 +92,21 @@
       AppGlobals._syncActiveTabLock();
     }
 
-    // --- Settings Panel (inline, ersetzt das alte Settings-Modal) ---
+    function switchToProtokoll() {
+      syncStateFromInputs();
+      if (AppGlobals.state.activeView === 'protokoll') {
+        AppGlobals.state.activeView = null;
+      } else {
+        AppGlobals.state.activeView = 'protokoll';
+        AppGlobals.renderDrillTabList();
+      }
+      AppGlobals.appEmit('VIEW_CHANGED', { view: AppGlobals.state.activeView });
+    }
 
     function renameReiter(idx, name) {
       AppGlobals.state.reiter[idx].name = name.substring(0, 20);
       AppGlobals.appEmit('TAB_RENAMED', { tabIdx: idx });
     }
-
-    // ---- View Navigation (3-Views mit Single-Header) ----
-    //   switchToProtokoll() ist ein Toggle: wenn bereits Protokoll aktiv, zurück zu Rechner.
-    //   Tests aus Issue #291 / Test 15-render-view / Test 22-protocol-view prüfen das.
-    function setView(view) {
-      var target = view === 'rechner' ? null : view;
-      if (AppGlobals.state.activeView === target) return;
-      syncStateFromInputs();
-      AppGlobals.state.activeView = target;
-      AppGlobals.appEmit('VIEW_CHANGED', { view: target });
-    }
-    function switchToRechner() {
-      setView('rechner');
-    }
-    function switchToProtokoll() {
-      // Toggle-Verhalten: zweiter Klick → zurück zu Rechner
-      if (AppGlobals.state.activeView === 'protokoll') {
-        switchToRechner();
-        return;
-      }
-      if (AppGlobals.state.activeView === 'uebersicht') {
-        switchToRechner();
-        return;
-      }
-      setView('protokoll');
-    }
-    function switchToUebersicht() {
-      setView('uebersicht');
-    }
-
-    // ---- Renaming via prompt (Rechner-view) ----
-    function renameActiveField() {
-      var f = AppGlobals.getActiveReiter();
-      var nm = prompt('Name des Schlags:', f.name);
-      if (nm && nm.trim()) {
-        AppGlobals.renameReiter(AppGlobals.state.activeReiter, nm.trim().substring(0, 20));
-      }
-    }
-
-    // ---- Settings Panel (inline) ----
-    function toggleSettings() {
-      var panel = document.getElementById('settings_panel');
-      var gear = document.getElementById('gear-btn');
-      if (!panel || !gear) return;
-      var open = panel.classList.toggle('open');
-      gear.classList.toggle('open', open);
-    }
-    function openSettings() { toggleSettings(); }
-    function closeSettings() {
-      var panel = document.getElementById('settings_panel');
-      var gear = document.getElementById('gear-btn');
-      if (panel) panel.classList.remove('open');
-      if (gear) gear.classList.remove('open');
-    }
-
-    // ---- Global Settings (Settings-Panel) ----
-    function toggleFahrgassenGlobal() {
-      AppGlobals.state.fahrgassenEnabled = !AppGlobals.state.fahrgassenEnabled;
-      var sw = document.getElementById('sw_fahrgassen');
-      var det = document.getElementById('detail_fahrgassen');
-      if (sw) sw.classList.toggle('on', AppGlobals.state.fahrgassenEnabled);
-      if (det) det.classList.toggle('open', AppGlobals.state.fahrgassenEnabled);
-      if (!AppGlobals.state.fahrgassenEnabled) {
-        AppGlobals.state.fahrgassenBreite = 0;
-        var inp = document.getElementById('fahrgassen_breite');
-        if (inp) inp.value = '';
-        var hint = document.getElementById('fahrgassen_hint');
-        if (hint) hint.textContent = '';
-      }
-      // Per-Tab-Fahrgassen-Toggle (Rechner) sync
-      var fgBtn = document.getElementById('fahrgassen_toggle');
-      var fgSet = document.getElementById('fahrgassen_settings');
-      if (fgBtn) {
-        fgBtn.classList.toggle('active', AppGlobals.state.fahrgassenEnabled);
-        fgBtn.setAttribute('aria-pressed', AppGlobals.state.fahrgassenEnabled ? 'true' : 'false');
-      }
-      if (fgSet) fgSet.classList.toggle('open', AppGlobals.state.fahrgassenEnabled);
-      AppGlobals.state.reiter.forEach(function(r) {
-        r.fahrgassenEnabled = AppGlobals.state.fahrgassenEnabled;
-        r.fahrgassenBreite = AppGlobals.state.fahrgassenBreite;
-      });
-      AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'fahrgassenEnabled' });
-    }
-    function updateFahrgassenBreite() {
-      var inp = document.getElementById('fahrgassen_breite');
-      var hint = document.getElementById('fahrgassen_hint');
-      var saved = document.getElementById('fahrgassen_saved');
-      if (!inp || !hint) return;
-      var val = AppGlobals.parseDE(inp.value);
-      if (val >= 2) {
-        AppGlobals.state.fahrgassenBreite = val;
-        var pct = ((val - 1) / val) * 100;
-        hint.textContent = val + ' m → ~' + pct.toFixed(1) + '% bestellte Fläche';
-        if (saved) saved.textContent = '';
-        AppGlobals.state.reiter.forEach(function(r) {
-          r.fahrgassenEnabled = AppGlobals.state.fahrgassenEnabled;
-          r.fahrgassenBreite = val;
-        });
-      } else {
-        hint.textContent = val > 0
-          ? 'Fahrgassenbreite muss mindestens 2 m betragen'
-          : '';
-        if (val === 0) {
-          AppGlobals.state.fahrgassenBreite = 0;
-          if (saved) saved.textContent = '';
-          AppGlobals.state.reiter.forEach(function(r) {
-            r.fahrgassenEnabled = AppGlobals.state.fahrgassenEnabled;
-            r.fahrgassenBreite = 0;
-          });
-        }
-      }
-      AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'fahrgassenBreite' });
-    }
-    function toggleEinheitgroesseGlobal() {
-      AppGlobals.state.einheitGroesseEnabled = !AppGlobals.state.einheitGroesseEnabled;
-      var sw = document.getElementById('sw_einheitgroesse');
-      var det = document.getElementById('detail_einheitgroesse');
-      if (sw) sw.classList.toggle('on', AppGlobals.state.einheitGroesseEnabled);
-      if (det) det.classList.toggle('open', AppGlobals.state.einheitGroesseEnabled);
-      if (!AppGlobals.state.einheitGroesseEnabled) {
-        AppGlobals.state.koernerProEinheit = 50000;
-        var inp = document.getElementById('koerner_pro_einheit');
-        if (inp) inp.value = '';
-        var hint = document.getElementById('einheitgroesse_hint');
-        if (hint) hint.textContent = '';
-        var saved = document.getElementById('einheit_groesse_saved');
-        if (saved) saved.textContent = '';
-      }
-      AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'einheitGroesseEnabled' });
-    }
-    function updateEinheitgroesse() {
-      var inp = document.getElementById('koerner_pro_einheit');
-      var hint = document.getElementById('einheitgroesse_hint');
-      var saved = document.getElementById('einheit_groesse_saved');
-      if (!inp) return;
-      var val = AppGlobals.parseDE(inp.value);
-      if (val > 0 && val <= 999999) {
-        AppGlobals.state.koernerProEinheit = Math.round(val);
-        if (hint) hint.textContent = AppGlobals.state.koernerProEinheit === 50000
-          ? ''
-          : AppGlobals.state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit';
-        if (saved) saved.textContent = AppGlobals.state.koernerProEinheit === 50000
-          ? ''
-          : AppGlobals.state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit';
-      }
-      AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'koernerProEinheit' });
-    }
-    function doResetAll() {
-      if (!confirm('Wirklich ALLE Daten zurücksetzen? Das kann nicht rückgängig gemacht werden.')) return;
-      AppGlobals.resetAll();
-    }
-    // Alias für Tests / Settings-Panel-Button (deutsch)
-    function _onSettingsResetAll() { doResetAll(); }
 
     // --- Fahrgassen ---
 
@@ -412,7 +259,7 @@
       // Preserve UI-prefs that "Daten zurücksetzen" should NOT wipe.
       var keepIosHint = AppGlobals.state.iosInstallHintShown;
       AppGlobals.state = {
-        reiter: [{ name: 'Schlag 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: false, fahrgassenBreite: 0 }],
+        reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: false, fahrgassenBreite: 0 }],
         activeReiter: 0,
         activeView: null,
         fahrgassenEnabled: false,
@@ -1082,18 +929,6 @@ Object.assign(window.AppGlobals, {
   switchReiter: switchReiter,
   renameReiter: renameReiter,
   switchToProtokoll: switchToProtokoll,
-  switchToRechner: switchToRechner,
-  switchToUebersicht: switchToUebersicht,
-  setView: setView,
-  renameActiveField: renameActiveField,
-  toggleSettings: toggleSettings,
-  openSettings: openSettings,
-  closeSettings: closeSettings,
-  toggleFahrgassenGlobal: toggleFahrgassenGlobal,
-  updateFahrgassenBreite: updateFahrgassenBreite,
-  toggleEinheitgroesseGlobal: toggleEinheitgroesseGlobal,
-  updateEinheitgroesse: updateEinheitgroesse,
-  doResetAll: doResetAll,
   fahrgassenToggle: fahrgassenToggle,
   fahrgassenUpdate: fahrgassenUpdate,
   einheitGroesseToggle: einheitGroesseToggle,
