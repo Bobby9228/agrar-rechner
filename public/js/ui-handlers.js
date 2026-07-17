@@ -101,165 +101,100 @@
       AppGlobals._syncActiveTabLock();
     }
 
-    // --- Settings Panel (inline, ersetzt das alte Settings-Modal) ---
+    function switchToProtokoll() {
+      syncStateFromInputs();
+      if (AppGlobals.state.activeView === 'protokoll') {
+        AppGlobals.state.activeView = null;
+      } else {
+        AppGlobals.state.activeView = 'protokoll';
+        AppGlobals.renderDrillTabList();
+      }
+      AppGlobals.appEmit('VIEW_CHANGED', { view: AppGlobals.state.activeView });
+    }
+
+    function switchToRechner() {
+      // Rechner-View = Default. setView('rechner') == activeView = null.
+      if (AppGlobals.state.activeView === null) return;
+      syncStateFromInputs();
+      AppGlobals.state.activeView = null;
+      AppGlobals.appEmit('VIEW_CHANGED', { view: null });
+    }
+
+    function switchToUebersicht() {
+      syncStateFromInputs();
+      if (AppGlobals.state.activeView === 'uebersicht') return;
+      AppGlobals.state.activeView = 'uebersicht';
+      AppGlobals.renderDashboard();
+      AppGlobals.appEmit('VIEW_CHANGED', { view: 'uebersicht' });
+    }
+
+    function switchView(view) {
+      if (view === 'rechner' || view === null) return AppGlobals.switchToRechner();
+      if (view === 'protokoll') return AppGlobals.switchToProtokoll();
+      if (view === 'uebersicht') return AppGlobals.switchToUebersicht();
+    }
+
+    // --- Settings Modal (Issue: Redesign) ---
+    function openSettings() {
+      var ov = document.getElementById('settings_overlay');
+      var mo = document.getElementById('settings_modal');
+      if (ov) ov.classList.add('open');
+      if (mo) mo.classList.add('open');
+      // Sync dark-mode button text with current state
+      var isDark = document.documentElement.classList.contains('dark');
+      var icon = document.getElementById('settings_dark_icon');
+      var title = document.getElementById('settings_dark_title');
+      var desc = document.getElementById('settings_dark_desc');
+      var state = document.getElementById('settings_dark_state');
+      if (icon) icon.textContent = isDark ? '☀️' : '🌙';
+      if (title) title.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+      if (desc) desc.textContent = isDark ? 'Helles Farbschema aktivieren' : 'Dunkles Farbschema aktivieren';
+      if (state) state.textContent = isDark ? 'An' : 'Aus';
+      // Version
+      var v = document.getElementById('settings_version');
+      if (v) v.textContent = (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '—');
+      // Reset-confirmation contexts
+      var tabCtx = document.getElementById('reset_modal_tab_ctx');
+      var ar = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
+      if (tabCtx) tabCtx.textContent = ar ? ('Leert Felder & Protokoll von "' + ar.name + '"') : 'Leert Felder & Protokoll dieses Schlags';
+    }
+    function _onSettingsCancel() {
+      var ov = document.getElementById('settings_overlay');
+      var mo = document.getElementById('settings_modal');
+      if (ov) ov.classList.remove('open');
+      if (mo) mo.classList.remove('open');
+    }
+    function _onSettingsOverlayClick(e) {
+      if (e && e.target && e.target.id === 'settings_overlay') _onSettingsCancel();
+    }
+    function _onSettingsDarkMode() {
+      // toggleTheme() setzt die html.dark-Klasse + localStorage + theme_toggle.
+      // theme_toggle ist im HTML hidden, Klick funktioniert trotzdem programmatisch.
+      AppGlobals.toggleTheme();
+      // Refresh button-label
+      var isDark = document.documentElement.classList.contains('dark');
+      var icon = document.getElementById('settings_dark_icon');
+      var title = document.getElementById('settings_dark_title');
+      var desc = document.getElementById('settings_dark_desc');
+      var state = document.getElementById('settings_dark_state');
+      if (icon) icon.textContent = isDark ? '☀️' : '🌙';
+      if (title) title.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+      if (desc) desc.textContent = isDark ? 'Helles Farbschema aktivieren' : 'Dunkles Farbschema aktivieren';
+      if (state) state.textContent = isDark ? 'An' : 'Aus';
+    }
+    function _onSettingsResetTab() {
+      _onSettingsCancel();
+      AppGlobals.resetActiveTab();
+    }
+    function _onSettingsResetAll() {
+      _onSettingsCancel();
+      AppGlobals.openResetModal();
+    }
 
     function renameReiter(idx, name) {
       AppGlobals.state.reiter[idx].name = name.substring(0, 20);
       AppGlobals.appEmit('TAB_RENAMED', { tabIdx: idx });
     }
-
-    // ---- View Navigation (3-Views mit Single-Header) ----
-    //   switchToProtokoll() ist ein Toggle: wenn bereits Protokoll aktiv, zurück zu Rechner.
-    //   Tests aus Issue #291 / Test 15-render-view / Test 22-protocol-view prüfen das.
-    function setView(view) {
-      var target = view === 'rechner' ? null : view;
-      if (AppGlobals.state.activeView === target) return;
-      syncStateFromInputs();
-      AppGlobals.state.activeView = target;
-      AppGlobals.appEmit('VIEW_CHANGED', { view: target });
-    }
-    function switchToRechner() {
-      setView('rechner');
-    }
-    function switchToProtokoll() {
-      // Toggle-Verhalten: zweiter Klick → zurück zu Rechner
-      if (AppGlobals.state.activeView === 'protokoll') {
-        switchToRechner();
-        return;
-      }
-      if (AppGlobals.state.activeView === 'uebersicht') {
-        switchToRechner();
-        return;
-      }
-      setView('protokoll');
-    }
-    function switchToUebersicht() {
-      setView('uebersicht');
-    }
-
-    // ---- Renaming via prompt (Rechner-view) ----
-    function renameActiveField() {
-      var f = AppGlobals.getActiveReiter();
-      var nm = prompt('Name des Schlags:', f.name);
-      if (nm && nm.trim()) {
-        AppGlobals.renameReiter(AppGlobals.state.activeReiter, nm.trim().substring(0, 20));
-      }
-    }
-
-    // ---- Settings Panel (inline) ----
-    function toggleSettings() {
-      var panel = document.getElementById('settings_panel');
-      var gear = document.getElementById('gear-btn');
-      if (!panel || !gear) return;
-      var open = panel.classList.toggle('open');
-      gear.classList.toggle('open', open);
-    }
-    function openSettings() { toggleSettings(); }
-    function closeSettings() {
-      var panel = document.getElementById('settings_panel');
-      var gear = document.getElementById('gear-btn');
-      if (panel) panel.classList.remove('open');
-      if (gear) gear.classList.remove('open');
-    }
-
-    // ---- Global Settings (Settings-Panel) ----
-    function toggleFahrgassenGlobal() {
-      AppGlobals.state.fahrgassenEnabled = !AppGlobals.state.fahrgassenEnabled;
-      var sw = document.getElementById('sw_fahrgassen');
-      var det = document.getElementById('detail_fahrgassen');
-      if (sw) sw.classList.toggle('on', AppGlobals.state.fahrgassenEnabled);
-      if (det) det.classList.toggle('open', AppGlobals.state.fahrgassenEnabled);
-      if (!AppGlobals.state.fahrgassenEnabled) {
-        AppGlobals.state.fahrgassenBreite = 0;
-        var inp = document.getElementById('fahrgassen_breite');
-        if (inp) inp.value = '';
-        var hint = document.getElementById('fahrgassen_hint');
-        if (hint) hint.textContent = '';
-      }
-      // Per-Tab-Fahrgassen-Toggle (Rechner) sync
-      var fgBtn = document.getElementById('fahrgassen_toggle');
-      var fgSet = document.getElementById('fahrgassen_settings');
-      if (fgBtn) {
-        fgBtn.classList.toggle('active', AppGlobals.state.fahrgassenEnabled);
-        fgBtn.setAttribute('aria-pressed', AppGlobals.state.fahrgassenEnabled ? 'true' : 'false');
-      }
-      if (fgSet) fgSet.classList.toggle('open', AppGlobals.state.fahrgassenEnabled);
-      AppGlobals.state.reiter.forEach(function(r) {
-        r.fahrgassenEnabled = AppGlobals.state.fahrgassenEnabled;
-        r.fahrgassenBreite = AppGlobals.state.fahrgassenBreite;
-      });
-      AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'fahrgassenEnabled' });
-    }
-    function updateFahrgassenBreite() {
-      var inp = document.getElementById('fahrgassen_breite');
-      var hint = document.getElementById('fahrgassen_hint');
-      var saved = document.getElementById('fahrgassen_saved');
-      if (!inp || !hint) return;
-      var val = AppGlobals.parseDE(inp.value);
-      if (val >= 2) {
-        AppGlobals.state.fahrgassenBreite = val;
-        var pct = ((val - 1) / val) * 100;
-        hint.textContent = val + ' m → ~' + pct.toFixed(1) + '% bestellte Fläche';
-        if (saved) saved.textContent = '';
-        AppGlobals.state.reiter.forEach(function(r) {
-          r.fahrgassenEnabled = AppGlobals.state.fahrgassenEnabled;
-          r.fahrgassenBreite = val;
-        });
-      } else {
-        hint.textContent = val > 0
-          ? 'Fahrgassenbreite muss mindestens 2 m betragen'
-          : '';
-        if (val === 0) {
-          AppGlobals.state.fahrgassenBreite = 0;
-          if (saved) saved.textContent = '';
-          AppGlobals.state.reiter.forEach(function(r) {
-            r.fahrgassenEnabled = AppGlobals.state.fahrgassenEnabled;
-            r.fahrgassenBreite = 0;
-          });
-        }
-      }
-      AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'fahrgassenBreite' });
-    }
-    function toggleEinheitgroesseGlobal() {
-      AppGlobals.state.einheitGroesseEnabled = !AppGlobals.state.einheitGroesseEnabled;
-      var sw = document.getElementById('sw_einheitgroesse');
-      var det = document.getElementById('detail_einheitgroesse');
-      if (sw) sw.classList.toggle('on', AppGlobals.state.einheitGroesseEnabled);
-      if (det) det.classList.toggle('open', AppGlobals.state.einheitGroesseEnabled);
-      if (!AppGlobals.state.einheitGroesseEnabled) {
-        AppGlobals.state.koernerProEinheit = 50000;
-        var inp = document.getElementById('koerner_pro_einheit');
-        if (inp) inp.value = '';
-        var hint = document.getElementById('einheitgroesse_hint');
-        if (hint) hint.textContent = '';
-        var saved = document.getElementById('einheit_groesse_saved');
-        if (saved) saved.textContent = '';
-      }
-      AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'einheitGroesseEnabled' });
-    }
-    function updateEinheitgroesse() {
-      var inp = document.getElementById('koerner_pro_einheit');
-      var hint = document.getElementById('einheitgroesse_hint');
-      var saved = document.getElementById('einheit_groesse_saved');
-      if (!inp) return;
-      var val = AppGlobals.parseDE(inp.value);
-      if (val > 0 && val <= 999999) {
-        AppGlobals.state.koernerProEinheit = Math.round(val);
-        if (hint) hint.textContent = AppGlobals.state.koernerProEinheit === 50000
-          ? ''
-          : AppGlobals.state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit';
-        if (saved) saved.textContent = AppGlobals.state.koernerProEinheit === 50000
-          ? ''
-          : AppGlobals.state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit';
-      }
-      AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'koernerProEinheit' });
-    }
-    function doResetAll() {
-      if (!confirm('Wirklich ALLE Daten zurücksetzen? Das kann nicht rückgängig gemacht werden.')) return;
-      AppGlobals.resetAll();
-    }
-    // Alias für Tests / Settings-Panel-Button (deutsch)
-    function _onSettingsResetAll() { doResetAll(); }
 
     // --- Fahrgassen ---
 
@@ -1084,16 +1019,13 @@ Object.assign(window.AppGlobals, {
   switchToProtokoll: switchToProtokoll,
   switchToRechner: switchToRechner,
   switchToUebersicht: switchToUebersicht,
-  setView: setView,
-  renameActiveField: renameActiveField,
-  toggleSettings: toggleSettings,
+  switchView: switchView,
   openSettings: openSettings,
-  closeSettings: closeSettings,
-  toggleFahrgassenGlobal: toggleFahrgassenGlobal,
-  updateFahrgassenBreite: updateFahrgassenBreite,
-  toggleEinheitgroesseGlobal: toggleEinheitgroesseGlobal,
-  updateEinheitgroesse: updateEinheitgroesse,
-  doResetAll: doResetAll,
+  _onSettingsCancel: _onSettingsCancel,
+  _onSettingsOverlayClick: _onSettingsOverlayClick,
+  _onSettingsDarkMode: _onSettingsDarkMode,
+  _onSettingsResetTab: _onSettingsResetTab,
+  _onSettingsResetAll: _onSettingsResetAll,
   fahrgassenToggle: fahrgassenToggle,
   fahrgassenUpdate: fahrgassenUpdate,
   einheitGroesseToggle: einheitGroesseToggle,

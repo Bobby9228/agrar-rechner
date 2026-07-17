@@ -1,30 +1,27 @@
 // ============================================================================
-// RENDER-TABS — Field-Chips (Schläge) + View-Routing
+// RENDER-TABS — Tab-Verwaltung, App-Init, Tab-Remove-Confirm
 //
-// Lade-Reihenfolge: state (state.js) → calc → ui → render-tabs → ...
-// render-tabs.js braucht: state, ui-handlers, calculations
+// Lade-Reihenfolge (laut index.html): state.js → calculations.js →
+//   ui-handlers.js → render-tabs.js → render-results.js → render-drill.js
+//   → render-dashboard.js → main.js
+//
+// render-tabs.js braucht: state, ui-handlers.js (switchReiter, addReiter,
+//   removeReiter, renameReiter, confirmRemoveReiter-Trigger), main.js (appOnStateChange)
 // Funktionen werden im globalen Scope definiert (Vanilla-JS / <script>-Tags).
 // ============================================================================
 
-    // --- Render: Field-Chips (Schläge) — pills mit Farb-Dot ---
-    // Ersetzt die alte renderTabs(). IDs/Klassen bleiben erhalten:
-    //   - .tab-btn (Pill-Container), .field-tab (Schlag-Tab), .tab-name (editierbarer Name)
-    //   - .pill-tab-dot (amber/orange Dot vorne), .tab-close (X-Button)
-    //   - .tab-add (+ Schlag Button)
-    //
-    // Render-Ziel: #field-chips statt #tab_bar_left
+    // --- Render: Tabs ---
+
     function renderTabs() {
-      var chipsEl = document.getElementById('field-chips');
-      if (!chipsEl) return;
-      chipsEl.innerHTML = '';
+      var bar = document.getElementById('tab_bar_left');
+      bar.innerHTML = '';
       AppGlobals.state.reiter.forEach(function(r, i) {
-        var isActive = (i === AppGlobals.state.activeReiter)
-                     && AppGlobals.state.activeView !== 'protokoll'
-                     && AppGlobals.state.activeView !== 'uebersicht';
+        var isActive = i === AppGlobals.state.activeReiter && AppGlobals.state.activeView !== 'protokoll' && AppGlobals.state.activeView !== 'uebersicht';
         var btn = document.createElement('button');
         btn.className = 'tab-btn field-tab' + (isActive ? ' active' : '');
         btn.setAttribute('aria-label', 'Schlag ' + (i + 1));
         btn.onclick = function() { AppGlobals.switchReiter(i); };
+        // Pill-tab: farbiger Punkt vor dem Namen
         var dot = document.createElement('span');
         dot.className = 'pill-tab-dot';
         btn.appendChild(dot);
@@ -52,39 +49,33 @@
           else { evt.stopPropagation(); }
         };
         span.onmousedown = function(evt) { evt.stopPropagation(); };
+
         if (AppGlobals.state.reiter.length > 1) {
-          var close = document.createElement('button');
-          close.className = 'tab-close chip-close';
-          close.setAttribute('type', 'button');
-          close.setAttribute('aria-label', 'Schlag schließen');
+          var close = document.createElement('span');
+          close.className = 'tab-close';
+          close.setAttribute('role', 'button');
+          close.setAttribute('aria-label', 'Tab schließen');
           close.onclick = function(evt) { evt.stopPropagation(); confirmRemoveReiter(i); };
           close.textContent = '✕';
           btn.appendChild(close);
         }
+
         btn.appendChild(span);
-        chipsEl.appendChild(btn);
+        bar.appendChild(btn);
       });
       var addBtn = document.createElement('button');
-      addBtn.type = 'button';
-      addBtn.className = 'tab-add chip-add';
+      addBtn.className = 'tab-add';
       addBtn.textContent = '+ Tab';
       addBtn.onclick = function() { AppGlobals.addReiter(); };
-      chipsEl.appendChild(addBtn);
-      // Legacy protokoll-tab button (hidden; Tests prüfen die active-Klasse via #protokoll_tab_btn)
+      bar.appendChild(addBtn);
+      // Legacy protokoll-tab button (hidden; Bottom-Nav bn_protokoll triggers
+      // die echte View-Switch). Tests prüfen weiterhin die active-Klasse.
       var protokollBtn = document.getElementById('protokoll_tab_btn');
       if (protokollBtn) protokollBtn.classList.toggle('active', AppGlobals.state.activeView === 'protokoll');
-      // Bottom-Nav Active-Class
-      var bnR = document.getElementById('bn_rechner');
-      var bnP = document.getElementById('bn_protokoll');
-      var bnU = document.getElementById('bn_uebersicht');
-      if (bnR) bnR.classList.toggle('active', !AppGlobals.state.activeView || AppGlobals.state.activeView === 'rechner' || AppGlobals.state.activeView === null || AppGlobals.state.activeView === undefined);
-      if (bnP) bnP.classList.toggle('active', AppGlobals.state.activeView === 'protokoll');
-      if (bnU) bnU.classList.toggle('active', AppGlobals.state.activeView === 'uebersicht');
     }
 
-    // --- Render: View Routing (Rechner / Protokoll / Übersicht) ---
-    // Setzt page-title und View-Container-Sichtbarkeit.
-    // Aktualisiert auch Bottom-Nav Active-Class und Field-Chips Sichtbarkeit.
+    // --- Render: View (Rechner / Protokoll / Übersicht) ---
+
     function renderView() {
       var r = AppGlobals.getActiveReiter();
       var hasData = r.hektar > 0 && r.koerner > 0;
@@ -92,7 +83,7 @@
       var isUebersicht = AppGlobals.state.activeView === 'uebersicht';
       var isRechner = !isProtokoll && !isUebersicht;
 
-      // 1) View-Container
+      // 1) View-Container sichtbar schalten
       var vr = document.getElementById('view_rechner');
       var vp = document.getElementById('view_protokoll');
       var vu = document.getElementById('view_uebersicht');
@@ -108,71 +99,48 @@
       if (bnP) bnP.classList.toggle('active', isProtokoll);
       if (bnU) bnU.classList.toggle('active', isUebersicht);
 
-      // 3) Field-Chips nur in Rechner-View zeigen
-      var chipsWrap = document.querySelector('.field-chips-wrap');
-      if (chipsWrap) chipsWrap.style.display = isRechner ? 'block' : 'none';
+      // 3) Tab-Bar nur in Rechner-View zeigen (Schlag-Auswahl gilt nicht in Drill/Übersicht)
+      var tabBar = document.getElementById('tab_bar');
+      if (tabBar) tabBar.style.display = isRechner ? '' : 'none';
 
-      // 4) Settings-Panel nur in Rechner-View (wenn offen)
-      var settingsPanel = document.getElementById('settings_panel');
-      var gear = document.getElementById('gear-btn');
-      if (settingsPanel) settingsPanel.style.display = isRechner && gear && gear.classList.contains('open') ? 'block' : 'none';
-
-      // 5) Page-Title (View-aware)
-      var titleEl = document.getElementById('page-title');
-      if (titleEl) {
-        titleEl.textContent = isProtokoll ? 'Drill-Protokoll'
-                              : isUebersicht ? 'Übersicht'
-                              : 'Agrar-Rechner';
-      }
-
-      // 6) Header-meta anzeigen wenn Rechner-View, sonst leer
-      var metaEl = document.querySelector('.app-header-meta');
-      if (metaEl) metaEl.style.display = isRechner ? 'block' : 'none';
-
-      // 7) Re-render Übersicht, falls sichtbar
-      if (isUebersicht && typeof AppGlobals.renderDashboard === 'function') {
-        AppGlobals.renderDashboard();
-      }
-
-      // 8) Result-Card Hide/Show (data-driven)
+      // 4) Cards-Toggle (alte Logik für Test-Kompatibilität in tests/15-render-view.test.js).
+      // Karten in Rechner-View sichtbar (per data-driven-Style), in Protokoll/Übersicht
+      // sind die Rechner-Karten display:none. Drill-Cards sind in Protokoll sichtbar.
+      var skipIds = { r_soll_ist_section: true };
+      var cards = document.querySelectorAll('.card');
+      cards.forEach(function(c) {
+        if (skipIds[c.id]) return;
+        if (isProtokoll) {
+          // drill_section + Maschinen-Log sind erlaubt
+          c.style.display = (c.id === 'drill_section') ? 'block' : 'none';
+        } else if (isUebersicht) {
+          // In Übersicht sind nur die Dashboard-Cards sichtbar (renderDashboard())
+          c.style.display = 'none';
+        } else {
+          // Rechner-View: Karten sichtbar, einzelne werden durch data-driven-Logik
+          // (renderResults/renderResults/renderDrillSummary) weiter ein-/ausgeblendet.
+          c.style.display = '';
+        }
+      });
+      // results-Card ist datenabhängig (renderResults setzt sie)
       var resultsEl = document.getElementById('results');
       if (resultsEl && isRechner) {
-        resultsEl.style.display = hasData ? 'block' : 'none';
+        resultsEl.style.display = (hasData) ? 'block' : 'none';
       }
       var drillSection = document.getElementById('drill_section');
       if (drillSection) drillSection.style.display = isProtokoll ? 'block' : 'none';
       var drillMask = document.getElementById('drill_mask');
       if (drillMask) drillMask.style.display = isProtokoll ? '' : 'none';
 
-      // 9) stats-row auch nur in Rechner-View
-      var statRow = document.getElementById('stat_row_cards');
-      if (statRow) statRow.style.display = isRechner && hasData ? 'grid' : 'none';
-
-      // 10) Drill-Einträge (Maschinen-Log): nur in Drill- oder Übersicht-View
-      var machineLogEl = document.getElementById('drill_machine_log');
-      if (machineLogEl && !isProtokoll) {
-        machineLogEl.style.display = 'none';
+      // 5) Re-render Übersicht, wenn aktiv
+      if (isUebersicht && typeof AppGlobals.renderDashboard === 'function') {
+        AppGlobals.renderDashboard();
       }
 
-      // 11) Alte Card-Toggle-Logik (für tests/15-render-view.test.js):
-      // Cards (.card + .bubble) im Rechner-View auf display:none setzen,
-      // wenn aktive View Protokoll oder Übersicht ist. Drill-Card bleibt sichtbar.
-      var skipIds = { r_soll_ist_section: true };
-      var cardish = document.querySelectorAll('.card, .bubble, .stat-row');
-      cardish.forEach(function(c) {
-        if (skipIds[c.id]) return;
-        if (isProtokoll || isUebersicht) {
-          // Drill-Card (id=drill_section) bleibt in Protokoll sichtbar
-          if (isProtokoll && c.id === 'drill_section') {
-            c.style.display = 'block';
-          } else {
-            c.style.display = 'none';
-          }
-        }
-      });
-      if (!isProtokoll && !isUebersicht && resultsEl) {
-        resultsEl.style.display = hasData ? 'block' : 'none';
-      }
+      // 6) Hide drill_section in Rechner (drill_section-Karte muss im Drill-Render-Pfad
+      // neu sichtbar werden)
+      var drillSummEl = document.getElementById('drill_summary');
+      if (drillSummEl) drillSummEl.style.display = '';
     }
 
     // --- Init: UI (nach DOMContentLoaded) ---
@@ -181,7 +149,9 @@
       AppGlobals.loadState();
       AppGlobals.maybeShowIosInstallHint();
       AppGlobals.maybeShowUpdateHint();
-      // Cross-Tab-Synchronisation
+      // --- Cross-Tab-Synchronisation (portiert aus Inline-Code Z. 3394-3412) ---
+      // Lauscht auf localStorage-Änderungen von anderen Tabs/Fenstern.
+      // Der storage-Event feuert nur in Tabs, die den Wert NICHT selbst gesetzt haben.
       window.addEventListener('storage', function(e) {
         if (e.key === 'agrar_rechner' && e.newValue) {
           try {
@@ -199,7 +169,7 @@
       });
       AppGlobals.syncInputsFromState();
       AppGlobals.renderTabs();
-      // Fahrgassen-Toggle aus State restaurieren (für per-tab-Toggle im Rechner)
+      // Fahrgassen-Toggle aus State restaurieren
       var fgToggle = document.getElementById('fahrgassen_toggle');
       var fgSettings = document.getElementById('fahrgassen_settings');
       if (fgToggle) {
@@ -212,6 +182,8 @@
       var fgBreite = document.getElementById('fahrgassen_breite');
       if (fgBreite) {
         if (AppGlobals.state.fahrgassenBreite > 0) {
+          // Tests 8: rohe Ganzzahl als Input-Wert, kein ",0" für ganze Zahlen.
+          // Nutze fmtCompact (Issue #266), das ",0" für ganze Zahlen weglässt.
           fgBreite.value = AppGlobals.fmtCompact(AppGlobals.state.fahrgassenBreite);
         } else {
           fgBreite.value = '';
@@ -219,7 +191,7 @@
         fgBreite.dataset.prev = fgBreite.value;
         fgBreite.dataset.cleaned = fgBreite.value;
       }
-      // Einheit-Größe-Toggle aus State restaurieren
+      // Einheit-Größe-Toggle aus State restaurieren (Issue #266)
       var egToggle = document.getElementById('einheit_groesse_toggle');
       var egSettings = document.getElementById('einheit_groesse_settings');
       if (egToggle) {
@@ -231,6 +203,8 @@
       }
       var kpEl = document.getElementById('koerner_pro_einheit');
       if (kpEl && AppGlobals.state.koernerProEinheit !== 50000) {
+        // Tests 18, 24: rohe Ganzzahl als Input-Wert (kein Tausender-Punkt),
+        // damit parseDE() in einheitGroesseUpdate() den Wert korrekt zurückschreibt.
         kpEl.value = String(AppGlobals.state.koernerProEinheit);
         kpEl.dataset.prev = kpEl.value;
         kpEl.dataset.cleaned = kpEl.value;
@@ -241,37 +215,17 @@
           ? AppGlobals.state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit'
           : '';
       }
-      // Settings-Panel State (Fahrgassen)
-      var swFg = document.getElementById('sw_fahrgassen');
-      var detFg = document.getElementById('detail_fahrgassen');
-      if (swFg) {
-        swFg.classList.toggle('on', !!AppGlobals.state.fahrgassenEnabled);
-        swFg.setAttribute('aria-pressed', AppGlobals.state.fahrgassenEnabled ? 'true' : 'false');
-      }
-      if (detFg) detFg.classList.toggle('open', !!AppGlobals.state.fahrgassenEnabled);
-      // Settings-Panel State (Einheitgröße)
-      var swEg = document.getElementById('sw_einheitgroesse');
-      var detEg = document.getElementById('detail_einheitgroesse');
-      if (swEg) {
-        swEg.classList.toggle('on', !!AppGlobals.state.einheitGroesseEnabled);
-        swEg.setAttribute('aria-pressed', AppGlobals.state.einheitGroesseEnabled ? 'true' : 'false');
-      }
-      if (detEg) detEg.classList.toggle('open', !!AppGlobals.state.einheitGroesseEnabled);
-      var kpInput = document.getElementById('koerner_pro_einheit');
-      if (kpInput && AppGlobals.state.koernerProEinheit !== 50000) {
-        kpInput.value = String(AppGlobals.state.koernerProEinheit);
-      }
-      // Erstes Render-Ergebnis anzeigen, falls Daten vorhanden
-      if (AppGlobals.state.reiter[AppGlobals.state.activeReiter]
-          && AppGlobals.state.reiter[AppGlobals.state.activeReiter].hektar > 0
-          && AppGlobals.state.reiter[AppGlobals.state.activeReiter].koerner > 0) {
+      if (AppGlobals.state.reiter[AppGlobals.state.activeReiter] && AppGlobals.state.reiter[AppGlobals.state.activeReiter].hektar > 0 && AppGlobals.state.reiter[AppGlobals.state.activeReiter].koerner > 0) {
         AppGlobals.renderResults();
+        if (AppGlobals.state.activeView !== 'protokoll') {
+          var resultsEl = document.getElementById('results');
+          if (resultsEl) resultsEl.style.display = 'block';
+        }
       }
       renderView();
       AppGlobals.renderDashboard();
       var vf = document.getElementById('version_footer');
-      if (vf) vf.textContent = AppGlobals.APP_VERSION + ' · ' + AppGlobals.APP_BUILD_DATE;
-      // State-Change-Listener
+      if (vf) vf.textContent = APP_VERSION + ' · ' + APP_BUILD_DATE;
       AppGlobals.appOnStateChange(function(type, data) {
         switch (type) {
           case 'TAB_CHANGED':
@@ -289,6 +243,7 @@
             AppGlobals.renderTabs();
             AppGlobals.renderResults();
             renderView();
+            // Bei state-Änderungen Übersicht re-rendern, falls sichtbar.
             if (AppGlobals.state.activeView === 'uebersicht') {
               AppGlobals.renderDashboard();
             }
@@ -322,13 +277,15 @@
             renderView();
             var re3 = document.getElementById('results');
             if (re3) re3.style.display = 'none';
+            var ds = document.getElementById('drill_section');
+            if (ds) ds.style.display = 'none';
             var eh = document.getElementById('err_hektar');
-            var ek = document.getElementById('err_koerner');
             if (eh) eh.textContent = '';
+            var ek = document.getElementById('err_koerner');
             if (ek) ek.textContent = '';
             var he = document.getElementById('hektar');
-            var ke = document.getElementById('koerner');
             if (he) he.style.borderColor = '';
+            var ke = document.getElementById('koerner');
             if (ke) ke.style.borderColor = '';
             break;
           case 'TAB_ADDED':

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#254321">
+  <meta name="theme-color" content="#2d4a1a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
@@ -15,304 +15,327 @@
 </head>
 <body>
   <div class="app-layout">
-
     <div id="save_error_banner" class="save-error-banner" style="display:none">
       <span>⚠️ <strong>Speichern fehlgeschlagen</strong> — localStorage voll. Daten gehen bei Neuladung verloren!</span>
       <button onclick="dismissSaveError()" aria-label="Schließen">✕</button>
     </div>
-
     <div class="scrollable-content">
-      <div class="content">
+  <div class="container">
 
-        <!-- ===== Persistent Header ===== -->
-        <header class="app-header">
-          <div>
-            <div class="app-header-meta">Demo · Vollständiger Funktionsumfang</div>
-            <h1 class="app-header-title" id="page-title">Agrar-Rechner</h1>
+    <!-- ===== View: Rechner (default) ===== -->
+    <section id="view_rechner">
+      <!-- App Header -->
+      <div class="header-row">
+        <div class="header-titles">
+          <div class="header-meta">Demo · Vollständiger Funktionsumfang</div>
+          <h1>Agrar-Rechner</h1>
+        </div>
+        <div class="header-actions">
+          <button class="settings-btn" onclick="openSettings()" aria-label="Einstellungen">⚙️</button>
+        </div>
+      </div>
+
+      <!-- Tabs (only field tabs, no Protokoll button) -->
+      <div class="tab-bar" id="tab_bar">
+        <div class="tab-bar-left" id="tab_bar_left"></div>
+      </div>
+
+      <!-- Input card: Fläche & Aussaatstärke -->
+      <div class="card card-input" id="card_input">
+        <h2>
+          <span class="section-badge">1</span>
+          Fläche &amp; Aussaatstärke
+        </h2>
+        <div class="field">
+          <label for="hektar">Hektar (SOLL)</label>
+          <div class="input-wrap">
+            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="hektar" placeholder="z.B. 12,5" maxlength="8" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputHektar(this)" onblur="onInputHektar(this)" aria-describedby="err_hektar">
+            <span class="input-unit">ha</span>
           </div>
-          <button class="gear-btn" id="gear-btn" onclick="toggleSettings()" aria-label="Einstellungen">⚙️</button>
-        </header>
-
-        <!-- ===== Settings Panel (inline) ===== -->
-        <section class="settings-panel" id="settings_panel">
-          <div class="settings-title">Einstellungen</div>
-
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-title">Fahrgassen berücksichtigen</div>
-              <div class="settings-row-desc">Reduziert die bestellte Fläche um 1 Spur je Breite</div>
-            </div>
-            <button class="switch" id="sw_fahrgassen" onclick="toggleFahrgassenGlobal()" aria-label="Fahrgassen"></button>
+          <div class="error-msg" id="err_hektar" role="alert"></div>
+        </div>
+        <div class="field">
+          <label for="ist_hektar">Hektar (IST) — optional, tatsächlich gefahren</label>
+          <div class="input-wrap">
+            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputIstHektar(this)" onblur="onInputIstHektar(this)">
+            <span class="input-unit">ha</span>
           </div>
-          <div class="settings-detail" id="detail_fahrgassen">
-            <div class="input-shell">
-              <input id="fahrgassen_breite" inputmode="decimal" placeholder="Breite in Metern" oninput="updateFahrgassenBreite()">
-              <span class="suffix">m</span>
-            </div>
-            <div class="settings-hint" id="fahrgassen_hint"></div>
+          <div class="hint-block">Weicht die IST- von der SOLL-Fläche ab, wird der Ausgleich im Senken-Feld sichtbar (siehe Übersicht).</div>
+        </div>
+        <div class="field">
+          <label for="koerner">Körner pro Hektar</label>
+          <div class="input-wrap">
+            <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" maxlength="8" oninput="onInputFormat(this, 'integer', event)" onchange="onInputKoerner(this)" onblur="onInputKoerner(this)" aria-describedby="err_koerner">
+            <span class="input-unit">/ha</span>
           </div>
-
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-title">Andere Gebindegröße</div>
-              <div class="settings-row-desc">Körner pro Einheit anpassen (Standard: 50.000)</div>
-            </div>
-            <button class="switch" id="sw_einheitgroesse" onclick="toggleEinheitgroesseGlobal()" aria-label="Einheitsgröße"></button>
-          </div>
-          <div class="settings-detail" id="detail_einheitgroesse">
-            <div class="input-shell">
-              <input id="koerner_pro_einheit" inputmode="numeric" placeholder="z.B. 80000" oninput="updateEinheitgroesse()">
-              <span class="suffix">Körner</span>
-            </div>
-            <div class="settings-hint" id="einheitgroesse_hint"></div>
-          </div>
-
-          <button class="btn-danger-block" onclick="doResetAll()">Alle Daten zurücksetzen</button>
-        </section>
-
-        <!-- ===== Field chips (Schläge) — above all views ===== -->
-        <div class="field-chips-wrap">
-          <div class="field-chips" id="field-chips"></div>
+          <div class="unit">üblich: 80.000 – 100.000</div>
+          <div class="error-msg" id="err_koerner" role="alert"></div>
         </div>
 
-        <!-- ===== View: Rechner ===== -->
-        <section id="view_rechner">
-          <div class="warn-banner" id="overflow_warn">Die neuen Werte weichen von den bereits eingetragenen Mengen ab. Prüfe die Einträge im Protokoll.</div>
+        <div class="fahrgassen-toggle">
+          <label for="einheit_groesse_toggle">Einheiten-Größe anpassen</label>
+          <button class="toggle-btn" id="einheit_groesse_toggle" onclick="einheitGroesseToggle()" aria-label="Einheiten-Größe" aria-pressed="false"></button>
+        </div>
+        <div class="fahrgassen-settings" id="einheit_groesse_settings">
+          <div class="field" style="margin-bottom:8px">
+            <label for="koerner_pro_einheit">Körner pro Einheit</label>
+            <input type="text" inputmode="numeric" id="koerner_pro_einheit" placeholder="z.B. 50000" oninput="onInputFormat(this, 'integer', event)" onchange="einheitGroesseUpdate()" onblur="einheitGroesseUpdate()">
+          </div>
+          <div class="fahrgassen-saved" id="einheit_groesse_saved"></div>
+          <div class="fahrgassen-info">Wie viele Körner eine "Einheit" Saatgut entsprechen (üblich: 50.000).</div>
+        </div>
+      </div>
 
-          <!-- Speech-bubble result card -->
-          <div class="bubble" id="results" style="display:none">
-            <div class="bubble-head">
-              <div class="avatar">A</div>
-              <div class="bubble-head-name">Ergebnis</div>
-            </div>
-            <div class="bubble-body">
-              <div class="ring-wrap">
-                <svg viewBox="0 0 96 96">
-                  <defs><linearGradient id="mossgrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#5C9450"/>
-                    <stop offset="100%" stop-color="#254321"/>
-                  </linearGradient></defs>
-                  <circle class="ring-track" cx="48" cy="48" r="40"/>
-                  <circle class="ring-fill" id="ringFill" cx="48" cy="48" r="40" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
-                </svg>
-                <div class="ring-center">
-                  <div class="n" id="ring_val">0</div>
-                  <div class="u">EINH.</div>
-                </div>
-              </div>
-              <div class="bubble-text">
-                <div class="headline" id="hero_line">— Einheiten Saatgut</div>
-                <div class="desc" id="hero_sub">Trag Hektar und Körner pro Hektar ein.</div>
-              </div>
-            </div>
-            <div class="progress-strip">
-              <div class="bar-track"><div class="bar-fill" id="rechner_bar" style="width:0%"></div></div>
-              <div class="progress-foot">
-                <span id="rechner_used">0 verbraucht</span>
-                <span class="rem" id="rechner_remaining">— offen</span>
-              </div>
+      <!-- Input card: Dünger -->
+      <div class="card">
+        <h2>
+          <span class="section-badge">2</span>
+          Dünger
+        </h2>
+        <div class="field">
+          <label for="duenger">Dünger</label>
+          <div class="input-wrap">
+            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputDuenger(this)" onblur="onInputDuenger(this)">
+            <span class="input-unit">kg/ha</span>
+          </div>
+        </div>
+
+        <div class="fahrgassen-toggle">
+          <label for="fahrgassen_toggle">Fahrgassen berücksichtigen</label>
+          <button class="toggle-btn" id="fahrgassen_toggle" onclick="fahrgassenToggle()" aria-label="Fahrgassen" aria-pressed="false"></button>
+        </div>
+        <div class="fahrgassen-settings" id="fahrgassen_settings">
+          <div class="field" style="margin-bottom:8px">
+            <label for="fahrgassen_breite">Fahrgassenbreite (m)</label>
+            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="fahrgassen_breite" placeholder="z.B. 24" oninput="onInputFormat(this, 'decimal', event)" onchange="fahrgassenUpdate()" onblur="fahrgassenUpdate()">
+          </div>
+          <div class="fahrgassen-saved" id="fahrgassen_saved"></div>
+          <div class="fahrgassen-info">Die Körnerzahl wird um ca. 1/Fahrgassenbreite × 100 % reduziert.</div>
+        </div>
+      </div><!-- Dünger card -->
+
+      <!-- Result card (kept IDs intact) -->
+      <div class="card result" id="results" style="display:none">
+        <h2>
+          <span class="section-badge">A</span>
+          Ergebnis
+          <span class="section-meta" id="r_info"></span>
+        </h2>
+
+        <!-- Hidden but kept for data binding via renderResults (legacy) -->
+        <div id="r_korner" style="display:none"></div>
+        <div id="r_einheiten" style="display:none"></div>
+        <div id="r_duenger" style="display:none"></div>
+
+        <!-- New ring-chart layout -->
+        <div class="result-layout">
+          <div class="result-ring-chart" id="result_ring_chart">
+            <svg viewBox="0 0 100 100">
+              <circle class="result-ring-bg" cx="50" cy="50" r="44"></circle>
+              <circle class="result-ring-fg" id="r_ring_fg" cx="50" cy="50" r="44"
+                      stroke-dasharray="276.46" stroke-dashoffset="276.46"></circle>
+            </svg>
+            <div class="result-ring-center">
+              <div class="result-ring-value" id="r_ring_value">—</div>
+              <div class="result-ring-sub" id="r_ring_sub">EINH.</div>
             </div>
           </div>
+          <div class="result-side">
+            <div class="result-side-title" id="r_side_title">Ergebnis</div>
+            <div class="result-side-sub" id="r_side_sub">Bitte Hektar und Körner/ha eingeben.</div>
+          </div>
+        </div>
 
-          <!-- Legacy r_*-IDs (hidden, kept for tests + backend data binding) -->
-          <div id="r_korner" style="display:none"></div>
-          <div id="r_einheiten" style="display:none"></div>
-          <div id="r_duenger" style="display:none"></div>
-          <div id="r_side_title" style="display:none"></div>
-          <div id="r_side_sub" style="display:none"></div>
-          <div id="r_ring_value" style="display:none"></div>
-          <div id="r_ring_sub" style="display:none"></div>
-          <div id="r_ring_fg" style="display:none"></div>
-          <div id="r_progress_fill" style="display:none"></div>
-          <div id="r_progress_used" style="display:none"></div>
-          <div id="r_progress_open" style="display:none"></div>
-          <div id="r_info" style="display:none"></div>
+        <div class="result-progress">
+          <div class="result-progress-bar">
+            <div class="result-progress-fill" id="r_progress_fill" style="width:0%"></div>
+          </div>
+          <div class="result-progress-legend">
+            <span class="legend-used" id="r_progress_used">— verbraucht</span>
+            <span class="legend-open" id="r_progress_open">— offen</span>
+          </div>
+        </div>
 
-          <!-- Stat row -->
-          <div class="stat-row" id="stat_row_cards"></div>
+        <!-- Legacy details (SOLL/IST/Abweichung, Carryover, Drill-Entries) -->
+        <div id="r_soll_ist_section" class="result-details" style="display:none">
+          <div class="result-row">
+            <span class="label">SOLL-Fläche</span>
+            <span class="value small" id="r_soll_ha">—</span>
+          </div>
+          <div class="result-row">
+            <span class="label">IST-Fläche</span>
+            <span class="value small" id="r_ist_ha">—</span>
+          </div>
+          <div class="result-row">
+            <span class="label">Abweichung</span>
+            <span class="value small" id="r_diff_ha">—</span>
+          </div>
+        </div>
+        <div id="r_carryover_hint" style="font-size:0.85rem;padding:4px 0;"></div>
 
-          <!-- Card: Fläche & Aussaatstärke -->
-          <div class="card" id="card_input">
-            <div class="card-title">
-              <span id="field_card_title">Fläche &amp; Aussaatstärke</span>
-              <button class="edit-name" onclick="renameActiveField()">✎ Umbenennen</button>
+        <div id="r_drill_section" style="display:none">
+          <div class="drill-separator"></div>
+          <div class="result-row">
+            <span class="label">Einheiten eingefüllt</span>
+            <span class="value small" id="r_drill_e_used">—</span>
+          </div>
+          <div class="result-row" id="r_drill_e_rem_row">
+            <span class="label">Einheiten verbleibend</span>
+            <span class="value small" id="r_drill_e_rem">—</span>
+          </div>
+          <div class="result-row" id="r_drill_d_used_row" style="display:none">
+            <span class="label">Dünger eingefüllt</span>
+            <span class="value small" id="r_drill_d_used">—</span>
+          </div>
+          <div class="result-row" id="r_drill_d_rem_row" style="display:none">
+            <span class="label">Dünger verbleibend</span>
+            <span class="value small" id="r_drill_d_rem">—</span>
+          </div>
+          <div id="r_drill_entries"></div>
+        </div>
+      </div><!-- end results card -->
+
+      <!-- Reset this tab -->
+      <button class="reset-this-tab-btn" onclick="resetActiveTab()">
+        Diesen Schlag zurücksetzen
+      </button>
+    </section><!-- end #view_rechner -->
+
+    <!-- ===== View: Protokoll ===== -->
+    <section id="view_protokoll">
+      <div class="header-row">
+        <div class="header-titles">
+          <div class="header-meta">Demo · Vollständiger Funktionsumfang</div>
+          <h1>Drill-Protokoll</h1>
+        </div>
+        <div class="header-actions">
+          <button class="settings-btn" onclick="openSettings()" aria-label="Einstellungen">⚙️</button>
+        </div>
+      </div>
+
+      <div class="card" id="drill_section">
+        <div class="drill-tabs-section">
+          <div class="drill-tabs-header">Priorität &amp; Status je Schlag</div>
+          <div id="drill_tab_list"></div>
+        </div>
+
+        <h2>
+          <span class="section-badge">+</span>
+          Maschine eingefüllt
+        </h2>
+        <div id="drill_mask">
+          <div class="drill-machine-row">
+            <div class="field">
+              <label for="drill_einheit">Einheiten gesamt</label>
+              <div class="input-wrap">
+                <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_einheit" placeholder="z.B. 4" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal', event)">
+              </div>
             </div>
             <div class="field">
-              <label for="hektar">Hektar (SOLL)</label>
-              <div class="input-shell" id="shell_hektar">
-                <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="hektar" placeholder="z.B. 12,5" oninput="onHektarInput()">
-                <span class="suffix">ha</span>
+              <label for="drill_duenger">Dünger gesamt</label>
+              <div class="input-wrap">
+                <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_duenger" placeholder="z.B. 200" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal', event)">
+                <span class="input-unit">kg</span>
               </div>
-              <div class="err-text" id="err_hektar"></div>
-            </div>
-            <div class="field">
-              <label for="ist_hektar">Hektar (IST) — optional, tatsächlich gefahren</label>
-              <div class="input-shell">
-                <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="ist_hektar" placeholder="z.B. 12,3" oninput="onIstHektarInput()">
-                <span class="suffix">ha</span>
-              </div>
-              <div class="hint-block">Weicht die IST- von der SOLL-Fläche ab, wird der Ausgleich im Senken-Feld sichtbar (siehe Übersicht).</div>
-            </div>
-            <div class="field">
-              <label for="koerner">Körner pro Hektar</label>
-              <div class="input-shell" id="shell_koerner">
-                <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" oninput="onKoernerInput()">
-                <span class="suffix">/ha</span>
-              </div>
-              <div class="hint">üblich: 80.000 – 100.000</div>
-              <div class="err-text" id="err_koerner"></div>
-            </div>
-
-            <div class="fahrgassen-toggle">
-              <label for="einheit_groesse_toggle">Einheiten-Größe anpassen</label>
-              <button class="toggle-btn" id="einheit_groesse_toggle" onclick="einheitGroesseToggle()" aria-label="Einheiten-Größe"></button>
-            </div>
-            <div class="fahrgassen-settings" id="einheit_groesse_settings">
-              <div class="field" style="margin-bottom:8px">
-                <label for="koerner_pro_einheit">Körner pro Einheit</label>
-                <div class="input-shell">
-                  <input type="text" inputmode="numeric" id="koerner_pro_einheit" placeholder="z.B. 50000" oninput="onInputFormat(this, 'integer', event)" onchange="einheitGroesseUpdate()" onblur="einheitGroesseUpdate()">
-                </div>
-              </div>
-              <div class="fahrgassen-saved" id="einheit_groesse_saved"></div>
-              <div class="fahrgassen-info">Wie viele Körner eine "Einheit" Saatgut entsprechen (üblich: 50.000).</div>
             </div>
           </div>
-
-          <!-- Card: Dünger -->
-          <div class="card">
-            <div class="card-title">Dünger</div>
-            <div class="field">
-              <label for="duenger">Dünger</label>
-              <div class="input-shell">
-                <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="duenger" placeholder="z.B. 150" oninput="onDuengerInput()">
-                <span class="suffix">kg/ha</span>
-              </div>
-            </div>
-
-            <div class="fahrgassen-toggle">
-              <label for="fahrgassen_toggle">Fahrgassen berücksichtigen</label>
-              <button class="toggle-btn" id="fahrgassen_toggle" onclick="fahrgassenToggle()" aria-label="Fahrgassen"></button>
-            </div>
-            <div class="fahrgassen-settings" id="fahrgassen_settings">
-              <div class="field" style="margin-bottom:8px">
-                <label for="fahrgassen_breite">Fahrgassenbreite (m)</label>
-                <div class="input-shell">
-                  <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="fahrgassen_breite" placeholder="z.B. 24" oninput="onInputFormat(this, 'decimal', event)" onchange="fahrgassenUpdate()" onblur="fahrgassenUpdate()">
-                </div>
-              </div>
-              <div class="fahrgassen-saved" id="fahrgassen_saved"></div>
-              <div class="fahrgassen-info">Die Körnerzahl wird um ca. 1/Fahrgassenbreite × 100 % reduziert.</div>
+          <div class="field">
+            <label for="drill_hektar">Zählerstand (ha) — optional</label>
+            <div class="input-wrap">
+              <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal', event)">
+              <span class="input-unit">ha</span>
             </div>
           </div>
-
-          <button class="reset-this-tab-btn" onclick="doResetActiveTab()">Diesen Schlag zurücksetzen</button>
-
-          <!-- Legacy result details (keep for carryover hints + drill entries) -->
-          <div id="r_soll_ist_section" class="result-details" style="display:none">
-            <div class="result-row"><span class="label">SOLL-Fläche</span><span class="value small" id="r_soll_ha">—</span></div>
-            <div class="result-row"><span class="label">IST-Fläche</span><span class="value small" id="r_ist_ha">—</span></div>
-            <div class="result-row"><span class="label">Abweichung</span><span class="value small" id="r_diff_ha">—</span></div>
+          <div class="hint-block">Ohne gesetzte Prioritäten wird alles auf den aktiven Schlag ("Schlag Nord") gebucht.</div>
+          <button class="btn-add" onclick="drillAdd()">+ Verteilen &amp; eintragen</button>
+        </div>
+        <div id="drill_summary" class="drill-summary" style="display:none">
+          <div id="ds_total_summary" class="drill-total-summary" style="margin-bottom:8px;font-weight:bold;"></div>
+          <div class="drill-summary-row">
+            <span>Einheiten gesamt</span>
+            <span id="ds_saat_total">—</span>
           </div>
-          <div id="r_carryover_hint" style="font-size:0.85rem;padding:4px 0;"></div>
-          <div id="r_drill_section" style="display:none">
-            <div class="drill-separator"></div>
-            <div class="result-row"><span class="label">Einheiten eingefüllt</span><span class="value small" id="r_drill_e_used">—</span></div>
-            <div class="result-row" id="r_drill_e_rem_row"><span class="label">Einheiten verbleibend</span><span class="value small" id="r_drill_e_rem">—</span></div>
-            <div class="result-row" id="r_drill_d_used_row" style="display:none"><span class="label">Dünger eingefüllt</span><span class="value small" id="r_drill_d_used">—</span></div>
-            <div class="result-row" id="r_drill_d_rem_row" style="display:none"><span class="label">Dünger verbleibend</span><span class="value small" id="r_drill_d_rem">—</span></div>
-            <div id="r_drill_entries"></div>
+          <div class="drill-summary-row">
+            <span>Einheiten verwendet</span>
+            <span id="ds_saat_used">—</span>
           </div>
-        </section><!-- end #view_rechner -->
-
-        <!-- ===== View: Drill-Protokoll ===== -->
-        <section id="view_protokoll">
-          <div class="drill-tabs-section">
-            <div class="drill-tabs-header">Priorität &amp; Status je Schlag</div>
-            <div id="drill_tab_list"></div>
+          <div class="drill-summary-row remaining">
+            <span>Einheiten verbleibend</span>
+            <span id="ds_saat_remaining">—</span>
           </div>
-
-          <div class="card" id="drill_section">
-            <div class="card-title">+ Maschine eingefüllt</div>
-            <div id="drill_mask">
-              <div class="drill-machine-row">
-                <div class="field">
-                  <label for="drill_einheit">Einheiten gesamt</label>
-                  <div class="input-shell">
-                    <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_einheit" placeholder="z.B. 4" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal', event)">
-                  </div>
-                </div>
-                <div class="field">
-                  <label for="drill_duenger">Dünger gesamt</label>
-                  <div class="input-shell">
-                    <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_duenger" placeholder="z.B. 200" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal', event)">
-                    <span class="suffix">kg</span>
-                  </div>
-                </div>
-              </div>
-              <div class="field">
-                <label for="drill_hektar">Zählerstand (ha) — optional</label>
-                <div class="input-shell">
-                  <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal', event)">
-                  <span class="suffix">ha</span>
-                </div>
-              </div>
-              <div class="hint" id="drill_mode_hint" style="margin: 8px 0 12px;">Ohne gesetzte Prioritäten wird alles auf den aktiven Schlag ("Schlag Nord") gebucht.</div>
-              <button class="btn-add" onclick="drillAdd()">+ Verteilen &amp; eintragen</button>
-            </div>
-
-            <div id="drill_summary" class="drill-summary" style="display:none">
-              <div id="ds_total_summary" class="drill-total-summary"></div>
-              <div class="drill-summary-row"><span>Einheiten gesamt</span><span id="ds_saat_total">—</span></div>
-              <div class="drill-summary-row"><span>Einheiten verwendet</span><span id="ds_saat_used">—</span></div>
-              <div class="drill-summary-row remaining"><span>Einheiten verbleibend</span><span id="ds_saat_remaining">—</span></div>
-              <div class="drill-summary-row"><span>Dünger gesamt</span><span id="ds_duenger_total">—</span></div>
-              <div class="drill-summary-row"><span>Dünger verwendet</span><span id="ds_duenger_used">—</span></div>
-              <div class="drill-summary-row remaining"><span>Dünger verbleibend</span><span id="ds_duenger_remaining">—</span></div>
-              <div class="drill-summary-savings" id="ds_savings" style="display:none"></div>
-            </div>
+          <div class="drill-summary-row">
+            <span>Dünger gesamt</span>
+            <span id="ds_duenger_total">—</span>
           </div>
+          <div class="drill-summary-row">
+            <span>Dünger verwendet</span>
+            <span id="ds_duenger_used">—</span>
+          </div>
+          <div class="drill-summary-row remaining">
+            <span>Dünger verbleibend</span>
+            <span id="ds_duenger_remaining">—</span>
+          </div>
+          <div class="drill-summary-savings" id="ds_savings" style="display:none"></div>
+        </div>
 
-          <!-- Maschinen-Log (in-page, nicht in eigener Card) -->
-          <div class="section-title" style="margin-top:18px;">Maschinen-Log</div>
-          <div class="entry-list" id="drill_machine_log"></div>
+        <!-- Maschinen-Log (innerhalb #drill_section, damit nur eine .card
+             in #view_protokoll existiert → tests/15-render-view + 22-contract) -->
+        <section class="drill-log-subsection">
+          <h2 class="subsection-header">Maschinen-Log</h2>
+          <div id="drill_machine_log"></div>
           <div id="drill_entries"></div>
-        </section><!-- end #view_protokoll -->
+        </section>
+      </div>
+    </section><!-- end #view_protokoll -->
 
-        <!-- ===== View: Übersicht ===== -->
-        <section id="view_uebersicht">
-          <div id="dashboard_content"></div>
-        </section><!-- end #view_uebersicht -->
+    <!-- ===== View: Übersicht ===== -->
+    <section id="view_uebersicht">
+      <div class="header-row">
+        <div class="header-titles">
+          <div class="header-meta">Demo · Vollständiger Funktionsumfang</div>
+          <h1>Übersicht</h1>
+        </div>
+        <div class="header-actions">
+          <button class="settings-btn" onclick="openSettings()" aria-label="Einstellungen">⚙️</button>
+        </div>
+      </div>
+      <div id="dashboard_content"></div>
+    </section><!-- end #view_uebersicht -->
 
-      </div><!-- end .content -->
+  </div><!-- end .container -->
+
     </div><!-- end .scrollable-content -->
 
-    <!-- ===== Sticky Bottom Navigation ===== -->
+    <!-- Sticky Bottom Navigation -->
     <nav class="bottom-nav" id="bottom_nav" aria-label="Hauptnavigation">
-      <button class="nav-btn active" id="bn_rechner" onclick="switchToRechner()">
-        <span class="ic" aria-hidden="true">🌾</span>
+      <button class="bottom-nav-item" id="bn_rechner" onclick="switchToRechner()">
+        <span class="bottom-nav-icon" aria-hidden="true">🌾</span>
         <span>Rechner</span>
       </button>
-      <button class="nav-btn" id="bn_protokoll" onclick="switchToProtokoll()">
-        <span class="ic" aria-hidden="true">📋</span>
+      <button class="bottom-nav-item" id="bn_protokoll" onclick="switchToProtokoll()">
+        <span class="bottom-nav-icon" aria-hidden="true">📋</span>
         <span>Protokoll</span>
       </button>
-      <button class="nav-btn" id="bn_uebersicht" onclick="switchToUebersicht()">
-        <span class="ic" aria-hidden="true">📊</span>
+      <button class="bottom-nav-item" id="bn_uebersicht" onclick="switchToUebersicht()">
+        <span class="bottom-nav-icon" aria-hidden="true">📊</span>
         <span>Übersicht</span>
       </button>
     </nav>
 
-    <!-- Hidden version-footer (für Tests) -->
-    <div id="version_footer" style="display:none"></div>
-
+    <!-- Hidden legacy protokoll_tab_btn (für Test-Backwards-Compat).
+         Die Bottom-Nav Button bn_protokoll triggers die echte View-Switch. -->
+    <button id="protokoll_tab_btn" onclick="switchToProtokoll()" style="display:none" aria-hidden="true"></button>
   </div><!-- end .app-layout -->
 
+  <!-- iOS Install Hint Banner -->
   <div class="ios-install-banner" id="ios_install_banner">
-    <div class="ios-install-text"><strong>App installieren:</strong> Teile-Taste → <strong>Zum Home-Bildschirm</strong></div>
+    <div class="ios-install-text">
+      <strong>App installieren:</strong> Teile-Taste → <strong>Zum Home-Bildschirm</strong>
+    </div>
     <button class="ios-install-dismiss" onclick="dismissIosInstallHint()" aria-label="Hinweis schließen">✕</button>
   </div>
 
+  <!-- Update Banner ("What's New") -->
   <div class="update-banner" id="update_banner">
     <div class="update-icon">✨</div>
     <div class="update-text">
@@ -322,16 +345,26 @@
     <button class="update-dismiss" onclick="dismissUpdateHint()" aria-label="Schließen">✕</button>
   </div>
 
-  <!-- Legacy protokoll tab button (hidden) — keeps test backwards-compat -->
-  <button id="protokoll_tab_btn" onclick="switchToProtokoll()" style="display:none" aria-hidden="true"></button>
-  <div id="dashboard_overlay" style="display:none"></div>
-  <div id="dashboard_sheet" style="display:none">
-    <button id="dashboard_close" onclick="closeDashboard()" aria-label="Schließen">✕</button>
-  </div>
-
-  <!-- Theme toggle (hidden, für Settings-Panel aufrufbar) -->
-  <button id="theme_toggle" style="display:none" aria-hidden="true">🌙</button>
-
+  <!-- Main content start -->
+  <script>
+    // ============================================================================
+    // agrar-rechner — Modulare Architektur
+    //
+    // Lade-Reihenfolge (wichtig!):
+    //   state.js → calculations.js → ui-handlers.js
+    //     → render-tabs.js → render-results.js → render-drill.js → render-dashboard.js
+    //     → main.js
+    //
+    //   state.js definiert: state, saveState(), loadState()
+    //   calculations.js braucht: state, _internal (von state.js)
+    //   ui-handlers.js braucht: state, calculations.js (getActiveReiter, etc.)
+    //   render-tabs.js braucht: state, ui-handlers.js, calculations.js
+    //   render-results.js braucht: state, render-tabs.js, render-drill.js, calculations.js
+    //   render-drill.js braucht: state, ui-handlers.js, calculations.js
+    //   render-dashboard.js braucht: state, calculations.js
+    //   main.js: APP_VERSION, Event-Emitter, initTheme
+    // ============================================================================
+  </script>
   <script src="js/app-globals.js"></script>
   <script src="js/state.js"></script>
   <script src="js/calculations.js"></script>
@@ -341,13 +374,47 @@
   <script src="js/render-drill.js"></script>
   <script src="js/render-dashboard.js"></script>
   <script src="js/main.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      if (window.AppGlobals && typeof AppGlobals.initUI === 'function') {
-        AppGlobals.initUI();
-      }
-    });
-  </script>
+  <div class="version-footer" id="version_footer"></div>
+
+  <!-- Settings Modal -->
+  <div class="reset-overlay" id="settings_overlay" onclick="_onSettingsOverlayClick(event)"></div>
+  <div class="reset-modal" id="settings_modal" role="dialog" aria-modal="true" aria-labelledby="settings_modal_title">
+    <button class="reset-modal-x" onclick="_onSettingsCancel()" aria-label="Schließen">✕</button>
+    <div class="reset-modal-badge" aria-hidden="true">⚙️</div>
+    <h2 class="reset-modal-title" id="settings_modal_title">Einstellungen</h2>
+    <p class="reset-modal-subtitle">
+      Anpassungen für Aussehen und Datenverwaltung.
+    </p>
+    <div class="settings-info" id="settings_info">
+      <strong>Version <span id="settings_version">—</span></strong><br>
+      Agrar-Rechner — Einheiten &amp; Dünger für Aussaat
+    </div>
+    <div class="reset-options">
+      <button class="settings-option" id="settings_dark_mode" onclick="_onSettingsDarkMode()">
+        <span class="settings-option-icon" aria-hidden="true" id="settings_dark_icon">🌙</span>
+        <span class="settings-option-body">
+          <span class="settings-option-title" id="settings_dark_title">Dark Mode</span>
+          <span class="settings-option-desc" id="settings_dark_desc">Helles Farbschema aktivieren</span>
+        </span>
+        <span class="settings-option-info-row" id="settings_dark_state">Aus</span>
+      </button>
+      <button class="reset-option reset-option-tab" id="settings_reset_tab" onclick="_onSettingsResetTab()">
+        <span class="reset-option-icon" aria-hidden="true">🗂️</span>
+        <span class="reset-option-body">
+          <span class="reset-option-title">Aktuellen Schlag zurücksetzen</span>
+          <span class="reset-option-desc">Leert Felder &amp; Protokoll dieses Schlags</span>
+        </span>
+      </button>
+      <button class="reset-option reset-option-all" id="settings_reset_all" onclick="_onSettingsResetAll()">
+        <span class="reset-option-icon" aria-hidden="true">🗑️</span>
+        <span class="reset-option-body">
+          <span class="reset-option-title">Alle Daten löschen</span>
+          <span class="reset-option-desc">Entfernt alle Schläge &amp; Einstellungen</span>
+        </span>
+      </button>
+    </div>
+    <button class="reset-modal-cancel" onclick="_onSettingsCancel()">Schließen</button>
+  </div>
 
   <!-- Reset Confirmation Modal (Issue #236) -->
   <div class="reset-overlay" id="reset_overlay" onclick="_onOverlayClick(event)"></div>
@@ -362,7 +429,7 @@
       <button class="reset-option reset-option-tab" id="reset_modal_tab" onclick="_onResetTab()">
         <span class="reset-option-icon" aria-hidden="true">🗂️</span>
         <span class="reset-option-body">
-          <span class="reset-option-title">Aktueller Schlag</span>
+          <span class="reset-option-title">Aktuellen Schlag</span>
           <span class="reset-option-desc" id="reset_modal_tab_ctx">Leert Felder &amp; Protokoll dieses Schlags</span>
         </span>
       </button>
@@ -375,6 +442,16 @@
       </button>
     </div>
     <button class="reset-modal-cancel" onclick="_onCancel()">Abbrechen</button>
+  </div>
+
+  <!-- Hidden theme_toggle (clicked programmatically by settings modal) -->
+  <button id="theme_toggle" style="display:none" aria-hidden="true">🌙</button>
+
+  <!-- Legacy Dashboard-Sheet-DOM (für Test-Backwards-Compat). Wird vom JS nicht
+       mehr aktiv genutzt — Übersicht ist jetzt eine reguläre View. -->
+  <div id="dashboard_overlay" style="display:none"></div>
+  <div id="dashboard_sheet" style="display:none">
+    <button id="dashboard_close" onclick="closeDashboard()" aria-label="Schließen">✕</button>
   </div>
 </body>
 </html>

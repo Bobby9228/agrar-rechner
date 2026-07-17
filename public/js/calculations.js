@@ -202,7 +202,7 @@ function computeAllCarryovers() {
     var absorbiert = 0;
     for (let i = 0; i < n; i++) {
       var rr = reiter[i];
-      if (!rr || rr.done) continue;  // Issue #371: done tabs zählen NICHT in den Pool
+      if (!rr) continue;
       var sol = getSol(rr);
       var used = getUsed(rr);
       var own;
