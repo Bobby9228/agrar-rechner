@@ -11,7 +11,7 @@
 // ESM-Migration bleibt hinter konkreten Triggern (siehe ADR-001).
 //
 // `AppGlobals.state` ist ein Live-Alias für die `var state` aus state.js.
-// Getter/Setter propagieren Reassignments (loadState, resetAll,
+// Getter/Setter propagieren Reassignments (loadState,
 // Cross-Tab-Sync) in beide Richtungen, sodass `AppGlobals.state` und
 // `window.state` immer dasselbe Objekt referenzieren. state.js darf beim
 // Registrieren daher NICHT `state: state` mitführen — sonst würde

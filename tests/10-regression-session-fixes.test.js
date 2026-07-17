@@ -4,7 +4,7 @@
  * These tests verify the exact scenarios that caused each bug,
  * ensuring they cannot re-occur.
  *
- * Fix 1 (5e823cb): entries undefined on reiter → TypeError in berechne()
+ * Fix 1 (5e823cb): entries undefined on reiter → TypeError in the calculation pipeline
  * Fix 2 (741a31b): missing tab-add button → appendChild(null) in renderTabs()
  * Fix 3 (75447f1): renderTabs recycled detached node → NotFoundError
  * Fix 4 (919a999): syncInputsFromState wrote 9.2 instead of 9,2 → parseDE read 92
@@ -25,7 +25,7 @@ describe('Regression: entries undefined on reiter', () => {
     store = result.store;
   });
 
-  it('berechne() works when reiter has no entries field (loaded from old localStorage)', () => {
+  it('calculation works when reiter has no entries field (loaded from old localStorage)', () => {
     // Simulate old localStorage where reiter objects had no entries field
     store['agrar_rechner'] = JSON.stringify({
       reiter: [
@@ -43,10 +43,11 @@ describe('Regression: entries undefined on reiter', () => {
     expect(Array.isArray(r.entries)).toBe(true);
     expect(r.entries.length).toBe(0);
 
-    // berechne should not throw
+    // renderResults should not throw even when entries was missing
     doc.getElementById('hektar').value = '10';
     doc.getElementById('koerner').value = '90000';
-    expect(() => w.berechne()).not.toThrow();
+    w.syncStateFromInputs();
+    expect(() => w.renderResults()).not.toThrow();
     expect(doc.getElementById('results').style.display).toBe('block');
   });
 
@@ -57,7 +58,7 @@ describe('Regression: entries undefined on reiter', () => {
     expect(Array.isArray(r.entries)).toBe(true);
   });
 
-  it('berechne() works with multiple reiters where one has no entries', () => {
+  it('calculation works with multiple reiters where one has no entries', () => {
     store['agrar_rechner'] = JSON.stringify({
       reiter: [
         { name: 'Feld A', hektar: 5, koerner: 80000, duenger: 100, entries: [{ einheit: 1, hektar: 2, duenger: 50, time: '10:00' }] },
@@ -72,7 +73,8 @@ describe('Regression: entries undefined on reiter', () => {
     // Switch to the tab without entries
     doc.getElementById('hektar').value = '8';
     doc.getElementById('koerner').value = '90000';
-    expect(() => w.berechne()).not.toThrow();
+    w.syncStateFromInputs();
+    expect(() => w.renderResults()).not.toThrow();
     expect(doc.getElementById('r_korner').textContent).toBe('720.000');
   });
 
@@ -125,11 +127,12 @@ describe('Regression: renderTabs creates tab-add button fresh', () => {
     expect(doc.querySelector('.tab-add').textContent).toContain('Tab');
   });
 
-  it('berechne works after adding a tab (renderTabs called from berechne)', () => {
+  it('renderResults works after adding a tab', () => {
     w.addReiter();
     doc.getElementById('hektar').value = '10';
     doc.getElementById('koerner').value = '90000';
-    expect(() => w.berechne()).not.toThrow();
+    w.syncStateFromInputs();
+    expect(() => w.renderResults()).not.toThrow();
     expect(doc.getElementById('results').style.display).toBe('block');
   });
 
@@ -187,12 +190,13 @@ describe('Regression: syncInputsFromState uses DE format', () => {
     expect(doc.getElementById('koerner').value).toBe('90000');
   });
 
-  it('full cycle: berechne → switchReiter → berechne preserves correct decimal', () => {
+  it('full cycle: calculate → switchReiter → calculate preserves correct decimal', () => {
     // Calculate with 9,2 ha
     doc.getElementById('hektar').value = '9,2';
     doc.getElementById('koerner').value = '90000';
     doc.getElementById('duenger').value = '150';
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
 
     expect(w.state.reiter[0].hektar).toBeCloseTo(9.2);
 
@@ -206,18 +210,20 @@ describe('Regression: syncInputsFromState uses DE format', () => {
     expect(doc.getElementById('hektar').value).toBe('9,2');
 
     // Calculate again — should still be 9.2 ha, not 92 ha
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
     expect(w.state.reiter[0].hektar).toBeCloseTo(9.2);
     // 9.2 * 90000 = 828000, not 92 * 90000 = 8280000
     expect(doc.getElementById('r_korner').textContent).toBe('828.000');
   });
 
-  it('full cycle: berechne → initUI reload → berechne preserves correct decimal', () => {
+  it('full cycle: calculate → initUI reload → calculate preserves correct decimal', () => {
     // Calculate with 12,5 ha
     doc.getElementById('hektar').value = '12,5';
     doc.getElementById('koerner').value = '80000';
     doc.getElementById('duenger').value = '200,5';
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
     w.saveState();
 
     // Reload state via lv + syncInputsFromState
@@ -235,7 +241,8 @@ describe('Regression: syncInputsFromState uses DE format', () => {
     expect(doc.getElementById('duenger').value).toBe('200,5');
 
     // Recalculate — must be 12.5 ha not 125 ha
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
     expect(w.state.reiter[0].hektar).toBeCloseTo(12.5);
     // 12.5 * 80000 = 1000000
     expect(doc.getElementById('r_korner').textContent).toBe('1.000.000');
@@ -291,7 +298,8 @@ describe('Regression: integration — old localStorage + tabs + decimals', () =>
     expect(doc.getElementById('hektar').value).toBe('9,2');
 
     // Calculate
-    expect(() => w.berechne()).not.toThrow();
+    w.syncStateFromInputs();
+    expect(() => w.renderResults()).not.toThrow();
     expect(doc.getElementById('results').style.display).toBe('block');
 
     // Add a tab
@@ -302,13 +310,15 @@ describe('Regression: integration — old localStorage + tabs + decimals', () =>
     // Calculate on new tab
     doc.getElementById('hektar').value = '5,5';
     doc.getElementById('koerner').value = '80000';
-    expect(() => w.berechne()).not.toThrow();
+    w.syncStateFromInputs();
+    expect(() => w.renderResults()).not.toThrow();
     expect(w.state.reiter[1].hektar).toBeCloseTo(5.5);
 
     // Switch back to first tab — should still be 9,2 not 92
     w.switchReiter(0);
     expect(doc.getElementById('hektar').value).toBe('9,2');
-    expect(() => w.berechne()).not.toThrow();
+    w.syncStateFromInputs();
+    expect(() => w.renderResults()).not.toThrow();
     expect(w.state.reiter[0].hektar).toBeCloseTo(9.2);
   });
 });

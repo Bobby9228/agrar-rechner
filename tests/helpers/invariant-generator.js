@@ -1,8 +1,8 @@
 // Carryover-Invariante-Generator: erzeugt reproduzierbare state.reiter-Szenarien.
 //
 // Dependency-free, deterministisch (seed → mulberry32 PRNG). Wird von
-// tests/55-carryover-invariants.test.js verwendet, um 5 Carryover-Regeln
-// gegen 200+ Zufallsszenarien pro Invariante zu prüfen.
+// tests/101-carryover-conservation.test.js verwendet, um die Carryover-
+// Materialerhaltung gegen 200+ Zufallsszenarien pro Invariante zu prüfen.
 //
 // API: generateScenarios(seed, count) → Array<state>
 //   - seed: 32-bit unsigned int (z.B. 0xC0FFEE)

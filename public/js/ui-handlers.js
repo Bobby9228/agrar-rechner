@@ -6,13 +6,6 @@
 // Keine render*-Aufrufe direkt in diesen Funktionen (außer wo sofort nötig).
 // ============================================================================
 
-    // Confirm-Dialog-Wrapper. In Browsern ist `globalThis.confirm` der
-    // native window.confirm; in jsdom-Tests wird die Funktion gemockt
-    // (siehe tests/28-berechne-confirm.test.js).
-    function _askConfirm(message) {
-      return globalThis.confirm(message);
-    }
-
     // Zentrale DOM-ID-Registry (Issue #281). IDs aus resetAll() und
     // resetActiveTab() werden hier gebündelt, damit die Reset-Funktionen
     // nicht mit verstreuten String-Literals arbeiten. Helper `_resetInput`
@@ -231,6 +224,7 @@
         name: AppGlobals.state.reiter[active].name,
         hektar: 0, istHektar: 0, koerner: 0, duenger: 0,
         entries: [],
+        done: false,
         fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled,
         fahrgassenBreite: AppGlobals.state.fahrgassenBreite
       };
@@ -262,14 +256,19 @@
     }
 
     function resetAll() {
+      // Preserve UI-prefs that "Daten zurücksetzen" should NOT wipe.
+      var keepIosHint = AppGlobals.state.iosInstallHintShown;
       AppGlobals.state = {
-        reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] }],
+        reiter: [{ name: 'Tab 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: false, fahrgassenBreite: 0 }],
         activeReiter: 0,
+        activeView: null,
         fahrgassenEnabled: false,
         fahrgassenBreite: 0,
         einheitGroesseEnabled: false,
         koernerProEinheit: 50000,
-        machineLog: []
+        machineLog: [],
+        drillPriorities: {},
+        iosInstallHintShown: keepIosHint
       };
       // Input- und Fehlerfelder zurücksetzen
       _resetInput(DOM_IDS.hektar);
@@ -315,6 +314,72 @@
       AppGlobals.state.drillPriorities = {};
       AppGlobals.renderTabs();
       AppGlobals.saveState();
+    }
+
+    // --- Reset-Modal (Issue #236, redesign v3) ---
+    // Öffnet/schließt das Bestätigungs-Dialogfenster für Reset-Aktionen.
+    // Zeigt/versteckt Overlay + Modal über die 'open'-Klasse (siehe styles.css).
+    // Beim Öffnen werden Kontext-Infos (Tab-Name, Anzahl Tabs/Einträge) befüllt,
+    // damit der Nutzer sieht, was genau gelöscht wird.
+    function _countAllEntries() {
+      var n = 0;
+      var reiter = AppGlobals.state.reiter || [];
+      for (var i = 0; i < reiter.length; i++) {
+        var e = reiter[i].entries;
+        if (e) n += e.length;
+      }
+      return n;
+    }
+
+    function _populateResetContext() {
+      var tabCtx = document.getElementById('reset_modal_tab_ctx');
+      if (tabCtx) {
+        var active = AppGlobals.getActiveReiter();
+        var name = active && active.name ? active.name : 'Aktueller Tab';
+        tabCtx.textContent = 'Leert Felder & Protokoll von „' + name + '“';
+      }
+      var allCtx = document.getElementById('reset_modal_all_ctx');
+      if (allCtx) {
+        var tabs = (AppGlobals.state.reiter || []).length;
+        var entries = _countAllEntries();
+        allCtx.textContent = tabs + ' Tab' + (tabs === 1 ? '' : 's') + ' · ' + entries + ' ' + (entries === 1 ? 'Eintrag' : 'Einträge');
+      }
+    }
+
+    function openResetModal() {
+      _populateResetContext();
+      var overlay = document.getElementById('reset_overlay');
+      var modal = document.getElementById('reset_modal');
+      if (overlay) overlay.classList.add('open');
+      if (modal) modal.classList.add('open');
+    }
+
+    function closeResetModal() {
+      var overlay = document.getElementById('reset_overlay');
+      var modal = document.getElementById('reset_modal');
+      if (overlay) overlay.classList.remove('open');
+      if (modal) modal.classList.remove('open');
+    }
+
+    function _onOverlayClick(event) {
+      // Nur schließen wenn direkt auf das Overlay geklickt wurde (nicht auf ein Kind-Element).
+      if (event && event.target && event.target.id === 'reset_overlay') {
+        closeResetModal();
+      }
+    }
+
+    function _onResetTab() {
+      resetActiveTab();
+      closeResetModal();
+    }
+
+    function _onResetAll() {
+      resetAll();
+      closeResetModal();
+    }
+
+    function _onCancel() {
+      closeResetModal();
     }
 
     // --- Drill Protocol ---
@@ -608,7 +673,7 @@
       // Issue #377: globale Drill-Inputs (drill_einheit / drill_duenger /
       // drill_hektar) deaktivieren, wenn der aktive Tab als done markiert
       // ist. Die Felder würden sonst Einträge auf einen abgeschlossenen
-      // Tab schreiben (drillMachineAdd → state.reiter[activeReiter]).
+      // Tab schreiben.
       _syncActiveTabLock();
       AppGlobals.renderDrillSummary();
       AppGlobals.renderResults();
@@ -634,38 +699,6 @@
       AppGlobals._internal.drillCalcTimer = setTimeout(AppGlobals.drillCalcAll, 150);
     }
 
-    function drillMachineAdd() {
-      var einheitVal = document.getElementById('drill_einheit').value;
-      var duengerVal = document.getElementById('drill_duenger').value;
-      var einheit = AppGlobals.parseDE(einheitVal) || 0;
-      var duenger = AppGlobals.parseDE(duengerVal) || 0;
-      var targetHektar = AppGlobals.parseDE(document.getElementById('drill_hektar').value) || 0;
-      if (einheit <= 0 && duenger <= 0) return;
-      var activeTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
-      var entry = {
-        time: Date.now(),
-        mlIdx: AppGlobals.state.machineLog.length,
-        einheit: einheit,
-        duenger: duenger,
-        hektar: targetHektar > 0 ? targetHektar : (activeTab.hektar || 0),
-        istHektar: 0,
-        zaehlerStand: targetHektar,
-        koerner: activeTab.koerner,
-        duengerRate: activeTab.duenger,
-        isMachineLog: true
-      };
-      AppGlobals.state.machineLog.push(entry);
-      var count = parseInt(document.getElementById('drill_einheit').value) || 1;
-      for (var c = 0; c < count; c++) {
-        var e = { time: Date.now() + c, mlIdx: AppGlobals.state.machineLog.length - 1, einheit: einheit / count, duenger: duenger / count, hektar: targetHektar > 0 ? targetHektar : (activeTab.hektar || 0), istHektar: 0, zaehlerStand: targetHektar, koerner: activeTab.koerner, duengerRate: activeTab.duenger };
-        activeTab.entries.push(e);
-      }
-      document.getElementById('drill_einheit').value = '';
-      document.getElementById('drill_duenger').value = '';
-      document.getElementById('drill_hektar').value = '';
-      AppGlobals.appEmit('DRILL_ENTRY_ADDED', { tabIdx: AppGlobals.state.activeReiter });
-    }
-
     function drillMachineRemove(idx) {
       if (!AppGlobals.state.machineLog || idx < 0 || idx >= AppGlobals.state.machineLog.length) return;
       AppGlobals.state.machineLog.splice(idx, 1);
@@ -677,91 +710,6 @@
         }
       });
       AppGlobals.appEmit('DRILL_ENTRY_REMOVED', { mlIdx: idx });
-    }
-
-    // --- Berechnung ---
-
-    function berechne() {
-      var r = AppGlobals.getActiveReiter();
-      if (!r) return;
-      // 1) Werte aus DOM lesen (Tests setzen .value direkt)
-      var h = AppGlobals.parseDE(document.getElementById('hektar').value);
-      var k = AppGlobals.parseDE(document.getElementById('koerner').value);
-      var d = AppGlobals.parseDE(document.getElementById('duenger').value);
-      var ih = AppGlobals.parseDE(document.getElementById('ist_hektar').value) || 0;
-      // 2) Errors clearen
-      document.getElementById('err_hektar').textContent = '';
-      document.getElementById('err_koerner').textContent = '';
-      document.getElementById('hektar').style.borderColor = '';
-      document.getElementById('koerner').style.borderColor = '';
-      // 3) Pro-Feld Validierung mit Plausibilitätscheck
-      if (isNaN(h) || h <= 0) {
-        document.getElementById('err_hektar').textContent = 'Bitte Hektar eingeben';
-        document.getElementById('hektar').style.borderColor = '#d32f2f';
-        return;
-      }
-      if (h > 10000) {
-        document.getElementById('err_hektar').textContent = 'Hektar-Wert ungewöhnlich hoch (max. 10.000)';
-        document.getElementById('hektar').style.borderColor = '#d32f2f';
-        return;
-      }
-      if (isNaN(k) || k <= 0) {
-        document.getElementById('err_koerner').textContent = 'Bitte Körner pro ha eingeben';
-        document.getElementById('koerner').style.borderColor = '#d32f2f';
-        return;
-      }
-      if (k > 1000000) {
-        document.getElementById('err_koerner').textContent = 'Körner-Wert ungewöhnlich hoch (max. 1.000.000)';
-        document.getElementById('koerner').style.borderColor = '#d32f2f';
-        return;
-      }
-      // 5) Werte in State schreiben (state.hektar/koerner/duenger MUSS bereits
-      // gesetzt sein, bevor wir usedEinheit/usedDuenger gegen die neuen
-      // Totals prüfen — sonst lesen wir noch die alten Werte).
-      r.hektar = h;
-      r.koerner = k;
-      r.duenger = (isNaN(d) || d < 0) ? 0 : d;
-      r.istHektar = ih;
-      // 6) Confirm-Dialog wenn bestehende Drill-Entries die NEUEN Totals
-      // überschreiten würden (Issue #266-A / tests 03 + 28). Vor dem
-      // Refactor hat das Original-`berechne` hier einen nativen confirm()
-      // gezeigt; der Phase-3-Refactor hat das in einen visuellen Warn-Banner
-      // umgebaut, der aber nicht dieselbe UX abbildet (kein Clear-Pfad).
-      var entries = r.entries;
-      var usedEinheit = entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
-      var usedDuenger = entries.reduce(function(s, e) { return s + (e.duenger || 0); }, 0);
-      if (entries.length > 0) {
-        // Use the calculations.js canonical functions so the result matches the
-        // values displayed in the result card. Issue #7: calculations.js now
-        // exposes only getTabTotalEinheiten / getTabTotalDuenger (the previous
-        // getTotalEinheiten/getTotalDuenger names were absorbed into them).
-        var newEinheiten = AppGlobals.getTabTotalEinheiten(r);
-        var newDuenger = AppGlobals.getTabTotalDuenger(r);
-        var einheitExceeds = newEinheiten > 0 && usedEinheit > newEinheiten + AppGlobals.EPSILON_QUANTITY;
-        var duengerExceeds = newDuenger > 0 && usedDuenger > newDuenger + AppGlobals.EPSILON_QUANTITY;
-        if (einheitExceeds || duengerExceeds) {
-          if (_askConfirm('Die neuen Werte weichen von den eingetragenen Einheiten ab. Drill-Protokoll zurücksetzen?')) {
-            // User confirmed: clear the entries so the new calculation sticks.
-            r.entries = [];
-          } else {
-            // User declined: keep entries, but still warn visually and stop
-            // here so the stale result card stays in sync with the existing
-            // entries (test 03 expects results display to remain 'block').
-            var warnEl = document.getElementById('drill_overflow_warn');
-            if (warnEl) warnEl.style.display = 'block';
-            return;
-          }
-        } else {
-          var warnEl2 = document.getElementById('drill_overflow_warn');
-          if (warnEl2) warnEl2.style.display = 'none';
-        }
-      }
-      // 7) Speichern + rendern + Ergebnisse anzeigen
-      AppGlobals.saveState();
-      AppGlobals.renderTabs();
-      AppGlobals.renderResults();
-      document.getElementById('results').style.display = 'block';
-      AppGlobals.appEmit('CALCULATION_DONE', { tabIdx: AppGlobals.state.activeReiter });
     }
 
     // --- Input Binding (reactive writes to state) ---
@@ -974,7 +922,6 @@
 
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 Object.assign(window.AppGlobals, {
-  _askConfirm: _askConfirm,
   DOM_IDS: DOM_IDS,
   _resetInput: _resetInput,
   addReiter: addReiter,
@@ -988,6 +935,12 @@ Object.assign(window.AppGlobals, {
   einheitGroesseUpdate: einheitGroesseUpdate,
   resetActiveTab: resetActiveTab,
   resetAll: resetAll,
+  openResetModal: openResetModal,
+  closeResetModal: closeResetModal,
+  _onOverlayClick: _onOverlayClick,
+  _onResetTab: _onResetTab,
+  _onResetAll: _onResetAll,
+  _onCancel: _onCancel,
   _parseDrillInputs: _parseDrillInputs,
   _resolvePerTabDistribution: _resolvePerTabDistribution,
   _buildDrillEntry: _buildDrillEntry,
@@ -1002,9 +955,7 @@ Object.assign(window.AppGlobals, {
   _syncActiveTabLock: _syncActiveTabLock,
   drillCalcAll: drillCalcAll,
   drillCalcDebounced: drillCalcDebounced,
-  drillMachineAdd: drillMachineAdd,
   drillMachineRemove: drillMachineRemove,
-  berechne: berechne,
   onInputHektar: onInputHektar,
   onInputIstHektar: onInputIstHektar,
   onInputKoerner: onInputKoerner,
