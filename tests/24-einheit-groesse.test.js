@@ -104,7 +104,8 @@ describe('einheitGroesseUpdate', () => {
     const { window: w } = createDom();
     w.document.getElementById('hektar').value = '10';
     w.document.getElementById('koerner').value = '90000';
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
 
     w.document.getElementById('koerner_pro_einheit').value = '40000';
     w.einheitGroesseUpdate();

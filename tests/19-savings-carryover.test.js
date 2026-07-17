@@ -19,7 +19,8 @@ describe('IST/SOLL Savings & Carryover', () => {
     w.document.getElementById('ist_hektar').value = '7,9';
     w.document.getElementById('koerner').value = '50000';
     w.document.getElementById('duenger').value = '100';
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
 
     w.document.getElementById('drill_einheit').value = '7,9';
     w.document.getElementById('drill_hektar').value = '7,9';
@@ -37,7 +38,8 @@ describe('IST/SOLL Savings & Carryover', () => {
     w.document.getElementById('hektar').value = '8';
     w.document.getElementById('ist_hektar').value = '8';
     w.document.getElementById('koerner').value = '50000';
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
 
     w.document.getElementById('drill_einheit').value = '8';
     w.document.getElementById('drill_hektar').value = '8';
@@ -54,7 +56,8 @@ describe('IST/SOLL Savings & Carryover', () => {
     w.document.getElementById('ist_hektar').value = '7,9';
     w.document.getElementById('koerner').value = '50000';
     w.document.getElementById('duenger').value = '100';
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
 
     w.document.getElementById('drill_einheit').value = '7,9';
     w.document.getElementById('drill_hektar').value = '7,9';
@@ -101,7 +104,8 @@ describe('IST/SOLL Savings & Carryover', () => {
     w.document.getElementById('ist_hektar').value = '9,5';
     w.document.getElementById('koerner').value = '50000';
     w.document.getElementById('duenger').value = '200';
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
 
     // SOLL: 10 Einheiten, 2000 kg Dünger
     // IST: 9.5 ha → 9.5 Einheiten, 1900 kg Dünger
@@ -125,7 +129,8 @@ describe('IST/SOLL Savings & Carryover', () => {
     w.document.getElementById('hektar').value = '8';
     w.document.getElementById('koerner').value = '50000';
     w.document.getElementById('duenger').value = '100';
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
 
     // No istHektar → no savings
     const savingsEl = w.document.getElementById('ds_savings');

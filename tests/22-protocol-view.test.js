@@ -30,7 +30,8 @@ describe('switchToProtokoll()', () => {
   it('switches to protokoll view from field view', () => {
     w.document.getElementById('hektar').value = '10';
     w.document.getElementById('koerner').value = '90000';
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
 
     expect(w.state.activeView).toBeNull();
     w.switchToProtokoll();
@@ -74,7 +75,8 @@ describe('switchToProtokoll()', () => {
   it('persists view state to localStorage', () => {
     w.document.getElementById('hektar').value = '10';
     w.document.getElementById('koerner').value = '90000';
-    w.berechne(); // Ensure state is initialized and sv() works
+    w.syncStateFromInputs();
+    w.renderResults(); // Ensure state is initialized and sv() works
 
     w.switchToProtokoll();
 
@@ -101,7 +103,8 @@ describe('renderView()', () => {
   it('hides all cards except drill_section when in protokoll view', () => {
     w.document.getElementById('hektar').value = '10';
     w.document.getElementById('koerner').value = '90000';
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
     w.switchToProtokoll();
 
     const cards = w.document.querySelectorAll('.card');
@@ -117,7 +120,8 @@ describe('renderView()', () => {
   it('hides results in protokoll mode even with data', () => {
     w.document.getElementById('hektar').value = '10';
     w.document.getElementById('koerner').value = '90000';
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
 
     w.state.activeView = 'protokoll';
     w.renderView();
@@ -147,7 +151,8 @@ describe('renderView()', () => {
   it('shows results in field mode when tab has data', () => {
     w.document.getElementById('hektar').value = '10';
     w.document.getElementById('koerner').value = '90000';
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
 
     expect(getResults(w).style.display).toBe('block');
   });
@@ -205,7 +210,8 @@ describe('state.activeView persistence', () => {
     const { window: w, store } = createDom();
     w.document.getElementById('hektar').value = '10';
     w.document.getElementById('koerner').value = '90000';
-    w.berechne();
+    w.syncStateFromInputs();
+    w.renderResults();
     w.switchToProtokoll();
     expect(w.state.activeView).toBe('protokoll');
 

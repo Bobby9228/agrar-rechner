@@ -145,6 +145,74 @@
           }
         }
       }
+
+      // Issue (User-Feedback 2026-07-11): Cross-Tab-Netting (Senken-Modell)
+      // war bisher unsichtbar — ein Tab mit Mehrbedarf zeigte "verbleibend: 0",
+      // aber nirgends stand, DASS und WOHIN dieser Mehrbedarf wandert. Und die
+      // Senke (der Tab, der den Mehrbedarf/die Ersparnis anderer Tabs
+      // übernimmt) bekam plötzlich einen höheren/niedrigeren "verbleibend"-Wert
+      // ohne Erklärung. Diese beiden Hinweise machen die Verrechnung
+      // nachvollziehbar, ohne die Rechenlogik selbst zu ändern.
+      var netHint = document.getElementById('r_net_hint');
+      if (!netHint) {
+        netHint = document.createElement('div');
+        netHint.id = 'r_net_hint';
+        netHint.style.cssText = 'font-size:0.85rem;padding:4px 0;';
+        if (carryoverHint && carryoverHint.parentNode) {
+          carryoverHint.parentNode.insertBefore(netHint, carryoverHint.nextSibling);
+        }
+      }
+      if (netHint) {
+        while (netHint.firstChild) netHint.removeChild(netHint.firstChild);
+        netHint.style.display = 'none';
+        var allCarry = AppGlobals.computeAllCarryovers();
+        var sinkIdx = -1;
+        for (var ci = 0; ci < allCarry.length; ci++) {
+          if (allCarry[ci].isSink) { sinkIdx = ci; break; }
+        }
+        var activeIdxForNet = AppGlobals.state.activeReiter || 0;
+        var coForNet = allCarry[activeIdxForNet] || AppGlobals.getCarryover(activeIdxForNet);
+        var hasOwnOverage = (r.istHektar > 0 && r.hektar > 0)
+          && (AppGlobals.getTabIstEinheiten(r) - AppGlobals.getTabTotalEinheiten(r) > 0.05
+              || (r.istHektar - r.hektar) * (r.duenger || 0) > 0.05);
+        if (!coForNet.isSink && hasOwnOverage && sinkIdx !== -1 && sinkIdx !== activeIdxForNet) {
+          // Dieser Tab hat selbst Mehrbedarf, ist aber nicht die Senke —
+          // sein Mehrbedarf wird unsichtbar auf einen anderen Tab (die
+          // Senke) verrechnet. Zeige, welcher das ist.
+          var sinkTab = AppGlobals.state.reiter[sinkIdx];
+          var sinkName = (sinkTab && sinkTab.name) || ('Tab ' + (sinkIdx + 1));
+          var noteDiv = document.createElement('div');
+          noteDiv.className = 'r-carryover-row r-carryover-carryover';
+          noteDiv.textContent = '↳ wird über den Tab-Ausgleich von „' + sinkName + '\u201c gedeckt';
+          netHint.appendChild(noteDiv);
+          netHint.style.display = 'block';
+        } else if (coForNet.isSink && (Math.abs(coForNet.sinkAdjustedE) > 0.05 || Math.abs(coForNet.sinkAdjustedD) > 0.05)) {
+          // Dieser Tab IST die Senke: er übernimmt Mehrbedarf/Ersparnis aus
+          // anderen Tabs in sein eigenes "verbleibend". Zeige wie viel.
+          var label2 = document.createElement('div');
+          label2.className = 'r-carryover-section-label';
+          label2.textContent = 'Ausgleich mit anderen Tabs';
+          netHint.appendChild(label2);
+          var addParts = [], subParts = [];
+          if (coForNet.sinkAdjustedE > 0.05) addParts.push(AppGlobals.fmt(coForNet.sinkAdjustedE) + ' Einheiten Saatgut');
+          else if (coForNet.sinkAdjustedE < -0.05) subParts.push(AppGlobals.fmt(-coForNet.sinkAdjustedE) + ' Einheiten Saatgut');
+          if (coForNet.sinkAdjustedD > 0.05) addParts.push(Math.round(coForNet.sinkAdjustedD).toLocaleString('de-DE') + ' kg Dünger');
+          else if (coForNet.sinkAdjustedD < -0.05) subParts.push(Math.round(-coForNet.sinkAdjustedD).toLocaleString('de-DE') + ' kg Dünger');
+          if (addParts.length) {
+            var addDiv = document.createElement('div');
+            addDiv.className = 'r-carryover-row r-carryover-excess';
+            addDiv.textContent = '+ Mehrbedarf von anderen Tabs übernommen: ' + addParts.join(', ');
+            netHint.appendChild(addDiv);
+          }
+          if (subParts.length) {
+            var subDiv = document.createElement('div');
+            subDiv.className = 'r-carryover-row r-carryover-savings';
+            subDiv.textContent = '− Ersparnis von anderen Tabs übernommen: ' + subParts.join(', ');
+            netHint.appendChild(subDiv);
+          }
+          netHint.style.display = 'block';
+        }
+      }
     }
 
     // --- Render: Results (Hauptergebnis) ---
@@ -224,11 +292,14 @@
       var dUsedEl = document.getElementById('r_drill_d_used');
       if (dUsedEl) dUsedEl.textContent = usedD > 0 ? usedD.toLocaleString('de-DE') + ' kg' : '—';
       var dRemEl = document.getElementById('r_drill_d_rem');
-      if (dRemEl) dRemEl.textContent = remD > 0 ? remD.toLocaleString('de-DE') + ' kg' : '—';
+      // Issue: "Dünger verbleibend" muss auch bei 0 kg sichtbar sein, sobald
+      // überhaupt Dünger eingefüllt wurde — sonst verschwindet die Zeile
+      // genau dann, wenn der Tank aufgebraucht ist (irreführend).
+      if (dRemEl) dRemEl.textContent = usedD > 0 ? Math.round(remD).toLocaleString('de-DE') + ' kg' : '—';
       var dUsedRow = document.getElementById('r_drill_d_used_row');
       if (dUsedRow) dUsedRow.style.display = usedD > 0 ? '' : 'none';
       var dRemRow = document.getElementById('r_drill_d_rem_row');
-      if (dRemRow) dRemRow.style.display = remD > 0 ? '' : 'none';
+      if (dRemRow) dRemRow.style.display = usedD > 0 ? '' : 'none';
       // Iterate in chronological order — matches renderDrillLog and the
       // original f7f7e8d behaviour (see 09-blind-spots "drill entry has #number span").
       r.entries.forEach(function(entry, actualIdx) {

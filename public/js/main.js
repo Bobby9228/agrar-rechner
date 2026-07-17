@@ -45,31 +45,19 @@ function appOnStateChange(listener) {
   return listener;
 }
 
-function appOffStateChange(listener) {
-  _stateListeners = _stateListeners.filter(function(l) { return l !== listener; });
-}
-
 function appEmit(type, data) {
   _stateListeners.forEach(function(listener) {
     try { listener(type, data); } catch(e) { console.error('state listener error:', e); }
   });
 }
 
-function dispatch(action) {
-  appEmit(action.type, action.data);
-}
-
 // --- App Namespace ---
-
+// Hinweis: nur die Members, die von Tests (tests/44) referenziert werden,
+// bleiben hier. Die anderen (onStateChange, emit, etc.) liegen ausschließlich
+// auf AppGlobals (Issue #278, ADR-001).
 window.app = {
-  onStateChange:  appOnStateChange,
-  offStateChange: appOffStateChange,
-  emit:           appEmit,
-  dispatch:       dispatch,
-  invalidateCarryoverCache: function() { AppGlobals._internal.carryoverCache = null; },
   migrateLegacyStorageKeys: AppGlobals.migrateLegacyStorageKeys,
-  LEGACY_KEY_MAP:            AppGlobals.LEGACY_KEY_MAP,
-  _internal:                 AppGlobals._internal
+  LEGACY_KEY_MAP:            AppGlobals.LEGACY_KEY_MAP
 };
 
 // --- Dark Mode (portiert aus Inline-Code Z. 3415-3448) ---
@@ -154,14 +142,10 @@ document.addEventListener('DOMContentLoaded', function() {
 Object.assign(window.AppGlobals, {
   APP_VERSION: APP_VERSION,
   APP_BUILD_DATE: APP_BUILD_DATE,
-  _stateListeners: _stateListeners,
-  _pendingKey: _pendingKey,
   parseDE: parseDE,
   formatEinheit: formatEinheit,
   appOnStateChange: appOnStateChange,
-  appOffStateChange: appOffStateChange,
   appEmit: appEmit,
-  dispatch: dispatch,
   getStoredTheme: getStoredTheme,
   setStoredTheme: setStoredTheme,
   applyTheme: applyTheme,
