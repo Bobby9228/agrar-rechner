@@ -103,6 +103,22 @@
       AppGlobals.appEmit('VIEW_CHANGED', { view: AppGlobals.state.activeView });
     }
 
+    // Für die persistente untere Navigation (Issue: UI-Angleichung an Demo).
+    // Bringt die Ansicht zurück auf "Rechner": verlässt die Protokoll-Ansicht
+    // (falls aktiv) und schließt das Dashboard-Sheet (falls offen). Reine
+    // View-Navigation, ändert keine Berechnungswerte.
+    function switchToRechner() {
+      syncStateFromInputs();
+      if (AppGlobals.state.activeView === 'protokoll') {
+        AppGlobals.state.activeView = null;
+        AppGlobals.appEmit('VIEW_CHANGED', { view: null });
+      }
+      var sheet = document.getElementById('dashboard_sheet');
+      if (sheet && sheet.classList.contains('open') && typeof AppGlobals.closeDashboard === 'function') {
+        AppGlobals.closeDashboard();
+      }
+    }
+
     function renameReiter(idx, name) {
       AppGlobals.state.reiter[idx].name = name.substring(0, 20);
       AppGlobals.appEmit('TAB_RENAMED', { tabIdx: idx });
@@ -929,6 +945,7 @@ Object.assign(window.AppGlobals, {
   switchReiter: switchReiter,
   renameReiter: renameReiter,
   switchToProtokoll: switchToProtokoll,
+  switchToRechner: switchToRechner,
   fahrgassenToggle: fahrgassenToggle,
   fahrgassenUpdate: fahrgassenUpdate,
   einheitGroesseToggle: einheitGroesseToggle,

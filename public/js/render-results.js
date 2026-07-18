@@ -224,7 +224,11 @@
         var ringPct = Math.max(0, Math.min(1, einheiten / 30));
         var ringCircumference = 251.3;
         ringFillEl.style.strokeDashoffset = ringCircumference * (1 - ringPct);
-        ringValEl.textContent = AppGlobals.formatEinheit(einheiten);
+        // Nur die Zahl in den Ring (die Einheit "Einh." steht bereits als
+        // eigenes <small> daneben) — formatEinheit() liefert z.B.
+        // "18,0 Einheiten", was im 96px-Ring nicht mehr lesbar umbricht.
+        var ringRounded = isFinite(einheiten) ? Math.round(einheiten * 10) / 10 : NaN;
+        ringValEl.textContent = isFinite(ringRounded) ? ringRounded.toFixed(1).replace('.', ',') : '—';
       }
     }
 
