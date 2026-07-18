@@ -73,7 +73,7 @@
       var navRechner = document.getElementById('nav_rechner');
       if (navRechner) navRechner.classList.toggle('active', !isProtokollView && !isDashOpen);
       var navProtokoll = document.getElementById('nav_protokoll');
-      if (navProtokoll) navProtokoll.classList.toggle('active', isProtokollView && !isDashOpen);
+      if (navProtokoll) navProtokoll.classList.toggle('active', isProtokollView);
       var navUebersicht = document.getElementById('nav_uebersicht');
       if (navUebersicht) navUebersicht.classList.toggle('active', isDashOpen);
     }
