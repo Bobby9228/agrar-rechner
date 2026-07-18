@@ -46,7 +46,7 @@
         nameWrap.className = 'drill-tab-name-wrap';
         var label = document.createElement('div');
         label.className = 'drill-tab-name';
-        label.textContent = r.name || ('Tab ' + (i + 1));
+        label.textContent = r.name || ('Schlag ' + (i + 1));
         nameWrap.appendChild(label);
         if (r.hektar > 0 && r.koerner > 0) {
           // Issue 2 (Code-Review): DRY + NaN-Fix. Die alten bare reduces
@@ -431,7 +431,7 @@
         if (!hasEntries && !_tabHasCarryoverSignal(tabIdx, rt)) return;
         var header = document.createElement('div');
         header.className = 'drill-entry-tab-header';
-        header.textContent = rt.name || ('Tab ' + (tabIdx + 1));
+        header.textContent = rt.name || ('Schlag ' + (tabIdx + 1));
         container.appendChild(header);
         // Carryover blocks (Ersparnis / Übertrag / Mehrbedarf) directly below
         // the tab-header so users can see which tab each block belongs to.
@@ -521,7 +521,7 @@
         if (!rt || !_tabHasCarryoverSignal(tabIdx, rt)) return;
         var sub = document.createElement('div');
         sub.className = 'drill-entry-tab-header drill-machine-log-tab-subheader';
-        sub.textContent = rt.name || ('Tab ' + (tabIdx + 1));
+        sub.textContent = rt.name || ('Schlag ' + (tabIdx + 1));
         container.appendChild(sub);
         _appendTabCarryoverBlocks(tabIdx, rt, container);
       });

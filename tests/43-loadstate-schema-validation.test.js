@@ -76,13 +76,13 @@ describe('loadState() schema validation (Issue #237)', () => {
             expect(w.state.reiter[0].duenger).toBe(0);
         });
 
-        it('falls back to "Tab" when name is missing or non-string', () => {
+        it('falls back to "Schlag" when name is missing or non-string', () => {
             store['agrar_rechner'] = JSON.stringify({
                 reiter: [{ hektar: 0, koerner: 0, duenger: 0, entries: [] }],
                 _lv: 4
             });
             w.loadState();
-            expect(w.state.reiter[0].name).toBe('Tab');
+            expect(w.state.reiter[0].name).toBe('Schlag');
         });
 
         it('truncates oversize name to 64 chars', () => {
@@ -312,7 +312,7 @@ describe('loadState() schema validation (Issue #237)', () => {
             expect(t.istHektar).toBe(0);
             expect(t.koerner).toBe(0);
             expect(t.duenger).toBe(0);
-            expect(t.name).toBe('Tab');
+            expect(t.name).toBe('Schlag');
         });
 
         it('uses empty array for missing entries', () => {
@@ -423,7 +423,7 @@ describe('loadState() schema validation (Issue #237)', () => {
             expect(() => w.loadState()).not.toThrow();
             // State unverändert (Default bleibt)
             expect(w.state.reiter.length).toBe(1);
-            expect(w.state.reiter[0].name).toBe('Tab 1');
+            expect(w.state.reiter[0].name).toBe('Schlag 1');
 
             store['agrar_rechner'] = '42';
             expect(() => w.loadState()).not.toThrow();

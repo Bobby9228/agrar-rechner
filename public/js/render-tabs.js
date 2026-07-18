@@ -19,7 +19,7 @@
         var isActive = i === AppGlobals.state.activeReiter && AppGlobals.state.activeView !== 'protokoll';
         var btn = document.createElement('button');
         btn.className = 'tab-btn field-tab' + (isActive ? ' active' : '');
-        btn.setAttribute('aria-label', 'Tab ' + (i+1));
+        btn.setAttribute('aria-label', 'Schlag ' + (i+1));
         btn.onclick = function() { AppGlobals.switchReiter(i); };
         var span = document.createElement('span');
         span.className = 'tab-name';
@@ -50,7 +50,7 @@
           var close = document.createElement('span');
           close.className = 'tab-close';
           close.setAttribute('role', 'button');
-          close.setAttribute('aria-label', 'Tab schließen');
+          close.setAttribute('aria-label', 'Schlag schließen');
           close.onclick = function(evt) { evt.stopPropagation(); confirmRemoveReiter(i); };
           close.textContent = '✕';
           btn.appendChild(close);
@@ -95,6 +95,8 @@
       if (drillSection) drillSection.style.display = isProtokoll ? 'block' : 'none';
       var drillMask = document.getElementById('drill_mask');
       if (drillMask) drillMask.style.display = isProtokoll ? '' : 'none';
+      var tabBar = document.getElementById('tab_bar');
+      if (tabBar) tabBar.style.display = isProtokoll ? 'none' : 'flex';
     }
 
     // --- Init: UI (nach DOMContentLoaded) ---
@@ -289,9 +291,9 @@
       var hasEntries = tab.entries && tab.entries.length > 0;
       var hasData = tab.hektar > 0 || tab.koerner > 0 || tab.duenger > 0 || tab.istHektar > 0;
       if (hasEntries || hasData) {
-        if (!confirm('Tab "' + tab.name + '" wirklich löschen? Daten vorhanden — alle Eingaben gehen verloren.')) return;
+        if (!confirm('Schlag "' + tab.name + '" wirklich löschen? Daten vorhanden — alle Eingaben gehen verloren.')) return;
       } else {
-        if (!confirm('Tab "' + tab.name + '" wirklich löschen? Alle Eingaben gehen verloren.')) return;
+        if (!confirm('Schlag "' + tab.name + '" wirklich löschen? Alle Eingaben gehen verloren.')) return;
       }
       AppGlobals.removeReiter(idx);
     }

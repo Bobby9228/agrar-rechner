@@ -180,7 +180,7 @@
           // sein Mehrbedarf wird unsichtbar auf einen anderen Tab (die
           // Senke) verrechnet. Zeige, welcher das ist.
           var sinkTab = AppGlobals.state.reiter[sinkIdx];
-          var sinkName = (sinkTab && sinkTab.name) || ('Tab ' + (sinkIdx + 1));
+          var sinkName = (sinkTab && sinkTab.name) || ('Schlag ' + (sinkIdx + 1));
           var noteDiv = document.createElement('div');
           noteDiv.className = 'r-carryover-row r-carryover-carryover';
           noteDiv.textContent = '↳ wird über den Tab-Ausgleich von „' + sinkName + '\u201c gedeckt';

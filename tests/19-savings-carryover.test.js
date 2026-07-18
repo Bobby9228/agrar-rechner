@@ -340,7 +340,7 @@ describe('IST/SOLL Savings & Carryover', () => {
     // Specifically: tab 0 must show a savings block (IST < SOLL with entry).
     // Find tab 0's header (first one), then assert a savings block follows it.
     const tab0HeaderIdx = children.findIndex(c =>
-      c.classList.contains('drill-entry-tab-header') && c.textContent.includes('Tab 1'));
+      c.classList.contains('drill-entry-tab-header') && c.textContent.includes('Schlag 1'));
     expect(tab0HeaderIdx).toBeGreaterThanOrEqual(0);
     // The next child after tab 0's header must be its savings block (since tab 0
     // is a savings source with an entry, it has drill-savings).
