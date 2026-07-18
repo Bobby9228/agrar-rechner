@@ -76,6 +76,17 @@
       AppGlobals.appEmit('TAB_REMOVED', { tabIdx: idx });
     }
 
+    // Schließt die Übersicht (Dashboard), falls offen. Übersicht ist inzwischen
+    // eine vollflächige Ansicht wie Rechner/Protokoll (kein Popup mehr) — beim
+    // Wechsel zu einer der anderen Ansichten muss sie daher mit verlassen werden,
+    // sonst bliebe sie sichtbar über der neu gewählten Ansicht liegen.
+    function _closeDashboardIfOpen() {
+      var sheet = document.getElementById('dashboard_sheet');
+      if (sheet && sheet.classList.contains('open') && typeof AppGlobals.closeDashboard === 'function') {
+        AppGlobals.closeDashboard();
+      }
+    }
+
     function switchReiter(idx) {
       if (idx === AppGlobals.state.activeReiter && AppGlobals.state.activeView !== 'protokoll') return;
       syncStateFromInputs();
@@ -84,6 +95,7 @@
       // (Issue #291 View-Toggle-Pattern: Tab-Klick = Feld-Tab zeigen, Protokoll-Tab
       // ist kein eigener Reiter sondern ein View-Toggle).
       AppGlobals.state.activeView = null;
+      _closeDashboardIfOpen();
       AppGlobals.appEmit('TAB_CHANGED', { tabIdx: idx });
       // Issue #377 (PR #379 Follow-up): TAB_CHANGED triggert im render-tabs-Subscriber
       // KEIN drillCalcAll — also würde der globale Lock auf drill_einheit / drill_duenger /
@@ -94,6 +106,7 @@
 
     function switchToProtokoll() {
       syncStateFromInputs();
+      _closeDashboardIfOpen();
       if (AppGlobals.state.activeView === 'protokoll') {
         AppGlobals.state.activeView = null;
       } else {
@@ -113,10 +126,7 @@
         AppGlobals.state.activeView = null;
         AppGlobals.appEmit('VIEW_CHANGED', { view: null });
       }
-      var sheet = document.getElementById('dashboard_sheet');
-      if (sheet && sheet.classList.contains('open') && typeof AppGlobals.closeDashboard === 'function') {
-        AppGlobals.closeDashboard();
-      }
+      _closeDashboardIfOpen();
     }
 
     function renameReiter(idx, name) {
