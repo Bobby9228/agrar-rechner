@@ -1,116 +1,119 @@
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
     input, textarea { -webkit-user-select: auto; user-select: auto; }
 
-    /* ===== CSS Variables (light mode) ===== */
+    /* ===== CSS Variables (light mode) — Design 13 "Conversational Precision" ===== */
     :root {
-    --color-bg: #f0f4e8;
-    --color-bg-card: #fafef5;
-    --color-bg-hover: #d0e8b8;
-    --color-bg-soft: #f8faf4;
-    --color-bg-success-soft: #e8f5e9;
-    --color-border: #d0deb8;
-    --color-border-dashed: #b8d4a0;
-    --color-border-disabled: #ccc;
-    --color-border-faint: #eee;
-    --color-border-soft: #e8f0de;
-    --color-border-strong: #c8dcc0;
+    --color-bg: #f6f2e9;
+    --color-bg-card: #fffdf8;
+    --color-bg-hover: #deebd8;
+    --color-bg-soft: #f1eee3;
+    --color-bg-success-soft: #deebd8;
+    --color-border: #e4dfcd;
+    --color-border-dashed: #d9d2bc;
+    --color-border-disabled: #cfcaba;
+    --color-border-faint: #ede8da;
+    --color-border-soft: #eae4d3;
+    --color-border-strong: #d3cbaf;
     --color-card-bg: white;
     --color-card-text: white;
-    --color-danger: #d32f2f;
-    --color-danger-dark: #b71c1c;
-    --color-danger-soft: #c62828;
-    --color-danger-bg-soft: #fdecec;
-    --color-dashboard-done: #ffe066;
-    --color-dashboard-open-active: #1e3410;
-    --color-dashboard-remaining: #ffd700;
-    --color-divider: #c3dfa8;
-    --color-entry-diff-negative: #d32f2f;
-    --color-entry-diff-positive: #4a7c23;
-    --color-highlight-soft: #a5d6a7;
-    --color-info: #1565c0;
+    --color-danger: #b4483a;
+    --color-danger-dark: #8f3527;
+    --color-danger-soft: #c25b4c;
+    --color-danger-bg-soft: #f5e1dd;
+    --color-dashboard-done: #b8892e;
+    --color-dashboard-open-active: #254321;
+    --color-dashboard-remaining: #d9a83d;
+    --color-divider: #e7e0cb;
+    --color-entry-diff-negative: #b4483a;
+    --color-entry-diff-positive: #355e30;
+    --color-highlight-soft: #deebd8;
+    --color-info: #3b6fa0;
     --color-ios-banner-bg: #1a1a1a;
     --color-ios-banner-text: white;
-    --color-primary: #4a7c23;
-    --color-primary-active: #6b9e45;
-    --color-primary-bright: #6aa336;
-    --color-primary-dark: #2d5016;
-    --color-primary-hover: #3a6318;
-    --color-primary-light: #8bc34a;
-    --color-result-bg: #e8f4dc;
-    --color-success-soft: #e8f4dc;
-    --color-text: #1a1a1a;
-    --color-text-danger: #c62828;
-    --color-text-hint: #616161;
-    --color-text-hint-2: #5f6368;
-    --color-text-label: #444;
-    --color-text-label-darker: #333;
-    --color-text-label-strong: #555;
-    --color-text-muted: #666;
-    --color-text-subtle: #757575;
-    --color-text-success: #2e7d32;
-    --color-text-success-strong: #3d6b1a;
-    --color-update-banner-highlight: #a5d6a7;
-    --color-warning-bg: #fff3cd;
-    --color-warning-border: #ffc107;
-    --color-warning-text: #856404;
+    --color-primary: #355e30;
+    --color-primary-active: #4a7c3d;
+    --color-primary-bright: #5c9450;
+    --color-primary-dark: #254321;
+    --color-primary-hover: #2c4f27;
+    --color-primary-light: #6fa562;
+    --color-result-bg: #edf3e7;
+    --color-success-soft: #deebd8;
+    --color-text: #33301f;
+    --color-text-danger: #8f3527;
+    --color-text-hint: #7c7458;
+    --color-text-hint-2: #7c7458;
+    --color-text-label: #5b563f;
+    --color-text-label-darker: #33301f;
+    --color-text-label-strong: #4a4632;
+    --color-text-muted: #7c7458;
+    --color-text-subtle: #9b9478;
+    --color-text-success: #355e30;
+    --color-text-success-strong: #254321;
+    --color-update-banner-highlight: #deebd8;
+    --color-warning-bg: #f3e6c7;
+    --color-warning-border: #b8892e;
+    --color-warning-text: #8c6a22;
+    --font-display: 'Source Serif 4', Georgia, serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
 
-    /* ===== CSS Variables (dark mode overrides) ===== */
+    /* ===== CSS Variables (dark mode overrides) — Design 13 ===== */
     html.dark {
-    --color-accent-green: #66bb6a;
-    --color-bg: #1a1f16;
-    --color-bg-card: #252b20;
-    --color-bg-elevated: #2a3320;
-    --color-bg-hover: #333d28;
-    --color-bg-hover-dark: #333d28;
-    --color-bg-soft: #1e241a;
-    --color-bg-soft-input: #1e241a;
-    --color-bg-success-soft: #1a2e1a;
+    --color-accent-green: #7fbb6e;
+    --color-bg: #1b1f16;
+    --color-bg-card: #23281c;
+    --color-bg-elevated: #272d1f;
+    --color-bg-hover: #323a26;
+    --color-bg-hover-dark: #323a26;
+    --color-bg-soft: #1f241a;
+    --color-bg-soft-input: #1f241a;
+    --color-bg-success-soft: #223420;
     --color-border: #3a4030;
     --color-border-soft: #3a4030;
-    --color-card-bg: #252b20;
-    --color-card-text: #e0e8d6;
-    --color-carryover-bright: #42a5f5;
-    --color-danger: #ef5350;
-    --color-danger-bright: #ef5350;
-    --color-danger-dark: #b71c1c;
-    --color-danger-soft: #c62828;
-    --color-danger-bg-soft: #3a2424;
+    --color-card-bg: #23281c;
+    --color-card-text: #efe9d8;
+    --color-carryover-bright: #6fa9e0;
+    --color-danger: #e0685a;
+    --color-danger-bright: #e0685a;
+    --color-danger-dark: #b4483a;
+    --color-danger-soft: #c25b4c;
+    --color-danger-bg-soft: #3a2620;
     --color-divider: #3a4030;
-    --color-entry-diff-negative: #ef5350;
-    --color-entry-diff-positive: #66bb6a;
-    --color-highlight-soft: #a5d6a7;
-    --color-info: #42a5f5;
+    --color-entry-diff-negative: #e0685a;
+    --color-entry-diff-positive: #7fbb6e;
+    --color-highlight-soft: #7fbb6e;
+    --color-info: #6fa9e0;
     --color-ios-banner-text: white;
-    --color-primary: #5a9a2a;
-    --color-primary-active: #4a7c23;
-    --color-primary-bright: #6aa336;
-    --color-primary-dark: #8bc34a;
-    --color-primary-darker: #5a9a2a;
-    --color-primary-hover: #3a6318;
-    --color-result-bg: #2a3320;
-    --color-summary-muted: #b0b8a8;
-    --color-text: #e0e8d6;
-    --color-text-danger: #ef5350;
-    --color-text-hint: #9ca896;
-    --color-text-hint-2: #9ca896;
-    --color-text-label: #9aa88a;
-    --color-text-label-darker: #c8d0b8;
-    --color-text-muted: #9ca896;
-    --color-text-placeholder: #8a9480;
-    --color-text-strong: #c8d0b8;
-    --color-text-subtle: #8a9480;
-    --color-text-success-strong: #a5d6a7;
-    --color-update-banner-bg: #4a7c23;
+    --color-primary: #5c9450;
+    --color-primary-active: #4a7c3d;
+    --color-primary-bright: #6fa562;
+    --color-primary-dark: #9ad48a;
+    --color-primary-darker: #5c9450;
+    --color-primary-hover: #4a7c3d;
+    --color-result-bg: #223420;
+    --color-summary-muted: #b7ae8e;
+    --color-text: #efe9d8;
+    --color-text-danger: #e0685a;
+    --color-text-hint: #a69f82;
+    --color-text-hint-2: #a69f82;
+    --color-text-label: #b7ae8e;
+    --color-text-label-darker: #d9d2bc;
+    --color-text-muted: #a69f82;
+    --color-text-placeholder: #8c8567;
+    --color-text-strong: #d9d2bc;
+    --color-text-subtle: #8c8567;
+    --color-text-success-strong: #9ad48a;
+    --color-update-banner-bg: #355e30;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: var(--font-body);
       background: var(--color-bg);
       min-height: 100dvh;
       padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
       color: var(--color-text);
       overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
     }
     .container {
       max-width: 420px;
@@ -119,7 +122,10 @@
     h1 {
       text-align: center;
       color: var(--color-primary-dark);
-      font-size: 1.8rem;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.7rem;
+      letter-spacing: -0.01em;
       margin-bottom: 6px;
     }
     .subtitle {
@@ -146,41 +152,46 @@
     }
     .card {
       background: var(--color-card-bg);
-      border-radius: 16px;
+      border: 1px solid var(--color-border-soft);
+      border-radius: 20px;
       padding: 20px;
-      margin-bottom: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 14px;
+      box-shadow: 0 1px 3px rgba(51,48,31,0.05), 0 8px 20px rgba(51,48,31,0.05);
     }
     .card h2 {
-      font-size: 1rem;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1.05rem;
       color: var(--color-primary-dark);
       margin-bottom: 16px;
       padding-bottom: 8px;
-      border-bottom: 2px solid var(--color-border-soft);
+      border-bottom: 1px solid var(--color-border-soft);
     }
     .field {
       margin-bottom: 16px;
     }
     label {
       display: block;
-      font-size: 0.9rem;
-      font-weight: 600;
+      font-size: 0.86rem;
+      font-weight: 500;
       color: var(--color-text-label-darker);
-      margin-bottom: 6px;
+      margin-bottom: 7px;
     }
     input {
       width: 100%;
-      padding: 14px 16px;
-      font-size: 1.2rem;
-      border: 2px solid var(--color-border);
-      border-radius: 10px;
-      background: var(--color-bg-card);
+      padding: 13px 16px;
+      font-size: 1.1rem;
+      font-weight: 500;
+      border: 1.5px solid transparent;
+      border-radius: 13px;
+      background: var(--color-bg-hover);
       color: var(--color-text);
       outline: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.15s, background 0.15s;
     }
     input:focus {
       border-color: var(--color-primary);
+      background: var(--color-bg-card);
     }
     input::placeholder {
       color: var(--color-text-subtle);
@@ -201,13 +212,13 @@
     }
     .btn {
       width: 100%;
-      padding: 16px;
-      font-size: 1.1rem;
+      padding: 15px;
+      font-size: 1.05rem;
       font-weight: 700;
       background: var(--color-primary);
       color: var(--color-ios-banner-text);
       border: none;
-      border-radius: 12px;
+      border-radius: 13px;
       cursor: pointer;
       transition: background 0.2s, transform 0.1s;
     }
@@ -228,7 +239,8 @@
     }
     .result {
       background: var(--color-result-bg);
-      border: 2px solid var(--color-primary);
+      border: 1px solid var(--color-border-soft);
+      border-radius: 22px 22px 22px 6px;
     }
     .result h2 {
       border-bottom-color: var(--color-divider);
@@ -248,7 +260,8 @@
       color: var(--color-text-label);
     }
     .result-row .value {
-      font-size: 1.3rem;
+      font-family: var(--font-display);
+      font-size: 1.25rem;
       font-weight: 700;
       color: var(--color-primary-dark);
     }
@@ -303,22 +316,22 @@
       display: flex;
       align-items: center;
       gap: 4px;
-      background: var(--color-border-soft);
-      border: 2px solid var(--color-divider);
-      border-radius: 8px;
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border-soft);
+      border-radius: 20px;
       padding: 0;
       font-size: 0.8rem;
       cursor: pointer;
       transition: background 0.15s, border-color 0.15s;
       max-width: 130px;
-      min-height: 48px;
+      min-height: 44px;
       /* Ensure tap area covers entire button */
       position: relative;
     }
     .tab-btn.field-tab.active {
       background: var(--color-primary);
-      border: 3px solid var(--color-primary-dark);
-      box-shadow: 0 0 0 1px var(--color-primary) inset;
+      border: 1px solid var(--color-primary-dark);
+      box-shadow: none;
       color: var(--color-ios-banner-text);
     }
     .tab-btn.field-tab:not(.active):hover {
@@ -384,16 +397,16 @@
       opacity: 1;
     }
     .tab-add {
-      background: var(--color-border-soft);
-      border: 2px dashed var(--color-border-dashed);
-      border-radius: 8px;
+      background: var(--color-card-bg);
+      border: 1px dashed var(--color-border-dashed);
+      border-radius: 20px;
       padding: 0 12px;
       font-size: 0.8rem;
       font-weight: 600;
       color: var(--color-primary);
       cursor: pointer;
       flex-shrink: 0;
-      min-height: 48px;
+      min-height: 44px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -417,7 +430,8 @@
     }
     .tab-btn.protokoll-tab {
       background: var(--color-success-soft);
-      border: 2px solid var(--color-primary);
+      border: 1px solid var(--color-primary);
+      border-radius: 20px;
       color: var(--color-primary-dark);
       flex-shrink: 0;
     }
@@ -1527,3 +1541,55 @@ font-size: 0.75rem;
       color: var(--color-card-text);
     }
     .footer-reset-btn:active { transform: scale(0.97); }
+
+/* ===== Design 13: additive result ring (does not replace any existing
+   element — purely decorative, mirrors #r_einheiten). ===== */
+.result-ring-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.result-ring {
+  position: relative;
+  width: 96px;
+  height: 96px;
+}
+.result-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.result-ring-track {
+  fill: none;
+  stroke: var(--color-bg-hover);
+  stroke-width: 9;
+}
+.result-ring-fill {
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-width: 9;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.result-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.result-ring-center span {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--color-primary-dark);
+  line-height: 1.1;
+}
+.result-ring-center small {
+  font-size: 0.6rem;
+  color: var(--color-text-hint);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}

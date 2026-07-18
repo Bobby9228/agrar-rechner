@@ -213,6 +213,19 @@
           netHint.style.display = 'block';
         }
       }
+
+      // Design 13 (additive, Issue: visuelle Auffrischung): aktualisiert nur
+      // den neuen dekorativen Ring (#result_ring_fill/#result_ring_value).
+      // Rein additiv — bestehende Elemente/IDs oben bleiben unverändert.
+      // Guarded, damit ältere/abweichende index.html-Versionen nicht brechen.
+      var ringFillEl = document.getElementById('result_ring_fill');
+      var ringValEl = document.getElementById('result_ring_value');
+      if (ringFillEl && ringValEl) {
+        var ringPct = Math.max(0, Math.min(1, einheiten / 30));
+        var ringCircumference = 251.3;
+        ringFillEl.style.strokeDashoffset = ringCircumference * (1 - ringPct);
+        ringValEl.textContent = AppGlobals.formatEinheit(einheiten);
+      }
     }
 
     // --- Render: Results (Hauptergebnis) ---
