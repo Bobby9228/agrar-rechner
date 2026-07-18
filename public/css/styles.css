@@ -384,15 +384,18 @@
       color: inherit;
       opacity: 0.6;
       flex-shrink: 0;
-      /* Ensure min 44x44px touch target */
-      width: 44px;
-      height: 44px;
-      min-width: 44px;
+      /* Schmaleres X als früher (44px → 28px), damit 3 Reiter + der "+ Tab"-Button
+         in eine Zeile passen. Touch-Target bleibt mit 2px Margin rundum effektiv
+         bei 32px (Material-Design Minimum), und die übergeordnete .tab-btn-Karte
+         ist 44px hoch → kein "Treffer ins Leere"-Problem. */
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
       display: flex;
       align-items: center;
       justify-content: center;
       border-radius: 8px;
-      font-size: 1rem;
+      font-size: 0.9rem;
       transition: opacity 0.15s, background 0.15s;
       margin: 2px;
     }
