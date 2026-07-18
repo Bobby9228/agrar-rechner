@@ -944,6 +944,12 @@ font-size: 0.75rem;
       align-items: flex-start;
       margin-bottom: 16px;
     }
+    .dashboard-header-titles {
+      flex: 1;
+    }
+    .dashboard-header-titles .subtitle {
+      margin-bottom: 2px;
+    }
     .dashboard-header h2 {
       margin: 0;
       padding: 0;
