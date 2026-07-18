@@ -323,7 +323,7 @@
       font-size: 0.8rem;
       cursor: pointer;
       transition: background 0.15s, border-color 0.15s;
-      max-width: 116px;
+      max-width: 140px;
       flex: 0 1 auto;
       min-height: 44px;
       /* Ensure tap area covers entire button */
@@ -344,17 +344,18 @@
       font-size: 0.8rem;
       font-weight: 600;
       color: inherit;
-      width: 64px;
-      max-width: 64px;
+      width: 76px;
+      max-width: 76px;
       padding: 14px 4px 14px 10px;
       outline: none;
       pointer-events: auto;
       cursor: pointer;
       min-height: 48px;
       display: inline-block;
-      /* Verhindert hässlichen Mittendrin-Umbruch („Schla / g 4") bei den
-         automatisch vergebenen Default-Namen „Schlag N". Lange Custom-Namen
-         (>9 Zeichen) laufen per Ellipsis aus statt zu sprengen. */
+      /* Verhindert haesslichen Mittendrin-Umbruch („Schla / g 4") bei den
+         automatisch vergebenen Default-Namen „Schlag N". 76 px reicht fuer
+         „Schlag 99" einzeilig (8 Zeichen * ~7 px + Padding 14 = 70 px).
+         Lange Custom-Namen (>12 Zeichen) laufen per Ellipsis aus. */
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -420,6 +421,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      /* Wandert in eine eigene Zeile unter den Reitern (anstatt mit ihnen
+         in einer Reihe um Platz zu kaempfen). */
+      flex-basis: 100%;
+      margin-top: 8px;
+      max-width: 180px;
     }
     .tab-add:active {
       background: var(--color-bg-hover);
