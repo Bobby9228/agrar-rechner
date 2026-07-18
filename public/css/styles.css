@@ -323,7 +323,8 @@
       font-size: 0.8rem;
       cursor: pointer;
       transition: background 0.15s, border-color 0.15s;
-      max-width: 130px;
+      max-width: 116px;
+      flex: 0 1 auto;
       min-height: 44px;
       /* Ensure tap area covers entire button */
       position: relative;
@@ -343,14 +344,20 @@
       font-size: 0.8rem;
       font-weight: 600;
       color: inherit;
-      width: 52px;
-      max-width: 52px;
+      width: 64px;
+      max-width: 64px;
       padding: 14px 4px 14px 10px;
       outline: none;
       pointer-events: auto;
       cursor: pointer;
       min-height: 48px;
       display: inline-block;
+      /* Verhindert hässlichen Mittendrin-Umbruch („Schla / g 4") bei den
+         automatisch vergebenen Default-Namen „Schlag N". Lange Custom-Namen
+         (>9 Zeichen) laufen per Ellipsis aus statt zu sprengen. */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
       /* Prevent mobile copy/cut/paste menu on tap — edit only via double-click/tap */
       user-select: none;
       -webkit-user-select: none;
