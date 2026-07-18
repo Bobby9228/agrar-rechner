@@ -1593,3 +1593,211 @@ font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
+
+/* ============================================================
+   Design 15 — "Demo Alignment"
+   Bringt UI/UX näher an die Referenz-Demo (15-demo-vollstaendig.html):
+   wärmerer, flacherer Card-Stil, Pill-Chips für Reiter, echte
+   Toggle-Switches, ruhigere Typografie. Rein additiv/überschreibend —
+   keine IDs, Klassen oder DOM-Struktur wurden entfernt, damit die
+   bestehende Test-Suite unverändert grün bleibt.
+   ============================================================ */
+
+/* ---- Header: eyebrow + serif Titel wie in der Demo ---- */
+.header-titles .eyebrow {
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-transform: none;
+  letter-spacing: 0.01em;
+  margin-bottom: 3px;
+}
+.header-titles h1 {
+  text-align: left;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+  margin-bottom: 0;
+}
+
+/* ---- Cards: flacher, wärmer, wie in der Demo (Rahmen statt Schatten) ---- */
+.card {
+  box-shadow: none;
+  border-radius: 20px;
+}
+.card h2 {
+  font-size: 0.92rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.result {
+  border-radius: 24px 24px 24px 6px;
+  box-shadow: none;
+}
+
+/* ---- Inputs: sanftere Radien, wie input-shell in der Demo ---- */
+input {
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.unit, .fahrgassen-info {
+  font-size: 0.76rem;
+}
+
+/* ---- Buttons: Pill-Radius + Gewicht wie btn-primary/-secondary in der Demo ---- */
+.btn, .btn-add {
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.footer-reset-btn {
+  border-radius: 12px;
+}
+
+/* ---- Reiter-Leiste als Chips (wie .chip in der Demo) ---- */
+.tab-btn {
+  border-radius: 20px;
+}
+.tab-btn.field-tab:not(.active) {
+  color: var(--color-text-label);
+}
+.tab-name {
+  font-weight: 600;
+}
+.tab-add {
+  border-style: dashed;
+  color: var(--color-text-label);
+  font-weight: 600;
+}
+.tab-btn.protokoll-tab {
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+/* ---- Ergebnis-Ring: Moss-Verlauf wie in der Demo (defs siehe index.html) ---- */
+.result-ring-fill {
+  stroke: url(#mossgrad);
+}
+.result-ring-center span {
+  font-size: 1.25rem;
+}
+
+/* ---- Umschalter (Fahrgassen / Einheitengröße) im Stil der Demo .switch ---- */
+.toggle-btn {
+  width: 44px;
+  min-height: 26px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+.toggle-btn::after {
+  width: 19px;
+  height: 19px;
+  top: 2.5px;
+  left: 3px;
+  background: var(--color-text-hint);
+  box-shadow: none;
+}
+.toggle-btn.active {
+  background: var(--color-bg-success-soft);
+  border-color: var(--color-primary);
+}
+.toggle-btn.active::after {
+  left: 21px;
+  background: var(--color-primary);
+}
+.fahrgassen-toggle {
+  padding: 11px 0;
+}
+.fahrgassen-settings {
+  border-radius: 12px;
+}
+
+/* ---- Dashboard: Hero-Gradient + Feld-Karten wie dash-hero/field-card ---- */
+.dashboard-summary {
+  background: linear-gradient(155deg, var(--color-primary) 0%, #1E3A1B 100%);
+  border-radius: 22px;
+}
+.dashboard-reiter-card {
+  border-radius: 16px;
+  border: 1px solid var(--color-border-soft);
+}
+.dashboard-progress-fill {
+  background: linear-gradient(90deg, #5C9450, #254321);
+}
+.dashboard-sheet {
+  border-radius: 22px 22px 0 0;
+}
+
+/* ---- Drill-Protokoll: rundere Prio-/Status-Chips wie in der Demo ---- */
+.drill-tab-row {
+  border-radius: 16px;
+}
+.drill-prio-btn {
+  border-radius: 50%;
+}
+.drill-done-btn {
+  border-radius: 9px;
+}
+.drill-tabs-section {
+  border-radius: 14px;
+}
+
+/* ---- Bugfix: Pro-Tab-Zeile im Drill-Protokoll überlappte sich -----------
+   Ursache: render-drill.js hängt Prio-Button, Name/Status, die beiden
+   Override-Inputs (dtl_e_/dtl_d_) und den "Feld fertig"-Button als 5
+   direkte Kind-Elemente an .drill-tab-row. Es gab nie ein Wrapper-Element
+   mit der Klasse .drill-tab-values (die ältere Regel
+   ".drill-tab-row .drill-tab-values input" griff also nie), wodurch die
+   beiden Inputs auf die globale `input { width:100% }`-Regel zurückfielen
+   und sich über den Namen/Status-Text legten. Fix rein per CSS über die
+   (stabile, von render-drill.js immer in dieser Reihenfolge erzeugte)
+   Kind-Reihenfolge — keine JS-Änderung nötig. ---------------------------- */
+.drill-tab-row {
+  display: grid;
+  grid-template-columns: 32px 1fr 1fr auto;
+  column-gap: 8px;
+  row-gap: 8px;
+  align-items: center;
+}
+.drill-tab-row > *:nth-child(1) { grid-row: 1; grid-column: 1; }
+.drill-tab-row > *:nth-child(2) { grid-row: 1; grid-column: 2 / span 3; }
+.drill-tab-row > *:nth-child(3) { grid-row: 2; grid-column: 2; }
+.drill-tab-row > *:nth-child(4) { grid-row: 2; grid-column: 3; }
+.drill-tab-row > *:nth-child(5) { grid-row: 2; grid-column: 4; }
+.drill-tab-row input[id^="dtl_e_"],
+.drill-tab-row input[id^="dtl_d_"] {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  border-radius: 10px;
+  background: var(--color-bg-hover);
+}
+.drill-tab-row .drill-done-btn {
+  white-space: normal;
+  text-align: center;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  padding: 6px 8px;
+  max-width: 92px;
+}
+.drill-tab-row .drill-tab-name-wrap {
+  min-width: 0;
+}
+
+/* ---- Umschalter: etwas mehr Kontrast/Tiefe als im flachen Demo-Vorbild,
+   damit der Zustand (an/aus) auf echten Geräten klarer erkennbar bleibt --- */
+.toggle-btn {
+  border-color: var(--color-border-strong);
+}
+.toggle-btn::after {
+  box-shadow: 0 1px 2px rgba(51, 48, 31, 0.18);
+}
+
+/* ---- Reset-Modal: etwas rundere, ruhigere Optik ---- */
+.reset-option {
+  border-radius: 16px;
+}

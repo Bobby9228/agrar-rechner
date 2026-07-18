@@ -13,7 +13,7 @@
   <title>Agrar-Rechner</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=13">
+  <link rel="stylesheet" href="css/styles.css?v=14">
 </head>
 <body>
   <div class="app-layout">
@@ -25,8 +25,8 @@
   <div class="container">
     <div class="header-row">
       <div class="header-titles">
+        <p class="subtitle eyebrow">Einheiten &amp; Dünger für Aussaat</p>
         <h1>🌾 Agrar-Rechner</h1>
-        <p class="subtitle">Einheiten & Dünger für Aussaat</p>
       </div>
       <div style="display:flex;gap:8px;align-items:flex-start;">
         <button class="theme-toggle" onclick="toggleTheme()" id="theme_toggle" aria-label="Dark Mode umschalten">🌙</button>
@@ -101,6 +101,7 @@
           <svg viewBox="0 0 96 96">
             <circle class="result-ring-track" cx="48" cy="48" r="40"/>
             <circle class="result-ring-fill" id="result_ring_fill" cx="48" cy="48" r="40" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+            <defs><linearGradient id="mossgrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5C9450"/><stop offset="100%" stop-color="#254321"/></linearGradient></defs>
           </svg>
           <div class="result-ring-center"><span id="result_ring_value">0</span><small>Einh.</small></div>
         </div>
