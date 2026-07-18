@@ -315,19 +315,22 @@
     .tab-btn {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 2px;
       background: var(--color-card-bg);
       border: 1px solid var(--color-border-soft);
-      border-radius: 20px;
+      border-radius: 14px;
       padding: 0;
       font-size: 0.8rem;
       cursor: pointer;
       transition: background 0.15s, border-color 0.15s;
-      max-width: 130px;
-      flex: 1 1 auto;
       min-height: 44px;
       /* Ensure tap area covers entire button */
       position: relative;
+      /* Feste 3er-Spalte statt frei fließender Chips (siehe .tab-bar-left) */
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+      overflow: hidden;
     }
     .tab-btn.field-tab.active {
       background: var(--color-primary);
@@ -341,19 +344,22 @@
     .tab-name {
       background: transparent;
       border: none;
-      font-size: 0.8rem;
+      /* Wird von renderTabs() pro Tab per --tab-name-scale herunterskaliert,
+         damit z.B. "Schlag 10"/"Schlag 11" ohne Ellipsis in die 3er-Spalte passen. */
+      font-size: calc(0.8rem * var(--tab-name-scale, 1));
       font-weight: 600;
       color: inherit;
       flex: 1 1 auto;
       min-width: 0;
-      padding: 14px 6px 14px 6px;
+      padding: 14px 4px 14px 6px;
       outline: none;
       pointer-events: auto;
       cursor: pointer;
       min-height: 48px;
       display: inline-block;
       /* Kein Mittendrin-Umbruch („Schla / g 4"). Lange Custom-Namen laufen
-         per Ellipsis aus statt zu sprengen. */
+         per Ellipsis aus statt zu sprengen — greift erst, wenn Auto-Shrink
+         das Minimum erreicht hat. */
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -387,16 +393,16 @@
          in eine Zeile passen. Touch-Target bleibt mit 2px Margin rundum effektiv
          bei 32px (Material-Design Minimum), und die übergeordnete .tab-btn-Karte
          ist 44px hoch → kein "Treffer ins Leere"-Problem. */
-      width: 28px;
-      height: 28px;
-      min-width: 28px;
+      width: 22px;
+      height: 22px;
+      min-width: 22px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 8px;
-      font-size: 0.9rem;
+      border-radius: 7px;
+      font-size: 0.75rem;
       transition: opacity 0.15s, background 0.15s;
-      margin: 2px;
+      margin: 2px 2px 2px 4px;
     }
     .tab-close:hover {
       opacity: 1;
@@ -408,31 +414,34 @@
     .tab-add {
       background: var(--color-card-bg);
       border: 1px dashed var(--color-border-dashed);
-      border-radius: 20px;
-      padding: 0 12px;
+      border-radius: 14px;
+      padding: 0 8px;
       font-size: 0.8rem;
       font-weight: 600;
       color: var(--color-primary);
       cursor: pointer;
-      flex-shrink: 0;
       min-height: 44px;
       display: flex;
       align-items: center;
       justify-content: center;
-      /* Wandert in eine eigene Zeile unter den Reitern */
-      flex-basis: 100%;
-      margin-top: 8px;
-      max-width: 180px;
     }
     .tab-add:active {
       background: var(--color-bg-hover);
     }
     .tab-bar-left {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
       gap: 6px;
-      flex-wrap: wrap;
-      align-items: center;
+      align-items: stretch;
       flex: 1;
+    }
+    /* "+ Tab" ist Teil desselben Grids, damit die 3er-Spaltenordnung erhalten
+       bleibt (kein Umbruch in eine eigene volle Zeile mehr, siehe .tab-add unten). */
+    .tab-bar-left .tab-add {
+      flex-basis: auto;
+      margin-top: 0;
+      max-width: none;
+      width: 100%;
     }
     .tab-separator {
       width: 1px;
@@ -457,11 +466,11 @@
       background: var(--color-bg-hover);
     }
     .tab-bar > .tab-bar-left {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
       gap: 6px;
-      flex-wrap: wrap;
       min-height: 36px;
-      align-items: center;
+      align-items: stretch;
     }
 
     /* Drill log */
@@ -1670,7 +1679,7 @@ input {
 
 /* ---- Reiter-Leiste als Chips (wie .chip in der Demo) ---- */
 .tab-btn {
-  border-radius: 20px;
+  border-radius: 14px;
 }
 .tab-btn.field-tab:not(.active) {
   color: var(--color-text-label);
@@ -1680,6 +1689,7 @@ input {
 }
 .tab-add {
   border-style: dashed;
+  border-radius: 14px;
   color: var(--color-text-label);
   font-weight: 600;
 }

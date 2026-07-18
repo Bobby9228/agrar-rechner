@@ -64,6 +64,7 @@
       addBtn.textContent = '+ Tab';
       addBtn.onclick = function() { AppGlobals.addReiter(); };
       bar.appendChild(addBtn);
+      fitTabNames(bar);
       var protokollBtn = document.getElementById('protokoll_tab_btn');
       if (protokollBtn) protokollBtn.classList.toggle('active', AppGlobals.state.activeView === 'protokoll');
       var isProtokollView = AppGlobals.state.activeView === 'protokoll';
@@ -76,6 +77,41 @@
       var navUebersicht = document.getElementById('nav_uebersicht');
       if (navUebersicht) navUebersicht.classList.toggle('active', isDashOpen);
     }
+
+    // --- Auto-Shrink: Reiter-Namen ---
+    // Bei fester 3er-Spalte ist pro Reiter weniger Breite verfügbar als früher
+    // in der frei fließenden Chip-Reihe. Statt lange Namen ("Schlag 10",
+    // "Schlag 11", eigene Namen) hart per Ellipsis abzuschneiden, wird die
+    // Schriftgröße pro Tab schrittweise verkleinert (--tab-name-scale in
+    // styles.css), bis der Name komplett sichtbar ist. Erst wenn die
+    // Mindestgröße erreicht ist, greift die Ellipsis als letzter Ausweg.
+    function fitTabNames(bar) {
+      var names = bar.querySelectorAll('.tab-name');
+      names.forEach(function(span) {
+        span.style.removeProperty('--tab-name-scale');
+        // Versteckte Leiste (z.B. Protokoll-Ansicht) hat clientWidth 0 —
+        // dort macht Messen keinen Sinn, der nächste sichtbare Render holt es nach.
+        if (span.clientWidth === 0) return;
+        var scale = 1;
+        var minScale = 0.68;
+        var step = 0.05;
+        var guard = 10;
+        while (span.scrollWidth > span.clientWidth + 1 && scale > minScale && guard-- > 0) {
+          scale = Math.max(minScale, scale - step);
+          span.style.setProperty('--tab-name-scale', scale.toFixed(2));
+        }
+      });
+    }
+
+    // Bei Rotation/Fenstergröße-Änderung neu anpassen (z.B. Tablet-Querformat).
+    var fitTabNamesResizeTimer = null;
+    window.addEventListener('resize', function() {
+      clearTimeout(fitTabNamesResizeTimer);
+      fitTabNamesResizeTimer = setTimeout(function() {
+        var bar = document.getElementById('tab_bar_left');
+        if (bar) fitTabNames(bar);
+      }, 150);
+    });
 
     // --- Render: View (Feld vs. Protokoll) ---
 
@@ -97,6 +133,10 @@
       if (drillMask) drillMask.style.display = isProtokoll ? '' : 'none';
       var tabBar = document.getElementById('tab_bar');
       if (tabBar) tabBar.style.display = isProtokoll ? 'none' : 'flex';
+      if (!isProtokoll) {
+        var barLeft = document.getElementById('tab_bar_left');
+        if (barLeft) fitTabNames(barLeft);
+      }
     }
 
     // --- Init: UI (nach DOMContentLoaded) ---
