@@ -1860,3 +1860,32 @@ html.dark .bottom-nav {
 .scrollable-content {
   padding-bottom: 12px;
 }
+   Nav-Leiste gelöst). Die alten Wege bleiben FUNKTIONAL vollständig
+   erhalten (IDs, Klassen, Klick-Handler unverändert — die ~60 Tests
+   greifen teils direkt darauf zu), werden aber nur noch per CSS
+   ausgeblendet, weil die neue Leiste sie ersetzt. --------------------- */
+
+/* Alte Wege ausblenden (nicht entfernen — s.o.) */
+.dashboard-open-btn,
+#protokoll_tab_btn {
+  display: none;
+}
+
+/* Damit die Nav-Leiste wirklich am Bildschirmrand "sticky" bleibt, muss
+   .app-layout auf die tatsächliche Viewport-Höhe begrenzt werden (vorher
+   nur min-height → die ganze Seite wuchs mit dem Inhalt und scrollte als
+   Ganzes, die Nav-Leiste landete irgendwo am Ende statt fixiert unten). */
+html, body {
+  height: 100%;
+}
+body {
+  overflow: hidden;
+}
+.app-layout {
+  height: calc(100dvh - max(20px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom)));
+  min-height: 0;
+}
+.scrollable-content {
+  min-height: 0;
+}
+
