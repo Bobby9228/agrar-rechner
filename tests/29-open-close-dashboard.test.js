@@ -56,11 +56,11 @@ describe('Dashboard open/close', () => {
   });
 
   it('default state has 1 tab shown in dashboard', () => {
-    // Default state always has Tab 1, so dashboard shows it
+    // Default state always has Schlag 1, so dashboard shows it
     w.openDashboard();
     const cards = doc.querySelectorAll('.dashboard-reiter-card');
     expect(cards.length).toBe(1);
-    expect(doc.getElementById('dashboard_content').textContent).toContain('Tab 1');
+    expect(doc.getElementById('dashboard_content').textContent).toContain('Schlag 1');
   });
 
   it('dashboard shows multiple tabs correctly', () => {

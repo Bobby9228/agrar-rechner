@@ -33,7 +33,7 @@ describe('renderDrillTabList', () => {
   it('shows tab name', () => {
     w.renderDrillTabList();
     var name = w.document.getElementById('drill_tab_list').querySelector('.drill-tab-name');
-    expect(name.textContent).toBe('Tab 1');
+    expect(name.textContent).toBe('Schlag 1');
   });
 
   it('shows "fertig" when tab is completely drilled', () => {

@@ -15,7 +15,7 @@
 
 var state = {
   reiter: [{
-    name:       'Tab 1',
+    name:       'Schlag 1',
     hektar:     0,
     istHektar:  0,
     koerner:    0,
@@ -188,10 +188,10 @@ function sanitizeMachineLogEntry(raw) {
 
 function sanitizeTab(raw) {
   if (!isPlainObject(raw)) {
-    return { name: 'Tab', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false };
+    return { name: 'Schlag', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false };
   }
   var tab = {
-    name:      sanitizeString(raw.name, 'Tab', 64),
+    name:      sanitizeString(raw.name, 'Schlag', 64),
     hektar:    sanitizeNumber(raw.hektar, 0),
     istHektar: sanitizeNumber(raw.istHektar, 0),
     koerner:   sanitizeNumber(raw.koerner, 0),
@@ -253,7 +253,7 @@ function loadState() {
     var lv = originalLv;
     // Migration 0→1: Einzelne Felder → Tab-Array
     if (!data.reiter && (data.hektar !== undefined || data.koerner !== undefined)) {
-      data = { reiter: [{ name: 'Tab 1', hektar: data.hektar || 0, istHektar: data.istHektar || 0, koerner: data.koerner || 0, duenger: data.duenger || 0, entries: data.entries || [], done: false }], activeReiter: 0, activeView: null, fahrgassenEnabled: false, fahrgassenBreite: 0, einheitGroesseEnabled: false, koernerProEinheit: 50000, machineLog: data.machineLog || [], drillPriorities: {}, iosInstallHintShown: false, _lv: 1 };
+      data = { reiter: [{ name: 'Schlag 1', hektar: data.hektar || 0, istHektar: data.istHektar || 0, koerner: data.koerner || 0, duenger: data.duenger || 0, entries: data.entries || [], done: false }], activeReiter: 0, activeView: null, fahrgassenEnabled: false, fahrgassenBreite: 0, einheitGroesseEnabled: false, koernerProEinheit: 50000, machineLog: data.machineLog || [], drillPriorities: {}, iosInstallHintShown: false, _lv: 1 };
       lv = 1;
     }
     // Migration 1→2: Globale entries → per-Tab entries
