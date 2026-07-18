@@ -1,11 +1,16 @@
 // ⚠️ CACHE_VERSION muss bei jedem Release manuell gebumpet werden!
 // Bei Vergessen bekommen Nutzer die alte Version aus dem Cache.
 // alternativa: Build-Script das Hash/Zeitstempel injiziert.
+// CACHE_VERSION dient nur noch als Namespace für den Offline-Fallback-Cache.
+// Seit der Umstellung auf network-first (siehe fetch-Handler unten) MUSS
+// dieser Wert nicht mehr manuell gebumpt werden, damit Nutzer Updates sehen —
+// das war die Ursache wiederholter Stale-Cache-Probleme. Ein Bump hier räumt
+// nur noch alte Offline-Caches auf, ist für sichtbare Updates nicht mehr nötig.
 const CACHE_VERSION = 'agrar-rechner-v46';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
-    '/css/styles.css',
+    '/css/styles.css?v=13',
     '/js/app-globals.js',
     '/js/state.js',
     '/js/calculations.js',
@@ -40,16 +45,19 @@ self.addEventListener('fetch', e => {
   // sw.js NIEMALS cachen — sonst bekommt der Browser nie Updates
   if (url.endsWith('/sw.js')) {
     e.respondWith(fetch(e.request).then(response => {
-      // Neuen SW sofort aktivieren wenn sich CACHE_VERSION geändert hat
       return response;
     }).catch(() => caches.match(e.request)));
     return;
   }
-  if (url.endsWith('.html') || url.endsWith('/')) {
-    // Network-First für HTML → User bekommt Updates
-    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-  } else {
-    // Cache-First für statische Assets
-    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).catch(() => new Response('Offline', { status: 503 }))));
-  }
+  // Network-First für ALLES (nicht mehr nur HTML): User bekommt bei jedem
+  // Deploy sofort die aktuelle Version. Der Cache dient nur noch als
+  // Offline-Fallback, wenn kein Netz verfügbar ist — nicht mehr als primäre
+  // Quelle. Behebt die wiederholten "alte CSS trotz neuem Deploy"-Fälle.
+  e.respondWith(
+    fetch(e.request).then(response => {
+      const copy = response.clone();
+      caches.open(CACHE_VERSION).then(c => c.put(e.request, copy));
+      return response;
+    }).catch(() => caches.match(e.request).then(r => r || new Response('Offline', { status: 503 })))
+  );
 });
