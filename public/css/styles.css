@@ -1889,3 +1889,41 @@ body {
   min-height: 0;
 }
 
+
+/* ---- Demo-Alignment v5: !important, Version ausgeblendet, Nav flacher ---- */
+
+/* !important damit die Ausblendung auch sicher hält, falls woanders eine
+   konkurrierende display-Regel für dieselben Elemente sitzt. */
+.dashboard-open-btn,
+#protokoll_tab_btn {
+  display: none !important;
+}
+
+/* Versionsnummer im Footer: Element bleibt im DOM (Tests lesen textContent),
+   wird nur unsichtbar gemacht. Reset-Button wurde parallel in index.html
+   ans Ende von .scrollable-content verschoben, damit er unter der neuen
+   sticky Nav-Leiste nicht unerreichbar wird. */
+#version_footer {
+  display: none;
+}
+.footer-actions {
+  margin: 4px 0 0;
+}
+
+/* Nav-Leiste flacher: Icon + Label nebeneinander statt gestapelt, weniger
+   Padding, etwas kleinere Ecken — spart vertikalen Platz im Viewport. */
+.bottom-nav {
+  padding: 5px 6px calc(5px + env(safe-area-inset-bottom));
+  border-radius: 16px;
+}
+.nav-btn {
+  flex-direction: row;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 11px;
+  font-size: 0.72rem;
+}
+.nav-btn .ic {
+  font-size: 0.95rem;
+  line-height: 1;
+}

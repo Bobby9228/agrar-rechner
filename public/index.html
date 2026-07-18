@@ -217,6 +217,10 @@
 
     </div><!-- end .container -->
 
+    <div class="version-footer" id="version_footer"></div>
+    <div class="footer-actions">
+      <button class="footer-reset-btn" onclick="openResetModal()" aria-label="Daten zurücksetzen">🗑️ Daten zurücksetzen</button>
+    </div>
     </div><!-- end .scrollable-content -->
 
     <nav class="bottom-nav">
@@ -277,10 +281,6 @@
   <script src="js/render-drill.js"></script>
   <script src="js/render-dashboard.js"></script>
   <script src="js/main.js"></script>
-  <div class="version-footer" id="version_footer"></div>
-  <div class="footer-actions">
-    <button class="footer-reset-btn" onclick="openResetModal()" aria-label="Daten zurücksetzen">🗑️ Daten zurücksetzen</button>
-  </div>
   <!-- Dashboard overlay + sheet -->
   <div class="dashboard-overlay" id="dashboard_overlay" onclick="closeDashboard()"></div>
   <div class="dashboard-sheet" id="dashboard_sheet" role="dialog" aria-modal="true" aria-label="Dashboard — Alle Tabs Übersicht">
