@@ -256,6 +256,7 @@
       if (overlay) overlay.classList.add('open');
       document.body.style.overflow = 'hidden';
       renderDashboard();
+      if (typeof AppGlobals.renderTabs === 'function') AppGlobals.renderTabs();
       // Move focus into the dialog for accessibility (Issue #211)
       // Use setTimeout to avoid jsdom focus-event side effects
       if (sheet) {
@@ -275,6 +276,7 @@
       if (overlay) overlay.classList.remove('open');
       document.body.style.overflow = '';
       document.removeEventListener('keydown', _dashboardKeyHandler);
+      if (typeof AppGlobals.renderTabs === 'function') AppGlobals.renderTabs();
       // Restore focus to the element that opened the dashboard
       if (_dashboardPrevFocus && _dashboardPrevFocus.focus) {
         _dashboardPrevFocus.focus();

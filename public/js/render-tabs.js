@@ -66,6 +66,15 @@
       bar.appendChild(addBtn);
       var protokollBtn = document.getElementById('protokoll_tab_btn');
       if (protokollBtn) protokollBtn.classList.toggle('active', AppGlobals.state.activeView === 'protokoll');
+      var isProtokollView = AppGlobals.state.activeView === 'protokoll';
+      var dashSheet = document.getElementById('dashboard_sheet');
+      var isDashOpen = !!(dashSheet && dashSheet.classList.contains('open'));
+      var navRechner = document.getElementById('nav_rechner');
+      if (navRechner) navRechner.classList.toggle('active', !isProtokollView && !isDashOpen);
+      var navProtokoll = document.getElementById('nav_protokoll');
+      if (navProtokoll) navProtokoll.classList.toggle('active', isProtokollView);
+      var navUebersicht = document.getElementById('nav_uebersicht');
+      if (navUebersicht) navUebersicht.classList.toggle('active', isDashOpen);
     }
 
     // --- Render: View (Feld vs. Protokoll) ---
