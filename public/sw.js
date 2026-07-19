@@ -10,7 +10,7 @@ const CACHE_VERSION = 'agrar-rechner-v47';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
-    '/css/styles.css?v=15',
+    '/css/styles.css?v=18',
     '/js/app-globals.js',
     '/js/state.js',
     '/js/calculations.js',

@@ -923,24 +923,29 @@ font-size: 0.75rem;
     .dashboard-overlay.open {
       display: block;
     }
+    /* .dashboard-sheet ist jetzt (siehe index.html) ein echtes Flex-Kind von
+       .app-layout, direkt vor .scrollable-content — kein position:fixed
+       mehr und kein von Hand geschätztes Bottom-Padding für die Nav-Höhe.
+       flex:1 sorgt dafür, dass es exakt denselben freien Platz oberhalb der
+       .bottom-nav bekommt wie .scrollable-content (identischer Mechanismus,
+       daher immer identisch hohe Kante über der Nav-Leiste). */
     .dashboard-sheet {
       display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      flex: 1;
+      min-height: 0;
       background: var(--color-bg);
-      border-radius: 0;
-      max-height: none;
       overflow-y: auto;
       overscroll-behavior-y: contain;
       -webkit-overflow-scrolling: touch;
-      z-index: 151;
-      padding: max(20px, env(safe-area-inset-top)) 20px calc(max(20px, env(safe-area-inset-bottom)) + 84px);
+      padding: 0 6px 12px;
     }
     .dashboard-sheet.open {
       display: block;
+    }
+    /* Wenn die Übersicht offen ist, muss .scrollable-content weichen (sonst
+       stünden zwei flex:1-Geschwister gleichzeitig im Layout). */
+    .dashboard-sheet.open ~ .scrollable-content {
+      display: none;
     }
     .dashboard-header {
       margin-bottom: 16px;

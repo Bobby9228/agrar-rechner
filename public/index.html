@@ -13,13 +13,29 @@
   <title>Agrar-Rechner</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=15">
+  <link rel="stylesheet" href="css/styles.css?v=18">
 </head>
 <body>
   <div class="app-layout">
     <div id="save_error_banner" class="save-error-banner" style="display:none">
       <span>⚠️ <strong>Speichern fehlgeschlagen</strong> — localStorage voll. Daten gehen bei Neuladung verloren!</span>
       <button onclick="dismissSaveError()" aria-label="Schließen">✕</button>
+    </div>
+    <!-- Dashboard-Sheet ("Übersicht") lebt jetzt HIER als echtes Flex-Geschwister
+         von .scrollable-content (statt position:fixed außerhalb von
+         .app-layout). Dadurch bekommt es über denselben Flexbox-Mechanismus
+         exakt denselben freien Platz oberhalb der .bottom-nav zugewiesen wie
+         Rechner/Protokoll — kein manuell geschätztes Bottom-Padding mehr
+         nötig, das je nach Nav-Höhe unterschiedlich groß aussehen konnte. -->
+    <div class="dashboard-sheet" id="dashboard_sheet" role="dialog" aria-modal="true" aria-label="Dashboard — Alle Tabs Übersicht">
+      <div class="dashboard-header header-row">
+        <div class="dashboard-header-titles header-titles">
+          <p class="subtitle eyebrow">Einheiten &amp; Dünger für Aussaat</p>
+          <h1>🌾 Agrar-Rechner</h1>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()" id="dashboard_theme_toggle" aria-label="Dark Mode umschalten">🌙</button>
+      </div>
+      <div class="dashboard-content" id="dashboard_content"></div>
     </div>
     <div class="scrollable-content">
   <div class="container">
@@ -268,18 +284,9 @@
   <script src="js/render-drill.js"></script>
   <script src="js/render-dashboard.js"></script>
   <script src="js/main.js"></script>
-  <!-- Dashboard overlay + sheet -->
+  <!-- Dashboard-Overlay: nur noch als leeres Backdrop-Element für Alt-Tests
+       erhalten (.dashboard-sheet selbst liegt jetzt oben in .app-layout). -->
   <div class="dashboard-overlay" id="dashboard_overlay" onclick="closeDashboard()"></div>
-  <div class="dashboard-sheet" id="dashboard_sheet" role="dialog" aria-modal="true" aria-label="Dashboard — Alle Tabs Übersicht">
-    <div class="dashboard-header header-row">
-      <div class="dashboard-header-titles header-titles">
-        <p class="subtitle eyebrow">Einheiten &amp; Dünger für Aussaat</p>
-        <h1>🌾 Agrar-Rechner</h1>
-      </div>
-      <button class="theme-toggle" onclick="toggleTheme()" id="dashboard_theme_toggle" aria-label="Dark Mode umschalten">🌙</button>
-    </div>
-    <div class="dashboard-content" id="dashboard_content"></div>
-  </div>
   <!-- Reset Confirmation Modal (Issue #236, redesign v3) -->
   <div class="reset-overlay" id="reset_overlay" onclick="_onOverlayClick(event)"></div>
   <div class="reset-modal" id="reset_modal" role="dialog" aria-modal="true" aria-labelledby="reset_modal_title" aria-describedby="reset_modal_desc">
