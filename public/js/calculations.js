@@ -104,8 +104,7 @@ function getTabUsedDuenger(r) {
 
 var _internal = {
   carryoverCache: null,
-  drillCalcTimer: null,
-  pendingKey: null
+  drillCalcTimer: null
 };
 
 // Berechnet Carryover für alle Tabs — SENKEN-MODELL (Prio-Workfront).

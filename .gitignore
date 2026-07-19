@@ -10,3 +10,6 @@ node_modules/
 
 # test
 coverage/
+
+# scratch / temp files
+*.tmp

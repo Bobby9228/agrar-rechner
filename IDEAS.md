@@ -12,8 +12,8 @@
 
 ## Mittlere Priorität
 
-- [ ] **Variable Einheiten Größe** — Einheiten-Größe (aktuell fix 50.000) als Eingabefeld konfigurierbar machen
-- [ ] **Dark Mode** — Dunkles Farbschema für Abend-/Nachteinsatz
+- [x] ~~Variable Einheiten Größe~~ — Implementiert (siehe `index.html:81-92` + `ui-handlers.js:205-242`)
+- [x] ~~Dark Mode~~ — Implementiert (siehe `main.js:63-108`)
 - [ ] **Dünger pro Reiter individualisieren** — Statt kg/ha eine absolute Düngermenge eingeben
 - [ ] **Sprachauswahl DE/EN** — bilinguale Oberfläche
 - [ ] **Kornreihen-Abstand** — Zusatzfeld für Reihenabstand (cm) für genauere Berechnung der Fahrgassen
@@ -26,7 +26,7 @@
 - [ ] ** Kamera-Scan** — QR-Code auf Saatgut-Tüte scannen für auto-Ausfüllung von Körner/ha
 - [ ] **Multi-User / Cloud-Sync** — Protokolle über Cloudflare KV synchronisieren
 - [ ] **Bilder-Anhang** — Foto vom Schlag als Referenz pro Reiter
-- [ ] **Dashboard** — Übersicht aller Reiter/Protokolle auf einen Blick
+- [x] ~~Dashboard~~ — Implementiert (siehe `render-dashboard.js` + `index.html:30-39`)
 
 ## Abgelehnt / Zurückgestellt
 

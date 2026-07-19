@@ -258,13 +258,6 @@
               if (re2) re2.style.display = 'block';
             }
             break;
-          case 'STATE_LOADED':
-            AppGlobals.syncInputsFromState();
-            AppGlobals.renderTabs();
-            renderView();
-            AppGlobals.renderResults();
-            AppGlobals.renderDashboard();
-            break;
           case 'SETTINGS_CHANGED':
             AppGlobals.saveState();
             AppGlobals.renderResults();
