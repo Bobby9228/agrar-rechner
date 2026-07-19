@@ -1,0 +1,94 @@
+name: Fehler melden
+description: Melde ein falsches Verhalten oder eine defekte Funktion.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke für die Meldung. Bitte beschreibe den Fehler so konkret wie möglich.
+        Prüfe vorher kurz, ob bereits ein ähnliches Issue existiert.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Fehlerbeschreibung
+      description: Was funktioniert nicht wie erwartet?
+      placeholder: Beschreibe den Fehler kurz und verständlich.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Schritte zum Nachstellen
+      description: Mit welchen Eingaben und Schritten tritt der Fehler auf?
+      placeholder: |
+        1. Schlag mit ... anlegen
+        2. ... eingeben
+        3. ... antippen
+        4. Fehler erscheint
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Erwartetes Verhalten
+      description: Was sollte stattdessen passieren oder angezeigt werden?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Tatsächliches Verhalten
+      description: Was passiert oder erscheint tatsächlich?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Betroffener Bereich
+      options:
+        - Rechner
+        - Protokoll / Einfüllen
+        - Übersicht / Dashboard
+        - Schläge / Reiter
+        - Berechnung von Saatgut oder Dünger
+        - Speicherung / Wiederherstellung
+        - Installation / Offline-Nutzung
+        - Darstellung / Bedienung
+        - Anderer Bereich
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Browser und Gerät
+      description: Wenn bekannt, nenne Browser, Betriebssystem und Gerät.
+      placeholder: "z. B. Safari auf iPhone 15 mit iOS 18"
+
+  - type: textarea
+    id: saved-data
+    attributes:
+      label: Gespeicherte App-Daten
+      description: Tritt der Fehler auch mit leeren Daten auf oder nur mit bereits gespeicherten Schlägen und Protokollen?
+      placeholder: Keine persönlichen oder vertraulichen Daten einfügen.
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots oder weitere Hinweise
+      description: Screenshots, Bildschirmaufnahmen oder zusätzliche Informationen können hier ergänzt werden.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Vor dem Absenden
+      options:
+        - label: Ich habe geprüft, ob bereits ein ähnliches Issue existiert.
+          required: true
