@@ -85,8 +85,8 @@ function setStoredTheme(theme) {
 }
 function applyTheme(dark) {
   document.documentElement.classList.toggle('dark', dark);       // CSS .dark Klasse
-  var btn = document.getElementById('theme_toggle');
-  if (btn) btn.textContent = dark ? '☀️' : '🌙';                 // Icon: Hell=Dunkel-Modus, Dunkel=Hell-Modus
+  var btns = document.querySelectorAll('.theme-toggle');
+  btns.forEach(function(btn) { btn.textContent = dark ? '☀️' : '🌙'; });  // Icon: Hell=Dunkel-Modus, Dunkel=Hell-Modus
   var meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', dark ? '#1a1f16' : '#2d5016');  // Android Status Bar
 }
