@@ -869,6 +869,7 @@ font-size: 0.75rem;
     .scrollable-content {
       flex: 1;
       overflow-y: auto;
+      overscroll-behavior-y: contain;
       -webkit-overflow-scrolling: touch;
       padding-bottom: max(80px, env(safe-area-inset-bottom));
     }
@@ -933,6 +934,7 @@ font-size: 0.75rem;
       border-radius: 0;
       max-height: none;
       overflow-y: auto;
+      overscroll-behavior-y: contain;
       -webkit-overflow-scrolling: touch;
       z-index: 151;
       padding: max(20px, env(safe-area-inset-top)) 20px calc(max(20px, env(safe-area-inset-bottom)) + 84px);
@@ -1882,6 +1884,7 @@ html.dark .bottom-nav {
    Ganzes, die Nav-Leiste landete irgendwo am Ende statt fixiert unten). */
 html, body {
   height: 100%;
+  overscroll-behavior-y: none;
 }
 body {
   overflow: hidden;
