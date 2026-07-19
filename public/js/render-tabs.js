@@ -144,7 +144,6 @@
     function initUI() {
       AppGlobals.loadState();
       AppGlobals.maybeShowIosInstallHint();
-      AppGlobals.maybeShowUpdateHint();
       // --- Cross-Tab-Synchronisation (portiert aus Inline-Code Z. 3394-3412) ---
       // Lauscht auf localStorage-Änderungen von anderen Tabs/Fenstern.
       // Der storage-Event feuert nur in Tabs, die den Wert NICHT selbst gesetzt haben.

@@ -50,8 +50,7 @@ var state = {
 var LEGACY_KEY_MAP = {
   'mais_rechner':              'agrar_rechner',
   'mais_rechner_theme':        'theme', // bereits in Migration 3→4 erledigt — hier nur Defensiv-Remap
-  'mais_rechner_ios_install_seen': 'agrar_rechner_ios_install_seen',
-  'mais_rechner_version_seen': 'agrar_rechner_version_seen'
+  'mais_rechner_ios_install_seen': 'agrar_rechner_ios_install_seen'
 };
 
 function migrateLegacyStorageKeys() {
@@ -388,30 +387,6 @@ function dismissIosInstallHint() {
   if (banner) banner.classList.remove('show');
 }
 
-// --- "What's New" Update Banner (portiert aus Inline-Code Z. 1509-1531) ---
-// Zeigt einmalig einen Hinweis nach App-Updates (neue SW-Version).
-// currentVersion muss bei jedem Release manuell aktualisiert werden.
-// (APP_VERSION + APP_BUILD_DATE sind in main.js definiert.)
-var UPDATE_CHANGELOG = 'Erste Veröffentlichung der App.';
-function maybeShowUpdateHint() {
-  var seenVersion = null;
-  try { seenVersion = localStorage.getItem('agrar_rechner_version_seen'); } catch(e) {}
-  if (seenVersion === APP_VERSION) return;
-  var banner = document.getElementById('update_banner');
-  var verEl = document.getElementById('update_version');
-  var changelogEl = document.getElementById('update_changelog');
-  if (banner) {
-    if (verEl) verEl.textContent = APP_VERSION;
-    if (changelogEl) changelogEl.textContent = UPDATE_CHANGELOG;
-    banner.classList.add('show');
-  }
-}
-function dismissUpdateHint() {
-  try { localStorage.setItem('agrar_rechner_version_seen', APP_VERSION); } catch(e) {}
-  var banner = document.getElementById('update_banner');
-  if (banner) banner.classList.remove('show');
-}
-
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 // `state` ist absichtlich NICHT hier registriert — AppGlobals.state ist
 // bereits in app-globals.js als Live-Alias für die `var state` definiert
@@ -424,7 +399,6 @@ Object.assign(window.AppGlobals, {
   ALLOWED_TAB_KEYS: ALLOWED_TAB_KEYS,
   isIOS: isIOS,
   isStandalone: isStandalone,
-  UPDATE_CHANGELOG: UPDATE_CHANGELOG,
   migrateLegacyStorageKeys: migrateLegacyStorageKeys,
   saveState: saveState,
   showSaveError: showSaveError,
@@ -441,6 +415,4 @@ Object.assign(window.AppGlobals, {
   loadState: loadState,
   maybeShowIosInstallHint: maybeShowIosInstallHint,
   dismissIosInstallHint: dismissIosInstallHint,
-  maybeShowUpdateHint: maybeShowUpdateHint,
-  dismissUpdateHint: dismissUpdateHint,
 });

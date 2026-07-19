@@ -5,11 +5,10 @@
  * schreibt den Wert in den neuen Key (falls dort noch nichts liegt)
  * und löscht den alten Key.
  *
- * Getestet werden alle vier Legacy-Keys:
+ * Getestet werden alle drei Legacy-Keys:
  *   mais_rechner              → agrar_rechner
  *   mais_rechner_theme        → theme
  *   mais_rechner_ios_install_seen → agrar_rechner_ios_install_seen
- *   mais_rechner_version_seen → agrar_rechner_version_seen
  */
 import { describe, it, expect } from 'vitest';
 import { createDom } from './helpers.js';
@@ -64,17 +63,6 @@ describe('Issue #235: localStorage key migration', () => {
     expect(ctx.store['mais_rechner_ios_install_seen']).toBeUndefined();
   });
 
-  it('moves mais_rechner_version_seen → agrar_rechner_version_seen', () => {
-    const ctx = createDom();
-    ctx.store['mais_rechner_version_seen'] = 'v1.2.3';
-    expect(ctx.store['agrar_rechner_version_seen']).toBeUndefined();
-
-    ctx.window.app.migrateLegacyStorageKeys();
-
-    expect(ctx.store['agrar_rechner_version_seen']).toBe('v1.2.3');
-    expect(ctx.store['mais_rechner_version_seen']).toBeUndefined();
-  });
-
   it('does not overwrite an existing value at the new key', () => {
     const ctx = createDom();
     const existing = JSON.stringify({ ...LEGACY_DATA, marker: 'already-on-new-key' });
@@ -103,19 +91,17 @@ describe('Issue #235: localStorage key migration', () => {
     expect(ctx.store['mais_rechner']).toBeUndefined();
   });
 
-  it('LEGACY_KEY_MAP contains exactly the four expected entries', () => {
+  it('LEGACY_KEY_MAP contains exactly the three expected entries', () => {
     const ctx = createDom();
     const map = ctx.window.app.LEGACY_KEY_MAP;
     expect(Object.keys(map).sort()).toEqual([
       'mais_rechner',
       'mais_rechner_ios_install_seen',
-      'mais_rechner_theme',
-      'mais_rechner_version_seen'
+      'mais_rechner_theme'
     ]);
     expect(map['mais_rechner']).toBe('agrar_rechner');
     expect(map['mais_rechner_theme']).toBe('theme');
     expect(map['mais_rechner_ios_install_seen']).toBe('agrar_rechner_ios_install_seen');
-    expect(map['mais_rechner_version_seen']).toBe('agrar_rechner_version_seen');
   });
 
   it('runs automatically during module load (no legacy keys present in fresh install)', () => {
