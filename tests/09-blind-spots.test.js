@@ -158,17 +158,19 @@ describe('Blind spots — renderResults edge cases', () => {
     expect(spans[0].textContent).toContain('Dünger');
   });
 
-  it('ds_total_summary without hektar and duenger shows only einheiten', () => {
+  it('ds_total_summary is hidden (only einheiten-relevant info would be shown)', () => {
     calc(10, 90000, 0);
 
     const r = w.getActiveReiter();
     r.entries.push({ einheit: 3, zaehlerStand: 0, duenger: 0, time: '10:00' });
     w.renderResults();
 
-    const summary = doc.getElementById('ds_total_summary').textContent;
-    expect(summary).toContain('3,0 Einheiten');
-    expect(summary).not.toContain('ha');
-    expect(summary).not.toContain('Dünger');
+    // ds_total_summary is display:none since the visible one-liner was removed
+    // (per user request — the table below already shows the same totals in
+    // more detail). The renderer still writes to textContent, but the element
+    // must stay hidden.
+    const el = doc.getElementById('ds_total_summary');
+    expect(el.style.display).toBe('none');
   });
 
   it('drill entry has #number span', () => {
@@ -228,10 +230,8 @@ describe('Blind spots — renderResults with duenger-only entry (einheit=0)', ()
     r.entries.push({ einheit: 0, zaehlerStand: 0, duenger: 500, time: '10:00' });
     w.renderResults();
 
-    const summary = doc.getElementById('ds_total_summary').textContent;
-    expect(summary).toContain('500 kg Dünger');
-    expect(summary).not.toContain('Einheiten');
-    expect(summary).not.toContain('ha');
+    const el = doc.getElementById('ds_total_summary');
+    expect(el.style.display).toBe('none');
   });
 });
 
