@@ -109,6 +109,7 @@
     body {
       font-family: var(--font-body);
       background: var(--color-bg);
+      min-height: 100vh;
       min-height: 100dvh;
       padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
       color: var(--color-text);
@@ -862,6 +863,7 @@ font-size: 0.75rem;
     .app-layout {
       display: flex;
       flex-direction: column;
+      min-height: calc(100vh - max(20px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom)));
       min-height: calc(100dvh - max(20px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom)));
     }
     .scrollable-content {
@@ -939,44 +941,10 @@ font-size: 0.75rem;
       display: block;
     }
     .dashboard-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
       margin-bottom: 16px;
-    }
-    .dashboard-header-titles {
-      flex: 1;
     }
     .dashboard-header-titles .subtitle {
       margin-bottom: 2px;
-    }
-    .dashboard-header h2 {
-      margin: 0;
-      padding: 0;
-      border: none;
-      text-align: left;
-      font-family: var(--font-display);
-      font-weight: 700;
-      font-size: 1.4rem;
-      letter-spacing: -0.01em;
-      color: var(--color-primary-dark);
-    }
-    .dashboard-close {
-      background: var(--color-border-soft);
-      border: none;
-      border-radius: 50%;
-      width: 36px;
-      height: 36px;
-      font-size: 1.2rem;
-      cursor: pointer;
-      color: var(--color-primary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    .dashboard-close:active {
-      background: var(--color-bg-hover);
     }
 
     .dashboard-open-btn {
@@ -1919,6 +1887,7 @@ body {
   overflow: hidden;
 }
 .app-layout {
+  height: calc(100vh - max(20px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom)));
   height: calc(100dvh - max(20px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom)));
   min-height: 0;
 }

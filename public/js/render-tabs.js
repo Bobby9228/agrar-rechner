@@ -219,7 +219,13 @@
         }
       }
       renderView();
+      if (AppGlobals.state.activeView === 'protokoll') {
+        AppGlobals.renderDrillTabList();
+      }
       AppGlobals.renderDashboard();
+      if (AppGlobals.state.dashboardOpen && typeof AppGlobals.openDashboard === 'function') {
+        AppGlobals.openDashboard();
+      }
       var vf = document.getElementById('version_footer');
       if (vf) vf.textContent = APP_VERSION + ' · ' + APP_BUILD_DATE;
       AppGlobals.appOnStateChange(function(type, data) {

@@ -8,6 +8,10 @@
 //   reiter[]       — Array von Feld-Tabs (jeder Tab = ein Feld)
 //   activeReiter   — Index des aktuell ausgewählten Tabs
 //   activeView     — 'protokoll' = Drill-Protokoll-Ansicht, sonst null
+//   dashboardOpen  — true, wenn die Übersicht (Dashboard) zuletzt offen war;
+//                    wird beim Neuladen der Seite genutzt, um wieder dorthin
+//                    zurückzukehren (Issue: Reload während offenem Dashboard
+//                    landete sonst "verloren" auf der vorherigen Ansicht).
 //   fahrgassen*    — Fahrgassen-Korrektur
 //   einheitGroesse* — Anpassung der Körner-pro-Einheit
 //   machineLog[]   — Globales Maschinen-Protokoll
@@ -25,6 +29,7 @@ var state = {
   }],
   activeReiter:   0,
   activeView:     null,
+  dashboardOpen:  false,
   fahrgassenEnabled: false,
   fahrgassenBreite:   0,
   einheitGroesseEnabled: false,
@@ -104,7 +109,7 @@ function dismissSaveError() {
 // Erlaubte Keys (Whitelist) — alles andere wird im Reviver verworfen.
 // Hinzufügen neuer Felder erfordert eine bewusste Entscheidung.
 var ALLOWED_TOP_KEYS = [
-  'reiter', 'activeReiter', 'activeView',
+  'reiter', 'activeReiter', 'activeView', 'dashboardOpen',
   'fahrgassenEnabled', 'fahrgassenBreite',
   'einheitGroesseEnabled', 'koernerProEinheit',
   'machineLog', 'drillPriorities', 'iosInstallHintShown',
@@ -308,6 +313,7 @@ function loadState() {
       ? Math.floor(activeReiterRaw)
       : 0;
     data.activeView = (data.activeView === 'protokoll') ? 'protokoll' : null;
+    data.dashboardOpen = sanitizeBoolean(data.dashboardOpen, false);
     if (data.fahrgassenEnabled === undefined) data.fahrgassenEnabled = false;
     if (data.fahrgassenBreite === undefined) data.fahrgassenBreite = 0;
     data.fahrgassenEnabled = sanitizeBoolean(data.fahrgassenEnabled, false);

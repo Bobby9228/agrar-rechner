@@ -255,6 +255,8 @@
       if (sheet) sheet.classList.add('open');
       if (overlay) overlay.classList.add('open');
       document.body.style.overflow = 'hidden';
+      AppGlobals.state.dashboardOpen = true;
+      AppGlobals.saveState();
       renderDashboard();
       if (typeof AppGlobals.renderTabs === 'function') AppGlobals.renderTabs();
       // Move focus into the dialog for accessibility (Issue #211)
@@ -276,6 +278,8 @@
       if (overlay) overlay.classList.remove('open');
       document.body.style.overflow = '';
       document.removeEventListener('keydown', _dashboardKeyHandler);
+      AppGlobals.state.dashboardOpen = false;
+      AppGlobals.saveState();
       if (typeof AppGlobals.renderTabs === 'function') AppGlobals.renderTabs();
       // Restore focus to the element that opened the dashboard
       if (_dashboardPrevFocus && _dashboardPrevFocus.focus) {
