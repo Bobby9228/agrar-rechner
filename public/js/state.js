@@ -35,8 +35,7 @@ var state = {
   einheitGroesseEnabled: false,
   koernerProEinheit:  50000,
   machineLog:    [],
-  drillPriorities: {},
-  iosInstallHintShown: false
+  drillPriorities: {}
 };
 
 // --- Persistenz ---
@@ -50,7 +49,6 @@ var state = {
 var LEGACY_KEY_MAP = {
   'mais_rechner':              'agrar_rechner',
   'mais_rechner_theme':        'theme', // bereits in Migration 3→4 erledigt — hier nur Defensiv-Remap
-  'mais_rechner_ios_install_seen': 'agrar_rechner_ios_install_seen'
 };
 
 function migrateLegacyStorageKeys() {
@@ -111,7 +109,7 @@ var ALLOWED_TOP_KEYS = [
   'reiter', 'activeReiter', 'activeView', 'dashboardOpen',
   'fahrgassenEnabled', 'fahrgassenBreite',
   'einheitGroesseEnabled', 'koernerProEinheit',
-  'machineLog', 'drillPriorities', 'iosInstallHintShown',
+  'machineLog', 'drillPriorities',
   '_lv',
   // Legacy-Keys (nur für Migration 0→1 lesend toleriert)
   'hektar', 'istHektar', 'koerner', 'duenger', 'entries',
@@ -257,7 +255,7 @@ function loadState() {
     var lv = originalLv;
     // Migration 0→1: Einzelne Felder → Tab-Array
     if (!data.reiter && (data.hektar !== undefined || data.koerner !== undefined)) {
-      data = { reiter: [{ name: 'Schlag 1', hektar: data.hektar || 0, istHektar: data.istHektar || 0, koerner: data.koerner || 0, duenger: data.duenger || 0, entries: data.entries || [], done: false }], activeReiter: 0, activeView: null, fahrgassenEnabled: false, fahrgassenBreite: 0, einheitGroesseEnabled: false, koernerProEinheit: 50000, machineLog: data.machineLog || [], drillPriorities: {}, iosInstallHintShown: false, _lv: 1 };
+      data = { reiter: [{ name: 'Schlag 1', hektar: data.hektar || 0, istHektar: data.istHektar || 0, koerner: data.koerner || 0, duenger: data.duenger || 0, entries: data.entries || [], done: false }], activeReiter: 0, activeView: null, fahrgassenEnabled: false, fahrgassenBreite: 0, einheitGroesseEnabled: false, koernerProEinheit: 50000, machineLog: data.machineLog || [], drillPriorities: {}, _lv: 1 };
       lv = 1;
     }
     // Migration 1→2: Globale entries → per-Tab entries
@@ -272,7 +270,6 @@ function loadState() {
     // Migration 2→3: Fehlende Felder
     if (lv < 3) {
       if (!data.drillPriorities) data.drillPriorities = {};
-      if (!data.iosInstallHintShown) data.iosInstallHintShown = false;
       if (!data.machineLog) data.machineLog = [];
       lv = 3;
     }
@@ -332,9 +329,6 @@ function loadState() {
     data.machineLog = machineLog;
     // drillPriorities muss Plain Object sein
     if (!isPlainObject(data.drillPriorities)) data.drillPriorities = {};
-    // iosInstallHintShown
-    if (data.iosInstallHintShown === undefined) data.iosInstallHintShown = false;
-    data.iosInstallHintShown = sanitizeBoolean(data.iosInstallHintShown, false);
     // Final: sanitisiertes reiter einsetzen
     data.reiter = sanitizedReiter;
     // Unbekannte Top-Level-Keys strippen (Whitelist)
@@ -365,28 +359,6 @@ function loadState() {
   }
 }
 
-// --- iOS Safari Detection (portiert aus Inline-Code Z. 1490-1492) ---
-// Wird einmalig beim Modul-Load ausgewertet; Tests können isIOS/isStandalone
-// per window.isIOS = true überschreiben.
-var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-var isStandalone = window.navigator.standalone === true;
-
-// --- iOS Install Hint (portiert aus Inline-Code Z. 1494-1507) ---
-// Zeigt einmalig einen Hinweis zum Installieren der PWA auf iOS Safari.
-// Nur auf iOS/Safari, nur wenn noch nicht installiert und noch nicht dismissed.
-function maybeShowIosInstallHint() {
-  var hintSeen = null;
-  try { hintSeen = localStorage.getItem('agrar_rechner_ios_install_seen'); } catch(e) {}
-  if (!isIOS || isStandalone || hintSeen) return;
-  var banner = document.getElementById('ios_install_banner');
-  if (banner) banner.classList.add('show');
-}
-function dismissIosInstallHint() {
-  try { localStorage.setItem('agrar_rechner_ios_install_seen', '1'); } catch(e) {}
-  var banner = document.getElementById('ios_install_banner');
-  if (banner) banner.classList.remove('show');
-}
-
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 // `state` ist absichtlich NICHT hier registriert — AppGlobals.state ist
 // bereits in app-globals.js als Live-Alias für die `var state` definiert
@@ -397,8 +369,6 @@ Object.assign(window.AppGlobals, {
   LEGACY_KEY_MAP: LEGACY_KEY_MAP,
   ALLOWED_TOP_KEYS: ALLOWED_TOP_KEYS,
   ALLOWED_TAB_KEYS: ALLOWED_TAB_KEYS,
-  isIOS: isIOS,
-  isStandalone: isStandalone,
   migrateLegacyStorageKeys: migrateLegacyStorageKeys,
   saveState: saveState,
   showSaveError: showSaveError,
@@ -413,6 +383,4 @@ Object.assign(window.AppGlobals, {
   jsonReviver: jsonReviver,
   parsePersistedState: parsePersistedState,
   loadState: loadState,
-  maybeShowIosInstallHint: maybeShowIosInstallHint,
-  dismissIosInstallHint: dismissIosInstallHint,
 });

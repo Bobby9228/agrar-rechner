@@ -55,8 +55,7 @@ describe('Issue #377: manuelle Fertig-Markierung pro Tab', () => {
                 einheitGroesseEnabled: false,
                 koernerProEinheit: 50000,
                 machineLog: [],
-                drillPriorities: {},
-                iosInstallHintShown: false
+                drillPriorities: {}
             });
             w.loadState();
             expect(w.state.reiter.length).toBe(2);
@@ -77,8 +76,7 @@ describe('Issue #377: manuelle Fertig-Markierung pro Tab', () => {
                 einheitGroesseEnabled: false,
                 koernerProEinheit: 50000,
                 machineLog: [],
-                drillPriorities: {},
-                iosInstallHintShown: false
+                drillPriorities: {}
             });
             w.loadState();
             expect(w.state.reiter[0].done).toBe(true);

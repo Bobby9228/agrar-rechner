@@ -283,7 +283,6 @@
 
     function resetAll() {
       // Preserve UI-prefs that "Daten zurücksetzen" should NOT wipe.
-      var keepIosHint = AppGlobals.state.iosInstallHintShown;
       AppGlobals.state = {
         reiter: [{ name: 'Schlag 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: false, fahrgassenBreite: 0 }],
         activeReiter: 0,
@@ -293,8 +292,7 @@
         einheitGroesseEnabled: false,
         koernerProEinheit: 50000,
         machineLog: [],
-        drillPriorities: {},
-        iosInstallHintShown: keepIosHint
+        drillPriorities: {}
       };
       // Input- und Fehlerfelder zurücksetzen
       _resetInput(DOM_IDS.hektar);
