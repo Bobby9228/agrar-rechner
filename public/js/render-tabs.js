@@ -146,10 +146,17 @@
       // --- Cross-Tab-Synchronisation (portiert aus Inline-Code Z. 3394-3412) ---
       // Lauscht auf localStorage-Änderungen von anderen Tabs/Fenstern.
       // Der storage-Event feuert nur in Tabs, die den Wert NICHT selbst gesetzt haben.
+      // Wichtig: Remote-State läuft durch dieselbe Parse-/Migrations-/
+      // Sanitisierungs-Pipeline wie loadState() (parseAndSanitizeState),
+      // damit ein anderer Tab nicht durch direktes Schreiben eines
+      // manipulierten JSON-Strings den jsonReviver, die Schema-Migrationen
+      // oder die Top-Level-Whitelist umgehen kann.
       window.addEventListener('storage', function(e) {
         if (e.key === 'agrar_rechner' && e.newValue) {
           try {
-            var remote = JSON.parse(e.newValue);
+            var result = AppGlobals.parseAndSanitizeState(e.newValue);
+            if (!result) return; // ungültiger Remote-State bleibt unverändert
+            var remote = result.state;
             if (JSON.stringify(remote) !== JSON.stringify(AppGlobals.state)) {
               AppGlobals.state = remote;
               AppGlobals.syncInputsFromState();

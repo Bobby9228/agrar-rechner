@@ -245,12 +245,21 @@ function parsePersistedState(raw) {
   return JSON.parse(raw, jsonReviver);
 }
 
-function loadState() {
+function parseAndSanitizeState(raw) {
+  // Wandelt einen JSON-String in einen validierten Zustand.
+  // Führt dieselbe Parse-/Migrations-/Sanitisierungs-Pipeline aus wie
+  // loadState(), jedoch ohne lokale Storage-Nebenwirkungen und ohne
+  // den globalen `state` zu mutieren.
+  //
+  // Gibt { state: <sanitizedObj>, originalLv: <number> } bei Erfolg
+  // zurück, oder null wenn der String kein gültiger Zustand ist.
+  //
+  // Verwendung: Cross-Tab-Sync (storage-Event) — ein anderer Tab darf
+  // die Schema-/Typ-Wache der loadState-Pipeline nicht umgehen, indem
+  // er einen manipulierten JSON-String direkt in localStorage schreibt.
   try {
-    var saved = localStorage.getItem('agrar_rechner');
-    if (!saved) return false;
-    var data = parsePersistedState(saved);
-    if (!isPlainObject(data)) return false;
+    var data = parsePersistedState(raw);
+    if (!isPlainObject(data)) return null;
     var originalLv = data._lv || 0;
     var lv = originalLv;
     // Migration 0→1: Einzelne Felder → Tab-Array
@@ -273,23 +282,12 @@ function loadState() {
       if (!data.machineLog) data.machineLog = [];
       lv = 3;
     }
-    // Migration 3→4: Theme-Key vereinheitlichen, neue Defaults
+    // Migration 3→4: neue Defaults (in-memory only — die Theme-Key-
+    //   Migration in localStorage wird im loadState-Pfad zusätzlich
+    //   ausgeführt, weil sie Storage-Nebenwirkungen hat).
     if (lv < 4) {
-      // Theme: alten Key 'mais_rechner_theme' → neuen Key 'theme'
-      // (durch migrateLegacyStorageKeys() oben meist schon erledigt —
-      //  hier nur Defensiv-Fallback für direkt migrierte Snapshots)
-      try {
-        var oldTheme = localStorage.getItem('mais_rechner_theme');
-        if (oldTheme && !localStorage.getItem('theme')) {
-          localStorage.setItem('theme', oldTheme);
-        }
-        if (oldTheme) localStorage.removeItem('mais_rechner_theme');
-      } catch(e) {}
-      // koernerProEinheit Default (falls noch aus alter Migration fehlend)
       if (data.koernerProEinheit === undefined) data.koernerProEinheit = 50000;
-      // einheitGroesseEnabled Default
       if (data.einheitGroesseEnabled === undefined) data.einheitGroesseEnabled = false;
-      // drillPriorities Default
       if (!data.drillPriorities) data.drillPriorities = {};
     }
     // Migration 4→5 (Issue #377): manuelles "Feld fertig"-Flag pro Tab.
@@ -298,7 +296,7 @@ function loadState() {
     // wird weiter unten auf `_lv = 5` gehoben.
     if (lv < 5) lv = 5;
     // Validate und übernehmen — Schema-strict ab _lv=4
-    if (!Array.isArray(data.reiter) || data.reiter.length === 0) return false;
+    if (!Array.isArray(data.reiter) || data.reiter.length === 0) return null;
     var sanitizedReiter = [];
     for (var i = 0; i < data.reiter.length; i++) {
       sanitizedReiter.push(sanitizeTab(data.reiter[i]));
@@ -338,8 +336,32 @@ function loadState() {
         if (data[k] !== undefined) cleaned[k] = data[k];
     }
     cleaned._lv = 5;
-    data = cleaned;
-    state = data;
+    return { state: cleaned, originalLv: originalLv };
+  } catch(e) {
+    return null;
+  }
+}
+
+function loadState() {
+  try {
+    var saved = localStorage.getItem('agrar_rechner');
+    if (!saved) return false;
+    var result = parseAndSanitizeState(saved);
+    if (!result) return false;
+    var originalLv = result.originalLv;
+    state = result.state;
+    // Migration 3→4 localStorage side effect: Theme-Key vereinheitlichen.
+    // (migrateLegacyStorageKeys() hat das meist schon erledigt — hier nur
+    //  Defensiv-Fallback für direkt migrierte Snapshots.)
+    if (originalLv < 4) {
+      try {
+        var oldTheme = localStorage.getItem('mais_rechner_theme');
+        if (oldTheme && !localStorage.getItem('theme')) {
+          localStorage.setItem('theme', oldTheme);
+        }
+        if (oldTheme) localStorage.removeItem('mais_rechner_theme');
+      } catch(e) {}
+    }
     // Migration-Persistenz: Wenn die Daten nicht bereits _lv=5 waren,
     // schreibe den migrierten Snapshot einmalig zurück, damit nachfolgende
     // Page-Loads die Migration überspringen können.
@@ -382,5 +404,6 @@ Object.assign(window.AppGlobals, {
   sanitizeTab: sanitizeTab,
   jsonReviver: jsonReviver,
   parsePersistedState: parsePersistedState,
+  parseAndSanitizeState: parseAndSanitizeState,
   loadState: loadState,
 });
