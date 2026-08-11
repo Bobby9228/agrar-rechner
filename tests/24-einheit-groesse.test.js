@@ -53,6 +53,20 @@ describe('einheitGroesseUpdate', () => {
     expect(w.state.koernerProEinheit).toBe(40000);
   });
 
+  it.each([1000000, 1500000])('accepts seven-digit unit sizes such as %i', (value) => {
+    const { window: w, store } = createDom();
+    const input = w.document.getElementById('koerner_pro_einheit');
+    input.value = String(value);
+
+    w.einheitGroesseUpdate();
+
+    expect(w.state.koernerProEinheit).toBe(value);
+    expect(input.style.borderColor).toBe('');
+    expect(w.document.getElementById('einheit_groesse_saved').textContent)
+      .toContain(value.toLocaleString('de-DE'));
+    expect(JSON.parse(store['agrar_rechner']).koernerProEinheit).toBe(value);
+  });
+
   it('shows info text for non-default value', () => {
     const { window: w } = createDom();
     w.document.getElementById('koerner_pro_einheit').value = '40000';

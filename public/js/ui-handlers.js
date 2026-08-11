@@ -227,7 +227,7 @@
       var raw = document.getElementById('koerner_pro_einheit').value;
       var val = AppGlobals.parseDE(raw);
       var savedEl = document.getElementById('einheit_groesse_saved');
-      if (val !== null && val > 0 && val <= 999999) {
+      if (val !== null && val > 0) {
         AppGlobals.state.koernerProEinheit = Math.round(val);
         // Show info text only for non-default values
         if (AppGlobals.state.koernerProEinheit === 50000) {
