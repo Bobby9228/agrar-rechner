@@ -1458,6 +1458,304 @@ font-size: 0.75rem;
     }
     .footer-reset-btn:active { transform: scale(0.97); }
 
+    /* --- Kultur-Auswahl Modal (Erststart, verpflichtend) --- */
+    .kultur-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 16, 6, 0.55);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      z-index: 220;
+      animation: fadeIn 0.18s ease;
+    }
+    .kultur-overlay.open { display: block; }
+    .kultur-modal {
+      display: none;
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(94vw, 460px);
+      background: var(--color-card-bg);
+      border-radius: 22px;
+      padding: 26px 22px 18px;
+      z-index: 221;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+    .kultur-modal.open {
+      display: block;
+      animation: popIn 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    }
+    .kultur-modal-badge {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--color-success-soft);
+      color: var(--color-primary-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin: 0 auto 14px;
+      box-shadow: 0 0 0 6px rgba(74, 124, 35, 0.12);
+    }
+    .kultur-modal-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--color-primary-dark);
+      margin: 0 0 8px;
+    }
+    .kultur-modal-subtitle {
+      font-size: 0.88rem;
+      color: var(--color-text-muted);
+      line-height: 1.45;
+      margin: 0 auto 20px;
+      max-width: 340px;
+    }
+    .kultur-options {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .kultur-option {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid var(--color-border);
+      border-radius: 16px;
+      background: var(--color-card-bg);
+      text-align: left;
+      cursor: pointer;
+      transition: transform 0.12s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    }
+    .kultur-option:hover {
+      border-color: var(--color-primary);
+      background: var(--color-bg-success-soft);
+      box-shadow: 0 4px 12px rgba(74, 124, 35, 0.15);
+    }
+    .kultur-option:active { transform: scale(0.985); }
+    .kultur-option-icon {
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      background: var(--color-bg-soft);
+    }
+    .kultur-option-body {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+    .kultur-option-title {
+      font-size: 1.02rem;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+    .kultur-option-desc {
+      font-size: 0.82rem;
+      color: var(--color-text-muted);
+      line-height: 1.35;
+    }
+    .kultur-modal-note {
+      font-size: 0.78rem;
+      color: var(--color-text-muted);
+      margin: 6px 0 0;
+    }
+
+    /* --- Kultur-Badge im Header --- */
+    .kultur-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px 5px 10px;
+      border: 1.5px solid var(--color-border);
+      border-radius: 999px;
+      background: var(--color-bg-soft);
+      font-size: 0.85rem;
+      color: var(--color-text);
+      max-width: 100%;
+    }
+    .kultur-badge[hidden] { display: none; }
+    .kultur-badge-emoji { font-size: 1.05rem; }
+    .kultur-badge-label { font-weight: 600; }
+    .kultur-badge-change {
+      border: none;
+      background: transparent;
+      color: var(--color-primary-dark);
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 6px;
+      text-decoration: underline;
+      min-height: 28px;
+    }
+    .kultur-badge-change:hover { background: var(--color-bg-hover); }
+    .kultur-badge-change:active { transform: scale(0.97); }
+
+    /* --- Kultur-Wechsel Confirm Modal --- */
+    .kultur-confirm-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 16, 6, 0.55);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      z-index: 230;
+      animation: fadeIn 0.18s ease;
+    }
+    .kultur-confirm-overlay.open { display: block; }
+    .kultur-confirm-modal {
+      display: none;
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(94vw, 440px);
+      background: var(--color-card-bg);
+      border-radius: 22px;
+      padding: 26px 24px 18px;
+      z-index: 231;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+    .kultur-confirm-modal.open {
+      display: block;
+      animation: popIn 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    }
+    .kultur-confirm-x {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 50%;
+      background: var(--color-bg-soft);
+      color: var(--color-text-muted);
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s, transform 0.1s;
+    }
+    .kultur-confirm-x:hover {
+      background: var(--color-bg-hover);
+      color: var(--color-text);
+    }
+    .kultur-confirm-x:active { transform: scale(0.9); }
+    .kultur-confirm-badge {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--color-warning-bg);
+      color: var(--color-warning-text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin: 0 auto 14px;
+      box-shadow: 0 0 0 6px rgba(255, 193, 7, 0.12);
+    }
+    .kultur-confirm-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--color-primary-dark);
+      margin: 0 0 8px;
+    }
+    .kultur-confirm-desc {
+      font-size: 0.88rem;
+      color: var(--color-text-muted);
+      line-height: 1.45;
+      margin: 0 auto 16px;
+      max-width: 340px;
+    }
+    .kultur-confirm-select-label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--color-text-muted);
+      text-align: left;
+      margin-bottom: 4px;
+    }
+    .kultur-confirm-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid var(--color-border);
+      border-radius: 10px;
+      background: var(--color-card-bg);
+      color: var(--color-text);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 18px;
+      min-height: 44px;
+    }
+    .kultur-confirm-select:focus-visible {
+      outline: 2.5px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+    .kultur-confirm-actions {
+      display: flex;
+      gap: 10px;
+      flex-direction: column;
+    }
+    .kultur-confirm-cancel {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--color-text-muted);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      min-height: 44px;
+    }
+    .kultur-confirm-cancel:hover {
+      background: var(--color-bg-soft);
+      color: var(--color-text);
+    }
+    .kultur-confirm-ok {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: var(--color-primary);
+      color: var(--color-card-text);
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      min-height: 44px;
+    }
+    .kultur-confirm-ok:hover { background: var(--color-primary-dark); }
+    .kultur-confirm-ok:active { transform: scale(0.98); }
+
+    /* --- Sonstiges-Placeholder im Ergebnis-Bereich --- */
+    .kultur-missing-kpe-hint {
+      display: block;
+      font-size: 0.92rem;
+      color: var(--color-text-muted);
+      padding: 8px 12px;
+      margin: 6px 0;
+      border-radius: 10px;
+      background: var(--color-warning-bg-soft, rgba(255, 193, 7, 0.10));
+      border-left: 3px solid var(--color-warning-text, #b8860b);
+    }
+
 /* ===== Design 13: additive result ring (does not replace any existing
    element — purely decorative, mirrors #r_einheiten). ===== */
 .result-ring-wrap {
