@@ -180,6 +180,23 @@ function _installKulturModalA11y(modal, options) {
   }
 }
 
+// Ein migrierter Nutzer kann beim ersten Start nach dem Kultur-Update noch den
+// unveränderten leeren Startschlag mit dem früheren Mais-Default 50.000 haben.
+// Dieser Schlag darf die gewählte Kultur übernehmen, weil er keinerlei
+// fachliche Eingaben oder Protokolle enthält. Andere/leere Arbeitsschläge und
+// individuelle Einheitsgrößen bleiben bewusst unangetastet.
+function isUntouchedInitialField(tab, tabIndex) {
+  return tabIndex === 0
+    && !!tab
+    && tab.koernerProEinheit === 50000
+    && Number(tab.hektar || 0) === 0
+    && Number(tab.istHektar || 0) === 0
+    && Number(tab.koerner || 0) === 0
+    && Number(tab.duenger || 0) === 0
+    && (!Array.isArray(tab.entries) || tab.entries.length === 0)
+    && tab.done !== true;
+}
+
 function chooseKultur(key) {
   if (!AppGlobals.isValidCultureKey(key)) {
     // Unbekannter Key → kein Effekt, Modal bleibt offen.
@@ -194,19 +211,19 @@ function chooseKultur(key) {
   if (!prevKultur || !AppGlobals.isValidCultureKey(prevKultur)) {
     AppGlobals.state.koernerProEinheit = AppGlobals.getDefaultKoernerProEinheit(key);
   }
-  // Fresh-Install: nur wenn loadState() in dieser Session NOCH NIE einen
-  // gespeicherten State geladen hat, initialisieren wir den existierenden
-  // initialen leeren Schlag (Tab 0) mit dem Kultur-Standard. Migrierte oder
-  // bereits aktive Nutzer behalten ihren Tab strikt unverändert. Das Flag
-  // wird in resetAll() zurückgesetzt → „Daten zurücksetzen" verhält sich
-  // wieder wie eine Neuinstallation.
+  // Frischer Start ODER unberührter migrierter Startschlag: Tab 0 erhält den
+  // gewählten Kultur-Standard. Geladene Schläge mit Daten, Protokollen oder
+  // individueller Einheitsgröße bleiben unverändert.
   var freshInstall = !AppGlobals._loadStateEverSucceeded;
-  if (freshInstall && Array.isArray(AppGlobals.state.reiter) && AppGlobals.state.reiter.length > 0) {
+  if (Array.isArray(AppGlobals.state.reiter) && AppGlobals.state.reiter.length > 0) {
     var initialTab = AppGlobals.state.reiter[0];
-    if (initialTab) {
+    if (initialTab && (freshInstall || isUntouchedInitialField(initialTab, 0))) {
       initialTab.koernerProEinheit = AppGlobals.getDefaultKoernerProEinheit(key);
     }
   }
+  // Das Editorfeld kann bereits mit dem migrierten Wert 50.000 gerendert sein.
+  // Direkt nach der Auswahl aus dem aktiven Schlag synchronisieren.
+  syncEinheitGroesseEditorFromTab(AppGlobals.getActiveReiter());
   closeKulturFirstRun();
   if (typeof AppGlobals.renderKulturBadge === 'function') {
     AppGlobals.renderKulturBadge();
@@ -1333,6 +1350,7 @@ Object.assign(window.AppGlobals, {
   DOM_IDS: DOM_IDS,
   _resetInput: _resetInput,
   syncEinheitGroesseEditorFromTab: syncEinheitGroesseEditorFromTab,
+  isUntouchedInitialField: isUntouchedInitialField,
   chooseKultur: chooseKultur,
   requestChangeKultur: requestChangeKultur,
   confirmChangeKultur: confirmChangeKultur,
