@@ -75,6 +75,8 @@ describe('Issue #336 follow-up #5b: Cross-Tab-Saldo im Drill-Log + Maschinen-Pro
       ...w.state.reiter[0],
       hektar: 10, istHektar: 9, koerner: 90000, duenger: 100, entries: []
     };
+    // Migration 5→6: per-tab kpe ist authoritative — auf state-Wert zurücksetzen
+    delete w.state.reiter[0].koernerProEinheit;
     w.state.activeReiter = 0;
     w.renderResults();
     expect(ergebnisHint().querySelectorAll('.net-totals-savings').length).toBe(0);
@@ -87,6 +89,7 @@ describe('Issue #336 follow-up #5b: Cross-Tab-Saldo im Drill-Log + Maschinen-Pro
       ...w.state.reiter[0],
       hektar: 10, istHektar: 9, koerner: 90000, duenger: 100, entries: []
     };
+    delete w.state.reiter[0].koernerProEinheit;
     w.state.activeReiter = 0;
     w.renderResults();
     const s = perTabSavings();
@@ -107,14 +110,17 @@ describe('Issue #336 follow-up #5b: Cross-Tab-Saldo im Drill-Log + Maschinen-Pro
       ...w.state.reiter[0],
       hektar: 10, istHektar: 8, koerner: 90000, duenger: 100, entries: []
     };
+    delete w.state.reiter[0].koernerProEinheit;
     w.state.reiter[1] = {
       ...w.state.reiter[1],
       hektar: 5,  istHektar: 6, koerner: 90000, duenger: 100, entries: []
     };
+    delete w.state.reiter[1].koernerProEinheit;
     w.state.reiter[2] = {
       ...w.state.reiter[2],
       hektar: 7,  istHektar: 7, koerner: 90000, duenger: 100, entries: []
     };
+    delete w.state.reiter[2].koernerProEinheit;
     w.renderDrillLog();
     const s = netSavingsIn(drillLog());
     expect(s).not.toBeNull();
@@ -130,6 +136,7 @@ describe('Issue #336 follow-up #5b: Cross-Tab-Saldo im Drill-Log + Maschinen-Pro
       ...w.state.reiter[0],
       hektar: 10, istHektar: 9, koerner: 90000, duenger: 100, entries: []
     };
+    delete w.state.reiter[0].koernerProEinheit;
     w.renderDrillLog();
     const children = Array.from(drillLog().children);
     const idxNet = children.findIndex(c => c.classList.contains('net-totals-savings'));
@@ -158,14 +165,17 @@ describe('Issue #336 follow-up #5b: Cross-Tab-Saldo im Drill-Log + Maschinen-Pro
       ...w.state.reiter[0],
       hektar: 10, istHektar: 8, koerner: 90000, duenger: 100, entries: []
     };
+    delete w.state.reiter[0].koernerProEinheit;
     w.state.reiter[1] = {
       ...w.state.reiter[1],
       hektar: 5,  istHektar: 6, koerner: 90000, duenger: 100, entries: []
     };
+    delete w.state.reiter[1].koernerProEinheit;
     w.state.reiter[2] = {
       ...w.state.reiter[2],
       hektar: 7,  istHektar: 7, koerner: 90000, duenger: 100, entries: []
     };
+    delete w.state.reiter[2].koernerProEinheit;
     w.renderMachineLog();
     const proto = maschinenProtokoll();
     const s = netSavingsIn(proto);
@@ -180,10 +190,12 @@ describe('Issue #336 follow-up #5b: Cross-Tab-Saldo im Drill-Log + Maschinen-Pro
       ...w.state.reiter[0],
       hektar: 10, istHektar: 9, koerner: 90000, duenger: 100, entries: []
     };
+    delete w.state.reiter[0].koernerProEinheit;
     w.state.reiter[1] = {
       ...w.state.reiter[1],
       hektar: 5,  istHektar: 5, koerner: 90000, duenger: 100, entries: []
     };
+    delete w.state.reiter[1].koernerProEinheit;
     w.renderMachineLog();
     const children = Array.from(maschinenProtokoll().children);
     const idxNet = children.findIndex(c => c.classList.contains('net-totals-savings'));
@@ -199,6 +211,7 @@ describe('Issue #336 follow-up #5b: Cross-Tab-Saldo im Drill-Log + Maschinen-Pro
       ...w.state.reiter[0],
       hektar: 10, istHektar: 9, koerner: 90000, duenger: 100, entries: []
     };
+    delete w.state.reiter[0].koernerProEinheit;
     w.renderMachineLog();
     const children = Array.from(maschinenProtokoll().children);
     // [0] = Maschinen-Protokoll-Header, [1] = Gesamt-Saldo-Header, [2] = Ersparnis-Zeile, [3+] = Sub-Header
@@ -214,10 +227,12 @@ describe('Issue #336 follow-up #5b: Cross-Tab-Saldo im Drill-Log + Maschinen-Pro
       ...w.state.reiter[0],
       hektar: 10, istHektar: 8, koerner: 90000, duenger: 100, entries: []
     };
+    delete w.state.reiter[0].koernerProEinheit;
     w.state.reiter[1] = {
       ...w.state.reiter[1],
       hektar: 5,  istHektar: 5, koerner: 90000, duenger: 100, entries: []
     };
+    delete w.state.reiter[1].koernerProEinheit;
     w.state.activeReiter = 1;
     w.renderDrillLog();
     const s = netSavingsIn(drillLog());
@@ -234,10 +249,12 @@ describe('Issue #336 follow-up #5b: Cross-Tab-Saldo im Drill-Log + Maschinen-Pro
       ...w.state.reiter[0],
       hektar: 5,  istHektar: 6, koerner: 50000, duenger: 100, entries: []
     };
+    delete w.state.reiter[0].koernerProEinheit;
     w.state.reiter[1] = {
       ...w.state.reiter[1],
       hektar: 10, istHektar: 10, koerner: 50000, duenger: 100, entries: []
     };
+    delete w.state.reiter[1].koernerProEinheit;
     w.renderDrillLog();
     const e = netExcessIn(drillLog());
     expect(e).not.toBeNull();
@@ -255,6 +272,7 @@ describe('Issue #336 follow-up #5b: Cross-Tab-Saldo im Drill-Log + Maschinen-Pro
       ...w.state.reiter[0],
       hektar: 10, istHektar: 8, koerner: 50000, duenger: 100, entries: []
     };
+    delete w.state.reiter[0].koernerProEinheit;
     w.renderMachineLog();
     const proto = maschinenProtokoll();
     expect(proto.querySelectorAll('.drill-savings').length).toBeGreaterThan(0);

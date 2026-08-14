@@ -162,6 +162,21 @@
               AppGlobals.syncInputsFromState();
               AppGlobals.renderTabs();
               AppGlobals.renderResults();
+              // Kultur-UI konsistent halten: Badge, Empfehlung und
+              // First-run-Modal müssen dieselbe Logik wie der initUI-Pfad
+              // bekommen — sonst zeigt z.B. das Badge die alte Kultur,
+              // obwohl der andere Tab längst Raps gespeichert hat.
+              if (typeof AppGlobals.renderKulturBadge === 'function') {
+                AppGlobals.renderKulturBadge();
+              }
+              _renderKulturEmpfehlung();
+              if (!AppGlobals.state.erstauswahlDone && !AppGlobals.state.kultur) {
+                if (typeof AppGlobals.openKulturFirstRun === 'function') {
+                  AppGlobals.openKulturFirstRun();
+                }
+              } else if (typeof AppGlobals.closeKulturFirstRun === 'function') {
+                AppGlobals.closeKulturFirstRun();
+              }
             }
           } catch(err) {
             console.warn('Cross-tab sync: ungültiger State ignoriert', err);
@@ -192,7 +207,11 @@
         fgBreite.dataset.prev = fgBreite.value;
         fgBreite.dataset.cleaned = fgBreite.value;
       }
-      // Einheit-Größe-Toggle aus State restaurieren (Issue #266)
+      // Einheit-Größe-Toggle aus State restaurieren (Issue #266).
+      // Ab Migration 5→6 ist die Einheit-Größe pro Tab gespeichert
+      // (r.koernerProEinheit); state.einheitGroesseEnabled ist nur noch
+      // die Auf-/Zuklapp-Präferenz des Editors. Feld + saved-Text
+      // werden via syncEinheitGroesseEditorFromTab() gefüllt.
       var egToggle = document.getElementById('einheit_groesse_toggle');
       var egSettings = document.getElementById('einheit_groesse_settings');
       if (egToggle) {
@@ -202,19 +221,8 @@
       if (egSettings) {
         egSettings.classList.toggle('open', !!AppGlobals.state.einheitGroesseEnabled);
       }
-      var kpEl = document.getElementById('koerner_pro_einheit');
-      if (kpEl && AppGlobals.state.koernerProEinheit !== 50000) {
-        // Tests 18, 24: rohe Ganzzahl als Input-Wert (kein Tausender-Punkt),
-        // damit parseDE() in einheitGroesseUpdate() den Wert korrekt zurückschreibt.
-        kpEl.value = String(AppGlobals.state.koernerProEinheit);
-        kpEl.dataset.prev = kpEl.value;
-        kpEl.dataset.cleaned = kpEl.value;
-      }
-      var egSaved = document.getElementById('einheit_groesse_saved');
-      if (egSaved) {
-        egSaved.textContent = AppGlobals.state.koernerProEinheit !== 50000
-          ? AppGlobals.state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit'
-          : '';
+      if (typeof AppGlobals.syncEinheitGroesseEditorFromTab === 'function') {
+        AppGlobals.syncEinheitGroesseEditorFromTab(AppGlobals.getActiveReiter());
       }
       if (AppGlobals.state.reiter[AppGlobals.state.activeReiter] && AppGlobals.state.reiter[AppGlobals.state.activeReiter].hektar > 0 && AppGlobals.state.reiter[AppGlobals.state.activeReiter].koerner > 0) {
         AppGlobals.renderResults();
@@ -230,6 +238,23 @@
       AppGlobals.renderDashboard();
       if (AppGlobals.state.dashboardOpen && typeof AppGlobals.openDashboard === 'function') {
         AppGlobals.openDashboard();
+      }
+      // Kultur-Badge rendern
+      if (typeof AppGlobals.renderKulturBadge === 'function') {
+        AppGlobals.renderKulturBadge();
+      }
+      // Empfehlungstext für "Körner pro Hektar" an aktuelle Kultur anpassen
+      _renderKulturEmpfehlung();
+      // Erststart-Modal: idempotent — öffnen wenn keine Erstauswahl,
+      // schließen wenn bereits gewählt (z.B. nach Cross-Tab-Sync oder
+      // beim zweiten initUI nach loadState).
+      if (!AppGlobals.state.erstauswahlDone && !AppGlobals.state.kultur) {
+        if (typeof AppGlobals.openKulturFirstRun === 'function') {
+          AppGlobals.openKulturFirstRun();
+        }
+      } else if (typeof AppGlobals.closeKulturFirstRun === 'function') {
+        // Erstauswahl bereits getroffen → Modal sicher schließen.
+        AppGlobals.closeKulturFirstRun();
       }
       var vf = document.getElementById('version_footer');
       if (vf) vf.textContent = APP_VERSION + ' · ' + APP_BUILD_DATE;
@@ -323,6 +348,14 @@
             AppGlobals.renderResults();
             AppGlobals.drillCalcAll();
             break;
+          case 'KULTUR_CHANGED':
+            AppGlobals.saveState();
+            if (typeof AppGlobals.renderKulturBadge === 'function') {
+              AppGlobals.renderKulturBadge();
+            }
+            _renderKulturEmpfehlung();
+            AppGlobals.renderResults();
+            break;
         }
       });
     }
@@ -342,10 +375,33 @@
       AppGlobals.removeReiter(idx);
     }
 
+    // --- Kultur: Empfehlungstext unter "Körner pro Hektar" ---
+
+    function _renderKulturEmpfehlung() {
+      // Stabile ID #koerner_empfehlung wird direkt im Markup gepflegt
+      // (siehe public/index.html), damit der Textcontainer nicht erst
+      // über nextElementSibling-Suche ermittelt werden muss.
+      var emp = document.getElementById('koerner_empfehlung');
+      if (!emp) return;
+      var text = AppGlobals.getCultureEmpfehlung(AppGlobals.state.kultur);
+      // Vereinbarte Produktregel: Sonstiges hat KEINE Aussaatstärke-
+      // Empfehlung. Element bleibt im DOM (Layout-Stabilität), wird aber
+      // entleert und über das HTML5-`hidden`-Attribut visuell verborgen.
+      // Mais/Raps zeigen die exakten bisherigen Texte aus CULTURE_PROFILES.
+      if (text == null) {
+        emp.textContent = '';
+        emp.hidden = true;
+      } else {
+        emp.textContent = text;
+        emp.hidden = false;
+      }
+    }
+
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 Object.assign(window.AppGlobals, {
   renderTabs: renderTabs,
   renderView: renderView,
   initUI: initUI,
   confirmRemoveReiter: confirmRemoveReiter,
+  _renderKulturEmpfehlung: _renderKulturEmpfehlung,
 });

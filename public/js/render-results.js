@@ -39,25 +39,64 @@
     function renderResultCard() {
       var r = AppGlobals.getActiveReiter();
       var kornerGesamt = AppGlobals.getKornerGesamt();
+      // Migration 5→6 (Kultur-Feature): Sonstiges ohne Körner-pro-Einheit-
+      // Eingabe zeigt KEINE irreführenden Einheiten/Dünger-Werte. Stattdessen
+      // sichtbarer Hinweis, dass eine Einheitsgröße fehlt.
+      var tabKpe = AppGlobals.getTabKoernerProEinheit(r);
+      var hasValidKpe = tabKpe > 0;
       // Issue #186: IST-Fläche (vom Input-Feld) hat Vorrang vor SOLL.
       // r_einheiten/r_duenger zeigen die tatsächlichen IST-Bedarfe, wenn
       // r.istHektar > 0 — konsistent mit Dashboard, Drill-Summary, etc.
+      // Bei fehlender kpe (Sonstiges leer) liefern die Helper 0 — kein NaN.
       var istSum = AppGlobals.getTabIstHektar(r);
       var einheiten = istSum > 0 ? AppGlobals.getTabIstEinheiten(r) : AppGlobals.getActiveTotalEinheiten();
       var duengerTotal = istSum > 0 ? AppGlobals.getTabIstDuenger(r) : AppGlobals.getActiveTotalDuenger();
       var rkEl = document.getElementById('r_korner');
-      if (rkEl) rkEl.textContent = Math.round(kornerGesamt).toLocaleString('de-DE');
+      if (rkEl) {
+        // Körner-gesamt braucht KEINE kpe (Hektar × Körner/ha) — bei
+        // Sonstiges ohne kpe also sichtbar, nur die Saatgut-Einheiten
+        // (r_einheiten) brauchen kpe und bleiben daher '—'.
+        rkEl.textContent = isFinite(kornerGesamt) && r.hektar > 0 && r.koerner > 0
+          ? Math.round(kornerGesamt).toLocaleString('de-DE')
+          : '—';
+      }
       var reEl = document.getElementById('r_einheiten');
-      if (reEl) reEl.textContent = AppGlobals.formatEinheit(einheiten);
+      if (reEl) {
+        if (!hasValidKpe) reEl.textContent = '—';
+        else reEl.textContent = AppGlobals.formatEinheit(einheiten);
+      }
       var rdEl = document.getElementById('r_duenger');
-      if (rdEl) rdEl.textContent = duengerTotal > 0 ? duengerTotal.toLocaleString('de-DE') + ' kg' : '—';
+      // Dünger (Hektar × kg/ha) braucht ebenfalls KEINE kpe — bei
+      // Sonstiges ohne kpe also sichtbar, sofern Dünger eingegeben wurde.
+      if (rdEl) rdEl.textContent = (duengerTotal > 0 && isFinite(duengerTotal))
+        ? duengerTotal.toLocaleString('de-DE') + ' kg'
+        : '—';
       var riEl = document.getElementById('r_info');
       if (riEl) {
-        if (duengerTotal > 0) {
+        if (!hasValidKpe) {
+          riEl.textContent = '— Saat (ohne Körner-pro-Einheit)';
+        } else if (duengerTotal > 0) {
           riEl.textContent = duengerTotal.toLocaleString('de-DE') + ' kg Dünger, ' + AppGlobals.formatEinheit(einheiten) + ' Saat';
         } else {
           riEl.textContent = AppGlobals.formatEinheit(einheiten) + ' Saat (ohne Dünger)';
         }
+      }
+      // Placeholder-Hinweis für Sonstiges ohne kpe (id="kultur_missing_kpe_hint").
+      // Wird im results-card vor den SOLL/IST-Zeilen eingefügt.
+      var resultsEl = document.getElementById('results');
+      var hint = document.getElementById('kultur_missing_kpe_hint');
+      var shouldShowHint = !hasValidKpe && r.hektar > 0 && r.koerner > 0;
+      if (shouldShowHint && !hint) {
+        hint = document.createElement('div');
+        hint.id = 'kultur_missing_kpe_hint';
+        hint.className = 'kultur-missing-kpe-hint';
+        hint.setAttribute('role', 'note');
+        hint.textContent = 'Bitte Körner pro Einheit angeben, damit die benötigten Saatgut-Einheiten berechnet werden können.';
+        if (resultsEl) resultsEl.insertBefore(hint, resultsEl.firstChild);
+      } else if (shouldShowHint && hint) {
+        if (resultsEl && hint.parentNode !== resultsEl) resultsEl.insertBefore(hint, resultsEl.firstChild);
+      } else if (!shouldShowHint && hint) {
+        if (hint.parentNode) hint.parentNode.removeChild(hint);
       }
       var sollHa = r.hektar;
       var istHa = AppGlobals.getTabIstHektar(r);

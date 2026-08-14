@@ -38,10 +38,10 @@ describe('Cloudflare deploy sanity', () => {
     expect(content).toMatch(/Cache-Control:\s*no-cache/);
   });
 
-  it('main.js exposes the current patch release version and build date', () => {
+  it('main.js exposes the current minor release version and build date', () => {
     const mainPath = resolve(publicDir, 'js', 'main.js');
     const content = readFileSync(mainPath, 'utf-8');
-    expect(content).toMatch(/APP_VERSION\s*=\s*['"]v1\.0\.1['"]/);
+    expect(content).toMatch(/APP_VERSION\s*=\s*['"]v1\.1\.0['"]/);
     expect(content).toMatch(/APP_BUILD_DATE\s*=\s*['"]August 2026['"]/);
   });
 
@@ -108,5 +108,78 @@ describe('Cloudflare deploy sanity', () => {
     // Inputs must re-enable user-select so users can edit values
     expect(content).toMatch(/input\s*,\s*textarea\s*\{[^}]*-webkit-user-select:\s*auto/);
     expect(content).toMatch(/input\s*,\s*textarea\s*\{[^}]*user-select:\s*auto/);
+  });
+
+  // Issue: culture.js muss vor calculations.js/ui-handlers.js geladen werden,
+  // sonst ist AppGlobals.isValidCultureKey undefined und das Pflichtmodal
+  // öffnet im echten Browser nicht (Runtime-Fehler).
+  describe('JS-Bootstrap: alle Module + korrekte Reihenfolge', () => {
+    const EXPECTED_ORDER = [
+      'app-globals.js',
+      'state.js',
+      'culture.js',
+      'calculations.js',
+      'ui-handlers.js',
+      'render-tabs.js',
+      'render-results.js',
+      'render-drill.js',
+      'render-dashboard.js',
+      'main.js',
+    ];
+
+    function readScripts(content) {
+      const re = /<script\s+src=["']js\/([^"']+)["']\s*><\/script>/g;
+      const out = [];
+      let m;
+      while ((m = re.exec(content)) !== null) out.push(m[1]);
+      return out;
+    }
+
+    it('index.html lädt alle benötigten JS-Module', () => {
+      const indexPath = resolve(publicDir, 'index.html');
+      const content = readFileSync(indexPath, 'utf-8');
+      const loaded = readScripts(content);
+      for (const mod of EXPECTED_ORDER) {
+        expect(loaded, 'fehlt: ' + mod).toContain(mod);
+      }
+    });
+
+    it('JS-Module werden in der richtigen Reihenfolge geladen', () => {
+      const indexPath = resolve(publicDir, 'index.html');
+      const content = readFileSync(indexPath, 'utf-8');
+      const loaded = readScripts(content);
+      // Index jedes erwarteten Moduls; Reihenfolge muss monoton wachsen
+      const positions = EXPECTED_ORDER.map(function (m) { return loaded.indexOf(m); });
+      for (var i = 1; i < positions.length; i++) {
+        expect(positions[i], 'Reihenfolge: ' + EXPECTED_ORDER[i] + ' vor ' + EXPECTED_ORDER[i - 1])
+          .toBeGreaterThan(positions[i - 1]);
+      }
+    });
+
+    it('culture.js liegt GENAU zwischen state.js und calculations.js', () => {
+      const indexPath = resolve(publicDir, 'index.html');
+      const content = readFileSync(indexPath, 'utf-8');
+      const loaded = readScripts(content);
+      var stateIdx = loaded.indexOf('state.js');
+      var cultureIdx = loaded.indexOf('culture.js');
+      var calcIdx = loaded.indexOf('calculations.js');
+      expect(stateIdx).toBeGreaterThanOrEqual(0);
+      expect(cultureIdx).toBeGreaterThan(stateIdx);
+      expect(calcIdx).toBeGreaterThan(cultureIdx);
+    });
+
+    it('public/js/culture.js existiert tatsächlich', () => {
+      const culturePath = resolve(publicDir, 'js', 'culture.js');
+      expect(existsSync(culturePath)).toBe(true);
+    });
+
+    it('Architektur-Kommentar in index.html erwähnt culture.js', () => {
+      const indexPath = resolve(publicDir, 'index.html');
+      const content = readFileSync(indexPath, 'utf-8');
+      // Kommentar zwischen <script>...</script> und den script-Tags muss
+      // culture.js in der Modul-Liste aufführen, damit der Lesefluss
+      // für Maintainer konsistent bleibt.
+      expect(content).toMatch(/culture\.js/);
+    });
   });
 });

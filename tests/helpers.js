@@ -78,6 +78,7 @@ export function createDom() {
     loadModule('app-globals.js'),
     'var _internal = { carryoverCache: null, drillCalcTimer: null };',
     loadModule('state.js'),
+    loadModule('culture.js'),
     loadModule('calculations.js'),
     loadModule('ui-handlers.js'),
     loadModule('render-tabs.js'),

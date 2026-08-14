@@ -267,8 +267,9 @@ describe('initUI restores einheitGroesse with custom value', () => {
   beforeEach(() => { w = createDom().window; store = {}; });
 
   it('restores einheitGroesseEnabled and shows settings', () => {
+    // HIGH 3/4: Per-Tab kpe wird in r.koernerProEinheit gespeichert.
     w.state.einheitGroesseEnabled = true;
-    w.state.koernerProEinheit = 80000;
+    w.state.reiter[0].koernerProEinheit = 80000;
     w.saveState();
     w.initUI();
 
@@ -281,7 +282,7 @@ describe('initUI restores einheitGroesse with custom value', () => {
 
   it('shows custom koernerProEinheit info text', () => {
     w.state.einheitGroesseEnabled = true;
-    w.state.koernerProEinheit = 80000;
+    w.state.reiter[0].koernerProEinheit = 80000;
     w.saveState();
     w.initUI();
 
@@ -292,7 +293,7 @@ describe('initUI restores einheitGroesse with custom value', () => {
 
   it('does NOT show info text when koernerProEinheit is default 50000', () => {
     w.state.einheitGroesseEnabled = true;
-    w.state.koernerProEinheit = 50000;
+    // Tab bleibt auf Mais-Default 50000
     w.saveState();
     w.initUI();
 
