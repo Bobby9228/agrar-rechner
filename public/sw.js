@@ -6,7 +6,7 @@
 // dieser Wert nicht mehr manuell gebumpt werden, damit Nutzer Updates sehen —
 // das war die Ursache wiederholter Stale-Cache-Probleme. Ein Bump hier räumt
 // nur noch alte Offline-Caches auf, ist für sichtbare Updates nicht mehr nötig.
-const CACHE_VERSION = 'agrar-rechner-v47';
+const CACHE_VERSION = 'agrar-rechner-v48';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
