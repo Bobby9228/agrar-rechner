@@ -52,6 +52,134 @@
 // pendingKultur: vom User neu gewählter Key (für confirmChangeKultur)
 var _kulturState = { pendingKulturChoice: null };
 
+// --- Kultur-Modal Accessibility (Fokus-Trap, gespeicherter Fokus, Escape) ---
+//
+// Minimaler, dependency-freier Helper. Speichert beim Install den zuvor
+// fokussierten Container (= in der Regel der auslösende ändern-Button),
+// verschiebt den Fokus ins erste fokussierbare Element des Dialogs und
+// fängt Tab/Shift+Tab innerhalb des Dialogs ab. Escape delegiert an
+// onEscape (First-run-Dialog übergibt null → Escape bleibt wirkungslos,
+// Wechsel-Dialog übergibt cancelChangeKultur).
+//
+// Cleanup wird auf modal._kulturA11yCleanup hinterlegt und von den
+// jeweiligen Close-Funktionen aufgerufen — so wird auch beim Klick auf
+// ✕ oder Abbrechen korrekt aufgeräumt und der Fokus auf das Auslöser-
+// Element zurückgegeben.
+function _getFocusableIn(root) {
+  if (!root) return [];
+  var sel = 'button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden]), textarea:not([disabled]):not([hidden]), [tabindex]:not([tabindex="-1"])';
+  return Array.from(root.querySelectorAll(sel)).filter(function(el) {
+    if (el.disabled) return false;
+    if (el.hidden) return false;
+    if (el.style && el.style.display === 'none') return false;
+    return true;
+  });
+}
+
+function _runKulturModalA11yCleanup(modal) {
+  if (modal && typeof modal._kulturA11yCleanup === 'function') {
+    var fn = modal._kulturA11yCleanup;
+    modal._kulturA11yCleanup = null;
+    try { fn(); } catch(e) {}
+  }
+}
+
+function _installKulturModalA11y(modal, options) {
+  if (!modal) return;
+  options = options || {};
+  var prevFocus = document.activeElement;
+  var focusables = _getFocusableIn(modal);
+  var firstFocusable = focusables[0];
+  var lastFocusable = focusables[focusables.length - 1];
+
+  // Vor dem Fokus-Shift: state → DOM-Inputs des aktiven Reiters
+  // synchronisieren. Das Verschachteln des Fokus in den Dialog löst
+  // sonst den blur-Handler des aktiven Input-Felds aus (onInputHektar /
+  // onInputKoerner / …), der state aus DOM-Inputs liest. Wenn state
+  // durch einen externen Aufruf (z.B. Test, Cross-Tab-Sync) weiter ist
+  // als das DOM, würde der blur state auf den DOM-Wert (oft 0) zurück-
+  // setzen. Indem wir die Inputs VOR dem Focus-Shift aus state befüllen,
+  // liest der blur die gleichen Werte und lässt state unverändert.
+  //
+  // In realer Nutzung ist der blur bereits VOR requestChangeKultur
+  // gefeuert (beim Klick auf "ändern" → mousedown → focus → blur), state
+  // und DOM sind dann konsistent. Das Schreiben ist in diesem Fall ein
+  // No-op. Verlierer ist kein UX-Pfad, weil der blur bereits synchroni-
+  // siert hat.
+  try {
+    if (AppGlobals.state && Array.isArray(AppGlobals.state.reiter) &&
+        typeof AppGlobals.state.activeReiter === 'number') {
+      var atab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
+      if (atab) {
+        var hEl = document.getElementById(DOM_IDS.hektar);
+        var ihEl = document.getElementById(DOM_IDS.istHektar);
+        var kEl = document.getElementById(DOM_IDS.koerner);
+        var dEl = document.getElementById(DOM_IDS.duenger);
+        if (hEl) {
+          hEl.value = atab.hektar > 0 ? String(atab.hektar).replace('.', ',') : '';
+          hEl.dataset.prev = hEl.value;
+          hEl.dataset.cleaned = hEl.value;
+        }
+        if (ihEl) {
+          ihEl.value = atab.istHektar > 0 ? String(atab.istHektar).replace('.', ',') : '';
+          ihEl.dataset.prev = ihEl.value;
+          ihEl.dataset.cleaned = ihEl.value;
+        }
+        if (kEl) {
+          kEl.value = atab.koerner > 0 ? String(atab.koerner) : '';
+          kEl.dataset.prev = kEl.value;
+          kEl.dataset.cleaned = kEl.value;
+        }
+        if (dEl) {
+          dEl.value = atab.duenger > 0 ? String(atab.duenger).replace('.', ',') : '';
+          dEl.dataset.prev = dEl.value;
+          dEl.dataset.cleaned = dEl.value;
+        }
+      }
+    }
+  } catch(e) { /* DOM-Elemente fehlen → still skippen */ }
+
+  function handler(evt) {
+    if (evt && evt.key === 'Escape') {
+      if (typeof options.onEscape === 'function') {
+        if (evt.preventDefault) evt.preventDefault();
+        if (evt.stopPropagation) evt.stopPropagation();
+        options.onEscape();
+      }
+      // Kein onEscape → Escape bewusst ignorieren (First-run-Modal).
+      return;
+    }
+    if (!evt || evt.key !== 'Tab') return;
+    if (focusables.length === 0) {
+      if (evt.preventDefault) evt.preventDefault();
+      return;
+    }
+    var active = document.activeElement;
+    var inModal = modal.contains(active);
+    if (evt.shiftKey) {
+      if (!inModal || active === firstFocusable) {
+        if (evt.preventDefault) evt.preventDefault();
+        try { lastFocusable.focus(); } catch(e) {}
+      }
+    } else {
+      if (!inModal || active === lastFocusable) {
+        if (evt.preventDefault) evt.preventDefault();
+        try { firstFocusable.focus(); } catch(e) {}
+      }
+    }
+  }
+  modal.addEventListener('keydown', handler);
+  modal._kulturA11yCleanup = function() {
+    modal.removeEventListener('keydown', handler);
+    if (options.restoreFocus !== false && prevFocus && typeof prevFocus.focus === 'function') {
+      try { prevFocus.focus(); } catch(e) {}
+    }
+  };
+  if (firstFocusable && typeof firstFocusable.focus === 'function') {
+    try { firstFocusable.focus(); } catch(e) {}
+  }
+}
+
 function chooseKultur(key) {
   if (!AppGlobals.isValidCultureKey(key)) {
     // Unbekannter Key → kein Effekt, Modal bleibt offen.
@@ -98,17 +226,17 @@ function openKulturFirstRun() {
   }
   modal.hidden = false;
   modal.classList.add('open');
-  // Fokus auf erste Auswahl (Mais) für Tastatur-User
-  var firstBtn = document.getElementById('kultur_choice_mais');
-  if (firstBtn && typeof firstBtn.focus === 'function') {
-    try { firstBtn.focus(); } catch(e) {}
-  }
+  // Accessibility: Fokus in Dialog + Tab-Trap. Escape bleibt ohne
+  // Wirkung (onEscape=null) — die Erstauswahl ist verpflichtend
+  // (siehe tests/61-kultur-first-run.test.js).
+  _installKulturModalA11y(modal, { onEscape: null });
 }
 
 function closeKulturFirstRun() {
   var overlay = document.getElementById('kultur_overlay');
   var modal = document.getElementById('kultur_modal');
   if (modal) {
+    _runKulturModalA11yCleanup(modal);
     modal.classList.remove('open');
     modal.hidden = true;
   }
@@ -152,6 +280,12 @@ function requestChangeKultur() {
     modal.hidden = false;
     modal.classList.add('open');
   }
+  // Accessibility: Fokus in Dialog + Tab-Trap. Escape bricht ab
+  // und stellt den Fokus auf den zuvor aktiven ändern-Button wieder
+  // her (über den beim Install gemerkten prevFocus).
+  _installKulturModalA11y(modal, {
+    onEscape: function() { cancelChangeKultur(); }
+  });
 }
 
 function _onKulturChangeSelectChange(el) {
@@ -163,6 +297,7 @@ function cancelChangeKultur() {
   var overlay = document.getElementById('kultur_confirm_overlay');
   var modal = document.getElementById('kultur_confirm_modal');
   if (modal) {
+    _runKulturModalA11yCleanup(modal);
     modal.classList.remove('open');
     modal.hidden = true;
   }
@@ -533,6 +668,22 @@ function confirmChangeKultur() {
       AppGlobals.state.drillPriorities = {};
       AppGlobals.renderTabs();
       AppGlobals.saveState();
+      // Kultur-UI konsistent nachziehen: resetAll() setzt state.kultur = null
+      // und erstauswahlDone = false. Der Landwirt MUSS nach dem Reset eine
+      // Kultur wählen, damit der Rechner produktiv nutzbar ist. Wir
+      // aktualisieren Badge/Empfehlung und öffnen den verpflichtenden
+      // First-run-Dialog hier selbst — kein Reload, kein erneuter initUI()
+      // nötig. Dieselbe Logik wie der initUI-Pfad (Issue: storage-Event-
+      // Sync hat diese Synchronisierung als Vorbild).
+      if (typeof AppGlobals.renderKulturBadge === 'function') {
+        AppGlobals.renderKulturBadge();
+      }
+      if (typeof AppGlobals._renderKulturEmpfehlung === 'function') {
+        AppGlobals._renderKulturEmpfehlung();
+      }
+      if (typeof AppGlobals.openKulturFirstRun === 'function') {
+        AppGlobals.openKulturFirstRun();
+      }
     }
 
     // --- Reset-Modal (Issue #236, redesign v3) ---

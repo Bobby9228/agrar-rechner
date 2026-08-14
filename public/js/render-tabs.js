@@ -162,6 +162,21 @@
               AppGlobals.syncInputsFromState();
               AppGlobals.renderTabs();
               AppGlobals.renderResults();
+              // Kultur-UI konsistent halten: Badge, Empfehlung und
+              // First-run-Modal müssen dieselbe Logik wie der initUI-Pfad
+              // bekommen — sonst zeigt z.B. das Badge die alte Kultur,
+              // obwohl der andere Tab längst Raps gespeichert hat.
+              if (typeof AppGlobals.renderKulturBadge === 'function') {
+                AppGlobals.renderKulturBadge();
+              }
+              _renderKulturEmpfehlung();
+              if (!AppGlobals.state.erstauswahlDone && !AppGlobals.state.kultur) {
+                if (typeof AppGlobals.openKulturFirstRun === 'function') {
+                  AppGlobals.openKulturFirstRun();
+                }
+              } else if (typeof AppGlobals.closeKulturFirstRun === 'function') {
+                AppGlobals.closeKulturFirstRun();
+              }
             }
           } catch(err) {
             console.warn('Cross-tab sync: ungültiger State ignoriert', err);
