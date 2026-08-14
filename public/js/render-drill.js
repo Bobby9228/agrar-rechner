@@ -497,7 +497,6 @@
       if (!container) return;
       container.innerHTML = '';
       var log = AppGlobals.state.machineLog || [];
-      var activeTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
       // Header
       var header = document.createElement('div');
       header.className = 'drill-entry-tab-header';
@@ -530,17 +529,16 @@
       // Issue #266 (Cluster B): Fahrgassen-Faktor muss in unitsPerHa
       // berücksichtigt werden (Test 18: unitsPerHa = koerner * fgFactor /
       // koernerProEinheit). fgFactor ist 1 wenn FG aus, sonst (breite-1)/breite.
-      var fgEnabled = (activeTab && activeTab.fahrgassenEnabled !== undefined) ? activeTab.fahrgassenEnabled : AppGlobals.state.fahrgassenEnabled;
-      var fgBreite = (activeTab && activeTab.fahrgassenBreite !== undefined) ? activeTab.fahrgassenBreite : AppGlobals.state.fahrgassenBreite;
-      var fgFactor = (fgEnabled && fgBreite >= 2) ? AppGlobals.computeFahrgassenFaktor(fgBreite) : 1;
-      var unitsPerHa = 0;
-      var duengerPerHa = 0;
-      if (activeTab && activeTab.koerner > 0) {
-        unitsPerHa = activeTab.koerner * fgFactor / AppGlobals.state.koernerProEinheit;
-      }
-      if (activeTab && activeTab.duenger > 0) {
-        duengerPerHa = activeTab.duenger;
-      }
+      //
+      // Per-Tab Quelle: getTabRates(activeIdx) ist Single Source of Truth
+      // (Issue: vorher wurde hier der globale state.koernerProEinheit
+      // benutzt, was nach einem Kultur-Wechsel die Maschinen-Prognose
+      // eines bestehenden Tabs verzerrte und bei kpe=0 zu Infinity/NaN
+      // führen konnte). getTabRates nutzt resolveKoernerProEinheit und
+      // gibt bei kpe=0 sicher 0 zurück.
+      var activeRates = AppGlobals.getTabRates(AppGlobals.state.activeReiter);
+      var unitsPerHa = activeRates.unitsPerHa;
+      var duengerPerHa = activeRates.duengerPerHa;
       // Walk in chronological order so the cumulative calc is forward.
       var cumEinheit = 0;
       var cumDuenger = 0;

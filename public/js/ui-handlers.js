@@ -424,13 +424,22 @@ function confirmChangeKultur() {
 
     function resetActiveTab() {
       var active = AppGlobals.state.activeReiter;
+      // Issue: resetActiveTab() muss die per-Schlag-Einheitsgröße erhalten.
+      // Beim Zurücksetzen werden Eingaben + Protokoll geleert, aber die
+      // bisherige manuell gewählte koernerProEinheit dieses Schlags bleibt
+      // bestehen — sonst würde ein späterer Kultur-Wechsel den Schlag
+      // unbemerkt auf den neuen Profil-Default ziehen.
+      var prevKpe = AppGlobals.state.reiter[active]
+        ? AppGlobals.state.reiter[active].koernerProEinheit
+        : undefined;
       AppGlobals.state.reiter[active] = {
         name: AppGlobals.state.reiter[active].name,
         hektar: 0, istHektar: 0, koerner: 0, duenger: 0,
         entries: [],
         done: false,
         fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled,
-        fahrgassenBreite: AppGlobals.state.fahrgassenBreite
+        fahrgassenBreite: AppGlobals.state.fahrgassenBreite,
+        koernerProEinheit: prevKpe
       };
       AppGlobals.state.drillPriorities = {};
       // Clear drill summary values (Issue #281: IDs aus DOM_IDS)
