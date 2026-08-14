@@ -7,7 +7,7 @@
 // ============================================================================
 
 // --- App Constants ---
-var APP_VERSION = 'v1.1.2';
+var APP_VERSION = 'v1.1.3';
 var APP_BUILD_DATE = 'August 2026';
 
 // --- Format/Parser Utilities (used across modules) ---
