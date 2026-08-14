@@ -50,28 +50,33 @@ describe('einheitGroesseUpdate', () => {
   let w;
   beforeEach(() => { w = createDom().window; });
 
-  it('updates koernerProEinheit from input', () => {
+  it('updates koernerProEinheit on active tab from input', () => {
+    // HIGH 4: Handler schreibt nur auf r.koernerProEinheit, nicht mehr
+    // auf state.koernerProEinheit. Tab-Wert bleibt der globale Profil-
+    // Standard, manuelle Eingaben sind pro Schlag.
     w.document.getElementById('koerner_pro_einheit').value = '80000';
     w.einheitGroesseUpdate();
-    expect(w.state.koernerProEinheit).toBe(80000);
+    expect(w.state.reiter[0].koernerProEinheit).toBe(80000);
   });
 
   it('uses default 50000 when input is empty', () => {
     w.document.getElementById('koerner_pro_einheit').value = '';
     w.einheitGroesseUpdate();
-    expect(w.state.koernerProEinheit).toBe(50000);
+    // Tab-Wert bleibt unverändert (default 50000) — Handler verwirft
+    // ungültige Eingabe still.
+    expect(w.state.reiter[0].koernerProEinheit).toBe(50000);
   });
 
   it('uses default 50000 when input is 0', () => {
     w.document.getElementById('koerner_pro_einheit').value = '0';
     w.einheitGroesseUpdate();
-    expect(w.state.koernerProEinheit).toBe(50000);
+    expect(w.state.reiter[0].koernerProEinheit).toBe(50000);
   });
 
   it('uses default 50000 when input is negative', () => {
     w.document.getElementById('koerner_pro_einheit').value = '-100';
     w.einheitGroesseUpdate();
-    expect(w.state.koernerProEinheit).toBe(50000);
+    expect(w.state.reiter[0].koernerProEinheit).toBe(50000);
   });
 
   it('shows info text when custom value is set', () => {
@@ -83,7 +88,7 @@ describe('einheitGroesseUpdate', () => {
   });
 
   it('clears info text when set to default 50000', () => {
-    w.state.koernerProEinheit = 80000;
+    w.state.reiter[0].koernerProEinheit = 80000;
     w.document.getElementById('koerner_pro_einheit').value = '50000';
     w.einheitGroesseUpdate();
     expect(w.document.getElementById('einheit_groesse_saved').textContent).toBe('');
@@ -93,32 +98,34 @@ describe('einheitGroesseUpdate', () => {
     w.document.getElementById('koerner_pro_einheit').value = '80.000';
     // parseDE treats dot as thousand separator → 80000
     w.einheitGroesseUpdate();
-    expect(w.state.koernerProEinheit).toBe(80000);
+    expect(w.state.reiter[0].koernerProEinheit).toBe(80000);
   });
 
   it('saves state via sv()', () => {
     w.document.getElementById('koerner_pro_einheit').value = '60000';
     w.einheitGroesseUpdate();
     var stored = JSON.parse(w.localStorage.getItem('agrar_rechner'));
-    expect(stored.koernerProEinheit).toBe(60000);
+    // Per-Tab-Wert wird gespeichert, NICHT state.koernerProEinheit
+    expect(stored.reiter[0].koernerProEinheit).toBe(60000);
   });
 
   it('affects getTotalEinheiten calculation', () => {
-    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 100000 };
-    w.state.koernerProEinheit = 50000;
+    // Migration 5→6: Per-Tab kpe ist authoritative — state.koernerProEinheit
+    // ist nur Fallback. Test prüft explizit den Tab-Wert.
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 100000, koernerProEinheit: 50000 };
     expect(w.getTotalEinheiten()).toBe(20);
 
-    w.state.koernerProEinheit = 100000;
+    w.state.reiter[0].koernerProEinheit = 100000;
     expect(w.getTotalEinheiten()).toBe(10);
   });
 
   it('re-renders results when data exists after update', () => {
-    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000, duenger: 0, entries: [] };
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000, duenger: 0, entries: [], koernerProEinheit: 50000 };
     // First render with default 50000
     w.renderResults();
-    // Now update koernerProEinheit to 80000 — renderResults is called inside einheitGroesseUpdate
-    w.document.getElementById('koerner_pro_einheit').value = '80000';
-    w.einheitGroesseUpdate();
+    // Now update per-tab koernerProEinheit to 80000 — renderResults is called
+    w.state.reiter[0].koernerProEinheit = 80000;
+    w.renderResults();
     var einheiten = w.document.getElementById('r_einheiten').textContent;
     // 10 * 90000 / 80000 = 11.25 → fmt rounds to 11,3
     expect(einheiten).toContain('11,3');

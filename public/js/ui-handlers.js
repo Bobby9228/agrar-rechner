@@ -45,13 +45,332 @@
       el.dataset.cleaned = '';
     }
 
-    // --- Tab-Verwaltung ---
+    // --- Kultur-Auswahl ---
+
+// Setzt die globale Kultur und schließt das Erststart-Modal.
+// Wird sowohl beim ersten Start als auch beim bewussten Wechsel verwendet.
+// pendingKultur: vom User neu gewählter Key (für confirmChangeKultur)
+var _kulturState = { pendingKulturChoice: null };
+
+// --- Kultur-Modal Accessibility (Fokus-Trap, gespeicherter Fokus, Escape) ---
+//
+// Minimaler, dependency-freier Helper. Speichert beim Install den zuvor
+// fokussierten Container (= in der Regel der auslösende ändern-Button),
+// verschiebt den Fokus ins erste fokussierbare Element des Dialogs und
+// fängt Tab/Shift+Tab innerhalb des Dialogs ab. Escape delegiert an
+// onEscape (First-run-Dialog übergibt null → Escape bleibt wirkungslos,
+// Wechsel-Dialog übergibt cancelChangeKultur).
+//
+// Cleanup wird auf modal._kulturA11yCleanup hinterlegt und von den
+// jeweiligen Close-Funktionen aufgerufen — so wird auch beim Klick auf
+// ✕ oder Abbrechen korrekt aufgeräumt und der Fokus auf das Auslöser-
+// Element zurückgegeben.
+function _getFocusableIn(root) {
+  if (!root) return [];
+  var sel = 'button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden]), textarea:not([disabled]):not([hidden]), [tabindex]:not([tabindex="-1"])';
+  return Array.from(root.querySelectorAll(sel)).filter(function(el) {
+    if (el.disabled) return false;
+    if (el.hidden) return false;
+    if (el.style && el.style.display === 'none') return false;
+    return true;
+  });
+}
+
+function _runKulturModalA11yCleanup(modal) {
+  if (modal && typeof modal._kulturA11yCleanup === 'function') {
+    var fn = modal._kulturA11yCleanup;
+    modal._kulturA11yCleanup = null;
+    try { fn(); } catch(e) {}
+  }
+}
+
+function _installKulturModalA11y(modal, options) {
+  if (!modal) return;
+  options = options || {};
+  var prevFocus = document.activeElement;
+  var focusables = _getFocusableIn(modal);
+  var firstFocusable = focusables[0];
+  var lastFocusable = focusables[focusables.length - 1];
+
+  // Vor dem Fokus-Shift: state → DOM-Inputs des aktiven Reiters
+  // synchronisieren. Das Verschachteln des Fokus in den Dialog löst
+  // sonst den blur-Handler des aktiven Input-Felds aus (onInputHektar /
+  // onInputKoerner / …), der state aus DOM-Inputs liest. Wenn state
+  // durch einen externen Aufruf (z.B. Test, Cross-Tab-Sync) weiter ist
+  // als das DOM, würde der blur state auf den DOM-Wert (oft 0) zurück-
+  // setzen. Indem wir die Inputs VOR dem Focus-Shift aus state befüllen,
+  // liest der blur die gleichen Werte und lässt state unverändert.
+  //
+  // In realer Nutzung ist der blur bereits VOR requestChangeKultur
+  // gefeuert (beim Klick auf "ändern" → mousedown → focus → blur), state
+  // und DOM sind dann konsistent. Das Schreiben ist in diesem Fall ein
+  // No-op. Verlierer ist kein UX-Pfad, weil der blur bereits synchroni-
+  // siert hat.
+  try {
+    if (AppGlobals.state && Array.isArray(AppGlobals.state.reiter) &&
+        typeof AppGlobals.state.activeReiter === 'number') {
+      var atab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
+      if (atab) {
+        var hEl = document.getElementById(DOM_IDS.hektar);
+        var ihEl = document.getElementById(DOM_IDS.istHektar);
+        var kEl = document.getElementById(DOM_IDS.koerner);
+        var dEl = document.getElementById(DOM_IDS.duenger);
+        if (hEl) {
+          hEl.value = atab.hektar > 0 ? String(atab.hektar).replace('.', ',') : '';
+          hEl.dataset.prev = hEl.value;
+          hEl.dataset.cleaned = hEl.value;
+        }
+        if (ihEl) {
+          ihEl.value = atab.istHektar > 0 ? String(atab.istHektar).replace('.', ',') : '';
+          ihEl.dataset.prev = ihEl.value;
+          ihEl.dataset.cleaned = ihEl.value;
+        }
+        if (kEl) {
+          kEl.value = atab.koerner > 0 ? String(atab.koerner) : '';
+          kEl.dataset.prev = kEl.value;
+          kEl.dataset.cleaned = kEl.value;
+        }
+        if (dEl) {
+          dEl.value = atab.duenger > 0 ? String(atab.duenger).replace('.', ',') : '';
+          dEl.dataset.prev = dEl.value;
+          dEl.dataset.cleaned = dEl.value;
+        }
+      }
+    }
+  } catch(e) { /* DOM-Elemente fehlen → still skippen */ }
+
+  function handler(evt) {
+    if (evt && evt.key === 'Escape') {
+      if (typeof options.onEscape === 'function') {
+        if (evt.preventDefault) evt.preventDefault();
+        if (evt.stopPropagation) evt.stopPropagation();
+        options.onEscape();
+      }
+      // Kein onEscape → Escape bewusst ignorieren (First-run-Modal).
+      return;
+    }
+    if (!evt || evt.key !== 'Tab') return;
+    if (focusables.length === 0) {
+      if (evt.preventDefault) evt.preventDefault();
+      return;
+    }
+    var active = document.activeElement;
+    var inModal = modal.contains(active);
+    if (evt.shiftKey) {
+      if (!inModal || active === firstFocusable) {
+        if (evt.preventDefault) evt.preventDefault();
+        try { lastFocusable.focus(); } catch(e) {}
+      }
+    } else {
+      if (!inModal || active === lastFocusable) {
+        if (evt.preventDefault) evt.preventDefault();
+        try { firstFocusable.focus(); } catch(e) {}
+      }
+    }
+  }
+  modal.addEventListener('keydown', handler);
+  modal._kulturA11yCleanup = function() {
+    modal.removeEventListener('keydown', handler);
+    if (options.restoreFocus !== false && prevFocus && typeof prevFocus.focus === 'function') {
+      try { prevFocus.focus(); } catch(e) {}
+    }
+  };
+  if (firstFocusable && typeof firstFocusable.focus === 'function') {
+    try { firstFocusable.focus(); } catch(e) {}
+  }
+}
+
+// Ein migrierter Nutzer kann beim ersten Start nach dem Kultur-Update noch den
+// unveränderten leeren Startschlag mit dem früheren Mais-Default 50.000 haben.
+// Dieser Schlag darf die gewählte Kultur übernehmen, weil er keinerlei
+// fachliche Eingaben oder Protokolle enthält. Andere/leere Arbeitsschläge und
+// individuelle Einheitsgrößen bleiben bewusst unangetastet.
+function isUntouchedInitialField(tab, tabIndex) {
+  return tabIndex === 0
+    && !!tab
+    && tab.koernerProEinheit === 50000
+    && Number(tab.hektar || 0) === 0
+    && Number(tab.istHektar || 0) === 0
+    && Number(tab.koerner || 0) === 0
+    && Number(tab.duenger || 0) === 0
+    && (!Array.isArray(tab.entries) || tab.entries.length === 0)
+    && tab.done !== true;
+}
+
+function chooseKultur(key) {
+  if (!AppGlobals.isValidCultureKey(key)) {
+    // Unbekannter Key → kein Effekt, Modal bleibt offen.
+    return false;
+  }
+  var prevKultur = AppGlobals.state.kultur;
+  AppGlobals.state.kultur = key;
+  AppGlobals.state.erstauswahlDone = true;
+  // Globaler kpe folgt dem Kultur-Standard. Nur setzen, wenn vorher keine
+  // gültige Kultur gesetzt war — sonst bleibt der globale Default stabil
+  // und neue Tabs bekommen den Profil-Wert (siehe addReiter).
+  if (!prevKultur || !AppGlobals.isValidCultureKey(prevKultur)) {
+    AppGlobals.state.koernerProEinheit = AppGlobals.getDefaultKoernerProEinheit(key);
+  }
+  // Frischer Start ODER unberührter migrierter Startschlag: Tab 0 erhält den
+  // gewählten Kultur-Standard. Geladene Schläge mit Daten, Protokollen oder
+  // individueller Einheitsgröße bleiben unverändert.
+  var freshInstall = !AppGlobals._loadStateEverSucceeded;
+  if (Array.isArray(AppGlobals.state.reiter) && AppGlobals.state.reiter.length > 0) {
+    var initialTab = AppGlobals.state.reiter[0];
+    if (initialTab && (freshInstall || isUntouchedInitialField(initialTab, 0))) {
+      initialTab.koernerProEinheit = AppGlobals.getDefaultKoernerProEinheit(key);
+    }
+  }
+  // Das Editorfeld kann bereits mit dem migrierten Wert 50.000 gerendert sein.
+  // Direkt nach der Auswahl aus dem aktiven Schlag synchronisieren.
+  syncEinheitGroesseEditorFromTab(AppGlobals.getActiveReiter());
+  closeKulturFirstRun();
+  if (typeof AppGlobals.renderKulturBadge === 'function') {
+    AppGlobals.renderKulturBadge();
+  }
+  AppGlobals.saveState();
+  AppGlobals.appEmit('KULTUR_CHANGED', { kultur: key, source: 'first-run' });
+  return true;
+}
+
+function openKulturFirstRun() {
+  var overlay = document.getElementById('kultur_overlay');
+  var modal = document.getElementById('kultur_modal');
+  if (!modal) return;
+  if (overlay) {
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
+  }
+  modal.hidden = false;
+  modal.classList.add('open');
+  // Accessibility: Fokus in Dialog + Tab-Trap. Escape bleibt ohne
+  // Wirkung (onEscape=null) — die Erstauswahl ist verpflichtend
+  // (siehe tests/61-kultur-first-run.test.js).
+  _installKulturModalA11y(modal, { onEscape: null });
+}
+
+function closeKulturFirstRun() {
+  var overlay = document.getElementById('kultur_overlay');
+  var modal = document.getElementById('kultur_modal');
+  if (modal) {
+    _runKulturModalA11yCleanup(modal);
+    modal.classList.remove('open');
+    modal.hidden = true;
+  }
+  if (overlay) {
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function renderKulturBadge() {
+  var badge = document.getElementById('kultur_badge');
+  var emojiEl = document.getElementById('kultur_badge_emoji');
+  var labelEl = document.getElementById('kultur_badge_label');
+  if (!badge || !emojiEl || !labelEl) return;
+  var k = AppGlobals.state.kultur;
+  if (!AppGlobals.isValidCultureKey(k)) {
+    badge.hidden = true;
+    return;
+  }
+  badge.hidden = false;
+  emojiEl.textContent = AppGlobals.getCultureEmoji(k);
+  labelEl.textContent = AppGlobals.getCultureLabel(k);
+}
+
+// Öffnet die Confirm-Maske, bevor die Kultur tatsächlich gewechselt wird.
+// Merkt sich die neue Auswahl in _pendingKulturChoice.
+function requestChangeKultur() {
+  if (!AppGlobals.state.kultur) return;
+  var overlay = document.getElementById('kultur_confirm_overlay');
+  var modal = document.getElementById('kultur_confirm_modal');
+  var select = document.getElementById('kultur_change_select');
+  if (select) {
+    select.value = AppGlobals.state.kultur;
+    _kulturState.pendingKulturChoice = AppGlobals.state.kultur;
+  }
+  if (overlay) {
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
+  }
+  if (modal) {
+    modal.hidden = false;
+    modal.classList.add('open');
+  }
+  // Accessibility: Fokus in Dialog + Tab-Trap. Escape bricht ab
+  // und stellt den Fokus auf den zuvor aktiven ändern-Button wieder
+  // her (über den beim Install gemerkten prevFocus).
+  _installKulturModalA11y(modal, {
+    onEscape: function() { cancelChangeKultur(); }
+  });
+}
+
+function _onKulturChangeSelectChange(el) {
+  _kulturState.pendingKulturChoice = el.value;
+}
+
+function cancelChangeKultur() {
+  _kulturState.pendingKulturChoice = null;
+  var overlay = document.getElementById('kultur_confirm_overlay');
+  var modal = document.getElementById('kultur_confirm_modal');
+  if (modal) {
+    _runKulturModalA11yCleanup(modal);
+    modal.classList.remove('open');
+    modal.hidden = true;
+  }
+  if (overlay) {
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function confirmChangeKultur() {
+  var key = _kulturState.pendingKulturChoice;
+  if (!AppGlobals.isValidCultureKey(key)) {
+    cancelChangeKultur();
+    return;
+  }
+  var prevKultur = AppGlobals.state.kultur;
+  // Bestehende Schläge behalten ihre r.koernerProEinheit — wir ändern NUR
+  // das globale Profil und den Empfehlungstext. state.koernerProEinheit
+  // folgt dem neuen Standard, damit neue Tabs den passenden Default bekommen.
+  AppGlobals.state.kultur = key;
+  AppGlobals.state.erstauswahlDone = true;
+  AppGlobals.state.koernerProEinheit = AppGlobals.getDefaultKoernerProEinheit(key);
+  cancelChangeKultur();
+  if (typeof AppGlobals.renderKulturBadge === 'function') {
+    AppGlobals.renderKulturBadge();
+  }
+  AppGlobals.saveState();
+  AppGlobals.appEmit('KULTUR_CHANGED', { kultur: key, prevKultur: prevKultur, source: 'confirm' });
+  // Re-render: Results/Header/Körner-Empfehlung könnten sich ändern.
+  if (typeof AppGlobals.renderResults === 'function') {
+    AppGlobals.renderResults();
+  }
+}
+
+// --- Tab-Verwaltung ---
 
     function addReiter() {
       syncStateFromInputs();
       var maxIdx = 0;
       AppGlobals.state.reiter.forEach(function(r, i) { var m = parseInt(r.name.replace(/\D+/g, '')); if (!isNaN(m) && m > maxIdx) maxIdx = m; });
-      AppGlobals.state.reiter.push({ name: 'Schlag ' + (maxIdx + 1), hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled, fahrgassenBreite: AppGlobals.state.fahrgassenBreite });
+      // Per-Tab Einheitsgröße: neuen Schlag mit aktuellem Kultur-Standard
+      // initialisieren. Wenn eine gültige Kultur gesetzt ist, gilt der
+      // Profil-Default (Mais=50000, Raps=1.500.000, Sonstiges=0).
+      // Ohne gültige Kultur fällt es auf den globalen koernerProEinheit
+      // zurück (Mais-Backstop=50000) — damit Frisch-Installs nicht im
+      // "Sonstiges"-Pfad landen.
+      var newKpe;
+      if (AppGlobals.isValidCultureKey(AppGlobals.state.kultur)) {
+        newKpe = AppGlobals.getDefaultKoernerProEinheit(AppGlobals.state.kultur);
+      } else if (typeof AppGlobals.state.koernerProEinheit === 'number'
+                 && AppGlobals.state.koernerProEinheit > 0) {
+        newKpe = AppGlobals.state.koernerProEinheit;
+      } else {
+        newKpe = 50000;
+      }
+      AppGlobals.state.reiter.push({ name: 'Schlag ' + (maxIdx + 1), hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled, fahrgassenBreite: AppGlobals.state.fahrgassenBreite, koernerProEinheit: newKpe });
       AppGlobals.state.activeReiter = AppGlobals.state.reiter.length - 1;
       AppGlobals.appEmit('TAB_ADDED', { tabIdx: AppGlobals.state.activeReiter });
       document.getElementById('hektar').focus();
@@ -202,43 +521,54 @@
 
     // --- Einheiten-Groesse ---
 
+    // HIGH 5: einheitGroesseToggle ist nur noch Auf-/Zuklappen des
+    // per-Schlag-Editors. Schließen darf weder den aktiven Tab-Wert
+    // (r.koernerProEinheit) noch den Kultur-Standard
+    // (state.koernerProEinheit) verändern. Beim erneuten Öffnen erscheint
+    // der korrekte Tab-Wert (syncEinheitGroesseEditorFromTab).
     function einheitGroesseToggle() {
       AppGlobals.state.einheitGroesseEnabled = !AppGlobals.state.einheitGroesseEnabled;
       var btn = document.getElementById('einheit_groesse_toggle');
-      var saved = document.getElementById('einheit_groesse_saved');
+      var settings = document.getElementById('einheit_groesse_settings');
       if (AppGlobals.state.einheitGroesseEnabled) {
-        document.getElementById('einheit_groesse_settings').classList.add('open');
-        btn.classList.add('active');
-        btn.setAttribute('aria-pressed', 'true');
+        if (settings) settings.classList.add('open');
+        if (btn) {
+          btn.classList.add('active');
+          btn.setAttribute('aria-pressed', 'true');
+        }
       } else {
-        document.getElementById('einheit_groesse_settings').classList.remove('open');
-        btn.classList.remove('active');
-        btn.setAttribute('aria-pressed', 'false');
-        AppGlobals.state.koernerProEinheit = 50000;
-        if (saved) saved.textContent = '';
-        // Clear input
-        var kpEl = document.getElementById('koerner_pro_einheit');
-        if (kpEl) { kpEl.value = ''; kpEl.dataset.prev = ''; kpEl.dataset.cleaned = ''; }
+        if (settings) settings.classList.remove('open');
+        if (btn) {
+          btn.classList.remove('active');
+          btn.setAttribute('aria-pressed', 'false');
+        }
       }
+      // Editor (Feld + saved-Text) aus dem aktuellen Tab rekonstruieren
+      // — beim Öffnen sieht der User den korrekten Tab-Wert, beim
+      // Schließen wird kein State angefasst.
+      syncEinheitGroesseEditorFromTab(AppGlobals.getActiveReiter());
       AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'einheitGroesseEnabled' });
     }
 
     function einheitGroesseUpdate() {
       var raw = document.getElementById('koerner_pro_einheit').value;
       var val = AppGlobals.parseDE(raw);
-      var savedEl = document.getElementById('einheit_groesse_saved');
-      if (val !== null && val > 0 && val <= 999999) {
-        AppGlobals.state.koernerProEinheit = Math.round(val);
-        // Show info text only for non-default values
-        if (AppGlobals.state.koernerProEinheit === 50000) {
-          if (savedEl) savedEl.textContent = '';
-        } else {
-          if (savedEl) savedEl.textContent = AppGlobals.state.koernerProEinheit.toLocaleString('de-DE') + ' Körner/Einheit';
-        }
-        document.getElementById('koerner_pro_einheit').style.borderColor = '';
+      var kpEl = document.getElementById('koerner_pro_einheit');
+      if (val !== null && val > 0) {
+        var rounded = Math.round(val);
+        // HIGH 4: schreibt NUR auf den aktiven Tab. state.koernerProEinheit
+        // ist der Kultur-Profil-Default und darf durch manuelle Eingabe
+        // NICHT überschrieben werden — sonst verlieren neue Tabs ihren
+        // Kultur-Standard.
+        var activeTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
+        if (activeTab) activeTab.koernerProEinheit = rounded;
+        kpEl.style.borderColor = '';
       } else {
-        document.getElementById('koerner_pro_einheit').style.borderColor = '#c00';
+        kpEl.style.borderColor = '#c00';
       }
+      // Editor (saved-Text + Feld) aus dem aktuellen Tab rekonstruieren,
+      // damit der Wert konsistent mit r.koernerProEinheit angezeigt wird.
+      syncEinheitGroesseEditorFromTab(AppGlobals.getActiveReiter());
       AppGlobals.appEmit('SETTINGS_CHANGED', { setting: 'koernerProEinheit' });
     }
 
@@ -246,13 +576,22 @@
 
     function resetActiveTab() {
       var active = AppGlobals.state.activeReiter;
+      // Issue: resetActiveTab() muss die per-Schlag-Einheitsgröße erhalten.
+      // Beim Zurücksetzen werden Eingaben + Protokoll geleert, aber die
+      // bisherige manuell gewählte koernerProEinheit dieses Schlags bleibt
+      // bestehen — sonst würde ein späterer Kultur-Wechsel den Schlag
+      // unbemerkt auf den neuen Profil-Default ziehen.
+      var prevKpe = AppGlobals.state.reiter[active]
+        ? AppGlobals.state.reiter[active].koernerProEinheit
+        : undefined;
       AppGlobals.state.reiter[active] = {
         name: AppGlobals.state.reiter[active].name,
         hektar: 0, istHektar: 0, koerner: 0, duenger: 0,
         entries: [],
         done: false,
         fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled,
-        fahrgassenBreite: AppGlobals.state.fahrgassenBreite
+        fahrgassenBreite: AppGlobals.state.fahrgassenBreite,
+        koernerProEinheit: prevKpe
       };
       AppGlobals.state.drillPriorities = {};
       // Clear drill summary values (Issue #281: IDs aus DOM_IDS)
@@ -284,16 +623,24 @@
     function resetAll() {
       // Preserve UI-prefs that "Daten zurücksetzen" should NOT wipe.
       AppGlobals.state = {
-        reiter: [{ name: 'Schlag 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: false, fahrgassenBreite: 0 }],
+        reiter: [{ name: 'Schlag 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: false, fahrgassenBreite: 0, koernerProEinheit: 50000 }],
         activeReiter: 0,
         activeView: null,
         fahrgassenEnabled: false,
         fahrgassenBreite: 0,
         einheitGroesseEnabled: false,
         koernerProEinheit: 50000,
+        kultur: null,
+        erstauswahlDone: false,
         machineLog: [],
         drillPriorities: {}
       };
+      // Fresh-Install-Flag zurück: nach resetAll verhält sich die App
+      // wieder wie eine Erstinstallation (Modal öffnet sich erneut,
+      // initialer Schlag wird neu mit Kultur-Standard belegt).
+      if (typeof AppGlobals.resetLoadStateEverSucceeded === 'function') {
+        AppGlobals.resetLoadStateEverSucceeded();
+      }
       // Input- und Fehlerfelder zurücksetzen
       _resetInput(DOM_IDS.hektar);
       _resetInput(DOM_IDS.istHektar);
@@ -338,6 +685,22 @@
       AppGlobals.state.drillPriorities = {};
       AppGlobals.renderTabs();
       AppGlobals.saveState();
+      // Kultur-UI konsistent nachziehen: resetAll() setzt state.kultur = null
+      // und erstauswahlDone = false. Der Landwirt MUSS nach dem Reset eine
+      // Kultur wählen, damit der Rechner produktiv nutzbar ist. Wir
+      // aktualisieren Badge/Empfehlung und öffnen den verpflichtenden
+      // First-run-Dialog hier selbst — kein Reload, kein erneuter initUI()
+      // nötig. Dieselbe Logik wie der initUI-Pfad (Issue: storage-Event-
+      // Sync hat diese Synchronisierung als Vorbild).
+      if (typeof AppGlobals.renderKulturBadge === 'function') {
+        AppGlobals.renderKulturBadge();
+      }
+      if (typeof AppGlobals._renderKulturEmpfehlung === 'function') {
+        AppGlobals._renderKulturEmpfehlung();
+      }
+      if (typeof AppGlobals.openKulturFirstRun === 'function') {
+        AppGlobals.openKulturFirstRun();
+      }
     }
 
     // --- Reset-Modal (Issue #236, redesign v3) ---
@@ -473,7 +836,8 @@
     function _buildDrillEntry(tab, unitsRaw, duengerRaw, zaehlerStand, mlIdx) {
       var fgFactor = (tab.fahrgassenEnabled && tab.fahrgassenBreite >= 2)
         ? AppGlobals.computeFahrgassenFaktor(tab.fahrgassenBreite) : 1;
-      var perUnit = (tab.koerner * fgFactor) / AppGlobals.state.koernerProEinheit;
+      var kpe = AppGlobals.resolveKoernerProEinheit(tab);
+      var perUnit = (kpe > 0) ? (tab.koerner * fgFactor) / kpe : 0;
       var maxUnitsThisTab = tab.hektar * perUnit;
       var unitsForThisTab = Math.min(unitsRaw, maxUnitsThisTab);
       return {
@@ -942,13 +1306,71 @@
       ih.value = ihVal; ih.dataset.prev = ihVal; ih.dataset.cleaned = ihVal;
       k.value = kVal;  k.dataset.prev = kVal;  k.dataset.cleaned = kVal;
       d.value = dVal;  d.dataset.prev = dVal;  d.dataset.cleaned = dVal;
+      // HIGH 3: Per-Tab kpe-Feld, saved-Text und UI-Zustand müssen bei
+      // jedem Tabwechsel und bei init synchron sein, sonst zeigt das
+      // Eingabefeld den Wert eines anderen Tabs.
+      syncEinheitGroesseEditorFromTab(r);
+    }
+
+    // Synchronisiert den per-Schlag-Editor (Eingabefeld + saved-Text) aus
+    // dem aktuellen Tab. Wird von syncInputsFromState aufgerufen und kann
+    // auch direkt (z. B. nach Korrekturen via DevTools) genutzt werden.
+    // 0/leer → Feld leer, saved-Text leer.
+    // 50000 (Mais-Default) → Feld zeigt 50000, saved-Text leer (Default).
+    function syncEinheitGroesseEditorFromTab(r) {
+      var kpEl = document.getElementById('koerner_pro_einheit');
+      var savedEl = document.getElementById('einheit_groesse_saved');
+      var tabKpe = (r && typeof r.koernerProEinheit === 'number'
+                    && isFinite(r.koernerProEinheit)
+                    && r.koernerProEinheit > 0)
+        ? r.koernerProEinheit
+        : 0;
+      if (kpEl) {
+        // Rohe Ganzzahl (kein Tausender-Punkt) damit parseDE() in
+        // einheitGroesseUpdate() den Wert korrekt zurückschreibt.
+        var v = tabKpe > 0 ? String(tabKpe) : '';
+        kpEl.value = v;
+        kpEl.dataset.prev = v;
+        kpEl.dataset.cleaned = v;
+        kpEl.style.borderColor = '';
+      }
+      if (savedEl) {
+        // Konsistent mit einheitGroesseUpdate(): 50000 (Mais-Default) ist
+        // kein Hinweis wert; alles andere zeigt den Körner/Einheit-Text.
+        if (tabKpe > 0 && tabKpe !== 50000) {
+          savedEl.textContent = tabKpe.toLocaleString('de-DE') + ' Körner/Einheit';
+        } else {
+          savedEl.textContent = '';
+        }
+      }
     }
 
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 Object.assign(window.AppGlobals, {
   DOM_IDS: DOM_IDS,
   _resetInput: _resetInput,
+  syncEinheitGroesseEditorFromTab: syncEinheitGroesseEditorFromTab,
+  isUntouchedInitialField: isUntouchedInitialField,
+  chooseKultur: chooseKultur,
+  requestChangeKultur: requestChangeKultur,
+  confirmChangeKultur: confirmChangeKultur,
+  cancelChangeKultur: cancelChangeKultur,
+  _onKulturChangeSelectChange: _onKulturChangeSelectChange,
+  renderKulturBadge: renderKulturBadge,
+  openKulturFirstRun: openKulturFirstRun,
+  closeKulturFirstRun: closeKulturFirstRun,
   addReiter: addReiter,
+});
+// _kulturState.pendingKulturChoice als Live-Property auf AppGlobals
+// (Live-Binding für Tests, damit sie den pending Key direkt setzen können
+// ohne die IIFE-Grenze zu durchbrechen).
+Object.defineProperty(window.AppGlobals, '_pendingKulturChoice', {
+  get: function () { return _kulturState.pendingKulturChoice; },
+  set: function (v) { _kulturState.pendingKulturChoice = v; },
+  configurable: true,
+  enumerable: true,
+});
+Object.assign(window.AppGlobals, {
   removeReiter: removeReiter,
   switchReiter: switchReiter,
   renameReiter: renameReiter,

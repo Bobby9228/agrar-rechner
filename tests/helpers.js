@@ -76,8 +76,9 @@ export function createDom() {
   // test scope matches production.
   const moduleScript = [
     loadModule('app-globals.js'),
-    'var _internal = { carryoverCache: null, drillCalcTimer: null, pendingKey: null };',
+    'var _internal = { carryoverCache: null, drillCalcTimer: null };',
     loadModule('state.js'),
+    loadModule('culture.js'),
     loadModule('calculations.js'),
     loadModule('ui-handlers.js'),
     loadModule('render-tabs.js'),

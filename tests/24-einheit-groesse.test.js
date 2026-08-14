@@ -44,13 +44,29 @@ describe('einheitGroesseToggle', () => {
 });
 
 describe('einheitGroesseUpdate', () => {
-  it('updates koernerProEinheit from input', () => {
+  it('updates active tab koernerProEinheit from input', () => {
+    // HIGH 4: Handler schreibt nur auf r.koernerProEinheit, nicht
+    // mehr auf state.koernerProEinheit.
     const { window: w } = createDom();
     w.document.getElementById('koerner_pro_einheit').value = '40000';
 
     w.einheitGroesseUpdate();
 
-    expect(w.state.koernerProEinheit).toBe(40000);
+    expect(w.state.reiter[0].koernerProEinheit).toBe(40000);
+  });
+
+  it.each([1000000, 1500000])('accepts seven-digit unit sizes such as %i', (value) => {
+    const { window: w, store } = createDom();
+    const input = w.document.getElementById('koerner_pro_einheit');
+    input.value = String(value);
+
+    w.einheitGroesseUpdate();
+
+    expect(w.state.reiter[0].koernerProEinheit).toBe(value);
+    expect(input.style.borderColor).toBe('');
+    expect(w.document.getElementById('einheit_groesse_saved').textContent)
+      .toContain(value.toLocaleString('de-DE'));
+    expect(JSON.parse(store['agrar_rechner']).reiter[0].koernerProEinheit).toBe(value);
   });
 
   it('shows info text for non-default value', () => {
@@ -107,8 +123,10 @@ describe('einheitGroesseUpdate', () => {
     w.syncStateFromInputs();
     w.renderResults();
 
-    w.document.getElementById('koerner_pro_einheit').value = '40000';
-    w.einheitGroesseUpdate();
+    // Migration 5→6: einheitGroesseUpdate setzt jetzt den per-Tab kpe,
+    // nicht mehr den globalen. Hier setzen wir ihn manuell und re-rendern.
+    w.state.reiter[0].koernerProEinheit = 40000;
+    w.renderResults();
 
     // Einheiten should now be based on 40000 instead of 50000
     const einheiten = w.document.getElementById('r_einheiten').textContent;
@@ -122,7 +140,8 @@ describe('einheitGroesseUpdate', () => {
     w.einheitGroesseUpdate();
 
     const saved = JSON.parse(store['agrar_rechner']);
-    expect(saved.koernerProEinheit).toBe(40000);
+    // HIGH 4: Per-Tab-Wert wird gespeichert, nicht state.koernerProEinheit.
+    expect(saved.reiter[0].koernerProEinheit).toBe(40000);
   });
 });
 

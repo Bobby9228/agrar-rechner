@@ -1,0 +1,78 @@
+name: Idee oder Funktion vorschlagen
+description: Schlage eine Verbesserung oder neue Funktion für den Agrar-Rechner vor.
+title: "[Idee] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke für deinen Vorschlag. Beschreibe vor allem das Problem aus der Praxis – die technische Lösung kann später gemeinsam entstehen.
+        Prüfe vorher kurz, ob die Idee bereits als Issue oder in `IDEAS.md` steht.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem oder Bedarf
+      description: Welche Situation im Arbeitsalltag soll verbessert werden?
+      placeholder: Beschreibe die konkrete Situation auf dem Feld oder an der Maschine.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Gewünschte Verbesserung
+      description: Was sollte der Agrar-Rechner künftig ermöglichen oder anders machen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Beispiel aus der Praxis
+      description: Wie würde die Funktion in einem typischen Ablauf genutzt werden?
+      placeholder: |
+        1. Ich öffne ...
+        2. Ich gebe ... ein
+        3. Die App zeigt ...
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Betroffener Bereich
+      options:
+        - Rechner
+        - Protokoll / Einfüllen
+        - Übersicht / Dashboard
+        - Schläge / Reiter
+        - Berechnung von Saatgut oder Dünger
+        - Speicherung / Export
+        - Installation / Offline-Nutzung
+        - Darstellung / Bedienung
+        - Neuer Bereich
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Woran wäre die Idee erfolgreich umgesetzt?
+      description: Nenne nach Möglichkeit konkrete, aus Nutzersicht prüfbare Ergebnisse.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Bisherige Lösung oder Alternativen
+      description: Wie löst du die Situation aktuell? Gibt es einen brauchbaren Umweg?
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Vor dem Absenden
+      options:
+        - label: Ich habe geprüft, ob es bereits ein ähnliches Issue oder einen Eintrag in `IDEAS.md` gibt.
+          required: true

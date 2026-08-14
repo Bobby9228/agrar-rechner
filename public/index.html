@@ -44,7 +44,12 @@
         <p class="subtitle eyebrow">Einheiten &amp; Dünger für Aussaat</p>
         <h1>🌾 Agrar-Rechner</h1>
       </div>
-      <div style="display:flex;gap:8px;align-items:flex-start;">
+      <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end;">
+        <div class="kultur-badge" id="kultur_badge" hidden>
+          <span class="kultur-badge-emoji" id="kultur_badge_emoji" aria-hidden="true">🌽</span>
+          <span class="kultur-badge-label" id="kultur_badge_label">Mais</span>
+          <button class="kultur-badge-change" id="kultur_badge_change" onclick="requestChangeKultur()" aria-label="Kultur wechseln">ändern</button>
+        </div>
         <button class="theme-toggle" onclick="toggleTheme()" id="theme_toggle" aria-label="Dark Mode umschalten">🌙</button>
         <button class="dashboard-open-btn" onclick="openDashboard()">📊 Dashboard</button>
       </div>
@@ -74,7 +79,7 @@
       <div class="field">
         <label for="koerner">Körner pro Hektar</label>
         <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" maxlength="8" oninput="onInputFormat(this, 'integer', event)" onchange="onInputKoerner(this)" onblur="onInputKoerner(this)" aria-describedby="err_koerner">
-        <div class="unit">üblich: 80.000 – 100.000</div>
+        <div class="unit" id="koerner_empfehlung">üblich: 80.000 – 100.000</div>
         <div class="error-msg" id="err_koerner" role="alert"></div>
       </div>
 
@@ -88,7 +93,7 @@
           <input type="text" inputmode="numeric" id="koerner_pro_einheit" placeholder="z.B. 50000" oninput="onInputFormat(this, 'integer', event)" onchange="einheitGroesseUpdate()" onblur="einheitGroesseUpdate()">
         </div>
         <div class="fahrgassen-saved" id="einheit_groesse_saved"></div>
-        <div class="fahrgassen-info">Wie viele Körner eine "Einheit" Saatgut entsprechen (üblich: 50.000).</div>
+        <div class="fahrgassen-info">Der Standard richtet sich nach der gewählten Kultur und kann für diesen Schlag angepasst werden.</div>
       </div>
     </div>
 
@@ -258,18 +263,26 @@
     //
     // Früher: ~2172 Zeilen inline JS in index.html
     // Dann: 5 Module (state/calculations/ui-handlers/rendering/main)
-    // Jetzt: 8 Module (rendering aufgeteilt in 4: Issue #212)
+    // Dann: 8 Module (rendering aufgeteilt in 4: Issue #212)
+    // Jetzt: 9 Module (Kultur-Feature ergänzt culture.js: Mais/Raps/Sonstiges
+    //   + per-Tab koernerProEinheit)
     //
     // Lade-Reihenfolge (wichtig!):
-    //   state.js → calculations.js → ui-handlers.js
-    //     → render-tabs.js → render-results.js → render-drill.js → render-dashboard.js
-    //     → main.js
+    //   app-globals.js → state.js → culture.js → calculations.js
+    //     → ui-handlers.js → render-tabs.js → render-results.js
+    //     → render-drill.js → render-dashboard.js → main.js
     //
+    //   app-globals.js: AppGlobals-Namespace + Live-Alias für `state`
     //   state.js definiert: state, saveState(), loadState()
-    //   calculations.js braucht: state, _internal (von state.js)
-    //   ui-handlers.js braucht: state, calculations.js (getActiveReiter, etc.)
+    //   culture.js: Profile (Mais/Raps/Sonstiges), isValidCultureKey etc.
+    //     — wird VOR calculations.js/ui-handlers.js gebraucht, weil
+    //     chooseKultur/resetAll/addReiter diese Helper nutzen.
+    //   calculations.js braucht: state, culture (Profil-Defaults),
+    //     _internal (von state.js)
+    //   ui-handlers.js braucht: state, calculations.js, culture
     //   render-tabs.js braucht: state, ui-handlers.js, calculations.js
-    //   render-results.js braucht: state, render-tabs.js, render-drill.js, calculations.js
+    //   render-results.js braucht: state, render-tabs.js, render-drill.js,
+    //     calculations.js
     //   render-drill.js braucht: state, ui-handlers.js, calculations.js
     //   render-dashboard.js braucht: state, calculations.js
     //   main.js: APP_VERSION, Event-Emitter, initTheme
@@ -277,6 +290,7 @@
   </script>
   <script src="js/app-globals.js"></script>
   <script src="js/state.js"></script>
+  <script src="js/culture.js"></script>
   <script src="js/calculations.js"></script>
   <script src="js/ui-handlers.js"></script>
   <script src="js/render-tabs.js"></script>
@@ -287,6 +301,63 @@
   <!-- Dashboard-Overlay: nur noch als leeres Backdrop-Element für Alt-Tests
        erhalten (.dashboard-sheet selbst liegt jetzt oben in .app-layout). -->
   <div class="dashboard-overlay" id="dashboard_overlay" onclick="closeDashboard()"></div>
+  <!-- Kultur-Auswahl (Erststart, verpflichtend) -->
+  <div class="kultur-overlay" id="kultur_overlay" aria-hidden="true"></div>
+  <div class="kultur-modal" id="kultur_modal" role="dialog" aria-modal="true" aria-labelledby="kultur_modal_title" aria-describedby="kultur_modal_desc" hidden>
+    <div class="kultur-modal-badge" aria-hidden="true">🌾</div>
+    <h2 class="kultur-modal-title" id="kultur_modal_title">Welche Kultur planst du?</h2>
+    <p class="kultur-modal-subtitle" id="kultur_modal_desc">
+      Bitte wähle die Kultur für deine Aussaat. Wir merken uns die Auswahl und
+      passen die Empfehlung für Körner pro Hektar automatisch an. Die Wahl
+      lässt sich später oben rechts über „ändern" jederzeit anpassen.
+    </p>
+    <div class="kultur-options">
+      <button class="kultur-option" id="kultur_choice_mais" onclick="chooseKultur('mais')" aria-label="Kultur Mais wählen">
+        <span class="kultur-option-icon" aria-hidden="true">🌽</span>
+        <span class="kultur-option-body">
+          <span class="kultur-option-title">Mais</span>
+          <span class="kultur-option-desc">~50.000 Körner/Einheit · 80.000 – 100.000 Körner/ha</span>
+        </span>
+      </button>
+      <button class="kultur-option" id="kultur_choice_raps" onclick="chooseKultur('raps')" aria-label="Kultur Raps wählen">
+        <span class="kultur-option-icon" aria-hidden="true">🌼</span>
+        <span class="kultur-option-body">
+          <span class="kultur-option-title">Raps</span>
+          <span class="kultur-option-desc">~1.500.000 Körner/Einheit · 250.000 – 350.000 Körner/ha</span>
+        </span>
+      </button>
+      <button class="kultur-option" id="kultur_choice_sonstiges" onclick="chooseKultur('sonstiges')" aria-label="Kultur Sonstiges wählen">
+        <span class="kultur-option-icon" aria-hidden="true">🌱</span>
+        <span class="kultur-option-body">
+          <span class="kultur-option-title">Sonstiges</span>
+          <span class="kultur-option-desc">Körner pro Einheit manuell eingeben</span>
+        </span>
+      </button>
+    </div>
+    <p class="kultur-modal-note" id="kultur_modal_note">Diese Auswahl ist erforderlich, bevor der Rechner genutzt werden kann.</p>
+  </div>
+  <!-- Kultur-Wechsel Confirm (für spätere Änderung) -->
+  <div class="kultur-confirm-overlay" id="kultur_confirm_overlay" aria-hidden="true"></div>
+  <div class="kultur-confirm-modal" id="kultur_confirm_modal" role="alertdialog" aria-modal="true" aria-labelledby="kultur_confirm_title" aria-describedby="kultur_confirm_desc" hidden>
+    <button class="kultur-confirm-x" id="kultur_confirm_cancel" onclick="cancelChangeKultur()" aria-label="Abbrechen">✕</button>
+    <div class="kultur-confirm-badge" aria-hidden="true">⚠️</div>
+    <h2 class="kultur-confirm-title" id="kultur_confirm_title">Kultur wirklich wechseln?</h2>
+    <p class="kultur-confirm-desc" id="kultur_confirm_desc">
+      Deine bestehenden Schläge behalten ihre <strong>individuellen Einheitsgrößen</strong>
+      und Eingaben. Nur das <strong>Profil</strong> und die <strong>Empfehlung</strong> ändern sich,
+      und <strong>künftige neue Schläge</strong> erhalten den neuen Standard.
+    </p>
+    <label class="kultur-confirm-select-label" for="kultur_change_select">Neue Kultur</label>
+    <select id="kultur_change_select" class="kultur-confirm-select" onchange="_onKulturChangeSelectChange(this)" aria-label="Neue Kultur auswählen">
+      <option value="mais">🌽 Mais</option>
+      <option value="raps">🌼 Raps</option>
+      <option value="sonstiges">🌱 Sonstiges</option>
+    </select>
+    <div class="kultur-confirm-actions">
+      <button class="kultur-confirm-cancel" id="kultur_confirm_cancel_btn" onclick="cancelChangeKultur()">Abbrechen</button>
+      <button class="kultur-confirm-ok" id="kultur_confirm_ok" onclick="confirmChangeKultur()">Trotzdem wechseln</button>
+    </div>
+  </div>
   <!-- Reset Confirmation Modal (Issue #236, redesign v3) -->
   <div class="reset-overlay" id="reset_overlay" onclick="_onOverlayClick(event)"></div>
   <div class="reset-modal" id="reset_modal" role="dialog" aria-modal="true" aria-labelledby="reset_modal_title" aria-describedby="reset_modal_desc">

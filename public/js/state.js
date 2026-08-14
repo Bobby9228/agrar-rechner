@@ -25,7 +25,8 @@ var state = {
     koerner:    0,
     duenger:    0,
     entries:    [],
-    done:       false
+    done:       false,
+    koernerProEinheit: 50000
   }],
   activeReiter:   0,
   activeView:     null,
@@ -34,6 +35,8 @@ var state = {
   fahrgassenBreite:   0,
   einheitGroesseEnabled: false,
   koernerProEinheit:  50000,
+  kultur:           null,
+  erstauswahlDone:   false,
   machineLog:    [],
   drillPriorities: {}
 };
@@ -109,6 +112,7 @@ var ALLOWED_TOP_KEYS = [
   'reiter', 'activeReiter', 'activeView', 'dashboardOpen',
   'fahrgassenEnabled', 'fahrgassenBreite',
   'einheitGroesseEnabled', 'koernerProEinheit',
+  'kultur', 'erstauswahlDone',
   'machineLog', 'drillPriorities',
   '_lv',
   // Legacy-Keys (nur für Migration 0→1 lesend toleriert)
@@ -118,7 +122,7 @@ var ALLOWED_TOP_KEYS = [
 var ALLOWED_TAB_KEYS = [
   'name', 'hektar', 'istHektar', 'koerner', 'duenger',
   'entries', 'fahrgassenEnabled', 'fahrgassenBreite',
-  'done'
+  'done', 'koernerProEinheit'
 ];
 
 function isPlainObject(v) {
@@ -205,6 +209,16 @@ function sanitizeTab(raw) {
     // fertiggefahren wurde und `used` damit nicht mehr im Tank liegt.
     done:      sanitizeBoolean(raw.done, false)
   };
+  // Per-Tab Einheitsgröße (Migration 5→6): bestehende globale
+  // koernerProEinheit wird hier herunterkopiert, neue Tabs erhalten
+  // den Kultur-Standard beim Anlegen. 0 ist ein gültiger Wert
+  // (Sonstiges ohne Eingabe) — Sanitizer darf NICHT auf Default kippen.
+  if (raw.koernerProEinheit !== undefined) {
+    var tabKpe = sanitizeNumber(raw.koernerProEinheit, 0);
+    tab.koernerProEinheit = (typeof tabKpe === 'number' && isFinite(tabKpe) && tabKpe >= 0)
+      ? Math.round(tabKpe)
+      : 0;
+  }
   // done-Flag (Issue #377/#378): manuell markierter Fertig-Status pro Tab.
   // Migration _lv 4→5 belegt fehlendes done mit false (idempotent über sanitizeTab).
   if (raw.done !== undefined) {
@@ -245,12 +259,21 @@ function parsePersistedState(raw) {
   return JSON.parse(raw, jsonReviver);
 }
 
-function loadState() {
+function parseAndSanitizeState(raw) {
+  // Wandelt einen JSON-String in einen validierten Zustand.
+  // Führt dieselbe Parse-/Migrations-/Sanitisierungs-Pipeline aus wie
+  // loadState(), jedoch ohne lokale Storage-Nebenwirkungen und ohne
+  // den globalen `state` zu mutieren.
+  //
+  // Gibt { state: <sanitizedObj>, originalLv: <number> } bei Erfolg
+  // zurück, oder null wenn der String kein gültiger Zustand ist.
+  //
+  // Verwendung: Cross-Tab-Sync (storage-Event) — ein anderer Tab darf
+  // die Schema-/Typ-Wache der loadState-Pipeline nicht umgehen, indem
+  // er einen manipulierten JSON-String direkt in localStorage schreibt.
   try {
-    var saved = localStorage.getItem('agrar_rechner');
-    if (!saved) return false;
-    var data = parsePersistedState(saved);
-    if (!isPlainObject(data)) return false;
+    var data = parsePersistedState(raw);
+    if (!isPlainObject(data)) return null;
     var originalLv = data._lv || 0;
     var lv = originalLv;
     // Migration 0→1: Einzelne Felder → Tab-Array
@@ -273,23 +296,12 @@ function loadState() {
       if (!data.machineLog) data.machineLog = [];
       lv = 3;
     }
-    // Migration 3→4: Theme-Key vereinheitlichen, neue Defaults
+    // Migration 3→4: neue Defaults (in-memory only — die Theme-Key-
+    //   Migration in localStorage wird im loadState-Pfad zusätzlich
+    //   ausgeführt, weil sie Storage-Nebenwirkungen hat).
     if (lv < 4) {
-      // Theme: alten Key 'mais_rechner_theme' → neuen Key 'theme'
-      // (durch migrateLegacyStorageKeys() oben meist schon erledigt —
-      //  hier nur Defensiv-Fallback für direkt migrierte Snapshots)
-      try {
-        var oldTheme = localStorage.getItem('mais_rechner_theme');
-        if (oldTheme && !localStorage.getItem('theme')) {
-          localStorage.setItem('theme', oldTheme);
-        }
-        if (oldTheme) localStorage.removeItem('mais_rechner_theme');
-      } catch(e) {}
-      // koernerProEinheit Default (falls noch aus alter Migration fehlend)
       if (data.koernerProEinheit === undefined) data.koernerProEinheit = 50000;
-      // einheitGroesseEnabled Default
       if (data.einheitGroesseEnabled === undefined) data.einheitGroesseEnabled = false;
-      // drillPriorities Default
       if (!data.drillPriorities) data.drillPriorities = {};
     }
     // Migration 4→5 (Issue #377): manuelles "Feld fertig"-Flag pro Tab.
@@ -298,7 +310,7 @@ function loadState() {
     // wird weiter unten auf `_lv = 5` gehoben.
     if (lv < 5) lv = 5;
     // Validate und übernehmen — Schema-strict ab _lv=4
-    if (!Array.isArray(data.reiter) || data.reiter.length === 0) return false;
+    if (!Array.isArray(data.reiter) || data.reiter.length === 0) return null;
     var sanitizedReiter = [];
     for (var i = 0; i < data.reiter.length; i++) {
       sanitizedReiter.push(sanitizeTab(data.reiter[i]));
@@ -318,6 +330,23 @@ function loadState() {
     data.einheitGroesseEnabled = sanitizeBoolean(data.einheitGroesseEnabled, false);
     if (data.koernerProEinheit === undefined) data.koernerProEinheit = 50000;
     data.koernerProEinheit = sanitizeNumber(data.koernerProEinheit, 50000);
+    // Migration 5→6 (Kultur-Auswahl): bestehende Tabs bekommen den
+    // effektiv verwendeten globalen kpe als per-Tab-Wert, damit
+    // Berechnungen unverändert bleiben. Sonstiges hat kpe=0/leer.
+    // Falls der State schon eine Kultur+erstauswahlDone hat (z.B. ein
+    // anderer Tab hat es bereits gespeichert), übernehmen wir die
+    // und setzen erstauswahlDone=true, damit das Modal nicht erneut
+    // erscheint.
+    var mig6NeedsGlobalDefault = (data.kultur === undefined);
+    var mig6Kultur = (typeof data.kultur === 'string' && AppGlobals.isValidCultureKey(data.kultur))
+      ? data.kultur
+      : null;
+    var mig6ErstauswahlDone = (data.erstauswahlDone === true) || (mig6Kultur !== null);
+    if (mig6Kultur === null && mig6ErstauswahlDone) {
+      // Defensive: erstauswahlDone=true ohne gültige Kultur → kultur
+      // zurücksetzen, sonst bleibt der Erststart hängen.
+      mig6ErstauswahlDone = false;
+    }
     // machineLog sanitizen
     var machineLog = [];
     if (Array.isArray(data.machineLog)) {
@@ -329,6 +358,51 @@ function loadState() {
     data.machineLog = machineLog;
     // drillPriorities muss Plain Object sein
     if (!isPlainObject(data.drillPriorities)) data.drillPriorities = {};
+    // Migration 5→6: per-Tab koernerProEinheit aus altem Global übernehmen
+    if (mig6NeedsGlobalDefault) {
+      // globalDefault: bisher effektiv verwendeter Wert.
+      // Wenn der Nutzer den "Einheiten-Größe anpassen"-Toggle aktiv hatte,
+      // war sein Wert der globale koernerProEinheit (z.B. 80000).
+      // Sonst Default 50000.
+      var globalDefault = (data.einheitGroesseEnabled && data.koernerProEinheit > 0)
+        ? data.koernerProEinheit
+        : 50000;
+      for (var ti = 0; ti < sanitizedReiter.length; ti++) {
+        var t = sanitizedReiter[ti];
+        if (t.koernerProEinheit === undefined) {
+          t.koernerProEinheit = globalDefault;
+        }
+      }
+      // Global default bleibt als Quelle für NEUE Tabs, bis der Nutzer
+      // eine Kultur wählt. Solange keine Kultur: globalDefault = 50000
+      // (Mais-Default). Nach Erstauswahl wird state.koernerProEinheit
+      // auf den Kultur-Standard gesetzt.
+      if (data.kultur === undefined) data.kultur = null;
+      if (data.erstauswahlDone === undefined) data.erstauswahlDone = false;
+    } else {
+      // Hat schon Felder: nur Defaults ergänzen falls ganz fehlend
+      if (data.kultur === undefined) data.kultur = null;
+      if (data.erstauswahlDone === undefined) data.erstauswahlDone = false;
+    }
+    data.kultur = mig6Kultur;
+    data.erstauswahlDone = mig6ErstauswahlDone;
+    // Migration 6→7: v1.1.0/v1.1.1 konnte bei einem bestehenden Nutzer
+    // nach der ersten Raps-Auswahl den unberührten Startschlag auf dem alten
+    // Mais-Default 50.000 belassen. Diesen eindeutig erkennbaren Zustand
+    // einmalig reparieren. Sobald fachliche Daten, Protokolle, done=true oder
+    // eine individuelle KPE vorliegen, bleibt der Schlag strikt unverändert.
+    if (originalLv < 7 && data.kultur === 'raps' && data.erstauswahlDone === true) {
+      var startTab = sanitizedReiter[0];
+      var untouchedRapsStart = startTab
+        && startTab.koernerProEinheit === 50000
+        && Number(startTab.hektar || 0) === 0
+        && Number(startTab.istHektar || 0) === 0
+        && Number(startTab.koerner || 0) === 0
+        && Number(startTab.duenger || 0) === 0
+        && (!Array.isArray(startTab.entries) || startTab.entries.length === 0)
+        && startTab.done !== true;
+      if (untouchedRapsStart) startTab.koernerProEinheit = 1500000;
+    }
     // Final: sanitisiertes reiter einsetzen
     data.reiter = sanitizedReiter;
     // Unbekannte Top-Level-Keys strippen (Whitelist)
@@ -337,13 +411,48 @@ function loadState() {
         var k = ALLOWED_TOP_KEYS[ki];
         if (data[k] !== undefined) cleaned[k] = data[k];
     }
-    cleaned._lv = 5;
-    data = cleaned;
-    state = data;
-    // Migration-Persistenz: Wenn die Daten nicht bereits _lv=5 waren,
+    cleaned._lv = 7;
+    return { state: cleaned, originalLv: originalLv };
+  } catch(e) {
+    return null;
+  }
+}
+
+// Fresh-install-Erkennung (Kultur-Feature): merkt sich, ob loadState()
+// in dieser Session jemals einen State aus localStorage geladen hat.
+// ui-handlers.chooseKultur nutzt das, um nur bei einem WIRKLICH frischen
+// Nutzer den initialen leeren Schlag 0 mit dem Kultur-Standard zu
+// initialisieren. Migrierte oder bereits aktive Nutzer behalten ihre
+// bestehenden Tabs strikt unverändert.
+// Wird in resetAll() über resetLoadStateEverSucceeded() auf false
+// zurückgesetzt, damit ein „Daten zurücksetzen" wie ein Neustart wirkt.
+var _loadStateEverSucceeded = false;
+
+function loadState() {
+  try {
+    var saved = localStorage.getItem('agrar_rechner');
+    if (!saved) return false;
+    var result = parseAndSanitizeState(saved);
+    if (!result) return false;
+    var originalLv = result.originalLv;
+    state = result.state;
+    _loadStateEverSucceeded = true;
+    // Migration 3→4 localStorage side effect: Theme-Key vereinheitlichen.
+    // (migrateLegacyStorageKeys() hat das meist schon erledigt — hier nur
+    //  Defensiv-Fallback für direkt migrierte Snapshots.)
+    if (originalLv < 4) {
+      try {
+        var oldTheme = localStorage.getItem('mais_rechner_theme');
+        if (oldTheme && !localStorage.getItem('theme')) {
+          localStorage.setItem('theme', oldTheme);
+        }
+        if (oldTheme) localStorage.removeItem('mais_rechner_theme');
+      } catch(e) {}
+    }
+    // Migration-Persistenz: Wenn die Daten nicht bereits _lv=7 waren,
     // schreibe den migrierten Snapshot einmalig zurück, damit nachfolgende
     // Page-Loads die Migration überspringen können.
-    if (originalLv < 5) {
+    if (originalLv < 7) {
       try {
         localStorage.setItem('agrar_rechner', JSON.stringify(state));
       } catch(e) {
@@ -357,6 +466,13 @@ function loadState() {
     console.error('loadState failed:', e);
     return false;
   }
+}
+
+// Reset des Fresh-Install-Flags. Wird von resetAll() aufgerufen, damit
+// ein vollständiger Daten-Reset sich für den Nutzer wie eine Neuinstallation
+// verhält (Modal öffnet sich wieder, initialer Schlag wird neu initialisiert).
+function resetLoadStateEverSucceeded() {
+  _loadStateEverSucceeded = false;
 }
 
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
@@ -382,5 +498,12 @@ Object.assign(window.AppGlobals, {
   sanitizeTab: sanitizeTab,
   jsonReviver: jsonReviver,
   parsePersistedState: parsePersistedState,
+  parseAndSanitizeState: parseAndSanitizeState,
   loadState: loadState,
+  resetLoadStateEverSucceeded: resetLoadStateEverSucceeded,
+});
+Object.defineProperty(window.AppGlobals, '_loadStateEverSucceeded', {
+  get: function () { return _loadStateEverSucceeded; },
+  configurable: true,
+  enumerable: true,
 });

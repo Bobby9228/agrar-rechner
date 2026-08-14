@@ -1,6 +1,54 @@
 // Pure functions für landwirtschaftliche Berechnungen.
 // Gleiche Eingabe → gleiche Ausgabe, kein State-Zugriff, keine DOM-Manipulation.
 
+// --- Per-Tab Einheitsgröße ---
+//
+// Migration 5→6 (Kultur-Feature): r.koernerProEinheit ist ab jetzt die
+// authoritative Quelle für die Einheitsgröße. Der globale state.koernerProEinheit
+// bleibt als "Profil-Default" (vom aktuellen Kultur-Profil gesetzt), wird
+// beim Anlegen eines neuen Tabs kopiert, und dient als Fallback für ältere
+// Tabs ohne per-Tab-Feld.
+//
+// Reihenfolge (alle Berechnungen einheitlich):
+//   1. expliziter Funktionsparameter (Tests, Sonderszenarien) — wenn > 0
+//   2. r.koernerProEinheit — jeder endliche Wert zählt (auch 0 = Sonstiges leer)
+//   3. AppGlobals.state.koernerProEinheit — nur wenn r keinen Wert hat
+//   4. 50000 (Mais-Backstop für Frisch-Installs ohne Kultur)
+//
+// Ein kpe von 0 ist ein gültiger Wert ("Sonstiges ohne Eingabe") — die
+// Aufrufer prüfen separat (getTabKoernerProEinheit / renderResultCard) und
+// blenden die Berechnung mit einem Placeholder aus.
+function resolveKoernerProEinheit(r, koernerProEinheit) {
+  if (koernerProEinheit !== undefined && koernerProEinheit !== null) {
+    var n = Number(koernerProEinheit);
+    if (isFinite(n) && n > 0) return n;
+    if (n === 0) return 0; // explizit übergebene 0 respektieren
+  }
+  if (r && typeof r.koernerProEinheit === 'number' && isFinite(r.koernerProEinheit)) {
+    return r.koernerProEinheit;
+  }
+  var g = AppGlobals.state && AppGlobals.state.koernerProEinheit;
+  if (typeof g === 'number' && isFinite(g)) return g;
+  return 50000;
+}
+
+// Helper für Aufrufer, die wissen wollen, ob der Tab eine sinnvolle
+// Einheitsgröße hat (für UI: "Bitte Körner pro Einheit angeben").
+// Sonstiges-Tabs vor User-Eingabe geben hier 0 zurück.
+//
+// Per-Tab-0 ist die explizite Aussage „nicht angegeben" (Sonstiges ohne
+// Eingabe, oder vom User bewusst geleert) und wird respektiert — er fällt
+// NICHT auf den globalen Profil-Default zurück. Nur wenn r.koernerProEinheit
+// gar nicht gesetzt/ungültig ist, wird das globale Profil konsultiert.
+function getTabKoernerProEinheit(r) {
+  if (r && typeof r.koernerProEinheit === 'number' && isFinite(r.koernerProEinheit)) {
+    return r.koernerProEinheit;
+  }
+  var g = AppGlobals.state && AppGlobals.state.koernerProEinheit;
+  if (typeof g === 'number' && isFinite(g) && g > 0) return g;
+  return 0;
+}
+
 // --- Format/Parser Utilities (pure) ---
 
 // fmt — Runde auf 1 Dezimalstelle, deutsche Formatierung mit Komma.
@@ -49,18 +97,22 @@ function getTabFahrgassenFaktor(r) {
 // Formel: (hektar × koerner / koernerProEinheit) × Fahrgassen-Faktor.
 // Gibt 0 zurück, wenn r.hektar/koerner fehlen oder kpe ≤ 0.
 function getTabTotalEinheiten(r, koernerProEinheit) {
-  var kpe = (koernerProEinheit !== undefined) ? koernerProEinheit : AppGlobals.state.koernerProEinheit;
+  var kpe = resolveKoernerProEinheit(r, koernerProEinheit);
   if (!r || !r.hektar || !r.koerner || kpe <= 0) return 0;
   var faktor = getTabFahrgassenFaktor(r);
   var einheiten = (r.hektar * r.koerner) / kpe;
+  if (!isFinite(einheiten)) return 0;
   return Math.max(0, einheiten * faktor);
 }
 
 // IST-Einheiten basierend auf der IST-Fläche (r.istHektar).
 function getTabIstEinheiten(r) {
-  if (!r || !r.istHektar || !r.koerner || AppGlobals.state.koernerProEinheit <= 0) return 0;
+  if (!r || !r.istHektar || !r.koerner) return 0;
+  var kpe = resolveKoernerProEinheit(r);
+  if (kpe <= 0) return 0;
   var faktor = getTabFahrgassenFaktor(r);
-  var einheiten = (r.istHektar * r.koerner) / AppGlobals.state.koernerProEinheit;
+  var einheiten = (r.istHektar * r.koerner) / kpe;
+  if (!isFinite(einheiten)) return 0;
   return Math.max(0, einheiten * faktor);
 }
 
@@ -77,8 +129,11 @@ function getTabTotalDuenger(r) {
 // Formel: r.duenger × koernerProEinheit / r.koerner
 // (Herleitung: (hektar × duenger) ÷ (hektar × koerner / kpe) = duenger × kpe / koerner)
 function getDuengerProEinheit(r, koernerProEinheit) {
-  if (!r || !r.duenger || !r.koerner || !koernerProEinheit) return 0;
-  return r.duenger * koernerProEinheit / r.koerner;
+  if (!r || !r.duenger || !r.koerner) return 0;
+  var kpe = resolveKoernerProEinheit(r, koernerProEinheit);
+  if (!kpe) return 0;
+  var result = r.duenger * kpe / r.koerner;
+  return isFinite(result) ? result : 0;
 }
 
 // Berechnet IST-Dünger (kg) basierend auf istHektar.
@@ -104,8 +159,7 @@ function getTabUsedDuenger(r) {
 
 var _internal = {
   carryoverCache: null,
-  drillCalcTimer: null,
-  pendingKey: null
+  drillCalcTimer: null
 };
 
 // Berechnet Carryover für alle Tabs — SENKEN-MODELL (Prio-Workfront).
@@ -366,7 +420,8 @@ function getTabRates(tabIdx) {
   var r = AppGlobals.state.reiter[tabIdx];
   if (!r) return { unitsPerHa: 0, duengerPerHa: 0 };
   var fgFactor = getTabFahrgassenFaktor(r);
-  var unitsPerHa = r.koerner * fgFactor / AppGlobals.state.koernerProEinheit;
+  var kpe = resolveKoernerProEinheit(r);
+  var unitsPerHa = (kpe > 0) ? r.koerner * fgFactor / kpe : 0;
   var duengerPerHa = r.duenger || 0;
   return { unitsPerHa: unitsPerHa, duengerPerHa: duengerPerHa };
 }
@@ -377,6 +432,8 @@ Object.assign(window.AppGlobals, {
   fmtCompact: fmtCompact,
   EPSILON_QUANTITY: EPSILON_QUANTITY,
   _internal: _internal,
+  resolveKoernerProEinheit: resolveKoernerProEinheit,
+  getTabKoernerProEinheit: getTabKoernerProEinheit,
   computeFahrgassenFaktor: computeFahrgassenFaktor,
   getTabTotalEinheiten: getTabTotalEinheiten,
   getTabIstEinheiten: getTabIstEinheiten,

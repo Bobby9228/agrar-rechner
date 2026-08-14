@@ -36,13 +36,22 @@ bug — see §6.
 
 - **Hosting:** Cloudflare Pages (project `agrar-rechner-dev`)
 - **Trigger:** push to `dev` branch (and PRs targeting `dev`)
-- **Concurrency:** `deploy-${{ github.ref }}` group, in-progress runs are
+- **Concurrency:** `ci-${{ github.ref }}` group, in-progress runs are
   cancelled on new push
-- **Steps:** checkout → setup-node@v4 (Node 20) → pnpm/action-setup@v4
-  (pnpm 9) → `pnpm install --frozen-lockfile` → `pnpm test` →
-  `cloudflare/wrangler-action@v3 pages deploy public/`
+- **Steps (CI workflow `ci.yml` / `deploy.yml`):** checkout →
+  setup-node@v4 (Node 22) → pnpm/action-setup@v4 (pnpm 9) →
+  `pnpm install --frozen-lockfile` → `pnpm lint` → `pnpm test`
+- **Deploy step is intentionally absent.** Deployment is handled by the
+  Cloudflare Dashboard Git integration (Workers Builds for
+  `agrar-rechner-dev`), which builds and deploys on every push to `dev`.
+  The previous `cloudflare/wrangler-action@v3 pages deploy public/`
+  step was removed because it failed with "Authentication error
+  [code: 10000]" — the `CLOUDFLARE_API_TOKEN` secret lacked
+  `Account:Read` scope. Since the Dashboard integration already
+  deploys successfully, the GitHub Actions deploy step was redundant.
 - **Branch model:** feature branches → PR into `dev` → merge to `dev`
-  triggers deploy → periodic sync `dev` → `master`
+  triggers deploy (via Cloudflare Dashboard) → periodic sync `dev` →
+  `master`
 
 `master` is the stable public mirror; do not push feature work there
 directly.
@@ -52,7 +61,7 @@ directly.
 - **Commit messages:** Conventional Commits
   (`feat:`, `fix:`, `refactor:`, `chore:`, `dx:`, etc.). Reference the
   GitHub issue: `refactor(#209): CSS variables for colors`.
-- **Node version:** 20.x (pinned via `.nvmrc`, enforced by CI).
+- **Node version:** 22.x (pinned via `.nvmrc`, enforced by CI).
 - **Package manager:** `pnpm` only. Commit `pnpm-lock.yaml`, never
   `package-lock.json`.
 - **Indentation:** 4 spaces, LF line endings, UTF-8, final newline
