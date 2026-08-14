@@ -386,6 +386,23 @@ function parseAndSanitizeState(raw) {
     }
     data.kultur = mig6Kultur;
     data.erstauswahlDone = mig6ErstauswahlDone;
+    // Migration 6→7: v1.1.0/v1.1.1 konnte bei einem bestehenden Nutzer
+    // nach der ersten Raps-Auswahl den unberührten Startschlag auf dem alten
+    // Mais-Default 50.000 belassen. Diesen eindeutig erkennbaren Zustand
+    // einmalig reparieren. Sobald fachliche Daten, Protokolle, done=true oder
+    // eine individuelle KPE vorliegen, bleibt der Schlag strikt unverändert.
+    if (originalLv < 7 && data.kultur === 'raps' && data.erstauswahlDone === true) {
+      var startTab = sanitizedReiter[0];
+      var untouchedRapsStart = startTab
+        && startTab.koernerProEinheit === 50000
+        && Number(startTab.hektar || 0) === 0
+        && Number(startTab.istHektar || 0) === 0
+        && Number(startTab.koerner || 0) === 0
+        && Number(startTab.duenger || 0) === 0
+        && (!Array.isArray(startTab.entries) || startTab.entries.length === 0)
+        && startTab.done !== true;
+      if (untouchedRapsStart) startTab.koernerProEinheit = 1500000;
+    }
     // Final: sanitisiertes reiter einsetzen
     data.reiter = sanitizedReiter;
     // Unbekannte Top-Level-Keys strippen (Whitelist)
@@ -394,7 +411,7 @@ function parseAndSanitizeState(raw) {
         var k = ALLOWED_TOP_KEYS[ki];
         if (data[k] !== undefined) cleaned[k] = data[k];
     }
-    cleaned._lv = 6;
+    cleaned._lv = 7;
     return { state: cleaned, originalLv: originalLv };
   } catch(e) {
     return null;
@@ -432,10 +449,10 @@ function loadState() {
         if (oldTheme) localStorage.removeItem('mais_rechner_theme');
       } catch(e) {}
     }
-    // Migration-Persistenz: Wenn die Daten nicht bereits _lv=6 waren,
+    // Migration-Persistenz: Wenn die Daten nicht bereits _lv=7 waren,
     // schreibe den migrierten Snapshot einmalig zurück, damit nachfolgende
     // Page-Loads die Migration überspringen können.
-    if (originalLv < 6) {
+    if (originalLv < 7) {
       try {
         localStorage.setItem('agrar_rechner', JSON.stringify(state));
       } catch(e) {
