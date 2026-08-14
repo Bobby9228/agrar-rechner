@@ -38,10 +38,10 @@ describe('Cloudflare deploy sanity', () => {
     expect(content).toMatch(/Cache-Control:\s*no-cache/);
   });
 
-  it('main.js exposes the current patch release version and build date', () => {
+  it('main.js exposes the current minor release version and build date', () => {
     const mainPath = resolve(publicDir, 'js', 'main.js');
     const content = readFileSync(mainPath, 'utf-8');
-    expect(content).toMatch(/APP_VERSION\s*=\s*['"]v1\.0\.1['"]/);
+    expect(content).toMatch(/APP_VERSION\s*=\s*['"]v1\.1\.0['"]/);
     expect(content).toMatch(/APP_BUILD_DATE\s*=\s*['"]August 2026['"]/);
   });
 
