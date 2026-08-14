@@ -108,7 +108,7 @@ describe('Migration 5→6: bestehende Tabs behalten effektiven kpe', () => {
     expect(w.getTabTotalEinheiten(w.state.reiter[0])).toBeCloseTo(refTotal, 5);
   });
 
-  it('Migration hebt _lv auf 6 und entfernt mig6-Felder nicht', () => {
+  it('Migration hebt _lv auf 7 und entfernt mig6-Felder nicht', () => {
     const { window: w, store } = createDom();
     store['agrar_rechner'] = JSON.stringify({
       _lv: 5,
@@ -124,7 +124,7 @@ describe('Migration 5→6: bestehende Tabs behalten effektiven kpe', () => {
     });
     w.loadState();
     const persisted = JSON.parse(store['agrar_rechner']);
-    expect(persisted._lv).toBe(6);
+    expect(persisted._lv).toBe(7);
     expect(persisted.kultur).toBeNull();
     expect(persisted.erstauswahlDone).toBe(false);
     expect(persisted.reiter[0].koernerProEinheit).toBe(50000);
