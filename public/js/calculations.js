@@ -310,6 +310,104 @@ function formatEntryTime(t) {
   return String(t);
 }
 
+// --- Lokales Protokoll-Redesign Helpers (pure) ---
+//
+// Datumsschlüssel (YYYY-MM-DD) für Entry-Times und Maschinen-Log.
+// number → ISO-Datum aus JS-Date; string "HH:MM" → heute (relativ zur
+// Systemzeit, da Drill-Einträge sekunden-genau dort liegen); nicht-
+// parsbar → '' (kein Datum, gilt als "ungruppiert").
+function parseEntryDateKey(t) {
+  if (t === null || t === undefined) return '';
+  if (typeof t === 'number' && isFinite(t)) {
+    var d = new Date(t);
+    if (isNaN(d.getTime())) return '';
+    return _dateKeyFromDate(d);
+  }
+  if (typeof t === 'string') {
+    var trimmed = t.trim();
+    if (!trimmed) return '';
+    // "HH:MM" oder "HH:MM:SS" → heute (Landwirt tippt live, Einträge sind
+    // tagesgenau innerhalb einer Session). Bewusst KEIN Date-Konstrukt mit
+    // Jahr 1970 etc. — wir brauchen nur YYYY-MM-DD relativ zur Systemzeit.
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(trimmed)) {
+      return _dateKeyFromDate(new Date());
+    }
+    // ISO/Date.parse Fallback
+    var d2 = Date.parse(trimmed);
+    if (!isNaN(d2)) return _dateKeyFromDate(new Date(d2));
+  }
+  return '';
+}
+
+// Formatiert Entry-Time ausschließlich als "HH:MM" (keine Sekunden).
+// number → Date-Locale "HH:MM"; string "HH:MM" / "HH:MM:SS" → auf "HH:MM"
+// gekürzt; leer → "".
+function formatEntryTimeHHMM(t) {
+  if (t === null || t === undefined) return '';
+  if (typeof t === 'number' && isFinite(t)) {
+    var d = new Date(t);
+    if (isNaN(d.getTime())) return '';
+    var hh = String(d.getHours()).padStart(2, '0');
+    var mm = String(d.getMinutes()).padStart(2, '0');
+    return hh + ':' + mm;
+  }
+  if (typeof t === 'string') {
+    var m = t.trim().match(/^(\d{1,2}):(\d{2})/);
+    if (m) return String(m[1]).padStart(2, '0') + ':' + m[2];
+  }
+  return '';
+}
+
+// YYYY-MM-DD aus JS-Date (lokale Zeit, nicht UTC) — verhindert
+// Timezone-Drift für "Heute, 14. Aug."-Header.
+function _dateKeyFromDate(d) {
+  var y = d.getFullYear();
+  var mo = String(d.getMonth() + 1).padStart(2, '0');
+  var da = String(d.getDate()).padStart(2, '0');
+  return y + '-' + mo + '-' + da;
+}
+
+// Deutsches Datum lang: "14. August 2026"
+var _MONTHS_DE_LONG = [
+  'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+  'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
+];
+function formatDateKeyGerman(key) {
+  if (typeof key !== 'string') return '';
+  var parts = key.split('-');
+  if (parts.length !== 3) return '';
+  var y = parseInt(parts[0], 10);
+  var mi = parseInt(parts[1], 10) - 1;
+  var da = parseInt(parts[2], 10);
+  if (!isFinite(y) || !isFinite(mi) || !isFinite(da)) return '';
+  if (mi < 0 || mi > 11) return '';
+  return da + '. ' + _MONTHS_DE_LONG[mi] + ' ' + y;
+}
+
+// Deutsches Datum kurz: "14. Aug." — verwendet im Gesamtbilanz-Header
+// ("Heute, 14. Aug.").
+var _MONTHS_DE_SHORT = [
+  'Jan.', 'Feb.', 'März', 'Apr.', 'Mai', 'Juni',
+  'Juli', 'Aug.', 'Sept.', 'Okt.', 'Nov.', 'Dez.'
+];
+function formatDateKeyShort(key) {
+  if (typeof key !== 'string') return '';
+  var parts = key.split('-');
+  if (parts.length !== 3) return '';
+  var y = parseInt(parts[0], 10);
+  var mi = parseInt(parts[1], 10) - 1;
+  var da = parseInt(parts[2], 10);
+  if (!isFinite(y) || !isFinite(mi) || !isFinite(da)) return '';
+  if (mi < 0 || mi > 11) return '';
+  return da + '. ' + _MONTHS_DE_SHORT[mi];
+}
+
+// "Heute"-Marker für Gesamtbilanz-Header: relativ zur Systemzeit.
+function isTodayKey(key) {
+  if (typeof key !== 'string') return false;
+  return key === _dateKeyFromDate(new Date());
+}
+
 function invalidateCarryoverCache() {
   _internal.carryoverCache = null;
 }
@@ -453,4 +551,10 @@ Object.assign(window.AppGlobals, {
   getTabRates: getTabRates,
   parseEntryTime: parseEntryTime,
   formatEntryTime: formatEntryTime,
+  parseEntryDateKey: parseEntryDateKey,
+  formatEntryTimeHHMM: formatEntryTimeHHMM,
+  formatDateKeyGerman: formatDateKeyGerman,
+  formatDateKeyShort: formatDateKeyShort,
+  isTodayKey: isTodayKey,
+  _dateKeyFromDate: _dateKeyFromDate,
 });

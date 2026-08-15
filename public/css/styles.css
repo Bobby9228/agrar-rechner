@@ -2146,3 +2146,539 @@ body {
   font-size: 0.95rem;
   line-height: 1;
 }
+
+
+/* ============================================================
+   Lokales Protokoll-Redesign (Container im .scrollable-content)
+   ============================================================
+   Wird ausschließlich sichtbar, wenn .app-layout.protokoll-mode
+   aktiv ist (renderView() in render-tabs.js). In allen anderen
+   Views (Rechner, Übersicht) ist die Section per [hidden] / CSS
+   ausgeblendet — der Nav-Stack und der Drill-Bereich bleiben
+   funktional erhalten.
+   Bewusst KEIN responsive `@media (min-width: …)` — wir folgen
+   der bestehenden Konvention und nutzen Auto-Flow + flex/grid
+   mit min-clamp. Touchziele ≥ 44px (WCAG 2.5.5). */
+
+.local-protocol {
+  padding: 14px 14px 24px;
+  display: block;
+}
+/* Rechner/Übersicht: komplett aus, auch wenn [hidden] fehlt. */
+.app-layout:not(.protokoll-mode) .local-protocol {
+  display: none !important;
+}
+.app-layout.protokoll-mode #drill_summary,
+.app-layout.protokoll-mode #drill_machine_log,
+.app-layout.protokoll-mode #drill_entries {
+  display: none !important;
+}
+
+/* ---------- Gesamtbilanz-Card ---------- */
+.lp-balance {
+  background: linear-gradient(155deg, var(--color-primary-dark) 0%, #1E3A1B 100%);
+  color: #fffdf8;
+  border: 1px solid var(--color-primary-dark);
+  border-radius: 18px;
+  padding: 16px 17px;
+  margin: 0 0 14px;
+  box-shadow: 0 1px 3px rgba(20, 36, 14, 0.18), 0 10px 26px rgba(20, 36, 14, 0.18);
+}
+html.dark .lp-balance {
+  background: linear-gradient(155deg, #2c4326 0%, #1a2412 100%);
+  border-color: #1a2412;
+}
+.lp-balance-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+.lp-balance-head h2 {
+  margin: 0;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.78;
+  font-weight: 700;
+  font-family: var(--font-body);
+  border-bottom: none;
+  padding-bottom: 0;
+  color: #fffdf8;
+}
+.lp-balance-head time {
+  font-size: 0.76rem;
+  opacity: 0.72;
+  color: #fffdf8;
+}
+.lp-balance-grid {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+.lp-balance-divider {
+  background: rgba(255, 253, 248, 0.2);
+  width: 1px;
+  height: auto;
+}
+.lp-metric small {
+  display: block;
+  opacity: 0.7;
+  font-size: 0.76rem;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.lp-metric strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.28rem;
+  line-height: 1.1;
+  color: #fffdf8;
+  letter-spacing: -0.01em;
+}
+.lp-metric span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.73rem;
+  color: #cfe2c8;
+  font-weight: 600;
+}
+.lp-balance-forecast {
+  display: grid;
+  gap: 6px;
+  margin-top: 13px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(255, 253, 248, 0.2);
+  color: #fffdf8;
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+.lp-balance-forecast-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  line-height: 1.25;
+}
+.lp-balance-forecast-icon {
+  width: 1.25rem;
+  flex: 0 0 1.25rem;
+  text-align: center;
+}
+.lp-balance-forecast-empty {
+  color: #cfe2c8;
+  font-weight: 600;
+}
+
+/* ---------- View-Switch: Schläge | Maschine ---------- */
+.lp-view-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 4px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 14px;
+  background: var(--color-bg-soft);
+}
+.lp-view-tab {
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  touch-action: manipulation;
+}
+.lp-view-tab.active {
+  background: var(--color-card-bg);
+  color: var(--color-primary-dark);
+  box-shadow: 0 1px 5px rgba(51, 48, 31, 0.10);
+}
+html.dark .lp-view-tab.active {
+  background: var(--color-bg-elevated);
+}
+
+/* ---------- Datum-Heading (für Tagesgruppen) ---------- */
+.lp-date-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 18px 2px 9px;
+  gap: 12px;
+}
+.lp-date-heading h2 {
+  margin: 0;
+  font-size: 0.83rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--font-body);
+  border: none;
+  padding: 0;
+}
+.lp-date-heading span,
+.lp-subdate-heading span {
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+.lp-subdate-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 12px 4px 6px;
+}
+.lp-subdate-heading h3 {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- Feld-Card (Accordion) ---------- */
+.lp-field-card {
+  margin: 0 0 10px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 17px;
+  background: var(--color-card-bg);
+  box-shadow: 0 1px 3px rgba(51, 48, 31, 0.05), 0 8px 20px rgba(51, 48, 31, 0.06);
+  overflow: hidden;
+}
+html.dark .lp-field-card {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border);
+}
+.lp-field-summary {
+  width: 100%;
+  min-height: 76px;
+  padding: 14px 15px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  font: inherit;
+}
+.lp-field-summary-inner {
+  min-width: 0;
+}
+.lp-field-summary:focus-visible {
+  outline: 2.5px solid var(--color-primary);
+  outline-offset: -2px;
+}
+.lp-field-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+  flex-wrap: wrap;
+}
+.lp-field-title {
+  color: var(--color-primary-dark);
+  font-weight: 800;
+  font-size: 1rem;
+  word-break: break-word;
+}
+.lp-count {
+  color: var(--color-text-muted);
+  background: var(--color-bg-soft);
+  border-radius: 99px;
+  padding: 3px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+html.dark .lp-count {
+  background: rgba(255, 255, 255, 0.06);
+}
+.lp-field-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+.lp-field-status > .positive {
+  color: var(--color-text-success);
+  font-weight: 700;
+}
+.lp-field-status > .warning {
+  color: var(--color-text-danger);
+  font-weight: 700;
+}
+.lp-field-status > .neutral {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+.lp-field-status > .lp-status-ha {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+.lp-chevron {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-bg-soft);
+  color: var(--color-primary-dark);
+  font-size: 1.1rem;
+  transition: transform 0.18s ease;
+}
+html.dark .lp-chevron {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-strong);
+}
+.lp-field-card.open .lp-chevron {
+  transform: rotate(180deg);
+}
+.lp-entries {
+  border-top: 1px solid var(--color-border-soft);
+  padding: 0 15px 4px;
+}
+html.dark .lp-entries {
+  border-top-color: var(--color-border);
+}
+.lp-entry {
+  display: grid;
+  grid-template-columns: 50px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 68px;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+html.dark .lp-entry {
+  border-bottom-color: var(--color-border);
+}
+.lp-entry:last-child { border-bottom: 0; }
+.lp-time {
+  color: var(--color-primary-dark);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+html.dark .lp-time {
+  color: var(--color-text-strong);
+}
+.lp-entry-main strong {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 750;
+  color: var(--color-text);
+}
+.lp-entry-main small {
+  display: block;
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+/* ---------- Drei-Punkte-Aktion (statt roter X) ---------- */
+.entry-action {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 1.35rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  touch-action: manipulation;
+  transition: background 0.15s, color 0.15s;
+}
+.entry-action:hover,
+.entry-action:focus-visible {
+  background: var(--color-bg-soft);
+  color: var(--color-text);
+  outline: none;
+}
+html.dark .entry-action:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- Maschinen-Panel ---------- */
+.lp-machine-panel[hidden] { display: none; }
+.lp-panel { display: block; }
+.lp-panel[hidden] { display: none; }
+.lp-machine-card {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 17px;
+  background: var(--color-card-bg);
+  box-shadow: 0 1px 3px rgba(51, 48, 31, 0.05), 0 8px 20px rgba(51, 48, 31, 0.06);
+  padding: 4px 15px;
+  margin: 0 0 10px;
+}
+html.dark .lp-machine-card {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border);
+}
+.lp-machine-entry {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.lp-machine-entry:last-child { border-bottom: 0; }
+html.dark .lp-machine-entry {
+  border-bottom-color: var(--color-border);
+}
+.lp-machine-entry {
+  display: grid;
+  grid-template-columns: 50px 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+.lp-machine-values {
+  font-size: 0.9rem;
+  font-weight: 750;
+  color: var(--color-text);
+}
+.lp-forecast {
+  margin: 4px 0 0 60px;
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+}
+.lp-forecast b {
+  color: var(--color-primary-dark);
+  font-weight: 700;
+}
+
+/* ---------- Empty / Hint Texte ---------- */
+.lp-empty,
+.lp-hint {
+  margin: 14px 4px 0;
+  color: var(--color-text-muted);
+  font-size: 0.83rem;
+  text-align: center;
+}
+.lp-hint { font-size: 0.73rem; }
+
+/* ---------- Action-Sheet (Bottom-Sheet) ---------- */
+.lp-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  background: rgba(20, 36, 14, 0.45);
+  display: none;
+  animation: fadeIn 0.15s ease;
+}
+.lp-sheet-backdrop.show { display: block; }
+.lp-action-sheet {
+  position: fixed;
+  z-index: 251;
+  left: 50%;
+  bottom: 14px;
+  transform: translate(-50%, 130%);
+  width: min(calc(100% - 28px), 402px);
+  padding: 8px;
+  border-radius: 18px;
+  background: var(--color-card-bg);
+  box-shadow: 0 16px 50px rgba(20, 36, 14, 0.35);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 0.2s ease, opacity 0.15s ease, visibility 0s linear 0.2s;
+}
+html.dark .lp-action-sheet {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+}
+.lp-action-sheet.show {
+  transform: translate(-50%, 0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+.lp-sheet-label {
+  margin: 7px 10px 10px;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.lp-sheet-button {
+  width: 100%;
+  min-height: 50px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+  padding: 0 14px;
+  font-weight: 750;
+  font-size: 0.95rem;
+  cursor: pointer;
+  color: var(--color-text);
+  font-family: inherit;
+  transition: background 0.15s;
+  touch-action: manipulation;
+}
+.lp-sheet-button.danger {
+  color: var(--color-text-danger);
+  background: var(--color-danger-bg-soft);
+}
+.lp-sheet-button.danger:hover { background: var(--color-danger-bg-soft); filter: brightness(0.97); }
+.lp-sheet-button.cancel {
+  margin-top: 4px;
+  text-align: center;
+  color: var(--color-text-muted);
+  background: transparent;
+}
+.lp-sheet-button:focus-visible {
+  outline: 2.5px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+/* ---------- Responsive (320/360/393/412px) ----------
+   Container hat keine horizontale Padding-Skalierung — die Felder
+   passen sich per min()/wrap/ellipsis an. Wir fügen hier nur sehr
+   kleine Schrift-Adjustments hinzu, damit 320px nicht überläuft. */
+@media (max-width: 360px) {
+  .lp-balance { padding: 14px 14px 12px; }
+  .lp-balance-grid { gap: 10px; }
+  .lp-metric strong { font-size: 1.15rem; }
+  .lp-field-summary { padding: 12px 12px; min-height: 72px; }
+  .lp-field-title { font-size: 0.95rem; }
+  .lp-entries { padding: 0 12px 4px; }
+  .lp-entry { grid-template-columns: 46px 1fr auto; gap: 8px; }
+  .lp-forecast { margin-left: 54px; }
+}
+@media (max-width: 320px) {
+  .lp-balance-head h2 { font-size: 0.7rem; }
+  .lp-balance-head time { font-size: 0.7rem; }
+  .lp-metric strong { font-size: 1.05rem; }
+  .lp-date-heading h2 { font-size: 0.74rem; }
+  .lp-field-summary { padding: 10px 10px; min-height: 64px; }
+  .lp-field-title { font-size: 0.9rem; }
+  .lp-count { font-size: 0.65rem; }
+  .lp-field-status { font-size: 0.72rem; }
+  .lp-chevron { width: 28px; height: 28px; font-size: 0.9rem; }
+  .lp-entry { min-height: 60px; }
+  .lp-entry-main strong { font-size: 0.85rem; }
+  .lp-machine-card { padding: 4px 12px; }
+  .lp-forecast { margin-left: 50px; }
+}
+
+/* prefers-reduced-motion: alle Local-Protocol-Transitions abschalten */
+@media (prefers-reduced-motion: reduce) {
+  .lp-chevron,
+  .lp-sheet-backdrop,
+  .lp-action-sheet,
+  .lp-view-tab,
+  .entry-action {
+    transition: none !important;
+    animation: none !important;
+  }
+}

@@ -125,6 +125,23 @@
         if (skipIds[c.id]) return;
         c.style.display = isProtokoll ? 'none' : 'block';
       });
+      // Lokales Protokoll-Redesign: .local-protool-Section ist KEIN .card und
+      // wird daher von der obigen Schleife nicht angetastet. Stattdessen
+      // toggeln wir via .protokoll-mode-Klasse auf .app-layout — CSS
+      // blendet die Section in anderen Views aus.
+      var appLayout = document.querySelector('.app-layout');
+      if (appLayout) appLayout.classList.toggle('protokoll-mode', !!isProtokoll);
+      // Elemente INNERHALB der Section sind ebenfalls kein .card; explizit
+      // sichtbar/unsichtbar toggeln, weil [hidden] flexibel ist.
+      var lpSection = document.getElementById('local_protocol_section');
+      if (lpSection) {
+        if (isProtokoll) {
+          lpSection.hidden = false;
+          lpSection.style.display = '';
+        } else {
+          lpSection.hidden = true;
+        }
+      }
       var resultsEl = document.getElementById('results');
       if (resultsEl) resultsEl.style.display = (hasData && !isProtokoll) ? 'block' : 'none';
       var drillSection = document.getElementById('drill_section');
@@ -136,6 +153,12 @@
       if (!isProtokoll) {
         var barLeft = document.getElementById('tab_bar_left');
         if (barLeft) fitTabNames(barLeft);
+      }
+      // Lokales Protokoll-Redesign: rendert Gesamtbilanz + Schläge/Maschine
+      // wenn state.activeView === 'protokoll'. Wird NACH renderResults()
+      // aufgerufen (render-tabs.js ist Subscriber für VIEW_CHANGED).
+      if (isProtokoll && typeof AppGlobals.renderLocalProtocol === 'function') {
+        AppGlobals.renderLocalProtocol();
       }
     }
 
@@ -289,6 +312,13 @@
               var re2 = document.getElementById('results');
               if (re2) re2.style.display = 'block';
             }
+            // Lokales Protokoll-Redesign: Gesamtbilanz und Felder reflektieren
+            // geänderte SOLL/IST-Werte, Carryover und Saldo. Im Protokoll-Modus
+            // nachziehen — sparsam (nur Re-Render des neuen Panels).
+            if (AppGlobals.state.activeView === 'protokoll'
+                && typeof AppGlobals.renderLocalProtocol === 'function') {
+              AppGlobals.renderLocalProtocol();
+            }
             break;
           case 'SETTINGS_CHANGED':
             AppGlobals.saveState();
@@ -336,17 +366,33 @@
             if (AppGlobals.state.activeView === 'protokoll') AppGlobals.renderDrillTabList();
             AppGlobals.renderResults();
             break;
+          case 'PROTOCOL_VIEW_CHANGED':
+            // Innerhalb des Protokoll-Tabs: nur das neue Panel anzeigen,
+            // keine komplette Re-Render-Kaskade (Tabs/Results/Dashboard).
+            AppGlobals.saveState();
+            if (typeof AppGlobals.renderLocalProtocol === 'function') {
+              AppGlobals.renderLocalProtocol();
+            }
+            break;
           case 'DRILL_ENTRY_ADDED':
             AppGlobals.saveState();
             AppGlobals.renderDrillTabList();
             AppGlobals.renderResults();
             AppGlobals.drillCalcAll();
+            if (AppGlobals.state.activeView === 'protokoll'
+                && typeof AppGlobals.renderLocalProtocol === 'function') {
+              AppGlobals.renderLocalProtocol();
+            }
             break;
           case 'DRILL_ENTRY_REMOVED':
             AppGlobals.saveState();
             AppGlobals.renderDrillTabList();
             AppGlobals.renderResults();
             AppGlobals.drillCalcAll();
+            if (AppGlobals.state.activeView === 'protokoll'
+                && typeof AppGlobals.renderLocalProtocol === 'function') {
+              AppGlobals.renderLocalProtocol();
+            }
             break;
           case 'KULTUR_CHANGED':
             AppGlobals.saveState();

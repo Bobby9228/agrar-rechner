@@ -229,7 +229,7 @@ describe('Cross-Tab-Sync + Persistenz der neuen Felder', () => {
       });
       w.initUI();
       const saved = JSON.parse(store['agrar_rechner']);
-      expect(saved._lv).toBe(7);
+      expect(saved._lv).toBe(8);
     });
   });
 

@@ -38,7 +38,16 @@ var state = {
   kultur:           null,
   erstauswahlDone:   false,
   machineLog:    [],
-  drillPriorities: {}
+  drillPriorities: {},
+  // Lokales Protokoll-Redesign: 'fields' = Schläge-Tab, 'machine' =
+  // Maschinenfüllungen-Tab. Default 'fields'. Persistiert via saveState().
+  protocolView:     'fields',
+  // Welche Tagesgruppe im Schläge-Accordion aktuell geöffnet ist
+  // (key = YYYY-MM-DD). Leerer String = kein Accordion offen. Single-Open
+  // per "ein Schlag gleichzeitig offen"-Vorgabe. Maschinen-Panel kennt kein
+  // Accordion (alle Einträge sichtbar), dieses Feld steuert nur die
+  // Schläge-Sektion.
+  protocolOpenCards: {}
 };
 
 // --- Persistenz ---
@@ -114,6 +123,7 @@ var ALLOWED_TOP_KEYS = [
   'einheitGroesseEnabled', 'koernerProEinheit',
   'kultur', 'erstauswahlDone',
   'machineLog', 'drillPriorities',
+  'protocolView', 'protocolOpenCards',
   '_lv',
   // Legacy-Keys (nur für Migration 0→1 lesend toleriert)
   'hektar', 'istHektar', 'koerner', 'duenger', 'entries',
@@ -412,6 +422,15 @@ function parseAndSanitizeState(raw) {
         if (data[k] !== undefined) cleaned[k] = data[k];
     }
     cleaned._lv = 7;
+    // Migration 7→8 (Lokales Protokoll-Redesign): protocolView
+    // ('fields' | 'machine') + protocolOpenCards (Plain Object mit
+    // YYYY-MM-DD-Keys). Beide Felder sind rein UI-State und bekommen
+    // neutrale Defaults.
+    if (cleaned.protocolView !== 'fields' && cleaned.protocolView !== 'machine') {
+      cleaned.protocolView = 'fields';
+    }
+    if (!isPlainObject(cleaned.protocolOpenCards)) cleaned.protocolOpenCards = {};
+    cleaned._lv = 8;
     return { state: cleaned, originalLv: originalLv };
   } catch(e) {
     return null;
@@ -449,10 +468,10 @@ function loadState() {
         if (oldTheme) localStorage.removeItem('mais_rechner_theme');
       } catch(e) {}
     }
-    // Migration-Persistenz: Wenn die Daten nicht bereits _lv=7 waren,
+    // Migration-Persistenz: Wenn die Daten nicht bereits _lv=8 waren,
     // schreibe den migrierten Snapshot einmalig zurück, damit nachfolgende
     // Page-Loads die Migration überspringen können.
-    if (originalLv < 7) {
+    if (originalLv < 8) {
       try {
         localStorage.setItem('agrar_rechner', JSON.stringify(state));
       } catch(e) {

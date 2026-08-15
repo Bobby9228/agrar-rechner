@@ -124,7 +124,7 @@ describe('Migration 5→6: bestehende Tabs behalten effektiven kpe', () => {
     });
     w.loadState();
     const persisted = JSON.parse(store['agrar_rechner']);
-    expect(persisted._lv).toBe(7);
+    expect(persisted._lv).toBe(8);
     expect(persisted.kultur).toBeNull();
     expect(persisted.erstauswahlDone).toBe(false);
     expect(persisted.reiter[0].koernerProEinheit).toBe(50000);

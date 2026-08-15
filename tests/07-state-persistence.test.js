@@ -164,7 +164,7 @@ describe('State persistence', () => {
       w.loadState();
       // Nach Migration: gespeicherter Snapshot hat _lv=7
       var persisted = JSON.parse(store['agrar_rechner']);
-      expect(persisted._lv).toBe(7);
+      expect(persisted._lv).toBe(8);
       // Issue #377: `done: false` wird via sanitizeTab auf bestehende Tabs gesetzt
       expect(persisted.reiter[0].done).toBe(false);
     });
@@ -184,7 +184,7 @@ describe('State persistence', () => {
       // Re-Schreibung passiert (idempotent = kein Drift).
       w.loadState();
       var afterSecond = JSON.parse(store['agrar_rechner']);
-      expect(afterSecond._lv).toBe(7);
+      expect(afterSecond._lv).toBe(8);
       expect(afterSecond.reiter[0].hektar).toBe(10);
     });
   });
