@@ -134,14 +134,16 @@
       // Elemente INNERHALB der Section sind ebenfalls kein .card; explizit
       // sichtbar/unsichtbar toggeln, weil [hidden] flexibel ist.
       var lpSection = document.getElementById('local_protocol_section');
-      if (lpSection) {
+      var balanceSection = document.getElementById('local_protocol_balance_section');
+      [lpSection, balanceSection].forEach(function(section) {
+        if (!section) return;
         if (isProtokoll) {
-          lpSection.hidden = false;
-          lpSection.style.display = '';
+          section.hidden = false;
+          section.style.display = '';
         } else {
-          lpSection.hidden = true;
+          section.hidden = true;
         }
-      }
+      });
       var resultsEl = document.getElementById('results');
       if (resultsEl) resultsEl.style.display = (hasData && !isProtokoll) ? 'block' : 'none';
       var drillSection = document.getElementById('drill_section');

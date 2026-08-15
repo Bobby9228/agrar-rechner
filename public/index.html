@@ -196,6 +196,18 @@
       <div class="info" id="r_info"></div>
     </div><!-- end results card -->
 
+    <!-- Gesamtbilanz zuerst: wichtigste Mengen vor der Eingabe ins Drill-Protokoll. -->
+    <section class="local-protocol local-protocol-balance" id="local_protocol_balance_section" aria-label="Gesamtbilanz" hidden>
+      <div class="lp-balance" id="local_protocol_balance">
+        <div class="lp-balance-head">
+          <h2>Gesamtbilanz</h2>
+          <time id="local_protocol_balance_time" datetime="">Heute</time>
+        </div>
+        <div class="lp-balance-grid" id="local_protocol_balance_grid"></div>
+        <div class="lp-balance-forecast" id="local_protocol_balance_forecast" aria-label="Nächste Leerstände"></div>
+      </div>
+    </section>
+
     <div class="card" id="drill_section" style="display:none">
       <h2>🔧 Drill-Protokoll</h2>
       <div class="unit" style="margin-bottom:10px">Hier trägst du ein, was du in die Maschine eingefüllt hast.</div>
@@ -252,20 +264,9 @@
       <div id="drill_entries"></div>
     </div>
 
-    <!-- Lokales Protokoll-Redesign (gespeist aus existierenden Aggregationen:
-         Gesamtbilanz, Tagesgruppen, Accordion, drei-Punkte-Aktion mit
-         Löschbestätigung via Action-Sheet). Wird ausschließlich sichtbar,
-         wenn .app-layout.protokoll-mode aktiv ist (renderView() in
-         render-tabs.js). -->
+    <!-- Lokales Protokoll-Redesign: Buchungslisten unter der Drill-Eingabe.
+         Die Gesamtbilanz steht bewusst darüber (siehe local_protocol_balance_section). -->
     <section class="local-protocol" id="local_protocol_section" aria-label="Lokales Protokoll" hidden>
-      <div class="lp-balance" id="local_protocol_balance" aria-label="Gesamtbilanz">
-        <div class="lp-balance-head">
-          <h2>Gesamtbilanz</h2>
-          <time id="local_protocol_balance_time" datetime="">Heute</time>
-        </div>
-        <div class="lp-balance-grid" id="local_protocol_balance_grid"></div>
-        <div class="lp-balance-forecast" id="local_protocol_balance_forecast" aria-label="Nächste Leerstände"></div>
-      </div>
       <div class="lp-view-switch" role="tablist" aria-label="Protokoll auswählen">
         <button type="button" id="lp_view_fields_btn" class="lp-view-tab active" role="tab" aria-selected="true" aria-controls="local_protocol_fields_panel" onclick="AppGlobals.setProtocolView('fields')">Schläge</button>
         <button type="button" id="lp_view_machine_btn" class="lp-view-tab" role="tab" aria-selected="false" aria-controls="local_protocol_machine_panel" onclick="AppGlobals.setProtocolView('machine')">Maschine</button>

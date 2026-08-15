@@ -212,6 +212,17 @@ describe('Lokales Protokoll — state.protocolView / protocolOpenCards', () => {
 
 // ─────────── Gesamtbilanz ───────────
 
+describe('Lokales Protokoll — Platzierung der Gesamtbilanz', () => {
+  it('ordnet die Gesamtbilanz vor dem Drill-Protokoll ein', () => {
+    var d = createDom();
+    var balance = d.window.document.getElementById('local_protocol_balance_section');
+    var drill = d.window.document.getElementById('drill_section');
+
+    expect(balance).not.toBeNull();
+    expect((balance.compareDocumentPosition(drill) & 4) !== 0).toBe(true);
+  });
+});
+
 describe('Lokales Protokoll — renderLocalProtocolBalance', () => {
   let w, doc;
   beforeEach(() => {
