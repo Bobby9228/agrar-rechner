@@ -13,7 +13,7 @@
   <title>Agrar-Rechner</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20">
+  <link rel="stylesheet" href="css/styles.css?v=21">
 </head>
 <body>
   <div class="app-layout">
@@ -63,8 +63,8 @@
     </div>
 
     <div class="card card-input" id="card_input">
-      <h2>📐 Fläche & Aussaatstärke</h2>
-      <div class="unit" style="margin-bottom:10px">Berechnet aus deiner Fläche, wie viele Saatgut-Einheiten du brauchst.</div>
+      <h2>📐 Fläche &amp; Aussaatstärke</h2>
+      <div class="unit" style="margin-bottom:10px">Berechnet aus deiner Fläche, wie viele Saatgut-Einheiten und kg Dünger du brauchst.</div>
       <div class="field">
         <label for="hektar">Hektar (SOLL)</label>
         <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="hektar" placeholder="z.B. 12,5" maxlength="8" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputHektar(this)" onblur="onInputHektar(this)" aria-describedby="err_hektar">
@@ -72,15 +72,35 @@
         <div class="error-msg" id="err_hektar" role="alert"></div>
       </div>
       <div class="field">
-        <label for="ist_hektar">IST-Fläche (ha)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputIstHektar(this)" onblur="onInputIstHektar(this)">
-        <div class="unit">Optional: tatsächlich gesäte Fläche, z.B. laut Maschinen-Zähler.</div>
-      </div>
-      <div class="field">
         <label for="koerner">Körner pro Hektar</label>
         <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" maxlength="8" oninput="onInputFormat(this, 'integer', event)" onchange="onInputKoerner(this)" onblur="onInputKoerner(this)" aria-describedby="err_koerner">
         <div class="unit" id="koerner_empfehlung">üblich: 80.000 – 100.000</div>
         <div class="error-msg" id="err_koerner" role="alert"></div>
+      </div>
+      <div class="field">
+        <label for="duenger">Dünger (kg/ha)</label>
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputDuenger(this)" onblur="onInputDuenger(this)">
+        <div class="unit">Berechnet die benötigte Düngermenge für dieselbe Fläche.</div>
+      </div>
+    </div>
+
+    <div class="card card-notes" id="card_notes">
+      <h2>📝 Notizen</h2>
+      <div class="unit" style="margin-bottom:10px">Freitext pro Schlag — wird beim Tab-Wechsel automatisch gewechselt.</div>
+      <div class="field field-notizen">
+        <label for="notizen">Notiz</label>
+        <textarea id="notizen" rows="3" maxlength="500" autocomplete="off" autocorrect="off" spellcheck="true" placeholder="z.B. Vorgewende nass, Saatgut Charge 42…" oninput="onInputNotizen(this)" aria-describedby="notizen_hint"></textarea>
+        <div class="unit" id="notizen_hint">Wird lokal in deinem Browser gespeichert und bleibt nach einem Neustart erhalten.</div>
+      </div>
+    </div>
+
+    <div class="card card-settings" id="card_settings">
+      <h2>⚙️ Einstellungen</h2>
+
+      <div class="field">
+        <label for="ist_hektar">IST-Fläche (ha)</label>
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputIstHektar(this)" onblur="onInputIstHektar(this)">
+        <div class="unit">Optional: tatsächlich gesäte Fläche, z.B. laut Maschinen-Zähler.</div>
       </div>
 
       <div class="fahrgassen-toggle">
@@ -95,15 +115,6 @@
         <div class="fahrgassen-saved" id="einheit_groesse_saved"></div>
         <div class="fahrgassen-info">Der Standard richtet sich nach der gewählten Kultur und kann für diesen Schlag angepasst werden.</div>
       </div>
-    </div>
-
-    <div class="card">
-      <h2>🧪 Dünger</h2>
-      <div class="unit" style="margin-bottom:10px">Berechnet die benötigte Düngermenge für dieselbe Fläche.</div>
-      <div class="field">
-        <label for="duenger">Dünger (kg/ha)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputDuenger(this)" onblur="onInputDuenger(this)">
-      </div>
 
       <div class="fahrgassen-toggle">
         <label for="fahrgassen_toggle">Fahrgassen berücksichtigen</label>
@@ -117,7 +128,7 @@
         <div class="fahrgassen-saved" id="fahrgassen_saved"></div>
         <div class="fahrgassen-info">Die Körnerzahl wird um ca. 1/Fahrgassenbreite × 100 % reduziert.</div>
       </div>
-    </div><!-- Dünger card -->
+    </div>
 
     <div class="card result" id="results" style="display:none">
       <h2>📊 Ergebnis</h2>
@@ -314,10 +325,10 @@
   <script src="js/app-globals.js"></script>
   <script src="js/state.js"></script>
   <script src="js/culture.js"></script>
-  <script src="js/calculations.js"></script>
-  <script src="js/ui-handlers.js"></script>
+  <script src="js/calculations.js?v=21"></script>
+  <script src="js/ui-handlers.js?v=22"></script>
   <script src="js/render-tabs.js"></script>
-  <script src="js/render-results.js"></script>
+  <script src="js/render-results.js?v=21"></script>
   <script src="js/render-drill.js"></script>
   <script src="js/render-dashboard.js"></script>
   <script src="js/render-local-protocol.js?v=3"></script>

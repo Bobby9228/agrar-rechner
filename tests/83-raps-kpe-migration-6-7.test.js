@@ -66,14 +66,14 @@ describe('Migration 6→7: Raps-Default-KPE für unberührte Felder', () => {
         it('setzt _lv auf 7 nach Migration', () => {
             store['agrar_rechner'] = JSON.stringify(baseState());
             w.loadState();
-            expect(w.state._lv).toBe(8);
+            expect(w.state._lv).toBe(9);
         });
 
         it('persistiert _lv=7 in localStorage', () => {
             store['agrar_rechner'] = JSON.stringify(baseState());
             w.loadState();
             var persisted = JSON.parse(store['agrar_rechner']);
-            expect(persisted._lv).toBe(8);
+            expect(persisted._lv).toBe(9);
             expect(persisted.reiter[0].koernerProEinheit).toBe(1500000);
         });
 
@@ -81,12 +81,12 @@ describe('Migration 6→7: Raps-Default-KPE für unberührte Felder', () => {
             store['agrar_rechner'] = JSON.stringify(baseState());
             w.loadState();
             var afterFirst = JSON.parse(store['agrar_rechner']);
-            expect(afterFirst._lv).toBe(8);
+            expect(afterFirst._lv).toBe(9);
             expect(afterFirst.reiter[0].koernerProEinheit).toBe(1500000);
             // Zweiter Load
             w.loadState();
             var afterSecond = JSON.parse(store['agrar_rechner']);
-            expect(afterSecond._lv).toBe(8);
+            expect(afterSecond._lv).toBe(9);
             expect(afterSecond.reiter[0].koernerProEinheit).toBe(1500000);
         });
     });
@@ -101,7 +101,7 @@ describe('Migration 6→7: Raps-Default-KPE für unberührte Felder', () => {
             }));
             w.loadState();
             expect(w.state.reiter[0].koernerProEinheit).toBe(50000);
-            expect(w.state._lv).toBe(8);
+            expect(w.state._lv).toBe(9);
         });
 
         it('ändert nichts wenn istHektar > 0', () => {
@@ -113,7 +113,7 @@ describe('Migration 6→7: Raps-Default-KPE für unberührte Felder', () => {
             }));
             w.loadState();
             expect(w.state.reiter[0].koernerProEinheit).toBe(50000);
-            expect(w.state._lv).toBe(8);
+            expect(w.state._lv).toBe(9);
         });
 
         it('ändert nichts wenn koerner > 0', () => {
@@ -125,7 +125,7 @@ describe('Migration 6→7: Raps-Default-KPE für unberührte Felder', () => {
             }));
             w.loadState();
             expect(w.state.reiter[0].koernerProEinheit).toBe(50000);
-            expect(w.state._lv).toBe(8);
+            expect(w.state._lv).toBe(9);
         });
 
         it('ändert nichts wenn duenger > 0', () => {
@@ -137,7 +137,7 @@ describe('Migration 6→7: Raps-Default-KPE für unberührte Felder', () => {
             }));
             w.loadState();
             expect(w.state.reiter[0].koernerProEinheit).toBe(50000);
-            expect(w.state._lv).toBe(8);
+            expect(w.state._lv).toBe(9);
         });
 
         it('ändert nichts wenn entries nicht leer', () => {
@@ -150,7 +150,7 @@ describe('Migration 6→7: Raps-Default-KPE für unberührte Felder', () => {
             }));
             w.loadState();
             expect(w.state.reiter[0].koernerProEinheit).toBe(50000);
-            expect(w.state._lv).toBe(8);
+            expect(w.state._lv).toBe(9);
         });
 
         it('ändert nichts wenn done = true', () => {
@@ -162,7 +162,7 @@ describe('Migration 6→7: Raps-Default-KPE für unberührte Felder', () => {
             }));
             w.loadState();
             expect(w.state.reiter[0].koernerProEinheit).toBe(50000);
-            expect(w.state._lv).toBe(8);
+            expect(w.state._lv).toBe(9);
         });
     });
 
@@ -171,21 +171,21 @@ describe('Migration 6→7: Raps-Default-KPE für unberührte Felder', () => {
             store['agrar_rechner'] = JSON.stringify(baseState({ kultur: 'mais' }));
             w.loadState();
             expect(w.state.reiter[0].koernerProEinheit).toBe(50000);
-            expect(w.state._lv).toBe(8);
+            expect(w.state._lv).toBe(9);
         });
 
         it('ändert nichts bei kultur=sonstiges', () => {
             store['agrar_rechner'] = JSON.stringify(baseState({ kultur: 'sonstiges' }));
             w.loadState();
             expect(w.state.reiter[0].koernerProEinheit).toBe(50000);
-            expect(w.state._lv).toBe(8);
+            expect(w.state._lv).toBe(9);
         });
 
         it('ändert nichts bei kultur=null', () => {
             store['agrar_rechner'] = JSON.stringify(baseState({ kultur: null, erstauswahlDone: false }));
             w.loadState();
             expect(w.state.reiter[0].koernerProEinheit).toBe(50000);
-            expect(w.state._lv).toBe(8);
+            expect(w.state._lv).toBe(9);
         });
 
         it('ändert nichts wenn Tab 0 bereits individuelle kpe hat (≠50000)', () => {
@@ -197,7 +197,7 @@ describe('Migration 6→7: Raps-Default-KPE für unberührte Felder', () => {
             }));
             w.loadState();
             expect(w.state.reiter[0].koernerProEinheit).toBe(80000);
-            expect(w.state._lv).toBe(8);
+            expect(w.state._lv).toBe(9);
         });
     });
 
@@ -214,7 +214,7 @@ describe('Migration 6→7: Raps-Default-KPE für unberührte Felder', () => {
             expect(w.state.reiter[0].koernerProEinheit).toBe(1500000);
             // Tab 1 bleibt unverändert
             expect(w.state.reiter[1].koernerProEinheit).toBe(50000);
-            expect(w.state._lv).toBe(8);
+            expect(w.state._lv).toBe(9);
         });
     });
 
@@ -227,7 +227,7 @@ describe('Migration 6→7: Raps-Default-KPE für unberührte Felder', () => {
             w.loadState();
             expect(w.state.reiter).toBeDefined();
             expect(w.state.reiter.length).toBe(1);
-            expect(w.state._lv).toBe(8);
+            expect(w.state._lv).toBe(9);
         });
 
         it('Migration 5→7: bestehender State mit _lv=5 wird migriert', () => {
@@ -244,7 +244,7 @@ describe('Migration 6→7: Raps-Default-KPE für unberührte Felder', () => {
                 drillPriorities: {}
             });
             w.loadState();
-            expect(w.state._lv).toBe(8);
+            expect(w.state._lv).toBe(9);
             expect(w.state.reiter[0].koernerProEinheit).toBe(50000);
         });
 
@@ -255,7 +255,7 @@ describe('Migration 6→7: Raps-Default-KPE für unberührte Felder', () => {
             }] }));
             w.loadState();
             expect(w.state.reiter[0].koernerProEinheit).toBe(1500000);
-            expect(w.state._lv).toBe(8);
+            expect(w.state._lv).toBe(9);
         });
     });
 });

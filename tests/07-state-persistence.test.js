@@ -152,8 +152,8 @@ describe('State persistence', () => {
       expect(w.state.reiter[0].entries[0].einheit).toBe(1);
     });
 
-    it('persists migrated snapshot so _lv advances to 7 after first load', () => {
-      // Alt-State ohne _lv → Migration 0→7 sollte durchlaufen
+    it('persists migrated snapshot so _lv advances to 9 after first load', () => {
+      // Alt-State ohne _lv → Migration 0→9 sollte durchlaufen
       // und das Ergebnis einmalig zurück in localStorage geschrieben werden.
       store['agrar_rechner'] = JSON.stringify({
         reiter: [{ name: 'Tab 1', hektar: 10, koerner: 90000, duenger: 150, entries: [] }],
@@ -164,7 +164,7 @@ describe('State persistence', () => {
       w.loadState();
       // Nach Migration: gespeicherter Snapshot hat _lv=7
       var persisted = JSON.parse(store['agrar_rechner']);
-      expect(persisted._lv).toBe(8);
+      expect(persisted._lv).toBe(9);
       // Issue #377: `done: false` wird via sanitizeTab auf bestehende Tabs gesetzt
       expect(persisted.reiter[0].done).toBe(false);
     });
@@ -178,13 +178,13 @@ describe('State persistence', () => {
       });
       w.loadState();
       var afterFirst = JSON.parse(store['agrar_rechner']);
-      // Zweiter Load: _lv ist schon 7, also kein Re-Migration-Touch.
+      // Zweiter Load: _lv ist schon 9, also kein Re-Migration-Touch.
       // Wenn loadState erneut schreiben würde, wäre das ein No-Op für die
       // Felder; der Test sichert ab, dass _lv erhalten bleibt und keine
       // Re-Schreibung passiert (idempotent = kein Drift).
       w.loadState();
       var afterSecond = JSON.parse(store['agrar_rechner']);
-      expect(afterSecond._lv).toBe(8);
+      expect(afterSecond._lv).toBe(9);
       expect(afterSecond.reiter[0].hektar).toBe(10);
     });
   });

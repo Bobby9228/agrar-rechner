@@ -22,13 +22,86 @@ describe('Tab management', () => {
       expect(w.state.reiter[1].name).toBe('Schlag 2');
     });
 
-    it('new tab has default values', () => {
+    it('new tab has default values for non-inherited fields', () => {
       w.addReiter();
       const r = w.state.reiter[1];
       expect(r.hektar).toBe(0);
+      expect(r.istHektar).toBe(0);
+      expect(r.entries).toEqual([]);
+      expect(r.done).toBe(false);
+      expect(r.notizen).toBe('');
+      // koerner/duenger are inherited from the previously active tab
+      // (Schlag 1 is the default empty state here → 0/0).
       expect(r.koerner).toBe(0);
       expect(r.duenger).toBe(0);
+    });
+
+    it('inherits koerner and duenger from the previously active tab', () => {
+      w.state.reiter[0].koerner = 90000;
+      w.state.reiter[0].duenger = 200;
+      w.state.activeReiter = 0;
+      w.syncInputsFromState();
+
+      w.addReiter();
+      const r = w.state.reiter[1];
+      expect(r.koerner).toBe(90000);
+      expect(r.duenger).toBe(200);
+      // andere Felder bleiben leer
+      expect(r.hektar).toBe(0);
+      expect(r.istHektar).toBe(0);
       expect(r.entries).toEqual([]);
+      expect(r.done).toBe(false);
+      expect(r.notizen).toBe('');
+    });
+
+    it('inherits koerner and duenger from DOM-typed values via syncStateFromInputs', () => {
+      doc.getElementById('koerner').value = '85000';
+      doc.getElementById('duenger').value = '180';
+      // kein expliziter syncStateFromInputs-Call — addReiter muss selbst syncen.
+      w.addReiter();
+      const r = w.state.reiter[1];
+      expect(r.koerner).toBe(85000);
+      expect(r.duenger).toBe(180);
+      // hektar wurde im DOM nicht gesetzt → bleibt 0
+      expect(r.hektar).toBe(0);
+      expect(r.istHektar).toBe(0);
+      expect(r.entries).toEqual([]);
+    });
+
+    it('inherited values in new tab are normally overridable', () => {
+      doc.getElementById('koerner').value = '90000';
+      doc.getElementById('duenger').value = '200';
+      w.addReiter();
+      // Tab 1 ist aktiv und hat geerbte Werte. Jetzt überschreiben:
+      doc.getElementById('koerner').value = '75000';
+      doc.getElementById('duenger').value = '150';
+      w.syncStateFromInputs();
+      expect(w.state.reiter[1].koerner).toBe(75000);
+      expect(w.state.reiter[1].duenger).toBe(150);
+    });
+
+
+    it('inherits zero values unchanged', () => {
+      w.state.reiter[0].koerner = 0;
+      w.state.reiter[0].duenger = 0;
+
+      w.addReiter();
+      const r = w.state.reiter[1];
+      expect(r.koerner).toBe(0);
+      expect(r.duenger).toBe(0);
+    });
+
+    it('each additional tab inherits from the currently active predecessor', () => {
+      doc.getElementById('koerner').value = '90000';
+      doc.getElementById('duenger').value = '200';
+      w.addReiter();
+
+      doc.getElementById('koerner').value = '75000';
+      doc.getElementById('duenger').value = '150';
+      w.addReiter();
+
+      expect(w.state.reiter[2].koerner).toBe(75000);
+      expect(w.state.reiter[2].duenger).toBe(150);
     });
 
     it('adds multiple tabs with incrementing names', () => {
@@ -51,14 +124,16 @@ describe('Tab management', () => {
       expect(w.state.reiter[0].koerner).toBe(90000);
     });
 
-    it('clears inputs for new tab', () => {
+    it('clears non-inherited inputs for new tab and shows inherited values', () => {
       doc.getElementById('hektar').value = '10';
       doc.getElementById('koerner').value = '90000';
       w.syncStateFromInputs();
 
       w.addReiter();
+      // Hektar bleibt im neuen Tab leer → Input wird geleert.
       expect(doc.getElementById('hektar').value).toBe('');
-      expect(doc.getElementById('koerner').value).toBe('');
+      // Koerner wird vererbt → Input zeigt den geerbten Wert.
+      expect(doc.getElementById('koerner').value).toBe('90000');
     });
   });
 

@@ -28,6 +28,7 @@
       einheitGroesseSettings: 'einheit_groesse_settings',
       einheitGroesseSaved: 'einheit_groesse_saved',
       koernerProEinheit: 'koerner_pro_einheit',
+      notizen: 'notizen',
       drillSummary: [
         'ds_saat_total', 'ds_saat_used', 'ds_saat_remaining',
         'ds_duenger_total', 'ds_duenger_used', 'ds_duenger_remaining',
@@ -134,6 +135,14 @@ function _installKulturModalA11y(modal, options) {
           dEl.value = atab.duenger > 0 ? String(atab.duenger).replace('.', ',') : '';
           dEl.dataset.prev = dEl.value;
           dEl.dataset.cleaned = dEl.value;
+        }
+        // Migration 8→9 (Notizen pro Schlag): auch das Notiz-Textarea
+        // muss vor dem Fokus-Shift aus state befüllt werden, sonst
+        // überschreibt ein späterer blur die Notiz mit dem aktuellen
+        // DOM-Wert (= '' für einen noch nicht initialisierten Tab).
+        var nEl = document.getElementById(DOM_IDS.notizen);
+        if (nEl) {
+          nEl.value = typeof atab.notizen === 'string' ? atab.notizen : '';
         }
       }
     }
@@ -353,6 +362,10 @@ function confirmChangeKultur() {
 
     function addReiter() {
       syncStateFromInputs();
+      // Neue Tabs erben koerner/duenger vom zuvor aktiven Reiter (Test-RED
+      // tests/06-tab-management.test.js): der aktive Reiter ist nach
+      // syncStateFromInputs() auf Stand, also direkt aus state.reiter lesen.
+      var sourceTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
       var maxIdx = 0;
       AppGlobals.state.reiter.forEach(function(r, i) { var m = parseInt(r.name.replace(/\D+/g, '')); if (!isNaN(m) && m > maxIdx) maxIdx = m; });
       // Per-Tab Einheitsgröße: neuen Schlag mit aktuellem Kultur-Standard
@@ -370,7 +383,7 @@ function confirmChangeKultur() {
       } else {
         newKpe = 50000;
       }
-      AppGlobals.state.reiter.push({ name: 'Schlag ' + (maxIdx + 1), hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled, fahrgassenBreite: AppGlobals.state.fahrgassenBreite, koernerProEinheit: newKpe });
+      AppGlobals.state.reiter.push({ name: 'Schlag ' + (maxIdx + 1), hektar: 0, istHektar: 0, koerner: sourceTab.koerner, duenger: sourceTab.duenger, entries: [], done: false, fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled, fahrgassenBreite: AppGlobals.state.fahrgassenBreite, koernerProEinheit: newKpe, notizen: '' });
       AppGlobals.state.activeReiter = AppGlobals.state.reiter.length - 1;
       AppGlobals.appEmit('TAB_ADDED', { tabIdx: AppGlobals.state.activeReiter });
       document.getElementById('hektar').focus();
@@ -591,7 +604,10 @@ function confirmChangeKultur() {
         done: false,
         fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled,
         fahrgassenBreite: AppGlobals.state.fahrgassenBreite,
-        koernerProEinheit: prevKpe
+        koernerProEinheit: prevKpe,
+        // Migration 8→9 (Notizen pro Schlag): zurücksetzen, damit
+        // "Tab zurücksetzen" wirklich alle Tab-Daten leert.
+        notizen: ''
       };
       AppGlobals.state.drillPriorities = {};
       // Clear drill summary values (Issue #281: IDs aus DOM_IDS)
@@ -617,13 +633,17 @@ function confirmChangeKultur() {
       _resetInput(DOM_IDS.istHektar);
       _resetInput(DOM_IDS.koerner);
       _resetInput(DOM_IDS.duenger);
+      // Notizen-Textarea leeren (kein _resetInput, weil textarea
+      // kein Input-Element und keine dataset.prev/cleaned-Slots hat).
+      var nEl = document.getElementById(DOM_IDS.notizen);
+      if (nEl) nEl.value = '';
       AppGlobals.appEmit('TAB_RESET', { tabIdx: active });
     }
 
     function resetAll() {
       // Preserve UI-prefs that "Daten zurücksetzen" should NOT wipe.
       AppGlobals.state = {
-        reiter: [{ name: 'Schlag 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: false, fahrgassenBreite: 0, koernerProEinheit: 50000 }],
+        reiter: [{ name: 'Schlag 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: false, fahrgassenBreite: 0, koernerProEinheit: 50000, notizen: '' }],
         activeReiter: 0,
         activeView: null,
         fahrgassenEnabled: false,
@@ -649,6 +669,9 @@ function confirmChangeKultur() {
       _resetInput(DOM_IDS.istHektar);
       _resetInput(DOM_IDS.koerner);
       _resetInput(DOM_IDS.duenger);
+      // Notizen-Textarea leeren (Migration 8→9).
+      var nElAll = document.getElementById(DOM_IDS.notizen);
+      if (nElAll) nElAll.value = '';
       var errH = document.getElementById(DOM_IDS.errHektar);
       if (errH) errH.textContent = '';
       var errK = document.getElementById(DOM_IDS.errKoerner);
@@ -1129,6 +1152,18 @@ function confirmChangeKultur() {
       if (r.duenger !== v) { r.duenger = v; AppGlobals.appEmit('ENTRY_CHANGED'); }
     }
 
+    // Migration 8→9 (Notizen pro Schlag): freier Text pro Tab/Reiter.
+    // Persistenz via saveState() wird über den 'ENTRY_CHANGED'-Event
+    // getriggert (render-tabs.js Subscriber ruft saveState() und
+    // renderTabs()/renderResults()). Pro Tab getrennt: Tab-Wechsel
+    // liest via syncInputsFromState() den Wert des Ziel-Tabs in die
+    // textarea, ältere Notizen anderer Tabs bleiben im state erhalten.
+    function onInputNotizen(el) {
+      var r = AppGlobals.getActiveReiter();
+      var v = typeof el.value === 'string' ? el.value : '';
+      if (r.notizen !== v) { r.notizen = v; AppGlobals.appEmit('ENTRY_CHANGED'); }
+    }
+
     // --- UI Wrappers (bridge: pure calculations → active tab context) ---
     // getTabKornerGesamt is in calculations.js; getActiveReiter is in ui-handlers.js
     function getKornerGesamt() {
@@ -1398,6 +1433,15 @@ function confirmLocalProtocolDelete() {
       r.istHektar = AppGlobals.parseDE(document.getElementById('ist_hektar').value) || 0;
       r.koerner   = AppGlobals.parseDE(document.getElementById('koerner').value) || 0;
       r.duenger    = AppGlobals.parseDE(document.getElementById('duenger').value) || 0;
+      // Migration 8→9 (Notizen pro Schlag): Freitext-Wert ebenfalls
+      // aus DOM übernehmen, damit Tab-Wechsel / Reset-Pfade / Fokus-
+      // Shifts (Kultur-Modal) konsistent sind. textarea.value ist
+      // immer ein String (Default ''), parseDE würde hier nichts
+      // sinnvolles liefern.
+      var nEl = document.getElementById('notizen');
+      if (nEl) {
+        r.notizen = typeof nEl.value === 'string' ? nEl.value : '';
+      }
     }
 
     function toInputValue(n) {
@@ -1410,6 +1454,7 @@ function confirmLocalProtocolDelete() {
       var ih = document.getElementById('ist_hektar');
       var k = document.getElementById('koerner');
       var d = document.getElementById('duenger');
+      var n = document.getElementById('notizen');
       var hVal = r.hektar > 0    ? toInputValue(r.hektar)    : '';
       var ihVal = r.istHektar > 0 ? toInputValue(r.istHektar) : '';
       var kVal = r.koerner > 0   ? toInputValue(r.koerner)   : '';
@@ -1418,6 +1463,15 @@ function confirmLocalProtocolDelete() {
       ih.value = ihVal; ih.dataset.prev = ihVal; ih.dataset.cleaned = ihVal;
       k.value = kVal;  k.dataset.prev = kVal;  k.dataset.cleaned = kVal;
       d.value = dVal;  d.dataset.prev = dVal;  d.dataset.cleaned = dVal;
+      // Migration 8→9 (Notizen pro Schlag): textarea-Inhalt aus dem
+      // aktiven Reiter füllen — beim Tab-Wechsel sieht der User die
+      // Notiz des neuen Schlags, ältere Notizen bleiben im state
+      // (state.reiter[i].notizen) erhalten. sanitizeTab() vergibt für
+      // jeden reiter.notizen einen Default '', daher ist typeof-Check
+      // defensiv für Backwards-Compat.
+      if (n) {
+        n.value = typeof r.notizen === 'string' ? r.notizen : '';
+      }
       // HIGH 3: Per-Tab kpe-Feld, saved-Text und UI-Zustand müssen bei
       // jedem Tabwechsel und bei init synchron sein, sonst zeigt das
       // Eingabefeld den Wert eines anderen Tabs.
@@ -1525,6 +1579,7 @@ Object.assign(window.AppGlobals, {
   onInputIstHektar: onInputIstHektar,
   onInputKoerner: onInputKoerner,
   onInputDuenger: onInputDuenger,
+  onInputNotizen: onInputNotizen,
   getKornerGesamt: getKornerGesamt,
   getActiveTotalEinheiten: getActiveTotalEinheiten,
   getActiveTotalDuenger: getActiveTotalDuenger,

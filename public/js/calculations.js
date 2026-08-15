@@ -358,6 +358,53 @@ function formatEntryTimeHHMM(t) {
   return '';
 }
 
+// Formatiert Entry-Time als kompakte Karten-Zeile:
+//   "15.08.2026 · 10:12 Uhr"
+// Robuste Behandlung alter Time-Formen (render-results.js Inline-Protokoll):
+//   - number (ms seit Epoch)         → echtes Datum + HH:MM (lokale Zeit)
+//   - string "HH:MM" / "HH:MM:SS"    → heutiges Datum + HH:MM
+//   - string mit anderem Format       → Date.parse-Fallback; bei Erfolg
+//                                      dasselbe Format, sonst "" (graceful,
+//                                      kein Crash auf korrupten Einträgen)
+//   - null/undefined/leer             → ""
+function formatEntryTimeCard(t) {
+  if (t === null || t === undefined) return '';
+  var dateObj = null;
+  var hhmm = '';
+  if (typeof t === 'number') {
+    // 0 ist der Sanitizer-Default für fehlende Alt-Zeitwerte; negative Werte
+    // liegen ebenfalls vor Unix-Epoch und sind keine gültigen Buchungszeiten.
+    if (!isFinite(t) || t <= 0) return '';
+    var dn = new Date(t);
+    if (!isNaN(dn.getTime())) dateObj = dn;
+  } else if (typeof t === 'string') {
+    var trimmed = t.trim();
+    if (trimmed) {
+      var m = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+      if (m) {
+        var hours = parseInt(m[1], 10);
+        var minutes = parseInt(m[2], 10);
+        var seconds = m[3] === undefined ? 0 : parseInt(m[3], 10);
+        if (hours > 23 || minutes > 59 || seconds > 59) return '';
+        hhmm = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+        dateObj = new Date();
+      } else {
+        var parsed = Date.parse(trimmed);
+        if (!isNaN(parsed)) dateObj = new Date(parsed);
+      }
+    }
+  }
+  if (!dateObj) return '';
+  if (!hhmm) {
+    hhmm = String(dateObj.getHours()).padStart(2, '0') + ':' +
+           String(dateObj.getMinutes()).padStart(2, '0');
+  }
+  var dd = String(dateObj.getDate()).padStart(2, '0');
+  var mo = String(dateObj.getMonth() + 1).padStart(2, '0');
+  var yyyy = dateObj.getFullYear();
+  return dd + '.' + mo + '.' + yyyy + ' \u00B7 ' + hhmm + ' Uhr';
+}
+
 // YYYY-MM-DD aus JS-Date (lokale Zeit, nicht UTC) — verhindert
 // Timezone-Drift für "Heute, 14. Aug."-Header.
 function _dateKeyFromDate(d) {
@@ -556,5 +603,6 @@ Object.assign(window.AppGlobals, {
   formatDateKeyGerman: formatDateKeyGerman,
   formatDateKeyShort: formatDateKeyShort,
   isTodayKey: isTodayKey,
+  formatEntryTimeCard: formatEntryTimeCard,
   _dateKeyFromDate: _dateKeyFromDate,
 });

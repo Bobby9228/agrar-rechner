@@ -26,7 +26,8 @@ var state = {
     duenger:    0,
     entries:    [],
     done:       false,
-    koernerProEinheit: 50000
+    koernerProEinheit: 50000,
+    notizen:    ''
   }],
   activeReiter:   0,
   activeView:     null,
@@ -132,7 +133,11 @@ var ALLOWED_TOP_KEYS = [
 var ALLOWED_TAB_KEYS = [
   'name', 'hektar', 'istHektar', 'koerner', 'duenger',
   'entries', 'fahrgassenEnabled', 'fahrgassenBreite',
-  'done', 'koernerProEinheit'
+  'done', 'koernerProEinheit',
+  // Migration 8→9: freier Notiz-Text pro Schlag/Reiter. Default ''
+  // wird in sanitizeTab() vergeben, damit alte States ohne dieses Feld
+  // weiterhin funktionieren (Backwards-Compat).
+  'notizen'
 ];
 
 function isPlainObject(v) {
@@ -204,7 +209,7 @@ function sanitizeMachineLogEntry(raw) {
 
 function sanitizeTab(raw) {
   if (!isPlainObject(raw)) {
-    return { name: 'Schlag', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false };
+    return { name: 'Schlag', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, notizen: '' };
   }
   var tab = {
     name:      sanitizeString(raw.name, 'Schlag', 64),
@@ -249,6 +254,12 @@ function sanitizeTab(raw) {
       if (e !== null) tab.entries.push(e);
     }
   }
+  // Migration 8→9: freier Notiz-Text pro Schlag/Reiter. Alte States ohne
+  // dieses Feld bekommen Default '' (kein Backwards-Compat-Bruch).
+  // maxLen 500 verhindert, dass ein einzelner Tab den gesamten
+  // localStorage-Quota frisst (Defense-in-Depth gegen manipulierten
+  // oder versehentlich zu groß gewordenen Inhalt).
+  tab.notizen = sanitizeString(raw.notizen, '', 500);
   return tab;
 }
 
@@ -431,6 +442,11 @@ function parseAndSanitizeState(raw) {
     }
     if (!isPlainObject(cleaned.protocolOpenCards)) cleaned.protocolOpenCards = {};
     cleaned._lv = 8;
+    // Migration 8→9 (Notizen pro Schlag): sanitizeTab() vergibt für jeden
+    // reiter.notizen den Default '', daher sind keine Daten-Änderungen am
+    // reiter-Array nötig — die Persistenz-Schwelle wird hier auf _lv = 9
+    // gehoben, damit nachfolgende Page-Loads die Migration überspringen.
+    cleaned._lv = 9;
     return { state: cleaned, originalLv: originalLv };
   } catch(e) {
     return null;
@@ -468,10 +484,10 @@ function loadState() {
         if (oldTheme) localStorage.removeItem('mais_rechner_theme');
       } catch(e) {}
     }
-    // Migration-Persistenz: Wenn die Daten nicht bereits _lv=8 waren,
+    // Migration-Persistenz: Wenn die Daten nicht bereits _lv=9 waren,
     // schreibe den migrierten Snapshot einmalig zurück, damit nachfolgende
     // Page-Loads die Migration überspringen können.
-    if (originalLv < 8) {
+    if (originalLv < 9) {
       try {
         localStorage.setItem('agrar_rechner', JSON.stringify(state));
       } catch(e) {

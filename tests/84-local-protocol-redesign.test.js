@@ -191,7 +191,7 @@ describe('Lokales Protokoll — state.protocolView / protocolOpenCards', () => {
     w.loadState();
     expect(w.state.protocolView).toBe('fields');
     expect(w.state.protocolOpenCards).toEqual({});
-    expect(w.state._lv).toBe(8);
+    expect(w.state._lv).toBe(9);
   });
 
   it('Migration 7→8: protocolOpenCards wird als Plain Object validiert', () => {
