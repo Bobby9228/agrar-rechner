@@ -347,34 +347,26 @@
   </div>
   <!-- Kultur-Auswahl (Erststart, verpflichtend) -->
   <div class="kultur-overlay" id="kultur_overlay" aria-hidden="true"></div>
-  <div class="kultur-modal" id="kultur_modal" role="dialog" aria-modal="true" aria-labelledby="kultur_modal_title" aria-describedby="kultur_modal_desc" hidden>
+  <div class="kultur-modal" id="kultur_modal" role="dialog" aria-modal="true" aria-labelledby="kultur_modal_title" hidden>
     <div class="kultur-modal-badge" aria-hidden="true">🌾</div>
     <h2 class="kultur-modal-title" id="kultur_modal_title">Welche Kultur planst du?</h2>
-    <p class="kultur-modal-subtitle" id="kultur_modal_desc">
-      Bitte wähle die Kultur für deine Aussaat. Wir merken uns die Auswahl und
-      passen die Empfehlung für Körner pro Hektar automatisch an. Die Wahl
-      lässt sich später oben rechts über „ändern" jederzeit anpassen.
-    </p>
     <div class="kultur-options">
       <button class="kultur-option" id="kultur_choice_mais" onclick="chooseKultur('mais')" aria-label="Kultur Mais wählen">
         <span class="kultur-option-icon" aria-hidden="true">🌽</span>
         <span class="kultur-option-body">
           <span class="kultur-option-title">Mais</span>
-          <span class="kultur-option-desc">~50.000 Körner/Einheit · 80.000 – 100.000 Körner/ha</span>
         </span>
       </button>
       <button class="kultur-option" id="kultur_choice_raps" onclick="chooseKultur('raps')" aria-label="Kultur Raps wählen">
         <span class="kultur-option-icon" aria-hidden="true">🌼</span>
         <span class="kultur-option-body">
           <span class="kultur-option-title">Raps</span>
-          <span class="kultur-option-desc">~1.500.000 Körner/Einheit · 250.000 – 350.000 Körner/ha</span>
         </span>
       </button>
       <button class="kultur-option" id="kultur_choice_sonstiges" onclick="chooseKultur('sonstiges')" aria-label="Kultur Sonstiges wählen">
         <span class="kultur-option-icon" aria-hidden="true">🌱</span>
         <span class="kultur-option-body">
           <span class="kultur-option-title">Sonstiges</span>
-          <span class="kultur-option-desc">Körner pro Einheit manuell eingeben</span>
         </span>
       </button>
     </div>
