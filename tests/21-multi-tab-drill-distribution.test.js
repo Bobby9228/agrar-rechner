@@ -5,10 +5,23 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createDom } from './helpers.js';
 
+describe('new field default drill priority', () => {
+  it('assigns priority 1 to a newly added field', () => {
+    const { window: w } = createDom();
+
+    w.addReiter();
+
+    expect(w.state.drillPriorities[1]).toBe(1);
+  });
+});
+
 function setupMultiTab(w) {
   // Add 3 tabs with data
   w.addReiter(); // tab 1 already exists
   w.addReiter(); // tab 2
+  // Die folgenden Verteilungstests bauen ihre Prioritätsreihenfolge explizit
+  // auf und starten daher bewusst ohne die Produkt-Standardpriorität.
+  w.state.drillPriorities = {};
   w.state.reiter[0].hektar = 10;
   w.state.reiter[0].koerner = 90000;
   w.state.reiter[0].duenger = 150;

@@ -385,6 +385,7 @@ function confirmChangeKultur() {
       }
       AppGlobals.state.reiter.push({ name: 'Schlag ' + (maxIdx + 1), hektar: 0, istHektar: 0, koerner: sourceTab.koerner, duenger: sourceTab.duenger, entries: [], done: false, fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled, fahrgassenBreite: AppGlobals.state.fahrgassenBreite, koernerProEinheit: newKpe, notizen: '' });
       AppGlobals.state.activeReiter = AppGlobals.state.reiter.length - 1;
+      AppGlobals.state.drillPriorities[AppGlobals.state.activeReiter] = 1;
       AppGlobals.appEmit('TAB_ADDED', { tabIdx: AppGlobals.state.activeReiter });
       document.getElementById('hektar').focus();
     }
