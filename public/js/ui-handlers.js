@@ -230,6 +230,12 @@ function chooseKultur(key) {
       initialTab.koernerProEinheit = AppGlobals.getDefaultKoernerProEinheit(key);
     }
   }
+  // Ein neuer Auftrag beginnt mit seinem einzigen Startschlag. Sobald die
+  // verpflichtende Kultur gewählt wurde, erhält er wie jeder später
+  // hinzugefügte Schlag die höchste Verteilpriorität.
+  if (freshInstall) {
+    AppGlobals.state.drillPriorities[0] = 1;
+  }
   // Das Editorfeld kann bereits mit dem migrierten Wert 50.000 gerendert sein.
   // Direkt nach der Auswahl aus dem aktiven Schlag synchronisieren.
   syncEinheitGroesseEditorFromTab(AppGlobals.getActiveReiter());
