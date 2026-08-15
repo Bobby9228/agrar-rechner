@@ -85,6 +85,7 @@ export function createDom() {
     loadModule('render-results.js'),
     loadModule('render-drill.js'),
     loadModule('render-dashboard.js'),
+    loadModule('render-local-protocol.js'),
     // Remove DOMContentLoaded auto-init from main.js (initUI is called manually below).
     // The actual code uses `AppGlobals.initUI()` (ADR-001, Issue #278) — match
     // the real text so the replace actually fires. If we don't strip it, the

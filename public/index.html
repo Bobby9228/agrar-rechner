@@ -13,7 +13,7 @@
   <title>Agrar-Rechner</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=18">
+  <link rel="stylesheet" href="css/styles.css?v=21">
 </head>
 <body>
   <div class="app-layout">
@@ -63,8 +63,8 @@
     </div>
 
     <div class="card card-input" id="card_input">
-      <h2>📐 Fläche & Aussaatstärke</h2>
-      <div class="unit" style="margin-bottom:10px">Berechnet aus deiner Fläche, wie viele Saatgut-Einheiten du brauchst.</div>
+      <h2>📐 Fläche &amp; Aussaatstärke</h2>
+      <div class="unit" style="margin-bottom:10px">Berechnet aus deiner Fläche, wie viele Saatgut-Einheiten und kg Dünger du brauchst.</div>
       <div class="field">
         <label for="hektar">Hektar (SOLL)</label>
         <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="hektar" placeholder="z.B. 12,5" maxlength="8" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputHektar(this)" onblur="onInputHektar(this)" aria-describedby="err_hektar">
@@ -72,15 +72,35 @@
         <div class="error-msg" id="err_hektar" role="alert"></div>
       </div>
       <div class="field">
-        <label for="ist_hektar">IST-Fläche (ha)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputIstHektar(this)" onblur="onInputIstHektar(this)">
-        <div class="unit">Optional: tatsächlich gesäte Fläche, z.B. laut Maschinen-Zähler.</div>
-      </div>
-      <div class="field">
         <label for="koerner">Körner pro Hektar</label>
         <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" maxlength="8" oninput="onInputFormat(this, 'integer', event)" onchange="onInputKoerner(this)" onblur="onInputKoerner(this)" aria-describedby="err_koerner">
         <div class="unit" id="koerner_empfehlung">üblich: 80.000 – 100.000</div>
         <div class="error-msg" id="err_koerner" role="alert"></div>
+      </div>
+      <div class="field">
+        <label for="duenger">Dünger (kg/ha)</label>
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputDuenger(this)" onblur="onInputDuenger(this)">
+        <div class="unit">Berechnet die benötigte Düngermenge für dieselbe Fläche.</div>
+      </div>
+    </div>
+
+    <div class="card card-notes" id="card_notes">
+      <h2>📝 Notizen</h2>
+      <div class="unit" style="margin-bottom:10px">Freitext pro Schlag — wird beim Tab-Wechsel automatisch gewechselt.</div>
+      <div class="field field-notizen">
+        <label for="notizen">Notiz</label>
+        <textarea id="notizen" rows="3" maxlength="500" autocomplete="off" autocorrect="off" spellcheck="true" placeholder="z.B. Vorgewende nass, Saatgut Charge 42…" oninput="onInputNotizen(this)" aria-describedby="notizen_hint"></textarea>
+        <div class="unit" id="notizen_hint">Wird lokal in deinem Browser gespeichert und bleibt nach einem Neustart erhalten.</div>
+      </div>
+    </div>
+
+    <div class="card card-settings" id="card_settings">
+      <h2>⚙️ Einstellungen</h2>
+
+      <div class="field">
+        <label for="ist_hektar">IST-Fläche (ha)</label>
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputIstHektar(this)" onblur="onInputIstHektar(this)">
+        <div class="unit">Optional: tatsächlich gesäte Fläche, z.B. laut Maschinen-Zähler.</div>
       </div>
 
       <div class="fahrgassen-toggle">
@@ -95,15 +115,6 @@
         <div class="fahrgassen-saved" id="einheit_groesse_saved"></div>
         <div class="fahrgassen-info">Der Standard richtet sich nach der gewählten Kultur und kann für diesen Schlag angepasst werden.</div>
       </div>
-    </div>
-
-    <div class="card">
-      <h2>🧪 Dünger</h2>
-      <div class="unit" style="margin-bottom:10px">Berechnet die benötigte Düngermenge für dieselbe Fläche.</div>
-      <div class="field">
-        <label for="duenger">Dünger (kg/ha)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputDuenger(this)" onblur="onInputDuenger(this)">
-      </div>
 
       <div class="fahrgassen-toggle">
         <label for="fahrgassen_toggle">Fahrgassen berücksichtigen</label>
@@ -117,7 +128,7 @@
         <div class="fahrgassen-saved" id="fahrgassen_saved"></div>
         <div class="fahrgassen-info">Die Körnerzahl wird um ca. 1/Fahrgassenbreite × 100 % reduziert.</div>
       </div>
-    </div><!-- Dünger card -->
+    </div>
 
     <div class="card result" id="results" style="display:none">
       <h2>📊 Ergebnis</h2>
@@ -241,12 +252,35 @@
       <div id="drill_entries"></div>
     </div>
 
+    <!-- Lokales Protokoll-Redesign (gespeist aus existierenden Aggregationen:
+         Gesamtbilanz, Tagesgruppen, Accordion, drei-Punkte-Aktion mit
+         Löschbestätigung via Action-Sheet). Wird ausschließlich sichtbar,
+         wenn .app-layout.protokoll-mode aktiv ist (renderView() in
+         render-tabs.js). -->
+    <section class="local-protocol" id="local_protocol_section" aria-label="Lokales Protokoll" hidden>
+      <div class="lp-balance" id="local_protocol_balance" aria-label="Gesamtbilanz">
+        <div class="lp-balance-head">
+          <h2>Gesamtbilanz</h2>
+          <time id="local_protocol_balance_time" datetime="">Heute</time>
+        </div>
+        <div class="lp-balance-grid" id="local_protocol_balance_grid"></div>
+        <div class="lp-balance-forecast" id="local_protocol_balance_forecast" aria-label="Nächste Leerstände"></div>
+      </div>
+      <div class="lp-view-switch" role="tablist" aria-label="Protokoll auswählen">
+        <button type="button" id="lp_view_fields_btn" class="lp-view-tab active" role="tab" aria-selected="true" aria-controls="local_protocol_fields_panel" onclick="AppGlobals.setProtocolView('fields')">Schläge</button>
+        <button type="button" id="lp_view_machine_btn" class="lp-view-tab" role="tab" aria-selected="false" aria-controls="local_protocol_machine_panel" onclick="AppGlobals.setProtocolView('machine')">Maschine</button>
+      </div>
+      <section id="local_protocol_fields_panel" class="lp-panel" role="tabpanel" aria-labelledby="lp_view_fields_btn"></section>
+      <section id="local_protocol_machine_panel" class="lp-panel lp-machine-panel" role="tabpanel" aria-labelledby="lp_view_machine_btn" hidden></section>
+    </section>
+
     </div><!-- end .container -->
 
     <div class="version-footer" id="version_footer"></div>
     <div class="footer-actions">
       <button class="footer-reset-btn" onclick="openResetModal()" aria-label="Daten zurücksetzen">🗑️ Daten zurücksetzen</button>
     </div>
+
     </div><!-- end .scrollable-content -->
 
     <nav class="bottom-nav">
@@ -291,16 +325,25 @@
   <script src="js/app-globals.js"></script>
   <script src="js/state.js"></script>
   <script src="js/culture.js"></script>
-  <script src="js/calculations.js"></script>
-  <script src="js/ui-handlers.js"></script>
+  <script src="js/calculations.js?v=21"></script>
+  <script src="js/ui-handlers.js?v=22"></script>
   <script src="js/render-tabs.js"></script>
-  <script src="js/render-results.js"></script>
+  <script src="js/render-results.js?v=21"></script>
   <script src="js/render-drill.js"></script>
   <script src="js/render-dashboard.js"></script>
+  <script src="js/render-local-protocol.js?v=3"></script>
   <script src="js/main.js"></script>
   <!-- Dashboard-Overlay: nur noch als leeres Backdrop-Element für Alt-Tests
        erhalten (.dashboard-sheet selbst liegt jetzt oben in .app-layout). -->
   <div class="dashboard-overlay" id="dashboard_overlay" onclick="closeDashboard()"></div>
+  <!-- Lokales Protokoll-Redesign: Action-Sheet (Bottom-Sheet) statt roter X.
+       Löschbestätigung mit "Buchung löschen" und "Abbrechen". -->
+  <div class="lp-sheet-backdrop" id="local_protocol_sheet_backdrop" hidden></div>
+  <div class="lp-action-sheet" id="local_protocol_action_sheet" role="dialog" aria-modal="true" aria-labelledby="local_protocol_sheet_label" hidden>
+    <p class="lp-sheet-label" id="local_protocol_sheet_label">Buchung auswählen</p>
+    <button type="button" class="lp-sheet-button danger" id="local_protocol_sheet_delete" onclick="AppGlobals.confirmLocalProtocolDelete()">Buchung löschen</button>
+    <button type="button" class="lp-sheet-button cancel" id="local_protocol_sheet_cancel" onclick="AppGlobals.closeLocalProtocolSheet()">Abbrechen</button>
+  </div>
   <!-- Kultur-Auswahl (Erststart, verpflichtend) -->
   <div class="kultur-overlay" id="kultur_overlay" aria-hidden="true"></div>
   <div class="kultur-modal" id="kultur_modal" role="dialog" aria-modal="true" aria-labelledby="kultur_modal_title" aria-describedby="kultur_modal_desc" hidden>

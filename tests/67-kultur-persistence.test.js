@@ -215,7 +215,7 @@ describe('Cross-Tab-Sync + Persistenz der neuen Felder', () => {
       expect(w.state.reiter[0].koernerProEinheit).toBe(0);
     });
 
-    it('loadState erzeugt _lv=7 nach Migration', () => {
+    it('loadState erzeugt _lv=9 nach Migration', () => {
       const { window: w, store } = createDom();
       store['agrar_rechner'] = JSON.stringify({
         reiter: [{ name: 'T', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false }],
@@ -229,7 +229,7 @@ describe('Cross-Tab-Sync + Persistenz der neuen Felder', () => {
       });
       w.initUI();
       const saved = JSON.parse(store['agrar_rechner']);
-      expect(saved._lv).toBe(7);
+      expect(saved._lv).toBe(9);
     });
   });
 

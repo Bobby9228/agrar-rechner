@@ -315,6 +315,18 @@
     // Inline drill-entries im Result-Card-Body (r_drill_entries)
     // Issue #266: Diese müssen sichtbar sein und einen Delete-Button haben,
     // damit Tests den "btn-danger" + "drillRemove"-Pfad abdecken können.
+    //
+    // Mini-Karten-Layout (Mobile-First): Statt einer langen Zeile mit #1 und
+    // großem X rendern wir pro Eintrag eine kompakte Karte (.deim-row) mit
+    // zwei Zeilen — oben dezenter Zeitstempel, darunter klar hervorgehoben
+    // "10,0 ha • 1,7 Einheiten" (optional kg Dünger), rechts ein kompakter
+    // Papierkorb-Button mit 44×44 Touch-Target.
+    //
+    // Bewusst andere Klassen als .drill-entry / .entry-text, damit andere
+    // Protokollansichten (render-drill.js: #drill_entries, #drill_machine_log
+    // sowie das neue render-local-protocol.js) nicht versehentlich
+    // mitumgestaltet werden — die Legacy-#Nummer-/@-Heuristik bleibt dort
+    // unverändert in Kraft.
     function renderDrillEntriesInline() {
       var container = document.getElementById('r_drill_entries');
       if (!container) return;
@@ -360,34 +372,78 @@
       // original f7f7e8d behaviour (see 09-blind-spots "drill entry has #number span").
       r.entries.forEach(function(entry, actualIdx) {
         var row = document.createElement('div');
-        row.className = 'drill-entry';
-        var numSpan = document.createElement('span');
-        numSpan.textContent = '#' + (actualIdx + 1) + ' ';
-        row.appendChild(numSpan);
-        var entryText = document.createElement('span');
-        entryText.className = 'entry-text';
-        var parts = [];
-        if (entry.time) {
-          var t = AppGlobals.formatEntryTime(entry.time);
-          parts.push(t + ' –');
-        }
+        row.className = 'deim-row';
+        row.setAttribute('data-deim-idx', String(actualIdx));
+
+        var timeLine = document.createElement('div');
+        timeLine.className = 'deim-time';
+        // Robustheit: formatEntryTimeCard verträgt number / HH:MM(:SS) /
+        // andere Strings / leer — bei nicht parsbarer Zeit bleibt die Zeile
+        // leer, statt zu crashen.
+        timeLine.textContent = AppGlobals.formatEntryTimeCard(entry.time) || '';
+        row.appendChild(timeLine);
+
+        var body = document.createElement('div');
+        body.className = 'deim-body';
+
+        var summary = document.createElement('div');
+        summary.className = 'deim-summary';
+
+        // Hervorgehobener Hauptteil: "10,0 ha • 1,7 Einheiten".
+        // Quelle: zaehlerStand bevorzugt vor istHektar (so wie der
+        // Original-Renderer), Fallback entry.hektar ohne "@"-Präfix.
+        var haValue = null;
         if (entry.istHektar || entry.zaehlerStand) {
-          var ha = entry.istHektar || entry.zaehlerStand;
-          parts.push(AppGlobals.fmt(ha) + ' ha');
+          haValue = entry.istHektar || entry.zaehlerStand;
         } else if (entry.hektar > 0) {
-          parts.push('@' + AppGlobals.fmt(entry.hektar) + 'ha');
+          haValue = entry.hektar;
         }
-        parts.push(AppGlobals.formatEinheit(entry.einheit || 0));
+        if (haValue !== null && haValue !== undefined) {
+          var haSpan = document.createElement('span');
+          haSpan.className = 'deim-ha';
+          haSpan.textContent = AppGlobals.fmt(haValue) + ' ha';
+          summary.appendChild(haSpan);
+          var sepSpan = document.createElement('span');
+          sepSpan.className = 'deim-sep';
+          sepSpan.textContent = ' • ';
+          sepSpan.setAttribute('aria-hidden', 'true');
+          summary.appendChild(sepSpan);
+        }
+        var einheitenSpan = document.createElement('span');
+        einheitenSpan.className = 'deim-einheiten';
+        einheitenSpan.textContent = AppGlobals.formatEinheit(entry.einheit || 0);
+        summary.appendChild(einheitenSpan);
+
         if (entry.duenger > 0) {
-          parts.push((entry.duenger).toLocaleString('de-DE') + ' kg Dünger');
+          var duengerSpan = document.createElement('span');
+          duengerSpan.className = 'deim-duenger';
+          duengerSpan.textContent = (entry.duenger).toLocaleString('de-DE') + ' kg Dünger';
+          summary.appendChild(duengerSpan);
         }
-        entryText.textContent = parts.join(' ');
-        row.appendChild(entryText);
+
+        body.appendChild(summary);
+
         var removeBtn = document.createElement('button');
-        removeBtn.className = 'btn-danger';
-        removeBtn.textContent = '✕';
-        removeBtn.onclick = function() { AppGlobals.drillRemove(AppGlobals.state.activeReiter, actualIdx); };
-        row.appendChild(removeBtn);
+        removeBtn.type = 'button';
+        // btn-danger bleibt als bestehender Funktions-/Test-Hook erhalten;
+        // .deim-remove überschreibt ausschließlich die rote Alt-Darstellung.
+        removeBtn.className = 'btn-danger deim-remove';
+        removeBtn.textContent = '\uD83D\uDDD1'; // 🗑 — Papierkorb-Glyph
+        // min 44×44 Touch-Target — der Button selbst ist visuell kleiner,
+        // bekommt aber per CSS ein erweitertes Hit-Area (::before).
+        var ariaLabel = 'Buchung l\u00f6schen';
+        if (entry.time != null) {
+          var tLabel = AppGlobals.formatEntryTimeHHMM(entry.time);
+          if (tLabel) ariaLabel += ' um ' + tLabel;
+        }
+        removeBtn.setAttribute('aria-label', ariaLabel);
+        removeBtn.setAttribute('title', ariaLabel);
+        removeBtn.onclick = function() {
+          AppGlobals.drillRemove(AppGlobals.state.activeReiter, actualIdx);
+        };
+        body.appendChild(removeBtn);
+
+        row.appendChild(body);
         container.appendChild(row);
       });
     }

@@ -131,7 +131,7 @@ describe('Cloudflare deploy sanity', () => {
       const re = /<script\s+src=["']js\/([^"']+)["']\s*><\/script>/g;
       const out = [];
       let m;
-      while ((m = re.exec(content)) !== null) out.push(m[1]);
+      while ((m = re.exec(content)) !== null) out.push(m[1].split('?')[0]);
       return out;
     }
 
