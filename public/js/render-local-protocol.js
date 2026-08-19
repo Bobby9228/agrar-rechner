@@ -154,6 +154,46 @@
       addForecast('Dünger', forecast.duengerLeer, '🧪');
     }
 
+    // --- Render: bereits eingefüllte Mengen ---
+    //
+    // Ergänzt die Gesamtbilanz um das, was real in der Maschine gelandet ist
+    // (Σ usedE/usedD über alle Schläge). "Verbleibend" allein beantwortet die
+    // Frage am Feldrand nicht — wie viel ist heute schon reingegangen. Ohne
+    // Buchungen bleibt die Zeile ausgeblendet, damit die Bilanz beim leeren
+    // Start nicht mit Nullen zugestellt wird.
+    function _renderBalanceFilled(usedE, usedD) {
+      var row = document.getElementById('local_protocol_balance_filled');
+      if (!row) return;
+      while (row.firstChild) row.removeChild(row.firstChild);
+      // Schwellen analog zur Anzeige: Saat auf 3 Nachkommastellen sichtbar,
+      // Dünger in ganzen kg.
+      var hasE = usedE > 0.0005;
+      var hasD = usedD >= 0.5;
+      if (!hasE && !hasD) {
+        row.hidden = true;
+        return;
+      }
+      row.hidden = false;
+      var label = document.createElement('small');
+      label.textContent = 'eingefüllt';
+      row.appendChild(label);
+      var values = document.createElement('div');
+      values.className = 'lp-balance-filled-values';
+      if (hasE) {
+        var seed = document.createElement('span');
+        seed.className = 'lp-balance-filled-value';
+        seed.textContent = '🌱 ' + AppGlobals.fmtEinheit(usedE) + ' Einh.';
+        values.appendChild(seed);
+      }
+      if (hasD) {
+        var fert = document.createElement('span');
+        fert.className = 'lp-balance-filled-value';
+        fert.textContent = '🧪 ' + Math.round(usedD).toLocaleString('de-DE') + ' kg';
+        values.appendChild(fert);
+      }
+      row.appendChild(values);
+    }
+
     // --- Render: Gesamtbilanz (kompakt) ---
     //
     // Sourced from existing aggregations:
@@ -168,6 +208,7 @@
       var reiter = AppGlobals.state.reiter || [];
       var totalBasisE = 0, totalRemainingE = 0;
       var totalBasisD = 0, totalRemainingD = 0;
+      var totalUsedE = 0, totalUsedD = 0;
       for (var ti = 0; ti < reiter.length; ti++) {
         var rt = reiter[ti];
         if (!rt) continue;
@@ -177,6 +218,8 @@
           totalRemainingE += rem.remainingE;
           totalBasisD += rem.basisD;
           totalRemainingD += rem.remainingD;
+          totalUsedE += rem.usedE;
+          totalUsedD += rem.usedD;
         }
       }
       // Saatgut und Dünger zeigen denselben fachlichen Zustand:
@@ -218,6 +261,7 @@
         grid.appendChild(divider);
         grid.appendChild(right);
       }
+      _renderBalanceFilled(totalUsedE, totalUsedD);
       _renderBalanceForecast();
       if (time) {
         // "Heute, 14. Aug." — relativ zur ersten gefundenen Buchung mit

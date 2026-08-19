@@ -244,6 +244,44 @@ describe('Lokales Protokoll — renderLocalProtocolBalance', () => {
     expect(leftText).toContain('Saatgut');
   });
 
+  it('zeigt eingefüllte Einheiten und Dünger zusätzlich zum Verbleibenden', () => {
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
+      entries: [{ einheit: 3, duenger: 250, time: '10:00' }] });
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    expect(filled).not.toBeNull();
+    // Σ eingefüllt über alle Schläge: 3 Einheiten Saatgut, 250 kg Dünger.
+    expect(filled.textContent).toContain('3,000 Einh.');
+    expect(filled.textContent).toContain('250');
+    expect(filled.textContent).toContain('eingefüllt');
+  });
+
+  it('summiert eingefüllte Mengen über mehrere Schläge', () => {
+    // addReiter() ruft syncStateFromInputs() und würde einen vorher
+    // gesetzten Schlag aus den (leeren) Eingabefeldern überschreiben —
+    // deshalb erst den zweiten Schlag anlegen, dann beide befüllen.
+    w.addReiter();
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
+      entries: [{ einheit: 3, duenger: 250, time: '10:00' }] });
+    setUpTab(w, 1, { hektar: 10, koerner: 90000, duenger: 100,
+      entries: [{ einheit: 2.5, duenger: 150, time: '11:00' }] });
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    // 3 + 2,5 = 5,5 Einheiten und 250 + 150 = 400 kg.
+    expect(filled.textContent).toContain('5,500 Einh.');
+    expect(filled.textContent).toContain('400');
+  });
+
+  it('zeigt ohne Buchungen keine eingefüllten Mengen an', () => {
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100, entries: [] });
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    expect(filled.hidden).toBe(true);
+  });
+
   it('zeigt die nächsten Leerstände für Saat und Dünger aus dem aktuellen Maschinenstand', () => {
     setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100 });
     w.state.machineLog = [
