@@ -124,7 +124,7 @@ describe('Issue #336 follow-up #5b: Cross-Tab-Saldo im Drill-Log + Maschinen-Pro
     w.renderDrillLog();
     const s = netSavingsIn(drillLog());
     expect(s).not.toBeNull();
-    expect(s.textContent).toBe('Ersparnis: 1,0 Einheiten Saatgut, 100 kg Dünger');
+    expect(s.textContent).toBe('Ersparnis: 1,000 Einheiten Saatgut, 100 kg Dünger');
     const l = netHeaderIn(drillLog());
     expect(l).not.toBeNull();
     expect(l.textContent).toBe('Gesamt-Saldo (alle Tabs)');
@@ -180,7 +180,7 @@ describe('Issue #336 follow-up #5b: Cross-Tab-Saldo im Drill-Log + Maschinen-Pro
     const proto = maschinenProtokoll();
     const s = netSavingsIn(proto);
     expect(s).not.toBeNull();
-    expect(s.textContent).toBe('Ersparnis: 1,0 Einheiten Saatgut, 100 kg Dünger');
+    expect(s.textContent).toBe('Ersparnis: 1,000 Einheiten Saatgut, 100 kg Dünger');
   });
 
   it('Maschinen-Protokoll: Net-Totals-Block VOR Per-Tab-Sub-Headern', () => {

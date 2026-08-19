@@ -39,7 +39,7 @@ describe('Dashboard + Fahrgassen', () => {
     const einheitenVal = statsEls[1]?.querySelector('.dashboard-summary-value')?.textContent || '';
 
     // Correct: 12 (fahrgassen factor applied, fmt() omits trailing ,0 for whole numbers)
-    expect(einheitenVal).toBe('12');
+    expect(einheitenVal).toBe('12,000');
   });
 
   it('per-tab card shows fahrgassen-adjusted units', () => {
@@ -58,7 +58,7 @@ describe('Dashboard + Fahrgassen', () => {
     const einheitenCardVal = tab1Stats[2]?.querySelector('.dashboard-stat-value')?.textContent || '';
 
     // Correct: 12 (fahrgassen factor applied)
-    expect(einheitenCardVal).toBe('12');
+    expect(einheitenCardVal).toBe('12,000');
   });
 
   it('dashboard summary flaeche is always correct (ha unaffected by fahrgassen)', () => {
@@ -94,7 +94,7 @@ describe('Dashboard + Fahrgassen', () => {
     const content = doc.getElementById('dashboard_content');
     const statsEls = content.querySelectorAll('.dashboard-summary-stat');
     const einheitenVal = statsEls[1]?.querySelector('.dashboard-summary-value')?.textContent || '';
-    expect(einheitenVal).toBe('0');
+    expect(einheitenVal).toBe('0,000');
   });
 
   it('BUG: dashboard duenger is always correct (duenger unaffected by fahrgassen)', () => {
@@ -138,12 +138,12 @@ describe('Dashboard + Fahrgassen', () => {
     // Tab 1 card — 3rd stat = Einheiten verbl.
     const tab1Stats = cards[0].querySelectorAll('.dashboard-stat');
     const tab1Units = tab1Stats[2]?.querySelector('.dashboard-stat-value')?.textContent || '';
-    expect(tab1Units).toBe('6'); // fahrgassen-corrected
+    expect(tab1Units).toBe('6,000'); // fahrgassen-corrected
 
     // Tab 2 card
     const tab2Stats = cards[1].querySelectorAll('.dashboard-stat');
     const tab2Units = tab2Stats[2]?.querySelector('.dashboard-stat-value')?.textContent || '';
-    expect(tab2Units).toBe('13,5'); // fahrgassen-corrected
+    expect(tab2Units).toBe('13,500'); // fahrgassen-corrected
   });
 
   it('openDashboard adds open class to sheet and overlay', () => {

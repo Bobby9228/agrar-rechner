@@ -389,7 +389,7 @@ describe('drillCalcAll()', () => {
     doc.getElementById('drill_duenger').value = '';
     w.drillCalcAll();
     expect(doc.getElementById('dtl_e_0').value).toBe('');
-    expect(doc.getElementById('dtl_e_1').value).toBe('5,0');
+    expect(doc.getElementById('dtl_e_1').value).toBe('5,000');
   });
 
   it('distributes to highest priority tab first', () => {
@@ -398,8 +398,8 @@ describe('drillCalcAll()', () => {
     doc.getElementById('drill_einheit').value = '15';
     doc.getElementById('drill_duenger').value = '';
     w.drillCalcAll();
-    expect(doc.getElementById('dtl_e_0').value).toBe('10,0');
-    expect(doc.getElementById('dtl_e_1').value).toBe('5,0');
+    expect(doc.getElementById('dtl_e_0').value).toBe('10,000');
+    expect(doc.getElementById('dtl_e_1').value).toBe('5,000');
   });
 
   it('caps distribution at what tab needs', () => {
@@ -416,8 +416,8 @@ describe('drillCalcAll()', () => {
     doc.getElementById('drill_einheit').value = '20';
     doc.getElementById('drill_duenger').value = '';
     w.drillCalcAll();
-    expect(doc.getElementById('dtl_e_0').value).toBe('7,0');
-    expect(doc.getElementById('dtl_e_1').value).toBe('10,0');
+    expect(doc.getElementById('dtl_e_0').value).toBe('7,000');
+    expect(doc.getElementById('dtl_e_1').value).toBe('10,000');
   });
 
   it('distributes duenger separately from einheit (symmetric to Saat-Pfad, Issue #329)', () => {
@@ -451,7 +451,7 @@ describe('drillCalcAll()', () => {
     doc.getElementById('drill_einheit').value = '5';
     doc.getElementById('drill_duenger').value = '';
     w.drillCalcAll();
-    expect(doc.getElementById('dtl_e_0').value).toBe('5,0');
+    expect(doc.getElementById('dtl_e_0').value).toBe('5,000');
     expect(doc.getElementById('dtl_d_0').value).toBe('');
   });
 
@@ -460,7 +460,7 @@ describe('drillCalcAll()', () => {
     doc.getElementById('drill_einheit').value = '10';
     doc.getElementById('drill_duenger').value = '';
     w.drillCalcAll();
-    expect(doc.getElementById('dtl_e_0').value).toBe('10,0');
+    expect(doc.getElementById('dtl_e_0').value).toBe('10,000');
     expect(doc.getElementById('dtl_e_1').value).toBe('');
   });
 });
@@ -753,7 +753,7 @@ describe('renderDrillTabList()', () => {
     doc.getElementById('drill_einheit').value = '5';
     doc.getElementById('drill_duenger').value = '';
     doc.getElementById('dtl_prio_0').onclick(); // sets prio 0 → 1, calls drillCalcAll
-    expect(doc.getElementById('dtl_e_0').value).toBe('5,0');
+    expect(doc.getElementById('dtl_e_0').value).toBe('5,000');
   });
 });
 

@@ -148,7 +148,7 @@ describe('drillCalcAll', () => {
     w.drillCalcAll();
 
     // Tab 0 needs 10*90000/50000 = 18 einheiten → gets min(18, 5) = 5
-    expect(w.document.getElementById('dtl_e_0').value).toBe('5,0');
+    expect(w.document.getElementById('dtl_e_0').value).toBe('5,000');
     // Tab 1 needs 8*85000/50000 = 13.6 → but no remainder → gets 0
     expect(w.document.getElementById('dtl_e_1').value).toBe('');
   });
@@ -172,9 +172,9 @@ describe('drillCalcAll', () => {
     w.drillCalcAll();
 
     // Tab 0 (prio 1 = highest) needs 18 → gets min(18, 20) = 18
-    expect(w.document.getElementById('dtl_e_0').value).toBe('18,0');
+    expect(w.document.getElementById('dtl_e_0').value).toBe('18,000');
     // Tab 1 (prio 2) needs 13.6 → gets min(13.6, 20-18=2) = 2
-    expect(w.document.getElementById('dtl_e_1').value).toBe('2,0');
+    expect(w.document.getElementById('dtl_e_1').value).toBe('2,000');
   });
 
   it('clears inputs for unprioritized tabs', () => {
@@ -384,9 +384,9 @@ describe('drillAdd multi-tab mode', () => {
     w.drillCalcAll();
 
     // Tab 0 (prio 1 = highest) needs 13 → gets min(13, 16.6) = 13
-    expect(w.document.getElementById('dtl_e_0').value).toBe('13,0');
+    expect(w.document.getElementById('dtl_e_0').value).toBe('13,000');
     // Tab 1 (prio 2) needs 3.6 → gets min(3.6, 16.6-13=3.6) = 3.6
-    expect(w.document.getElementById('dtl_e_1').value).toBe('3,6');
+    expect(w.document.getElementById('dtl_e_1').value).toBe('3,600');
   });
 
   // ── machineLog with multiple tabs ────────────────────────────────────────────

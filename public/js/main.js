@@ -32,8 +32,8 @@ function parseDE(val) {
 // verloren. Restored to pre-Phase-3 (vor 398a6f9) Verhalten.
 function formatEinheit(n) {
   if (!isFinite(n)) return '—';
-  var rounded = Math.round(n * 10) / 10;  // DE Rundung: ab .5 aufrunden
-  return rounded.toFixed(1).replace('.', ',') + (rounded === 1.0 ? ' Einheit' : ' Einheiten');
+  var rounded = AppGlobals.round6(n);
+  return AppGlobals.fmtEinheit(rounded) + (Math.round(rounded * 1000) / 1000 === 1 ? ' Einheit' : ' Einheiten');
 }
 
 // --- Event Emitter ---

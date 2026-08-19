@@ -65,17 +65,17 @@
           // Issue #377: "✓ fertig"-Hinweis bleibt als visueller Status, wenn
           // used >= SOLL — ist aber explizit KEIN Hinweis auf den User-Toggle
           // `done`. Letzterer wird über den grünen Button separat gesetzt.
-          if (remaining <= 0.05 && remainingD <= 0.05) {
+          if (remaining <= AppGlobals.EPSILON_EINHEIT && remainingD <= AppGlobals.EPSILON_QUANTITY) {
             statusEl.textContent = '✓ fertig';
             statusEl.classList.add('done');
-          } else if (remainingD <= 0.05) {
+          } else if (remainingD <= AppGlobals.EPSILON_QUANTITY) {
             // Nur Saatgut übrig — Dünger-Anteil weglassen (Issue #266)
-            statusEl.textContent = 'braucht ' + AppGlobals.fmt(Math.max(0, remaining)) + ' Einheiten';
-          } else if (remaining <= 0.05) {
+            statusEl.textContent = 'braucht ' + AppGlobals.fmtEinheit(Math.max(0, remaining)) + ' Einheiten';
+          } else if (remaining <= AppGlobals.EPSILON_EINHEIT) {
             // Nur Dünger übrig (seltener Fall, abgedeckt für Vollständigkeit)
             statusEl.textContent = 'braucht ' + AppGlobals.fmt(Math.max(0, remainingD)) + ' kg Dünger';
           } else {
-            statusEl.textContent = 'braucht ' + AppGlobals.fmt(Math.max(0, remaining)) + ' Einheiten, ' + AppGlobals.fmt(Math.max(0, remainingD)) + ' kg Dünger';
+            statusEl.textContent = 'braucht ' + AppGlobals.fmtEinheit(Math.max(0, remaining)) + ' Einheiten, ' + AppGlobals.fmt(Math.max(0, remainingD)) + ' kg Dünger';
           }
           nameWrap.appendChild(statusEl);
         }
@@ -208,15 +208,15 @@
             saldoDTotal += (sr.hektar - srIstHa) * (sr.duenger || 0);
           }
         }
-        if (anySaldo && (Math.abs(saldoETotal) > 0.05 || Math.abs(saldoDTotal) > 0.05)) {
+        if (anySaldo && (Math.abs(saldoETotal) > AppGlobals.EPSILON_EINHEIT || Math.abs(saldoDTotal) > AppGlobals.EPSILON_QUANTITY)) {
           var parts = [];
-          if (Math.abs(saldoETotal) > 0.05) {
-            parts.push((saldoETotal > 0 ? '+' : '') + AppGlobals.fmt(saldoETotal) + ' Einheiten Saatgut');
+          if (Math.abs(saldoETotal) > AppGlobals.EPSILON_EINHEIT) {
+            parts.push((saldoETotal > 0 ? '+' : '') + AppGlobals.fmtEinheit(saldoETotal) + ' Einheiten Saatgut');
           }
-          if (Math.abs(saldoDTotal) > 0.05) {
+          if (Math.abs(saldoDTotal) > AppGlobals.EPSILON_QUANTITY) {
             parts.push((saldoDTotal > 0 ? '+' : '') + saldoDTotal.toLocaleString('de-DE') + ' kg Dünger');
           }
-          if (saldoETotal > 0.05 || saldoDTotal > 0.05) {
+          if (saldoETotal > AppGlobals.EPSILON_EINHEIT || saldoDTotal > AppGlobals.EPSILON_QUANTITY) {
             dsSav.textContent = 'Ersparnis: ' + parts.join(', ');
           } else {
             dsSav.textContent = 'Mehrbedarf: ' + parts.join(', ');
@@ -282,8 +282,8 @@
       }
       var netE = totalSavE - totalExcE;
       var netD = totalSavD - totalExcD;
-      var showSavings = netE > 0.05 || netD > 0.05;
-      var showExcess = netE < -0.05 || netD < -0.05;
+      var showSavings = netE > AppGlobals.EPSILON_EINHEIT || netD > AppGlobals.EPSILON_QUANTITY;
+      var showExcess = netE < -AppGlobals.EPSILON_EINHEIT || netD < -AppGlobals.EPSILON_QUANTITY;
       if (!showSavings && !showExcess) return;
       var label = document.createElement('div');
       label.className = 'drill-entry-tab-header drill-net-totals-header';
@@ -291,8 +291,8 @@
       container.appendChild(label);
       if (showSavings) {
         var sParts = [];
-        if (netE > 0.05) sParts.push(AppGlobals.fmt(netE) + ' Einheiten Saatgut');
-        if (netD > 0.05) sParts.push(netD.toLocaleString('de-DE') + ' kg Dünger');
+        if (netE > AppGlobals.EPSILON_EINHEIT) sParts.push(AppGlobals.fmtEinheit(netE) + ' Einheiten Saatgut');
+        if (netD > AppGlobals.EPSILON_QUANTITY) sParts.push(netD.toLocaleString('de-DE') + ' kg Dünger');
         var sDiv = document.createElement('div');
         sDiv.className = 'net-totals-line net-totals-savings';
         sDiv.textContent = 'Ersparnis: ' + sParts.join(', ');
@@ -300,8 +300,8 @@
       }
       if (showExcess) {
         var eParts = [];
-        if (netE < -0.05) eParts.push(AppGlobals.fmt(-netE) + ' Einheiten Saatgut');
-        if (netD < -0.05) eParts.push((-netD).toLocaleString('de-DE') + ' kg Dünger');
+        if (netE < -AppGlobals.EPSILON_EINHEIT) eParts.push(AppGlobals.fmtEinheit(-netE) + ' Einheiten Saatgut');
+        if (netD < -AppGlobals.EPSILON_QUANTITY) eParts.push((-netD).toLocaleString('de-DE') + ' kg Dünger');
         var eDiv = document.createElement('div');
         eDiv.className = 'net-totals-line net-totals-excess';
         eDiv.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eParts.join(', ');
@@ -324,28 +324,28 @@
       var s = _computeTabSelfSaldo(ct);
       // Per-Tab zeigt nur die positive Seite: savings wenn > 0, excess wenn > 0.
       // (Der Net-Totals summiert beide Seiten und bildet das Net — s. Helper.)
-      if (s.savingsE > 0.05 || s.savingsD > 0.05) {
+      if (s.savingsE > AppGlobals.EPSILON_EINHEIT || s.savingsD > AppGlobals.EPSILON_QUANTITY) {
         var sParts = [];
-        if (s.savingsE > 0.05) sParts.push(AppGlobals.fmt(s.savingsE) + ' Einheiten Saatgut');
-        if (s.savingsD > 0.05) sParts.push(s.savingsD.toLocaleString('de-DE') + ' kg Dünger');
+        if (s.savingsE > AppGlobals.EPSILON_EINHEIT) sParts.push(AppGlobals.fmtEinheit(s.savingsE) + ' Einheiten Saatgut');
+        if (s.savingsD > AppGlobals.EPSILON_QUANTITY) sParts.push(s.savingsD.toLocaleString('de-DE') + ' kg Dünger');
         var sDiv = document.createElement('div');
         sDiv.className = 'drill-savings';
         sDiv.textContent = 'Ersparnis: ' + sParts.join(', ');
         container.appendChild(sDiv);
       }
-      if (cco.savedEinheit > 0.05 || cco.savedDuenger > 0.05) {
+      if (cco.savedEinheit > AppGlobals.EPSILON_EINHEIT || cco.savedDuenger > AppGlobals.EPSILON_QUANTITY) {
         var cParts = [];
-        if (cco.savedEinheit > 0.05) cParts.push(AppGlobals.fmt(cco.savedEinheit) + ' Einheiten Saatgut');
-        if (cco.savedDuenger > 0.05) cParts.push(cco.savedDuenger.toLocaleString('de-DE') + ' kg Dünger');
+        if (cco.savedEinheit > AppGlobals.EPSILON_EINHEIT) cParts.push(AppGlobals.fmtEinheit(cco.savedEinheit) + ' Einheiten Saatgut');
+        if (cco.savedDuenger > AppGlobals.EPSILON_QUANTITY) cParts.push(cco.savedDuenger.toLocaleString('de-DE') + ' kg Dünger');
         var cDiv = document.createElement('div');
         cDiv.className = 'drill-carryover';
         cDiv.textContent = 'Übertrag aus ersparten Flächen: +' + cParts.join(', ');
         container.appendChild(cDiv);
       }
-      if (s.excessE > 0.05 || s.excessD > 0.05) {
+      if (s.excessE > AppGlobals.EPSILON_EINHEIT || s.excessD > AppGlobals.EPSILON_QUANTITY) {
         var eParts = [];
-        if (s.excessE > 0.05) eParts.push(AppGlobals.fmt(s.excessE) + ' Einheiten Saatgut');
-        if (s.excessD > 0.05) eParts.push(s.excessD.toLocaleString('de-DE') + ' kg Dünger');
+        if (s.excessE > AppGlobals.EPSILON_EINHEIT) eParts.push(AppGlobals.fmtEinheit(s.excessE) + ' Einheiten Saatgut');
+        if (s.excessD > AppGlobals.EPSILON_QUANTITY) eParts.push(s.excessD.toLocaleString('de-DE') + ' kg Dünger');
         var eDiv = document.createElement('div');
         eDiv.className = 'drill-excess';
         eDiv.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eParts.join(', ');
@@ -358,10 +358,10 @@
     function _tabHasCarryoverSignal(tabIdx, ct) {
       if (!ct) return false;
       var cco = AppGlobals.getCarryover(tabIdx);
-      if (cco.savedEinheit > 0.05 || cco.savedDuenger > 0.05) return true;
+      if (cco.savedEinheit > AppGlobals.EPSILON_EINHEIT || cco.savedDuenger > AppGlobals.EPSILON_QUANTITY) return true;
       var s = _computeTabSelfSaldo(ct);
-      if (s.savingsE > 0.05 || s.savingsD > 0.05) return true;
-      if (s.excessE > 0.05 || s.excessD > 0.05) return true;
+      if (s.savingsE > AppGlobals.EPSILON_EINHEIT || s.savingsD > AppGlobals.EPSILON_QUANTITY) return true;
+      if (s.excessE > AppGlobals.EPSILON_EINHEIT || s.excessD > AppGlobals.EPSILON_QUANTITY) return true;
       return false;
     }
 
@@ -406,7 +406,7 @@
         });
         var parts = [];
         if (usedHa > 0) parts.push(AppGlobals.fmt(usedHa) + ' ha');
-        if (usedE > 0) parts.push(AppGlobals.fmt(usedE) + ' Einheiten');
+        if (usedE > 0) parts.push(AppGlobals.fmtEinheit(usedE) + ' Einheiten');
         if (usedD > 0) parts.push(usedD.toLocaleString('de-DE') + ' kg Dünger');
         totalSummary.textContent = parts.join(' · ');
       }

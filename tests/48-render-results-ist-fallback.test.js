@@ -83,7 +83,7 @@ describe('Issue #320: renderDrillEntriesInline uses istHa>0 ternary (consistency
     // Subtraktion mehr. Single Tab, kein Mehrbedarf → cco.excess=0.
     // remE = max(0, 7,2 - 0,1 + 0) = 7,1 E
     // remD = max(0, 800 - 10 + 0) = 790 kg
-    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('7,1 Einheiten');
+    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('7,100 Einheiten');
     expect(doc.getElementById('r_drill_d_rem').textContent).toContain('790');
   });
 
@@ -163,7 +163,7 @@ describe('Issue #320: renderDrillEntriesInline uses istHa>0 ternary (consistency
     // Senke = Tab C (10:00). sinkAdjusted Saat = 0, Dünger = 0.
     // Tab C (unbearb., SOLL 13,5 E / 1500 kg): own = SOLL − used = 13,4 / 1490.
     // remaining = 13,4 E / 1490 kg.
-    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('13,4 Einheiten');
+    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('13,400 Einheiten');
     expect(doc.getElementById('r_drill_d_rem').textContent).toContain('1.490');
   });
 

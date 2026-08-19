@@ -131,7 +131,7 @@ describe('einheitGroesseUpdate', () => {
     // Einheiten should now be based on 40000 instead of 50000
     const einheiten = w.document.getElementById('r_einheiten').textContent;
     // 10*90000/40000 = 22.5
-    expect(einheiten).toBe('22,5 Einheiten');
+    expect(einheiten).toBe('22,500 Einheiten');
   });
 
   it('persists state after update', () => {

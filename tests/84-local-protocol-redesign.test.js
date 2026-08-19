@@ -239,7 +239,7 @@ describe('Lokales Protokoll — renderLocalProtocolBalance', () => {
     var leftText = grid.textContent;
     // 10 ha × 90.000 Körner / 50.000 Körner je Einheit = 18 Einheiten,
     // davon 3 bereits eingefüllt: 15 Einheiten verbleibend.
-    expect(leftText).toContain('15,0 Einh.');
+    expect(leftText).toContain('15,000 Einh.');
     expect(leftText).toContain('verbleibend');
     expect(leftText).toContain('Saatgut');
   });
@@ -359,7 +359,7 @@ describe('Lokales Protokoll — renderLocalProtocolFields (Schläge)', () => {
     var card = doc.querySelector('.lp-field-card');
     expect(card.textContent).toContain('19,0 ha');
     // Status-Zeile nutzt kompakte Kurzform "3,6 E" (statt "3,6 Einheiten").
-    expect(card.textContent).toContain('3,6 E');
+    expect(card.textContent).toContain('3,600 E');
   });
 
   it('Status-Zeile zeigt "Mehrbedarf" wenn IST > SOLL', () => {

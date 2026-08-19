@@ -209,7 +209,7 @@ describe('Inline-Protokoll-Redesign — Textformat', () => {
     expect(ha.textContent).toBe('10,0 ha');
     expect(sep.textContent).toBe(' • ');
     expect(sep.getAttribute('aria-hidden')).toBe('true');
-    expect(ein.textContent).toBe('1,7 Einheiten');
+    expect(ein.textContent).toBe('1,700 Einheiten');
     // Der zusammengesetzte Summary-Text muss die Marker NICHT enthalten.
     var summary = row.querySelector('.deim-summary');
     expect(summary.textContent).not.toContain('#');

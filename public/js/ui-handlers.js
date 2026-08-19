@@ -1071,8 +1071,8 @@ function confirmChangeKultur() {
         var eEl = document.getElementById('dtl_e_' + ai);
         var dEl = document.getElementById('dtl_d_' + ai);
         if (eEl) {
-          eEl.value = p.giveE > 0 ? AppGlobals.fmt(p.giveE) : '';
-          eEl.dataset.rawValue = p.giveE > 0 ? String(Math.round(p.giveE * 100) / 100) : '';
+          eEl.value = p.giveE > 0 ? AppGlobals.fmtEinheit(p.giveE) : '';
+          eEl.dataset.rawValue = p.giveE > 0 ? String(AppGlobals.round6(p.giveE)) : '';
         }
         if (dEl) {
           dEl.value = p.giveD > 0 ? AppGlobals.fmt(p.giveD) : '';

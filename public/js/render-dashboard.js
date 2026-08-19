@@ -93,7 +93,7 @@
       // fmtCompact: integer values shown without trailing ",0" (e.g. "8" not "8,0").
       // Tests 26, 27, 40 use toBe('8') on this element; test 18-round2 uses
       // toContain('15') on it. fmt() would produce "8,0" and break those tests.
-      sStats.appendChild(makeSummaryStat('Einheiten verbl.', totalEinheitenBasis > 0 ? AppGlobals.fmtCompact(totalEinheitRem) : '—', pctClass));
+      sStats.appendChild(makeSummaryStat('Einheiten verbl.', totalEinheitenBasis > 0 ? AppGlobals.fmtEinheit(totalEinheitRem) : '—', pctClass));
       sStats.appendChild(makeSummaryStat('Dünger verbl.', totalDuengerBasis > 0 ? totalDuengerRem.toLocaleString('de-DE') + ' kg' : '—', pctClass));
       summaryCard.appendChild(sStats);
 
@@ -190,7 +190,7 @@
         eStatLabel.textContent = 'Einheiten verbl.';
         var eStatVal = document.createElement('div');
         eStatVal.className = 'dashboard-stat-value ' + statusClass;
-        eStatVal.textContent = r.hektar > 0 && r.koerner > 0 ? AppGlobals.fmtCompact(einheitRem) : '—';
+        eStatVal.textContent = r.hektar > 0 && r.koerner > 0 ? AppGlobals.fmtEinheit(einheitRem) : '—';
         eStat.appendChild(eStatLabel);
         eStat.appendChild(eStatVal);
         stats.appendChild(eStat);

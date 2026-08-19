@@ -157,8 +157,8 @@
         var activeIdxForHint = AppGlobals.state.activeReiter || 0;
         var coForHint = AppGlobals.getCarryover(activeIdxForHint);
         var shown = AppGlobals.computeShownExcess({ excessE: excessE, excessD: excessD }, coForHint);
-        var showSavings = savingsE > 0.05 || savingsD > 0.05;
-        var showExcess = shown.shownExcessE > 0.05 || shown.shownExcessD > 0.05;
+        var showSavings = savingsE > AppGlobals.EPSILON_EINHEIT || savingsD > AppGlobals.EPSILON_QUANTITY;
+        var showExcess = shown.shownExcessE > AppGlobals.EPSILON_EINHEIT || shown.shownExcessD > AppGlobals.EPSILON_QUANTITY;
         if (showSavings || showExcess) {
           var sectionLabel = document.createElement('div');
           sectionLabel.className = 'r-carryover-section-label';
@@ -166,8 +166,8 @@
           carryoverHint.appendChild(sectionLabel);
           if (showSavings) {
             var sParts = [];
-            if (savingsE > 0.05) sParts.push(AppGlobals.fmt(savingsE) + ' Einheiten Saatgut');
-            if (savingsD > 0.05) sParts.push(savingsD.toLocaleString('de-DE') + ' kg Dünger');
+            if (savingsE > AppGlobals.EPSILON_EINHEIT) sParts.push(AppGlobals.fmtEinheit(savingsE) + ' Einheiten Saatgut');
+            if (savingsD > AppGlobals.EPSILON_QUANTITY) sParts.push(savingsD.toLocaleString('de-DE') + ' kg Dünger');
             var sDiv = document.createElement('div');
             sDiv.className = 'r-carryover-row r-carryover-savings';
             sDiv.textContent = 'Ersparnis: ' + sParts.join(', ');
@@ -175,8 +175,8 @@
           }
           if (showExcess) {
             var eParts = [];
-            if (shown.shownExcessE > 0.05) eParts.push(AppGlobals.fmt(shown.shownExcessE) + ' Einheiten Saatgut');
-            if (shown.shownExcessD > 0.05) eParts.push(shown.shownExcessD.toLocaleString('de-DE') + ' kg Dünger');
+            if (shown.shownExcessE > AppGlobals.EPSILON_EINHEIT) eParts.push(AppGlobals.fmtEinheit(shown.shownExcessE) + ' Einheiten Saatgut');
+            if (shown.shownExcessD > AppGlobals.EPSILON_QUANTITY) eParts.push(shown.shownExcessD.toLocaleString('de-DE') + ' kg Dünger');
             var eDiv = document.createElement('div');
             eDiv.className = 'r-carryover-row r-carryover-excess';
             eDiv.textContent = 'Mehrbedarf aus überschrittenen Flächen: -' + eParts.join(', ');
@@ -212,8 +212,8 @@
         var activeIdxForNet = AppGlobals.state.activeReiter || 0;
         var coForNet = allCarry[activeIdxForNet] || AppGlobals.getCarryover(activeIdxForNet);
         var hasOwnOverage = (r.istHektar > 0 && r.hektar > 0)
-          && (AppGlobals.getTabIstEinheiten(r) - AppGlobals.getTabTotalEinheiten(r) > 0.05
-              || (r.istHektar - r.hektar) * (r.duenger || 0) > 0.05);
+          && (AppGlobals.getTabIstEinheiten(r) - AppGlobals.getTabTotalEinheiten(r) > AppGlobals.EPSILON_EINHEIT
+              || (r.istHektar - r.hektar) * (r.duenger || 0) > AppGlobals.EPSILON_QUANTITY);
         if (!coForNet.isSink && hasOwnOverage && sinkIdx !== -1 && sinkIdx !== activeIdxForNet) {
           // Dieser Tab hat selbst Mehrbedarf, ist aber nicht die Senke —
           // sein Mehrbedarf wird unsichtbar auf einen anderen Tab (die
@@ -225,7 +225,7 @@
           noteDiv.textContent = '↳ wird über den Tab-Ausgleich von „' + sinkName + '\u201c gedeckt';
           netHint.appendChild(noteDiv);
           netHint.style.display = 'block';
-        } else if (coForNet.isSink && (Math.abs(coForNet.sinkAdjustedE) > 0.05 || Math.abs(coForNet.sinkAdjustedD) > 0.05)) {
+        } else if (coForNet.isSink && (Math.abs(coForNet.sinkAdjustedE) > AppGlobals.EPSILON_EINHEIT || Math.abs(coForNet.sinkAdjustedD) > AppGlobals.EPSILON_QUANTITY)) {
           // Dieser Tab IST die Senke: er übernimmt Mehrbedarf/Ersparnis aus
           // anderen Tabs in sein eigenes "verbleibend". Zeige wie viel.
           var label2 = document.createElement('div');
@@ -233,10 +233,10 @@
           label2.textContent = 'Ausgleich mit anderen Tabs';
           netHint.appendChild(label2);
           var addParts = [], subParts = [];
-          if (coForNet.sinkAdjustedE > 0.05) addParts.push(AppGlobals.fmt(coForNet.sinkAdjustedE) + ' Einheiten Saatgut');
-          else if (coForNet.sinkAdjustedE < -0.05) subParts.push(AppGlobals.fmt(-coForNet.sinkAdjustedE) + ' Einheiten Saatgut');
-          if (coForNet.sinkAdjustedD > 0.05) addParts.push(Math.round(coForNet.sinkAdjustedD).toLocaleString('de-DE') + ' kg Dünger');
-          else if (coForNet.sinkAdjustedD < -0.05) subParts.push(Math.round(-coForNet.sinkAdjustedD).toLocaleString('de-DE') + ' kg Dünger');
+          if (coForNet.sinkAdjustedE > AppGlobals.EPSILON_EINHEIT) addParts.push(AppGlobals.fmtEinheit(coForNet.sinkAdjustedE) + ' Einheiten Saatgut');
+          else if (coForNet.sinkAdjustedE < -AppGlobals.EPSILON_EINHEIT) subParts.push(AppGlobals.fmtEinheit(-coForNet.sinkAdjustedE) + ' Einheiten Saatgut');
+          if (coForNet.sinkAdjustedD > AppGlobals.EPSILON_QUANTITY) addParts.push(Math.round(coForNet.sinkAdjustedD).toLocaleString('de-DE') + ' kg Dünger');
+          else if (coForNet.sinkAdjustedD < -AppGlobals.EPSILON_QUANTITY) subParts.push(Math.round(-coForNet.sinkAdjustedD).toLocaleString('de-DE') + ' kg Dünger');
           if (addParts.length) {
             var addDiv = document.createElement('div');
             addDiv.className = 'r-carryover-row r-carryover-excess';
@@ -265,9 +265,8 @@
         ringFillEl.style.strokeDashoffset = ringCircumference * (1 - ringPct);
         // Nur die Zahl in den Ring (die Einheit "Einh." steht bereits als
         // eigenes <small> daneben) — formatEinheit() liefert z.B.
-        // "18,0 Einheiten", was im 96px-Ring nicht mehr lesbar umbricht.
-        var ringRounded = isFinite(einheiten) ? Math.round(einheiten * 10) / 10 : NaN;
-        ringValEl.textContent = isFinite(ringRounded) ? ringRounded.toFixed(1).replace('.', ',') : '—';
+        // "18,000 Einheiten", was im 96px-Ring nicht mehr lesbar umbricht.
+        ringValEl.textContent = isFinite(einheiten) ? AppGlobals.fmtEinheit(einheiten) : '—';
       }
     }
 

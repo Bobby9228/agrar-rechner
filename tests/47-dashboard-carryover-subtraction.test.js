@@ -73,7 +73,7 @@ describe('Issue #305 (Regel-7 Pool-Modell): Dashboard + Inline-Drill carryover s
     //         keine cross-tab Subtraktion unter Regel 7).
     // Tab 1: basisE=5.4 (istHa=0 → SOLL), usedE=0.5, entzogen=0 → 4,9.
     // Total: 4,9 → fmtCompact → "4,9".
-    expect(einheitenVal).toBe('4,9');
+    expect(einheitenVal).toBe('4,900');
   });
 
   it('Dashboard-Summary zeigt Dünger verbl. nach Pool-Modell', () => {
@@ -97,7 +97,7 @@ describe('Issue #305 (Regel-7 Pool-Modell): Dashboard + Inline-Drill carryover s
     // Tab 1 (Acker 2) is the second card; values: Hektar, Körner/ha, Einh., Dünger
     const values = cards[1].querySelectorAll('.dashboard-stat-value');
     // Tab 1: basisE=5.4 (SOLL, kein IST), usedE=0.5 → max(0, 5.4 - 0.5) = 4,9.
-    expect(values[2].textContent.trim()).toBe('4,9');
+    expect(values[2].textContent.trim()).toBe('4,900');
   });
 
   it('Dashboard Per-Tab-Karte Acker 2 zeigt Dünger verbl. nach Pool-Modell', () => {
@@ -125,7 +125,7 @@ describe('Issue #305 (Regel-7 Pool-Modell): Dashboard + Inline-Drill carryover s
     w.renderResults();
     // r_drill_e_rem ist das "Verbleibend"-Feld für den aktiven Tab.
     // max(0, 5.4 - 0.5 - 0 + 0) = 4,9 → formatEinheit → "4,9 Einheiten".
-    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('4,9 Einheiten');
+    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('4,900 Einheiten');
   });
 
   // ── Regression-Guard: ohne carryover (kein IST) bleibt das alte Verhalten ─
@@ -141,7 +141,7 @@ describe('Issue #305 (Regel-7 Pool-Modell): Dashboard + Inline-Drill carryover s
     const statsEls = doc.getElementById('dashboard_content')
       .querySelectorAll('.dashboard-summary-stat');
     // No IST → no carryover → max(0, 16 - 8) = 8
-    expect(statsEls[1].querySelector('.dashboard-summary-value').textContent).toBe('8');
+    expect(statsEls[1].querySelector('.dashboard-summary-value').textContent).toBe('8,000');
   });
 
   it('Inline-Drill mit eigenem Tab ohne Carryover bleibt korrekt', () => {
@@ -153,6 +153,6 @@ describe('Issue #305 (Regel-7 Pool-Modell): Dashboard + Inline-Drill carryover s
     ];
     w.renderResults();
     // basisE=16, usedE=8, savings=0 (kein IST), remaining = 8 E
-    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('8,0 Einheiten');
+    expect(doc.getElementById('r_drill_e_rem').textContent).toBe('8,000 Einheiten');
   });
 });

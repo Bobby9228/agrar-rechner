@@ -45,19 +45,19 @@
         excessE  = AppGlobals.getTabIstEinheiten(r) - AppGlobals.getTabTotalEinheiten(r);
         excessD  = (istHek - r.hektar) * (r.duenger || 0);
       }
-      if (excessE > AppGlobals.EPSILON_QUANTITY || excessD > AppGlobals.EPSILON_QUANTITY) {
+      if (excessE > AppGlobals.EPSILON_EINHEIT || excessD > AppGlobals.EPSILON_QUANTITY) {
         var eParts = [];
-        if (excessE > AppGlobals.EPSILON_QUANTITY) {
-          eParts.push(AppGlobals.fmt(excessE) + ' E');
+        if (excessE > AppGlobals.EPSILON_EINHEIT) {
+          eParts.push(AppGlobals.fmtEinheit(excessE) + ' E');
         }
         if (excessD > AppGlobals.EPSILON_QUANTITY) {
           eParts.push(Math.round(excessD).toLocaleString('de-DE') + ' kg');
         }
         out.push({ class: 'warning', text: 'Mehrbedarf ' + eParts.join(' · ') });
-      } else if (savingsE > AppGlobals.EPSILON_QUANTITY || savingsD > AppGlobals.EPSILON_QUANTITY) {
+      } else if (savingsE > AppGlobals.EPSILON_EINHEIT || savingsD > AppGlobals.EPSILON_QUANTITY) {
         var sParts = [];
-        if (savingsE > AppGlobals.EPSILON_QUANTITY) {
-          sParts.push(AppGlobals.fmt(savingsE) + ' E');
+        if (savingsE > AppGlobals.EPSILON_EINHEIT) {
+          sParts.push(AppGlobals.fmtEinheit(savingsE) + ' E');
         }
         if (savingsD > AppGlobals.EPSILON_QUANTITY) {
           sParts.push(Math.round(savingsD).toLocaleString('de-DE') + ' kg');
@@ -68,10 +68,10 @@
       // dem Hektar. Beispiel "0,9 Einheiten · 500 kg Dünger".
       var usedE = AppGlobals.getTabUsedEinheiten(r);
       var usedD = AppGlobals.getTabUsedDuenger(r);
-      if (usedE > AppGlobals.EPSILON_QUANTITY || usedD > AppGlobals.EPSILON_QUANTITY) {
+      if (usedE > AppGlobals.EPSILON_EINHEIT || usedD > AppGlobals.EPSILON_QUANTITY) {
         var usedParts = [];
-        if (usedE > AppGlobals.EPSILON_QUANTITY) {
-          usedParts.push(AppGlobals.fmt(usedE) + ' Einheiten');
+        if (usedE > AppGlobals.EPSILON_EINHEIT) {
+          usedParts.push(AppGlobals.fmtEinheit(usedE) + ' Einheiten');
         }
         if (usedD > AppGlobals.EPSILON_QUANTITY) {
           usedParts.push(Math.round(usedD).toLocaleString('de-DE') + ' kg Dünger');
@@ -182,7 +182,7 @@
       // Saatgut und Dünger zeigen denselben fachlichen Zustand:
       // den noch offenen Gesamtbedarf über alle Schläge.
       var saatShown = totalBasisE > 0
-        ? AppGlobals.fmt(totalRemainingE) + ' Einh.'
+        ? AppGlobals.fmtEinheit(totalRemainingE) + ' Einh.'
         : '—';
       var saatSubText = totalBasisE > 0 ? 'verbleibend' : '—';
       // Dünger: Verbleibend (mit Senken-Modell konsistent zur Summary).
@@ -369,8 +369,8 @@
       var excessE  = AppGlobals.getTabIstEinheiten(r) - AppGlobals.getTabTotalEinheiten(r);
       var savingsD = (r.hektar - istHek) * (r.duenger || 0);
       var excessD  = (istHek - r.hektar) * (r.duenger || 0);
-      return savingsE > AppGlobals.EPSILON_QUANTITY
-          || excessE > AppGlobals.EPSILON_QUANTITY
+      return savingsE > AppGlobals.EPSILON_EINHEIT
+          || excessE > AppGlobals.EPSILON_EINHEIT
           || savingsD > AppGlobals.EPSILON_QUANTITY
           || excessD > AppGlobals.EPSILON_QUANTITY;
     }
