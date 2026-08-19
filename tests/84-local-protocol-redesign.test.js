@@ -421,11 +421,28 @@ describe('Lokales Protokoll — renderLocalProtocolFields (Schläge)', () => {
   });
 
   it('Mehrere Tage → mehrere Tagesgruppen-Headings', () => {
-    // Zwei Entries auf verschiedenen Tagen (number-Ms).
+    // Zwei Entries auf verschiedenen Tagen (number-Ms). Beide Daten werden
+    // relativ zur Systemzeit gebildet: ein hart kodiertes "heute" (z.B.
+    // 15. August 2026) läuft ab und lässt den Test ab dem nächsten Tag
+    // fehlschlagen. Heute + ein älterer Tag, der garantiert im selben Monat
+    // wie "heute" liegt, damit die Monats-Assertion stabil bleibt.
+    var today = new Date();
+    var older = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    older.setDate(older.getDate() - 2);
+    // Am 1./2. des Monats würde -2 Tage in den Vormonat rutschen; dann
+    // stattdessen zwei Tage nach vorn im selben Monat verankern.
+    if (older.getMonth() !== today.getMonth()) {
+      older = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2);
+    }
+    var monthName = today.toLocaleDateString('de-DE', { month: 'long' });
+    var olderFull = older.getDate() + '. ' + older.toLocaleDateString('de-DE', { month: 'long' })
+      + ' ' + older.getFullYear();
     setUpTab(w, 0, {
       entries: [
-        { einheit: 3, duenger: 0, zaehlerStand: 10, time: new Date(2026, 7, 13, 22, 0).getTime() },
-        { einheit: 2, duenger: 0, zaehlerStand: 14, time: new Date(2026, 7, 15, 22, 0).getTime() }
+        { einheit: 3, duenger: 0, zaehlerStand: 10,
+          time: new Date(older.getFullYear(), older.getMonth(), older.getDate(), 22, 0).getTime() },
+        { einheit: 2, duenger: 0, zaehlerStand: 14,
+          time: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 22, 0).getTime() }
       ]
     });
     w.state.activeView = 'protokoll';
@@ -433,12 +450,12 @@ describe('Lokales Protokoll — renderLocalProtocolFields (Schläge)', () => {
     var headings = doc.querySelectorAll('#local_protocol_fields_panel .lp-date-heading');
     expect(headings.length).toBe(2);
     var text = doc.getElementById('local_protocol_fields_panel').textContent;
-    // Der ältere Eintrag hat sein volles Datum (13. August 2026).
-    expect(text).toContain('13. August 2026');
-    // Der heutige Eintrag wird als "Heute · August" zusammengefasst
+    // Der ältere Eintrag hat sein volles Datum (z.B. "13. August 2026").
+    expect(text).toContain(olderFull);
+    // Der heutige Eintrag wird als "Heute · <Monat>" zusammengefasst
     // (Tag implizit; spart horizontale Breite auf Phone-Displays).
     expect(text).toContain('Heute');
-    expect(text).toContain('August');
+    expect(text).toContain(monthName);
   });
 });
 
