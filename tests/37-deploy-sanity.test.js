@@ -41,7 +41,7 @@ describe('Cloudflare deploy sanity', () => {
   it('main.js exposes the current minor release version and build date', () => {
     const mainPath = resolve(publicDir, 'js', 'main.js');
     const content = readFileSync(mainPath, 'utf-8');
-    expect(content).toMatch(/APP_VERSION\s*=\s*['"]v1\.1\.3['"]/);
+    expect(content).toMatch(/APP_VERSION\s*=\s*['"]v1\.1\.4['"]/);
     expect(content).toMatch(/APP_BUILD_DATE\s*=\s*['"]August 2026['"]/);
   });
 
@@ -51,7 +51,7 @@ describe('Cloudflare deploy sanity', () => {
     // CACHE_VERSION muss vorhanden sein und darf nicht leer sein
     const match = content.match(/CACHE_VERSION\s*=\s*'([^']+)'/);
     expect(match).not.toBeNull();
-    expect(match[1]).toBe('agrar-rechner-v50');
+    expect(match[1]).toBe('agrar-rechner-v51');
   });
 
   // Issue #144: SW ohne Offline-Fallback + Registration ohne Error-Handling
