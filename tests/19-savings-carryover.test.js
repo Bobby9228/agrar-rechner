@@ -116,7 +116,7 @@ describe('IST/SOLL Savings & Carryover', () => {
 
     const savingsEl = w.document.getElementById('ds_savings');
     expect(savingsEl).not.toBeNull();
-    expect(savingsEl.textContent).toContain('0,5 Einheiten Saatgut');
+    expect(savingsEl.textContent).toContain('0,500 Einheiten Saatgut');
   });
 
   // REMOVED (#378 Regel-7): 'getCarryover: all savings go to first not-done tab'
@@ -292,7 +292,7 @@ describe('IST/SOLL Savings & Carryover', () => {
     const container = w.document.getElementById('drill_entries');
     const excessDivs = container.querySelectorAll('.drill-excess');
     expect(excessDivs.length).toBeGreaterThanOrEqual(1);
-    expect(excessDivs[0].textContent).toContain('2,9');
+    expect(excessDivs[0].textContent).toContain('2,875');
     expect(excessDivs[0].textContent).not.toContain('3,0 Einheiten');
   });
 

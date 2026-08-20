@@ -44,22 +44,22 @@ describe('formatEinheit', () => {
   let w;
   beforeEach(() => { w = createDom().window; });
 
-  it('1.0 => singular "Einheit"', () => expect(w.formatEinheit(1.0)).toBe('1,0 Einheit'));
-  it('2.0 => plural "Einheiten"', () => expect(w.formatEinheit(2.0)).toBe('2,0 Einheiten'));
-  it('1.5 => plural', () => expect(w.formatEinheit(1.5)).toBe('1,5 Einheiten'));
-  it('0.5 => plural', () => expect(w.formatEinheit(0.5)).toBe('0,5 Einheiten'));
-  it('0.0 => plural (not 1.0)', () => expect(w.formatEinheit(0.0)).toBe('0,0 Einheiten'));
-  it('100 => plural', () => expect(w.formatEinheit(100)).toBe('100,0 Einheiten'));
+  it('1.0 => singular "Einheit"', () => expect(w.formatEinheit(1.0)).toBe('1,000 Einheit'));
+  it('2.0 => plural "Einheiten"', () => expect(w.formatEinheit(2.0)).toBe('2,000 Einheiten'));
+  it('1.5 => plural', () => expect(w.formatEinheit(1.5)).toBe('1,500 Einheiten'));
+  it('0.5 => plural', () => expect(w.formatEinheit(0.5)).toBe('0,500 Einheiten'));
+  it('0.0 => plural (not 1.0)', () => expect(w.formatEinheit(0.0)).toBe('0,000 Einheiten'));
+  it('100 => plural', () => expect(w.formatEinheit(100)).toBe('100,000 Einheiten'));
   // Rand-Cases aus Issue #85
-  it('1.049 => 1,0 Einheit (Singular — Aufrunden auf .5 Grenze)', () =>
-    expect(w.formatEinheit(1.049)).toBe('1,0 Einheit'));
-  it('1.05 => 1,1 Einheiten (Plural)', () =>
-    expect(w.formatEinheit(1.05)).toBe('1,1 Einheiten'));
+  it('1.049 => 1,049 Einheiten', () =>
+    expect(w.formatEinheit(1.049)).toBe('1,049 Einheiten'));
+  it('1.05 => 1,050 Einheiten (Plural)', () =>
+    expect(w.formatEinheit(1.05)).toBe('1,050 Einheiten'));
   // Issue #143 — Infinity guard
   it('Infinity => "—" (no crash)', () => expect(w.formatEinheit(Infinity)).toBe('—'));
   it('-Infinity => "—" (no crash)', () => expect(w.formatEinheit(-Infinity)).toBe('—'));
   it('NaN => "—" (no crash)', () => expect(w.formatEinheit(NaN)).toBe('—'));
-  // Hinweis: 0.95 → 1.0 Einheit (Singular), Math.round(0.95*10)/10 = 1.0
+  // Singular gilt nur, wenn der auf 3 Stellen angezeigte Wert exakt 1,000 ist.
 });
 
 describe('Core calculations', () => {

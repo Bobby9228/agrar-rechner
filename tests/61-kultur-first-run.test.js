@@ -39,6 +39,15 @@ describe('Erststart: Kultur-Auswahl-Modal', () => {
     expect(w.document.getElementById('kultur_choice_sonstiges')).toBeTruthy();
   });
 
+  it('zeigt die Kultur-Auswahl ohne Zusatztexte', () => {
+    const { window: w } = createDom();
+    const modal = w.document.getElementById('kultur_modal');
+
+    expect(modal.getAttribute('aria-describedby')).toBeNull();
+    expect(w.document.querySelector('.kultur-modal-subtitle')).toBeNull();
+    expect(w.document.querySelectorAll('.kultur-option-desc')).toHaveLength(0);
+  });
+
   it('zeigt das Modal NICHT, wenn bereits eine Kultur gespeichert ist', () => {
     const { window: w, store } = createDom();
     store['agrar_rechner'] = JSON.stringify({

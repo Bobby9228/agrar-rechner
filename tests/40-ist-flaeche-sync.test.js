@@ -100,7 +100,7 @@ describe('Issue #186: Ist-Fläche-Änderung synchronisiert Dashboard und Tab-Erg
       expect(cards.length).toBe(1);
       var values = cards[0].querySelectorAll('.dashboard-stat-value');
       // 0: Hektar, 1: Körner/ha, 2: Einheiten verbl., 3: Dünger verbl.
-      expect(values[2].textContent.trim()).toBe('4');
+      expect(values[2].textContent.trim()).toBe('4,000');
     });
   });
 
@@ -132,7 +132,7 @@ describe('Issue #186: Ist-Fläche-Änderung synchronisiert Dashboard und Tab-Erg
       w.openDashboard();
       var cards = doc.querySelectorAll('.dashboard-reiter-card');
       var values = cards[0].querySelectorAll('.dashboard-stat-value');
-      expect(values[2].textContent.trim()).toBe('4');
+      expect(values[2].textContent.trim()).toBe('4,000');
     });
 
     it('Per-Tab-Karte zeigt IST-basierten Dünger-verbleibend', () => {

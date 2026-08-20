@@ -129,7 +129,7 @@ describe('Blind spots — renderResults edge cases', () => {
     const spans = doc.querySelectorAll('.entry-text');
     expect(spans[0].textContent).toContain('14:30 – ');
     expect(spans[0].textContent).toContain('3,5 ha');
-    expect(spans[0].textContent).toContain('2,0 Einheiten');
+    expect(spans[0].textContent).toContain('2,000 Einheiten');
     expect(spans[0].textContent).toContain('200 kg Dünger');
   });
 

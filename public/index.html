@@ -196,6 +196,19 @@
       <div class="info" id="r_info"></div>
     </div><!-- end results card -->
 
+    <!-- Gesamtbilanz zuerst: wichtigste Mengen vor der Eingabe ins Drill-Protokoll. -->
+    <section class="local-protocol local-protocol-balance" id="local_protocol_balance_section" aria-label="Gesamtbilanz" hidden>
+      <div class="lp-balance" id="local_protocol_balance">
+        <div class="lp-balance-head">
+          <h2>Gesamtbilanz</h2>
+          <time id="local_protocol_balance_time" datetime="">Heute</time>
+        </div>
+        <div class="lp-balance-grid" id="local_protocol_balance_grid"></div>
+        <div class="lp-balance-filled" id="local_protocol_balance_filled" aria-label="Bereits eingefüllt" hidden></div>
+        <div class="lp-balance-forecast" id="local_protocol_balance_forecast" aria-label="Nächste Leerstände"></div>
+      </div>
+    </section>
+
     <div class="card" id="drill_section" style="display:none">
       <h2>🔧 Drill-Protokoll</h2>
       <div class="unit" style="margin-bottom:10px">Hier trägst du ein, was du in die Maschine eingefüllt hast.</div>
@@ -252,20 +265,9 @@
       <div id="drill_entries"></div>
     </div>
 
-    <!-- Lokales Protokoll-Redesign (gespeist aus existierenden Aggregationen:
-         Gesamtbilanz, Tagesgruppen, Accordion, drei-Punkte-Aktion mit
-         Löschbestätigung via Action-Sheet). Wird ausschließlich sichtbar,
-         wenn .app-layout.protokoll-mode aktiv ist (renderView() in
-         render-tabs.js). -->
+    <!-- Lokales Protokoll-Redesign: Buchungslisten unter der Drill-Eingabe.
+         Die Gesamtbilanz steht bewusst darüber (siehe local_protocol_balance_section). -->
     <section class="local-protocol" id="local_protocol_section" aria-label="Lokales Protokoll" hidden>
-      <div class="lp-balance" id="local_protocol_balance" aria-label="Gesamtbilanz">
-        <div class="lp-balance-head">
-          <h2>Gesamtbilanz</h2>
-          <time id="local_protocol_balance_time" datetime="">Heute</time>
-        </div>
-        <div class="lp-balance-grid" id="local_protocol_balance_grid"></div>
-        <div class="lp-balance-forecast" id="local_protocol_balance_forecast" aria-label="Nächste Leerstände"></div>
-      </div>
       <div class="lp-view-switch" role="tablist" aria-label="Protokoll auswählen">
         <button type="button" id="lp_view_fields_btn" class="lp-view-tab active" role="tab" aria-selected="true" aria-controls="local_protocol_fields_panel" onclick="AppGlobals.setProtocolView('fields')">Schläge</button>
         <button type="button" id="lp_view_machine_btn" class="lp-view-tab" role="tab" aria-selected="false" aria-controls="local_protocol_machine_panel" onclick="AppGlobals.setProtocolView('machine')">Maschine</button>
@@ -346,34 +348,26 @@
   </div>
   <!-- Kultur-Auswahl (Erststart, verpflichtend) -->
   <div class="kultur-overlay" id="kultur_overlay" aria-hidden="true"></div>
-  <div class="kultur-modal" id="kultur_modal" role="dialog" aria-modal="true" aria-labelledby="kultur_modal_title" aria-describedby="kultur_modal_desc" hidden>
+  <div class="kultur-modal" id="kultur_modal" role="dialog" aria-modal="true" aria-labelledby="kultur_modal_title" hidden>
     <div class="kultur-modal-badge" aria-hidden="true">🌾</div>
     <h2 class="kultur-modal-title" id="kultur_modal_title">Welche Kultur planst du?</h2>
-    <p class="kultur-modal-subtitle" id="kultur_modal_desc">
-      Bitte wähle die Kultur für deine Aussaat. Wir merken uns die Auswahl und
-      passen die Empfehlung für Körner pro Hektar automatisch an. Die Wahl
-      lässt sich später oben rechts über „ändern" jederzeit anpassen.
-    </p>
     <div class="kultur-options">
       <button class="kultur-option" id="kultur_choice_mais" onclick="chooseKultur('mais')" aria-label="Kultur Mais wählen">
         <span class="kultur-option-icon" aria-hidden="true">🌽</span>
         <span class="kultur-option-body">
           <span class="kultur-option-title">Mais</span>
-          <span class="kultur-option-desc">~50.000 Körner/Einheit · 80.000 – 100.000 Körner/ha</span>
         </span>
       </button>
       <button class="kultur-option" id="kultur_choice_raps" onclick="chooseKultur('raps')" aria-label="Kultur Raps wählen">
         <span class="kultur-option-icon" aria-hidden="true">🌼</span>
         <span class="kultur-option-body">
           <span class="kultur-option-title">Raps</span>
-          <span class="kultur-option-desc">~1.500.000 Körner/Einheit · 250.000 – 350.000 Körner/ha</span>
         </span>
       </button>
       <button class="kultur-option" id="kultur_choice_sonstiges" onclick="chooseKultur('sonstiges')" aria-label="Kultur Sonstiges wählen">
         <span class="kultur-option-icon" aria-hidden="true">🌱</span>
         <span class="kultur-option-body">
           <span class="kultur-option-title">Sonstiges</span>
-          <span class="kultur-option-desc">Körner pro Einheit manuell eingeben</span>
         </span>
       </button>
     </div>

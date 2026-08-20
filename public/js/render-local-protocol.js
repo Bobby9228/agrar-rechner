@@ -45,19 +45,19 @@
         excessE  = AppGlobals.getTabIstEinheiten(r) - AppGlobals.getTabTotalEinheiten(r);
         excessD  = (istHek - r.hektar) * (r.duenger || 0);
       }
-      if (excessE > AppGlobals.EPSILON_QUANTITY || excessD > AppGlobals.EPSILON_QUANTITY) {
+      if (excessE > AppGlobals.EPSILON_EINHEIT || excessD > AppGlobals.EPSILON_QUANTITY) {
         var eParts = [];
-        if (excessE > AppGlobals.EPSILON_QUANTITY) {
-          eParts.push(AppGlobals.fmt(excessE) + ' E');
+        if (excessE > AppGlobals.EPSILON_EINHEIT) {
+          eParts.push(AppGlobals.fmtEinheit(excessE) + ' E');
         }
         if (excessD > AppGlobals.EPSILON_QUANTITY) {
           eParts.push(Math.round(excessD).toLocaleString('de-DE') + ' kg');
         }
         out.push({ class: 'warning', text: 'Mehrbedarf ' + eParts.join(' · ') });
-      } else if (savingsE > AppGlobals.EPSILON_QUANTITY || savingsD > AppGlobals.EPSILON_QUANTITY) {
+      } else if (savingsE > AppGlobals.EPSILON_EINHEIT || savingsD > AppGlobals.EPSILON_QUANTITY) {
         var sParts = [];
-        if (savingsE > AppGlobals.EPSILON_QUANTITY) {
-          sParts.push(AppGlobals.fmt(savingsE) + ' E');
+        if (savingsE > AppGlobals.EPSILON_EINHEIT) {
+          sParts.push(AppGlobals.fmtEinheit(savingsE) + ' E');
         }
         if (savingsD > AppGlobals.EPSILON_QUANTITY) {
           sParts.push(Math.round(savingsD).toLocaleString('de-DE') + ' kg');
@@ -68,10 +68,10 @@
       // dem Hektar. Beispiel "0,9 Einheiten · 500 kg Dünger".
       var usedE = AppGlobals.getTabUsedEinheiten(r);
       var usedD = AppGlobals.getTabUsedDuenger(r);
-      if (usedE > AppGlobals.EPSILON_QUANTITY || usedD > AppGlobals.EPSILON_QUANTITY) {
+      if (usedE > AppGlobals.EPSILON_EINHEIT || usedD > AppGlobals.EPSILON_QUANTITY) {
         var usedParts = [];
-        if (usedE > AppGlobals.EPSILON_QUANTITY) {
-          usedParts.push(AppGlobals.fmt(usedE) + ' Einheiten');
+        if (usedE > AppGlobals.EPSILON_EINHEIT) {
+          usedParts.push(AppGlobals.fmtEinheit(usedE) + ' Einheiten');
         }
         if (usedD > AppGlobals.EPSILON_QUANTITY) {
           usedParts.push(Math.round(usedD).toLocaleString('de-DE') + ' kg Dünger');
@@ -154,12 +154,233 @@
       addForecast('Dünger', forecast.duengerLeer, '🧪');
     }
 
+    // --- Aggregation: reale Maschinenfüllungen ohne Doppelzählung ---
+    //
+    // Hintergrund (siehe ui-handlers.js drillAdd + _buildDrillEntry):
+    // - Multi-Tab-Push: ein ml-Log-Eintrag + je ein Schlag-Entry je
+    //   priorisiertem Tab. Schlag-Entry trägt entry.mlIdx = Index der
+    //   machineLog-Zeile. Der ml-Log enthält die volle Maschinenfüllung.
+    // - Single-Tab-Push: nur ein Schlag-Entry mit mlIdx = -1, KEIN
+    //   Maschinenlog-Eintrag (ml-Log ist die "echte" Maschinenfüllung).
+    //
+    // Vor 2be0499 summierte die Gesamtbilanz ausschließlich reiter[].entries
+    // (über getTabRemaining().usedE/usedD, das seinerseits nur die Schlag-
+    // Buchungen summiert). Das Maschinenlog wurde gar nicht herangezogen.
+    // Fachliches Problem: Bei einem Multi-Tab-Push entsprechen die
+    // Schlag-Buchungen der VERTEILTEN Menge pro Tab — NICHT der REAL in die
+    // Maschine eingefüllten Menge. Die "Eingefüllt"-Anzeige zeigte dadurch
+    // die Summe der verteilten Teilmengen, was bei Verteilung auf mehrere
+    // Schläge optisch zur vollen Maschinenfüllung wurde, aber z. B. bei
+    // einem einzelnen priorisierten Schlag nur den einen Tab-Teil. Die
+    // korrekte Semantik ist daher: Maschinenlog = reale Füllung, Schlag-
+    // Entries ohne ml-Log-Bezug = eigenständige Füllungen, alles andere
+    // ist verknüpft und nicht doppelt zu zählen.
+    //
+    // Zusätzlich verschluckte der alte Pfad verwaiste Schlag-Entries
+    // (mlIdx zeigt auf eine inzwischen gelöschte ml-Zeile): sie fielen
+    // durch die "skip"-Logik und tauchten in der Bilanz nicht auf, obwohl
+    // die Buchung real ist.
+    //
+    // Korrekte Semantik (konservativ, datenbasiert — Zeit + Menge):
+    //
+    //   1. ml-Log: jede Zeile genau einmal summieren.
+    //
+    //   2. Schlag-Entries (reiter[].entries) in 3 Klassen:
+    //
+    //      a) mlIdx >= 0 und machineLog[mlIdx] existiert:
+    //         verknüpfter Multi-Tab-Entry → bereits in (1) gezählt → skip.
+    //
+    //      b) mlIdx >= 0 aber machineLog[mlIdx] NICHT vorhanden (Orphan):
+    //         Die zugehörige ml-Zeile wurde gelöscht, der Schlag-Entry
+    //         selbst ist aber eine reale Buchung. Konservativ: zählen,
+    //         damit kein Material "verschwindet".
+    //
+    //      c) mlIdx < 0 oder mlIdx undefined:
+    //         - mlIdx < 0: expliziter Single-Tab-Eintrag → zählen.
+    //         - mlIdx undefined: Legacy-Format (vor Refactor #276). Hier
+    //           versuchen wir, den Eintrag einer ml-Log-Zeile zuzuordnen
+    //           via Zeit-Match (HH:MM). Wenn die HH:MM einer ml-Log-Zeile
+    //           entspricht UND die Menge des Eintrags kleiner oder gleich
+    //           der ml-Log-Menge ist, behandeln wir ihn als Teil der
+    //           damaligen Multi-Tab-Verteilung → skip.
+    //           Sonst: realer Single-Tab-Eintrag → zählen (NIE wegwerfen).
+    //
+    // Saat-Summe wird über AppGlobals.round6 stabilisiert, damit
+    // Gleitkomma-Reste nicht in der UI landen.
+    function _entryTimeKey(t) {
+      if (t == null) return '';
+      if (typeof t === 'number' && isFinite(t)) {
+        var dn = new Date(t);
+        if (isNaN(dn.getTime())) return '';
+        return String(dn.getHours()).padStart(2, '0') + ':' + String(dn.getMinutes()).padStart(2, '0');
+      }
+      if (typeof t === 'string') {
+        var m = t.match(/^(\d{1,2}):(\d{2})/);
+        if (m) return m[1].padStart(2, '0') + ':' + m[2];
+        var ds = new Date(t);
+        if (!isNaN(ds.getTime())) {
+          return String(ds.getHours()).padStart(2, '0') + ':' + String(ds.getMinutes()).padStart(2, '0');
+        }
+      }
+      return '';
+    }
+    function _legacyContextMatches(entry, machineRow) {
+      // Historische Datensätze aus dem betroffenen Zeitraum speicherten den
+      // Zählerstand als `hektar` in beiden Objekten. Wenn beide Seiten diesen
+      // Wert besitzen, muss er ebenfalls passen. Das reduziert falsche
+      // Zuordnungen bei gleicher HH:MM an unterschiedlichen Arbeitstagen.
+      var entryHa = Number(entry && (entry.zaehlerStand != null ? entry.zaehlerStand : entry.hektar));
+      var machineHa = Number(machineRow && (machineRow.zaehlerStand != null ? machineRow.zaehlerStand : machineRow.hektar));
+      if (isFinite(entryHa) && entryHa > 0 && isFinite(machineHa) && machineHa > 0) {
+        return Math.abs(entryHa - machineHa) <= AppGlobals.EPSILON_QUANTITY;
+      }
+      return true;
+    }
+    function _aggregateFilledAmounts() {
+      var mlE = 0, mlD = 0;
+      var log = AppGlobals.state.machineLog || [];
+      for (var li = 0; li < log.length; li++) {
+        var row = log[li];
+        if (!row) continue;
+        mlE += row.einheit || 0;
+        mlD += row.duenger || 0;
+      }
+      // Index Maschinenlog nach HH:MM für die Legacy-Heuristik (c).
+      // Mehrere ml-Einträge in derselben Minute sind möglich (schnelle
+      // aufeinanderfolgende Eingaben) → wir behalten die pro Eintrag
+      // verfügbare Restkapazität, damit nicht zwei Legacy-Einträge
+      // beide dieselbe ml-Zeile "auffressen".
+      var mlByTime = {};
+      for (var lk = 0; lk < log.length; lk++) {
+        var k = _entryTimeKey(log[lk] && log[lk].time);
+        if (!k) continue;
+        if (!mlByTime[k]) mlByTime[k] = [];
+        mlByTime[k].push({ row: log[lk], remE: log[lk].einheit || 0, remD: log[lk].duenger || 0 });
+      }
+      function _consumeLegacy(entry, timeKey, eE, eD) {
+        if (!timeKey || !mlByTime[timeKey]) return false;
+        var candidates = mlByTime[timeKey];
+        for (var ci = 0; ci < candidates.length; ci++) {
+          if (!_legacyContextMatches(entry, candidates[ci].row)) continue;
+          // Menge-Check: ein Legacy-Entry kann nur Teil einer
+          // Verteilung sein, wenn er die Restmenge der ml-Zeile nicht
+          // überschreitet (gleicher oder kleinerer Anteil).
+          //
+          // Schwelle Saat: 0,0005 (≈ EPSILON_EINHEIT) — passt zur internen
+          // 6-Stellen-Saat-Semantik; Legacy-Entry-Mengen werden ebenfalls
+          // als 6-Stellen-Werte verglichen.
+          //
+          // Schwelle Dünger: EPSILON_QUANTITY = 0,05 kg — passt zur
+          // kg-/2-Stellen-Dünger-Granularität (entry.duenger ist intern
+          // auf 2 Nachkommastellen gerundet, daher reicht 0,05 als
+          // Schwellwert für "passt in die Verteilung"). Das ist NICHT
+          // zu verwechseln mit der 0,01-kg-Rundung, die nur in
+          // _buildDrillEntry zur Reduktion von Anzeigerauschen dient.
+          if (eE - candidates[ci].remE > 0.0005) continue;
+          if (eD - candidates[ci].remD > AppGlobals.EPSILON_QUANTITY) continue;
+          candidates[ci].remE -= eE;
+          candidates[ci].remD -= eD;
+          return true;
+        }
+        return false;
+      }
+      var reiter = AppGlobals.state.reiter || [];
+      var extraE = 0, extraD = 0;
+      for (var ti = 0; ti < reiter.length; ti++) {
+        var rt = reiter[ti];
+        if (!rt || !Array.isArray(rt.entries)) continue;
+        for (var ei = 0; ei < rt.entries.length; ei++) {
+          var e = rt.entries[ei];
+          if (!e) continue;
+          // (a) verknüpfter Multi-Tab-Entry → in (1) schon gezählt.
+          if (typeof e.mlIdx === 'number' && e.mlIdx >= 0 && e.mlIdx < log.length) {
+            continue;
+          }
+          // (b) Orphan (mlIdx out-of-bounds) → realer Eintrag, zählen.
+          if (typeof e.mlIdx === 'number' && e.mlIdx >= 0) {
+            extraE += e.einheit || 0;
+            extraD += e.duenger || 0;
+            continue;
+          }
+          // (c) mlIdx < 0 oder undefined.
+          if (typeof e.mlIdx === 'number') {
+            // explizit single-tab → zählen.
+            extraE += e.einheit || 0;
+            extraD += e.duenger || 0;
+            continue;
+          }
+          // Legacy (mlIdx undefined): Zeit- und Mengen-Match gegen ml-Log.
+          if (_consumeLegacy(e, _entryTimeKey(e.time), e.einheit || 0, e.duenger || 0)) {
+            continue; // als Multi-Tab-Teil erkannt → skip
+          }
+          // Sonst: realer Single-Tab-Eintrag → zählen.
+          extraE += e.einheit || 0;
+          extraD += e.duenger || 0;
+        }
+      }
+      return {
+        usedE: AppGlobals.round6(mlE + extraE),
+        usedD: mlD + extraD
+      };
+    }
+
+    // --- Render: bereits eingefüllte Mengen ---
+    //
+    // Ergänzt die Gesamtbilanz um das, was real in der Maschine gelandet ist
+    // (Σ usedE/usedD über alle Schläge). "Verbleibend" allein beantwortet die
+    // Frage am Feldrand nicht — wie viel ist heute schon reingegangen. Ohne
+    // Buchungen bleibt die Zeile ausgeblendet, damit die Bilanz beim leeren
+    // Start nicht mit Nullen zugestellt wird.
+    function _renderBalanceFilled(usedE, usedD) {
+      var row = document.getElementById('local_protocol_balance_filled');
+      if (!row) return;
+      while (row.firstChild) row.removeChild(row.firstChild);
+      // Saat-Schwelle: zentrale EPSILON_EINHEIT-Konstante aus calculations.js
+      // (0,000499999). Dadurch ist die Anzeige exakt 0,0005 Saat sichtbar und
+      // konsistent mit Carryover-/Remaining-Logik.
+      // Dünger-Schwelle: 0,5 kg (Anzeige-Rundung auf ganze kg). NICHT zu
+      // verwechseln mit EPSILON_QUANTITY = 0,05 kg (Berechnungs-Schwelle
+      // für "nichts mehr offen") und auch nicht mit der 0,01-kg-Rundung
+      // in _buildDrillEntry (entry.duenger wird intern auf 2 Nachkomma-
+      // stellen gerundet — das ist eine Eingabe-Normalisierung, keine
+      // Anzeige-Schwelle). Die drei Konstanten haben unterschiedliche
+      // Aufgaben und werden hier bewusst getrennt gehalten.
+      var hasE = usedE > AppGlobals.EPSILON_EINHEIT;
+      var hasD = usedD >= 0.5;
+      if (!hasE && !hasD) {
+        row.hidden = true;
+        return;
+      }
+      row.hidden = false;
+      var label = document.createElement('small');
+      label.textContent = 'eingefüllt';
+      row.appendChild(label);
+      var values = document.createElement('div');
+      values.className = 'lp-balance-filled-values';
+      if (hasE) {
+        var seed = document.createElement('span');
+        seed.className = 'lp-balance-filled-value';
+        seed.textContent = '🌱 ' + AppGlobals.fmtEinheit(usedE) + ' Einh.';
+        values.appendChild(seed);
+      }
+      if (hasD) {
+        var fert = document.createElement('span');
+        fert.className = 'lp-balance-filled-value';
+        fert.textContent = '🧪 ' + Math.round(usedD).toLocaleString('de-DE') + ' kg';
+        values.appendChild(fert);
+      }
+      row.appendChild(values);
+    }
+
     // --- Render: Gesamtbilanz (kompakt) ---
     //
     // Sourced from existing aggregations:
     // - Σ Saat-Bedarf (IST-bevorzugt) = Σ getTabRemaining(r, i).basisE
     // - Σ Saat-Verbleibend (mit Senken-Zuschlag) = Σ getTabRemaining(r, i).remainingE
     // - Σ Dünger analog
+    // - "Eingefüllt" = _aggregateFilledAmounts() (siehe Helper oben):
+    //   reale Maschinenfüllungen aus machineLog + ungebundene Single-Tab-
+    //   Entries, ohne Doppelzählung verknüpfter Schlagbuchungen.
     function renderLocalProtocolBalance() {
       var card = document.getElementById('local_protocol_balance');
       if (!card) return;
@@ -179,10 +400,18 @@
           totalRemainingD += rem.remainingD;
         }
       }
+      // "Eingefüllt" strikt trennen von "Verbleibend/Bedarf": Das, was real
+      // in der Maschine landet, kommt aus dem Maschinenlog bzw. ungebundenen
+      // Single-Tab-Entries (siehe _aggregateFilledAmounts). Eine reine
+      // Σ-getTabRemaining().usedE erfasst nur die auf Schläge verteilte
+      // Menge und kann deshalb unter der realen Maschinenfüllung liegen.
+      var filled = _aggregateFilledAmounts();
+      var totalUsedE = filled.usedE;
+      var totalUsedD = filled.usedD;
       // Saatgut und Dünger zeigen denselben fachlichen Zustand:
       // den noch offenen Gesamtbedarf über alle Schläge.
       var saatShown = totalBasisE > 0
-        ? AppGlobals.fmt(totalRemainingE) + ' Einh.'
+        ? AppGlobals.fmtEinheit(totalRemainingE) + ' Einh.'
         : '—';
       var saatSubText = totalBasisE > 0 ? 'verbleibend' : '—';
       // Dünger: Verbleibend (mit Senken-Modell konsistent zur Summary).
@@ -218,6 +447,7 @@
         grid.appendChild(divider);
         grid.appendChild(right);
       }
+      _renderBalanceFilled(totalUsedE, totalUsedD);
       _renderBalanceForecast();
       if (time) {
         // "Heute, 14. Aug." — relativ zur ersten gefundenen Buchung mit
@@ -369,8 +599,8 @@
       var excessE  = AppGlobals.getTabIstEinheiten(r) - AppGlobals.getTabTotalEinheiten(r);
       var savingsD = (r.hektar - istHek) * (r.duenger || 0);
       var excessD  = (istHek - r.hektar) * (r.duenger || 0);
-      return savingsE > AppGlobals.EPSILON_QUANTITY
-          || excessE > AppGlobals.EPSILON_QUANTITY
+      return savingsE > AppGlobals.EPSILON_EINHEIT
+          || excessE > AppGlobals.EPSILON_EINHEIT
           || savingsD > AppGlobals.EPSILON_QUANTITY
           || excessD > AppGlobals.EPSILON_QUANTITY;
     }

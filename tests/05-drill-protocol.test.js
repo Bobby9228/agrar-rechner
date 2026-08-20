@@ -157,11 +157,11 @@ describe('Drill-Protokoll', () => {
 
       // Check drill summary (aggregated across all tabs)
       // Total einheiten = 18 (10ha * 90000 / 50000)
-      expect(doc.getElementById('ds_saat_total').textContent).toBe('18,0 Einheiten');
+      expect(doc.getElementById('ds_saat_total').textContent).toBe('18,000 Einheiten');
       // Used einheit = 5
       expect(doc.getElementById('ds_saat_used').textContent).toContain('5,0');
       // Remaining = 18 - 5 = 13
-      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('13,0 Einheiten');
+      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('13,000 Einheiten');
       // Duenger total = 1500
       expect(doc.getElementById('ds_duenger_total').textContent).toContain('1.500');
       // Duenger used = 500
@@ -195,7 +195,7 @@ describe('Drill-Protokoll', () => {
 
       const entries = doc.getElementById('drill_entries').querySelectorAll('.drill-entry');
       expect(entries.length).toBe(1);
-      expect(entries[0].textContent).toContain('5,0 Einheiten');
+      expect(entries[0].textContent).toContain('5,000 Einheiten');
       expect(entries[0].textContent).toContain('500 kg');
     });
 
@@ -212,7 +212,7 @@ describe('Drill-Protokoll', () => {
 
       const rem = doc.getElementById('ds_saat_remaining').textContent;
       // Math.max(0, 18 - 20) = 0
-      expect(rem).toBe('0,0 Einheiten');
+      expect(rem).toBe('0,000 Einheiten');
     });
 
     it('remaining duenger is clamped to 0 (no negative)', () => {
@@ -285,12 +285,12 @@ describe('Drill-Protokoll', () => {
       w.renderResults();
 
       // Total: 27 einheiten across both tabs.
-      expect(doc.getElementById('ds_saat_total').textContent).toBe('27,0 Einheiten');
+      expect(doc.getElementById('ds_saat_total').textContent).toBe('27,000 Einheiten');
       // Used: full 27 (drillAdd exactly filled both tabs).
-      expect(doc.getElementById('ds_saat_used').textContent).toBe('27,0 Einheiten');
+      expect(doc.getElementById('ds_saat_used').textContent).toBe('27,000 Einheiten');
       // Remaining: 0 (or '—' if the implementation uses the zero-skip path).
       const remText = doc.getElementById('ds_saat_remaining').textContent;
-      expect(remText === '0,0 Einheiten' || remText === '—').toBe(true);
+      expect(remText === '0,000 Einheiten' || remText === '—').toBe(true);
       // Duenger total: 3000 (formatted with de-DE locale).
       expect(doc.getElementById('ds_duenger_total').textContent).toContain('3.000');
       // Duenger used: 3000 (or '—' if zero-skip).
@@ -441,12 +441,12 @@ describe('Drill-Protokoll', () => {
       //   Tab 1 (unbearb., SOLL 9 E / 1000 kg): own = 9 / 1000, kein sinkAdjusted →
       //     remaining 9 / 1000.
       //   Σ Saat = 9.6 + 9 = 18.6. Σ Dünger = 400 + 1000 = 1400.
-      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('18,6 Einheiten');
+      expect(doc.getElementById('ds_saat_remaining').textContent).toBe('18,600 Einheiten');
       expect(doc.getElementById('ds_duenger_remaining').textContent).toBe('1.400 kg');
 
       // Sanity: total/used are independent of carryover.
-      expect(doc.getElementById('ds_saat_total').textContent).toBe('30,6 Einheiten');
-      expect(doc.getElementById('ds_saat_used').textContent).toBe('12,0 Einheiten');
+      expect(doc.getElementById('ds_saat_total').textContent).toBe('30,600 Einheiten');
+      expect(doc.getElementById('ds_saat_used').textContent).toBe('12,000 Einheiten');
       expect(doc.getElementById('ds_duenger_total').textContent).toBe('3.400 kg');
       expect(doc.getElementById('ds_duenger_used').textContent).toBe('2.000 kg');
     });

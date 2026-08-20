@@ -212,6 +212,17 @@ describe('Lokales Protokoll — state.protocolView / protocolOpenCards', () => {
 
 // ─────────── Gesamtbilanz ───────────
 
+describe('Lokales Protokoll — Platzierung der Gesamtbilanz', () => {
+  it('ordnet die Gesamtbilanz vor dem Drill-Protokoll ein', () => {
+    var d = createDom();
+    var balance = d.window.document.getElementById('local_protocol_balance_section');
+    var drill = d.window.document.getElementById('drill_section');
+
+    expect(balance).not.toBeNull();
+    expect((balance.compareDocumentPosition(drill) & 4) !== 0).toBe(true);
+  });
+});
+
 describe('Lokales Protokoll — renderLocalProtocolBalance', () => {
   let w, doc;
   beforeEach(() => {
@@ -228,9 +239,47 @@ describe('Lokales Protokoll — renderLocalProtocolBalance', () => {
     var leftText = grid.textContent;
     // 10 ha × 90.000 Körner / 50.000 Körner je Einheit = 18 Einheiten,
     // davon 3 bereits eingefüllt: 15 Einheiten verbleibend.
-    expect(leftText).toContain('15,0 Einh.');
+    expect(leftText).toContain('15,000 Einh.');
     expect(leftText).toContain('verbleibend');
     expect(leftText).toContain('Saatgut');
+  });
+
+  it('zeigt eingefüllte Einheiten und Dünger zusätzlich zum Verbleibenden', () => {
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
+      entries: [{ einheit: 3, duenger: 250, time: '10:00' }] });
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    expect(filled).not.toBeNull();
+    // Σ eingefüllt über alle Schläge: 3 Einheiten Saatgut, 250 kg Dünger.
+    expect(filled.textContent).toContain('3,000 Einh.');
+    expect(filled.textContent).toContain('250');
+    expect(filled.textContent).toContain('eingefüllt');
+  });
+
+  it('summiert eingefüllte Mengen über mehrere Schläge', () => {
+    // addReiter() ruft syncStateFromInputs() und würde einen vorher
+    // gesetzten Schlag aus den (leeren) Eingabefeldern überschreiben —
+    // deshalb erst den zweiten Schlag anlegen, dann beide befüllen.
+    w.addReiter();
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
+      entries: [{ einheit: 3, duenger: 250, time: '10:00' }] });
+    setUpTab(w, 1, { hektar: 10, koerner: 90000, duenger: 100,
+      entries: [{ einheit: 2.5, duenger: 150, time: '11:00' }] });
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    // 3 + 2,5 = 5,5 Einheiten und 250 + 150 = 400 kg.
+    expect(filled.textContent).toContain('5,500 Einh.');
+    expect(filled.textContent).toContain('400');
+  });
+
+  it('zeigt ohne Buchungen keine eingefüllten Mengen an', () => {
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100, entries: [] });
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    expect(filled.hidden).toBe(true);
   });
 
   it('zeigt die nächsten Leerstände für Saat und Dünger aus dem aktuellen Maschinenstand', () => {
@@ -348,7 +397,7 @@ describe('Lokales Protokoll — renderLocalProtocolFields (Schläge)', () => {
     var card = doc.querySelector('.lp-field-card');
     expect(card.textContent).toContain('19,0 ha');
     // Status-Zeile nutzt kompakte Kurzform "3,6 E" (statt "3,6 Einheiten").
-    expect(card.textContent).toContain('3,6 E');
+    expect(card.textContent).toContain('3,600 E');
   });
 
   it('Status-Zeile zeigt "Mehrbedarf" wenn IST > SOLL', () => {
@@ -372,11 +421,28 @@ describe('Lokales Protokoll — renderLocalProtocolFields (Schläge)', () => {
   });
 
   it('Mehrere Tage → mehrere Tagesgruppen-Headings', () => {
-    // Zwei Entries auf verschiedenen Tagen (number-Ms).
+    // Zwei Entries auf verschiedenen Tagen (number-Ms). Beide Daten werden
+    // relativ zur Systemzeit gebildet: ein hart kodiertes "heute" (z.B.
+    // 15. August 2026) läuft ab und lässt den Test ab dem nächsten Tag
+    // fehlschlagen. Heute + ein älterer Tag, der garantiert im selben Monat
+    // wie "heute" liegt, damit die Monats-Assertion stabil bleibt.
+    var today = new Date();
+    var older = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    older.setDate(older.getDate() - 2);
+    // Am 1./2. des Monats würde -2 Tage in den Vormonat rutschen; dann
+    // stattdessen zwei Tage nach vorn im selben Monat verankern.
+    if (older.getMonth() !== today.getMonth()) {
+      older = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2);
+    }
+    var monthName = today.toLocaleDateString('de-DE', { month: 'long' });
+    var olderFull = older.getDate() + '. ' + older.toLocaleDateString('de-DE', { month: 'long' })
+      + ' ' + older.getFullYear();
     setUpTab(w, 0, {
       entries: [
-        { einheit: 3, duenger: 0, zaehlerStand: 10, time: new Date(2026, 7, 13, 22, 0).getTime() },
-        { einheit: 2, duenger: 0, zaehlerStand: 14, time: new Date(2026, 7, 15, 22, 0).getTime() }
+        { einheit: 3, duenger: 0, zaehlerStand: 10,
+          time: new Date(older.getFullYear(), older.getMonth(), older.getDate(), 22, 0).getTime() },
+        { einheit: 2, duenger: 0, zaehlerStand: 14,
+          time: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 22, 0).getTime() }
       ]
     });
     w.state.activeView = 'protokoll';
@@ -384,12 +450,12 @@ describe('Lokales Protokoll — renderLocalProtocolFields (Schläge)', () => {
     var headings = doc.querySelectorAll('#local_protocol_fields_panel .lp-date-heading');
     expect(headings.length).toBe(2);
     var text = doc.getElementById('local_protocol_fields_panel').textContent;
-    // Der ältere Eintrag hat sein volles Datum (13. August 2026).
-    expect(text).toContain('13. August 2026');
-    // Der heutige Eintrag wird als "Heute · August" zusammengefasst
+    // Der ältere Eintrag hat sein volles Datum (z.B. "13. August 2026").
+    expect(text).toContain(olderFull);
+    // Der heutige Eintrag wird als "Heute · <Monat>" zusammengefasst
     // (Tag implizit; spart horizontale Breite auf Phone-Displays).
     expect(text).toContain('Heute');
-    expect(text).toContain('August');
+    expect(text).toContain(monthName);
   });
 });
 
@@ -716,5 +782,258 @@ describe('Lokales Protokoll — Legacy-Renderer bleiben intakt', () => {
     setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100 });
     w.renderDrillSummary();
     expect(doc.getElementById('ds_saat_total').textContent).toContain('18');
+  });
+});
+
+// ─────────── Task 2 Folgefix: „eingefüllt" als reale Maschinenfüllung ────────
+//
+// Vor 2be0499 summierte die Gesamtbilanz nur reiter[].entries und zeigte damit
+// die verteilte statt zwingend der real eingefüllten Menge. Korrekt: jede
+// machineLog-Zeile genau einmal plus unabhängige Single-Tab-Füllungen.
+// Außerdem war der Saat-Schwellwert
+// in _renderBalanceFilled hartcodiert auf 0,0005 — die zentrale EPSILON_EINHEIT-
+// Konstante aus calculations.js wird stattdessen verwendet.
+
+describe('Lokales Protokoll — Gesamtbilanz „eingefüllt" als reale Maschinenfüllung', () => {
+  let w, doc;
+  beforeEach(() => {
+    var d = createDom();
+    w = d.window; doc = w.document;
+  });
+
+  it('Multi-Tab-Füllung: machineLog dominiert, verknüpfte Schlagbuchungen zählen NICHT doppelt', () => {
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
+      entries: [{ einheit: 2, duenger: 200, mlIdx: 0, time: '10:00' }] });
+    w.state.machineLog = [
+      { einheit: 3, duenger: 250, zaehlerStand: 5, time: '10:00', distributed: 3 }
+    ];
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    // Echte Maschinenfüllung: 3 Einheiten Saatgut, 250 kg Dünger.
+    // Die verknüpfte Schlagbuchung (2 E / 200 kg, mlIdx=0) wird NICHT
+    // zusätzlich gezählt → keine Doppelzählung.
+    expect(filled.textContent).toContain('3,000 Einh.');
+    expect(filled.textContent).toContain('250');
+    expect(filled.textContent).not.toContain('5,000');
+  });
+
+  it('Gemischter Zustand: machineLog-Füllung + unabhängige Single-Tab-Buchung wird genau einmal summiert', () => {
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
+      entries: [
+        { einheit: 2, duenger: 100, mlIdx: 0, time: '10:00' },
+        { einheit: 1.5, duenger: 50, time: '11:00' }
+      ] });
+    w.state.machineLog = [
+      { einheit: 3, duenger: 150, zaehlerStand: 5, time: '10:00', distributed: 3 }
+    ];
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    // 3 E (machineLog) + 1,5 E (entry ohne mlIdx) = 4,500 E
+    // 150 kg (machineLog) + 50 kg (entry ohne mlIdx) = 200 kg
+    expect(filled.textContent).toContain('4,500 Einh.');
+    expect(filled.textContent).toContain('200');
+  });
+
+  it('Exakt 0,0005 Saat ist sichtbar (zentrale EPSILON_EINHEIT-Schwelle)', () => {
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
+      entries: [{ einheit: 0.0005, duenger: 0, time: '10:00' }] });
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    // EPSILON_EINHEIT = 0,000499999 → 0,0005 ist sichtbar.
+    // fmtEinheit rundet half-up → Anzeige 0,001 Einh.
+    expect(filled.hidden).toBe(false);
+    expect(filled.textContent).toMatch(/0,001/);
+  });
+});
+
+// ─────────── Review-Fix: Legacy- und Orphan-Strategie ────────────────────────
+//
+// Git-Historie (siehe ui-handlers.js, Refactor #276/#285): Multi-Tab-Push
+// schreibt in das Maschinenlog UND in jeden priorisierten Tab. Die
+// Schlag-Einträge tragen den mlIdx des Maschinen-Log-Eintrags als
+// Rückverweis. Ältere Datenstände (vor #276) haben Einträge OHNE mlIdx-Feld
+// — sie sind faktisch Multi-Tab-Verteilungen aus derselben Maschinenfüllung.
+//
+// Reproduzierte Bugs:
+//   A) Legacy (mlIdx undefined): 3 E/250 kg im Maschinenlog + 3 E/250 kg als
+//      Schlag-Entry ohne mlIdx → bisher 6 E/500 kg (Doppelzählung).
+//   B) Orphan (mlIdx zeigt auf gelöschten Maschinenlog-Eintrag): 3 E/250 kg
+//      im Schlag mit mlIdx=5, machineLog.length < 6 → bisher Anzeige leer.
+//
+// Strategie (konservativ, datenbasiert; siehe _aggregateFilledAmounts):
+//   1. mlIdx >= 0 + machineLog[mlIdx] existiert: bereits gezählt → skip.
+//   2. mlIdx >= 0 + machineLog[mlIdx] NICHT vorhanden (Orphan): realer
+//      Single-Tab-Eintrag, Maschinenlog-Zeile wurde gelöscht → zählen.
+//   3. mlIdx < 0 (explizit single): zählen.
+//   4. mlIdx undefined (Legacy): Zeit-/Zählerstand-Match gegen Maschinenlog.
+//      - Wenn HH:MM und — soweit vorhanden — Zählerstand passen UND
+//        der Eintrag mengenmäßig in die Verteilung passt (einzelne
+//        Verteilungsmenge ≤ Maschinenlog-Menge): behandeln als Teil der
+//        Multi-Tab-Verteilung → skip.
+//      - Sonst: realer Single-Tab-Eintrag → zählen (NIE wegwerfen).
+//
+// Gemischte Neudaten dürfen weder zu Doppelzählung noch zu Datenverlust
+// führen.
+
+describe('Lokales Protokoll — Legacy/Orphan-Heuristik (Review-Fix)', () => {
+  let w, doc;
+  beforeEach(() => {
+    var d = createDom();
+    w = d.window; doc = d.window.document;
+  });
+
+  // Hilfsfunktion: HH:MM-Key aus Eintrag ableiten (gleich wie in der
+  // Heuristik in render-local-protocol.js). Akzeptiert Date.now() (Zahl)
+  // und HH:MM-Strings.
+  function _hhmmKey(t) {
+    if (t == null) return '';
+    if (typeof t === 'number' && isFinite(t)) {
+      var d = new Date(t);
+      return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    }
+    if (typeof t === 'string') {
+      var m = t.match(/^(\d{1,2}):(\d{2})/);
+      if (m) return m[1].padStart(2, '0') + ':' + m[2];
+    }
+    return '';
+  }
+
+  it('Bug A (Legacy ohne mlIdx): 3 E/250 kg Maschinenlog + 3 E/250 kg Entry ohne mlIdx → 3 E/250 kg (NICHT 6/500)', () => {
+    var t = new Date();
+    var ts = t.getTime();
+    var hhmm = _hhmmKey(ts);
+    // Schlag-Eintrag OHNE mlIdx (Legacy-Format), aber mit Timestamp-Zeit,
+    // der zur selben HH:MM wie der Maschinenlog-Eintrag gehört.
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
+      entries: [{ einheit: 3, duenger: 250, time: ts }] });
+    w.state.machineLog = [
+      { einheit: 3, duenger: 250, zaehlerStand: 5, time: hhmm, distributed: 3 }
+    ];
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    // Erwartung: 3 E Saat, 250 kg Dünger (NICHT 6 E/500 kg).
+    expect(filled.textContent).toContain('3,000 Einh.');
+    expect(filled.textContent).not.toContain('6,000');
+    // Dünger halbiert-prüfen: 250 muss enthalten sein, 500 NICHT.
+    expect(filled.textContent).toContain('250');
+    expect(filled.textContent).not.toContain('500');
+  });
+
+  it('Bug B (Orphan: mlIdx außerhalb machineLog): 3 E/250 kg mit mlIdx=99, machineLog leer → 3 E/250 kg (NICHT leer)', () => {
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
+      entries: [{ einheit: 3, duenger: 250, mlIdx: 99, time: '10:00' }] });
+    w.state.machineLog = [];
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    // Anzeige darf NICHT leer sein.
+    expect(filled.hidden).toBe(false);
+    expect(filled.textContent).toContain('3,000 Einh.');
+    expect(filled.textContent).toContain('250');
+  });
+
+  it('Gemischte Neudaten: Multi-Tab (mlIdx=0) + Single-Tab (mlIdx=-1) + Legacy-Entry (kein mlIdx) werden korrekt aggregiert', () => {
+    var ts = Date.now();
+    var hhmm = _hhmmKey(ts);
+    // Tabs 1 + 2 hinzufügen (createDom liefert initial 1 Tab).
+    w.addReiter();
+    w.addReiter();
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100, entries: [
+      { einheit: 3, duenger: 200, mlIdx: 0, time: ts }   // Multi-Tab-Verteilung an Schlag 0
+    ] });
+    // Tab 1 (Single-Tab) hat einen unabhängigen Eintrag (mlIdx=-1).
+    setUpTab(w, 1, { hektar: 8, koerner: 85000, duenger: 140, entries: [
+      { einheit: 1.5, duenger: 100, mlIdx: -1, time: '11:00' }
+    ] });
+    // Tab 2 (Legacy, ohne mlIdx) hat einen Eintrag, dessen Zeit zum
+    // Maschinenlog passt → Legacy-Heuristik schlägt zu.
+    setUpTab(w, 2, { hektar: 5, koerner: 80000, duenger: 120, entries: [
+      { einheit: 1, duenger: 50, time: ts }
+    ] });
+    // Maschinenlog: 3 E/200 kg aus dem Multi-Tab-Push.
+    w.state.machineLog = [
+      { einheit: 3, duenger: 200, zaehlerStand: 5, time: hhmm, distributed: 3 }
+    ];
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    // Erwartung: 3 E (ml) + 1,5 E (Tab 1 single) + 0 E (Tab 2 legacy, von
+    // Heuristik als covered erkannt) = 4,500 E. Dünger: 200 + 100 + 0 = 300.
+    expect(filled.textContent).toContain('4,500 Einh.');
+    expect(filled.textContent).toContain('300');
+    expect(filled.textContent).not.toContain('5,500');
+    expect(filled.textContent).not.toContain('350');
+  });
+
+  it('Legacy-Entry OHNE Zeit-Match: bleibt als realer Single-Tab-Eintrag erhalten (konservativ)', () => {
+    // Maschinenlog-Eintrag mit HH:MM "08:00", Legacy-Entry mit HH:MM "12:00"
+    // → kein Match → der Legacy-Entry ist ein realer Single-Tab-Eintrag.
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
+      entries: [{ einheit: 2, duenger: 100, time: '12:00' }] });
+    w.state.machineLog = [
+      { einheit: 3, duenger: 250, zaehlerStand: 5, time: '08:00', distributed: 3 }
+    ];
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    // 3 E/250 kg aus machineLog + 2 E/100 kg aus dem unverknüpften Legacy-
+    // Eintrag = 5 E und 350 kg.
+    expect(filled.textContent).toContain('5,000 Einh.');
+    expect(filled.textContent).toContain('350');
+  });
+
+  it('Legacy-Entry mit gleicher Uhrzeit aber anderem Zählerstand bleibt eigenständig', () => {
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
+      entries: [{ einheit: 1, duenger: 50, hektar: 7, time: '10:00' }] });
+    w.state.machineLog = [
+      { einheit: 3, duenger: 250, hektar: 5, time: '10:00' }
+    ];
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    expect(filled.textContent).toContain('4,000 Einh.');
+    expect(filled.textContent).toContain('300');
+  });
+
+  it('Legacy-Entry: Menge > Maschinenlog-Menge wird NICHT als covered behandelt (Menge-Check)', () => {
+    // Maschinenlog: 1 E / 50 kg um 10:00. Legacy-Entry OHNE mlIdx, 5 E /
+    // 200 kg um 10:00 → kann nicht Teil der Maschinenlog-Verteilung sein
+    // (entry.einheit > ml.einheit) → als realer Single-Tab-Eintrag werten.
+    var t = new Date();
+    t.setHours(10, 0, 0, 0);
+    var ts = t.getTime();
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
+      entries: [{ einheit: 5, duenger: 200, time: ts }] });
+    w.state.machineLog = [
+      { einheit: 1, duenger: 50, zaehlerStand: 5, time: '10:00', distributed: 1 }
+    ];
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    // 1 E (ml) + 5 E (legacy, mismatch → real) = 6 E. 50 + 200 = 250 kg.
+    expect(filled.textContent).toContain('6,000 Einh.');
+    expect(filled.textContent).toContain('250');
+  });
+
+  it('Orphan (mlIdx=0) + vorhandene machineLog-Zeile 0: orphan-Eintrag zählt NICHT (verknüpfte Logik greift)', () => {
+    setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100, entries: [
+      // mlIdx zeigt auf eine existierende machineLog-Zeile → korrekt verknüpft.
+      { einheit: 2, duenger: 200, mlIdx: 0, time: '10:00' }
+    ] });
+    w.state.machineLog = [
+      { einheit: 3, duenger: 250, zaehlerStand: 5, time: '10:00', distributed: 3 }
+    ];
+    w.state.activeView = 'protokoll';
+    w.renderLocalProtocol();
+    var filled = doc.getElementById('local_protocol_balance_filled');
+    // Nur machineLog zählt: 3 E / 250 kg. Entry ist verknüpft → skip.
+    expect(filled.textContent).toContain('3,000 Einh.');
+    expect(filled.textContent).not.toContain('5,000');
+    expect(filled.textContent).toContain('250');
+    expect(filled.textContent).not.toContain('450');
   });
 });

@@ -87,6 +87,13 @@ describe('resetAll()', () => {
     expect(w.state.reiter[0].entries).toEqual([]);
   });
 
+  it('gibt dem ersten Schlag nach neuer Kulturwahl Priorität 1', () => {
+    w.resetAll();
+    w.chooseKultur('raps');
+
+    expect(w.state.drillPriorities[0]).toBe(1);
+  });
+
   it('clears drill entries', () => {
     expect(w.getActiveReiter().entries.length).toBe(1);
     w.resetAll();

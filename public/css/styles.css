@@ -2277,6 +2277,34 @@ html.dark .lp-balance {
   color: #cfe2c8;
   font-weight: 600;
 }
+.lp-balance-filled {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-top: 11px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(255, 253, 248, 0.2);
+  color: #fffdf8;
+}
+.lp-balance-filled[hidden] { display: none; }
+.lp-balance-filled small {
+  opacity: 0.7;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+.lp-balance-filled-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  min-width: 0;
+}
+.lp-balance-filled-value {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  white-space: nowrap;
+  color: #cfe2c8;
+}
 .lp-balance-forecast {
   display: grid;
   gap: 6px;

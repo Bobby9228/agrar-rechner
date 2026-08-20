@@ -72,6 +72,29 @@ function fmtCompact(n) {
 // Schwelle unter der Floating-Point-Restwerte als "nichts" gelten.
 var EPSILON_QUANTITY = 0.05;
 
+// Saatgut-Einheiten werden intern auf 6 Nachkommastellen begrenzt (s. round6).
+// Die UI zeigt 3 Stellen: Einzelwerte, die dabei noch als 0,000 erscheinen
+// würden, gelten nur für Anzeige/Fertig-Status als 0. Intern bleiben sie für
+// Summen und Carryover vollständig erhalten. Hektar/Dünger bleiben unverändert.
+var EPSILON_EINHEIT = 0.000499999;
+
+// Rundet auf 6 Nachkommastellen, damit Gleitkomma-Reste (z.B. -0.04 vs.
+// -0.040000000000000036) in der Carryover-/Remaining-Logik konsistent
+// verschwinden und UI-Vergleiche stabil bleiben.
+function round6(n) {
+  if (!isFinite(n)) return n;
+  return Math.round(n * 1e6) / 1e6;
+}
+
+// Saatgut-Einheiten ohne Label: immer 3 sichtbare Nachkommastellen.
+// fmt() bleibt bewusst bei einer Stelle, weil es auch Hektar und Dünger nutzt.
+function fmtEinheit(n) {
+  if (n === null || n === undefined || isNaN(n)) return '0,000';
+  var x = round6(n) * 1000;
+  var rounded = (x >= 0 ? Math.floor(x + 0.5) : -Math.floor(-x + 0.5)) / 1000;
+  return String(rounded.toFixed(3)).replace('.', ',');
+}
+
 // --- Fahrgassen-Faktor (zentrale Berechnung) ---
 
 // Produktivitätsfaktor für Fahrgassen: (breite - 1) / breite.
@@ -96,13 +119,16 @@ function getTabFahrgassenFaktor(r) {
 // Berechnet die SOLL-Einheiten für ein Tab-Objekt r.
 // Formel: (hektar × koerner / koernerProEinheit) × Fahrgassen-Faktor.
 // Gibt 0 zurück, wenn r.hektar/koerner fehlen oder kpe ≤ 0.
+// Saatgut-Einheiten werden intern auf 6 Nachkommastellen begrenzt, damit
+// Carryover/Remaining keine Gleitkomma-Reste (z.B. -0.040000000000000036)
+// weitertragen.
 function getTabTotalEinheiten(r, koernerProEinheit) {
   var kpe = resolveKoernerProEinheit(r, koernerProEinheit);
   if (!r || !r.hektar || !r.koerner || kpe <= 0) return 0;
   var faktor = getTabFahrgassenFaktor(r);
   var einheiten = (r.hektar * r.koerner) / kpe;
   if (!isFinite(einheiten)) return 0;
-  return Math.max(0, einheiten * faktor);
+  return round6(Math.max(0, einheiten * faktor));
 }
 
 // IST-Einheiten basierend auf der IST-Fläche (r.istHektar).
@@ -113,7 +139,7 @@ function getTabIstEinheiten(r) {
   var faktor = getTabFahrgassenFaktor(r);
   var einheiten = (r.istHektar * r.koerner) / kpe;
   if (!isFinite(einheiten)) return 0;
-  return Math.max(0, einheiten * faktor);
+  return round6(Math.max(0, einheiten * faktor));
 }
 
 // --- Dünger-Berechnung (SOLL) ---
@@ -147,7 +173,7 @@ function getTabIstDuenger(r) {
 
 function getTabUsedEinheiten(r) {
   if (!r || !r.entries) return 0;
-  return r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0);
+  return round6(r.entries.reduce(function(s, e) { return s + (e.einheit || 0); }, 0));
 }
 
 function getTabUsedDuenger(r) {
@@ -251,6 +277,10 @@ function computeAllCarryovers() {
     var fldDev    = isSaat ? 'selfDeviationE' : 'selfDeviationD';
     var fldSaved  = isSaat ? 'savedEinheit' : 'savedDuenger';
     var fldExcess = isSaat ? 'excessEinheit' : 'excessDuenger';
+    // Saatgut-Werte werden am Ende auf 6 Nachkommastellen gerundet, damit
+    // keine Gleitkomma-Reste (z.B. -0.040000000000000036) nach außen
+    // propagieren. Dünger bleibt unverändert (kg-Granularität).
+    var roundResult = isSaat ? round6 : function(x) { return x; };
 
     var burden = 0;
     var absorbiert = 0;
@@ -267,9 +297,9 @@ function computeAllCarryovers() {
         var ist = getIst(rr);
         burden += (ist - used);
         var dev = ist - sol;
-        result[i][fldDev] = dev;
-        if (dev < 0) result[i][fldSaved] = -dev;       // Ersparnis (Hinweis)
-        else if (dev > 0) result[i][fldExcess] = dev;   // Mehrbedarf (Hinweis)
+        result[i][fldDev] = roundResult(dev);
+        if (dev < 0) result[i][fldSaved] = roundResult(-dev);    // Ersparnis (Hinweis)
+        else if (dev > 0) result[i][fldExcess] = roundResult(dev); // Mehrbedarf (Hinweis)
         own = 0;
       } else {
         own = sol - used;
@@ -277,7 +307,7 @@ function computeAllCarryovers() {
       // Überfüllung der Nicht-Senken schluckt burden (verhindert Doppelfehler).
       if (i !== sinkIdx && own < 0) absorbiert += -own;
     }
-    result[sinkIdx][fldSink] = burden - absorbiert;
+    result[sinkIdx][fldSink] = roundResult(burden - absorbiert);
   }
 
   _internal.carryoverCache = result;
@@ -493,7 +523,7 @@ function getTabRemaining(r, tabIdx) {
     basisD:     worked ? istD : solD,
     usedE:      usedE,
     usedD:      usedD,
-    remainingE: Math.max(0, ownE + co.sinkAdjustedE),
+    remainingE: round6(Math.max(0, ownE + co.sinkAdjustedE)),
     remainingD: Math.max(0, ownD + co.sinkAdjustedD)
   };
 }
@@ -520,13 +550,13 @@ function isTabDone(r, tabIndex) {
   var usedE = getTabUsedEinheiten(r);
   var ownE = worked ? 0 : (solE - usedE);
   var remainingE = Math.max(0, ownE + carryover.sinkAdjustedE);
-  if (remainingE > 0.05) return false;
+  if (remainingE > EPSILON_EINHEIT) return false;
 
   var solD = getTabTotalDuenger(r);
   var usedD = getTabUsedDuenger(r);
   var ownD = worked ? 0 : (solD - usedD);
   var remainingD = Math.max(0, ownD + carryover.sinkAdjustedD);
-  return remainingD <= 0.05;
+  return remainingD <= EPSILON_QUANTITY;
 }
 
 // --- Hilfsfunktionen für Entry-Time ---
@@ -575,7 +605,10 @@ function getTabRates(tabIdx) {
 Object.assign(window.AppGlobals, {
   fmt: fmt,
   fmtCompact: fmtCompact,
+  fmtEinheit: fmtEinheit,
   EPSILON_QUANTITY: EPSILON_QUANTITY,
+  EPSILON_EINHEIT: EPSILON_EINHEIT,
+  round6: round6,
   _internal: _internal,
   resolveKoernerProEinheit: resolveKoernerProEinheit,
   getTabKoernerProEinheit: getTabKoernerProEinheit,

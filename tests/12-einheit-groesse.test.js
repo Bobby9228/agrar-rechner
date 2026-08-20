@@ -128,7 +128,7 @@ describe('einheitGroesseUpdate', () => {
     w.renderResults();
     var einheiten = w.document.getElementById('r_einheiten').textContent;
     // 10 * 90000 / 80000 = 11.25 → fmt rounds to 11,3
-    expect(einheiten).toContain('11,3');
+    expect(einheiten).toContain('11,250');
   });
 });
 
