@@ -216,5 +216,43 @@ describe('State persistence', () => {
       expect(w.state.reiter[0].entries.length).toBe(1);
       expect(w.state.reiter[0].entries[0].einheit).toBe(2);
     });
+
+    it('preserves protocol time and zero meter reading after reload', () => {
+      w.state.reiter[0] = {
+        ...w.state.reiter[0],
+        hektar: 8.6,
+        koerner: 300000,
+        koernerProEinheit: 1500000,
+        entries: [{
+          einheit: 2,
+          duenger: 0,
+          hektar: 8.6,
+          zaehlerStand: 0,
+          time: '20:58',
+        }],
+      };
+      w.state.machineLog = [{
+        einheit: 2,
+        duenger: 0,
+        hektar: 8.6,
+        zaehlerStand: 0,
+        time: '20:58',
+      }];
+      w.saveState();
+
+      w.state.reiter[0].entries = [];
+      w.state.machineLog = [];
+      w.loadState();
+
+      expect(w.state.reiter[0].entries[0].time).toBe('20:58');
+      expect(w.state.reiter[0].entries[0].zaehlerStand).toBe(0);
+      expect(w.state.machineLog[0].time).toBe('20:58');
+      expect(w.state.machineLog[0].zaehlerStand).toBe(0);
+
+      w.renderResults();
+      var forecast = w.document.querySelector('#drill_machine_log .drill-prognose');
+      expect(forecast.textContent).toContain('Saat leer bei 10,0 ha');
+      expect(forecast.textContent).not.toContain('18,6 ha');
+    });
   });
 });
