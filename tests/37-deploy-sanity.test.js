@@ -41,7 +41,7 @@ describe('Cloudflare deploy sanity', () => {
   it('main.js exposes the current minor release version and build date', () => {
     const mainPath = resolve(publicDir, 'js', 'main.js');
     const content = readFileSync(mainPath, 'utf-8');
-    expect(content).toMatch(/APP_VERSION\s*=\s*['"]v1\.1\.4['"]/);
+    expect(content).toMatch(/APP_VERSION\s*=\s*['"]v1\.1\.5['"]/);
     expect(content).toMatch(/APP_BUILD_DATE\s*=\s*['"]August 2026['"]/);
   });
 
