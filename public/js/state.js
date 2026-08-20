@@ -174,19 +174,28 @@ function sanitizeBoolean(v, fallback) {
   return fallback;
 }
 
+function sanitizeEntryTime(v) {
+  // Neue Einträge speichern die lokale Uhrzeit als "HH:MM"-String,
+  // ältere Snapshots können weiterhin einen numerischen Date-Timestamp
+  // enthalten. Beide Formen müssen den Save/Load-Zyklus überleben.
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  return sanitizeString(v, '', 64);
+}
+
 function sanitizeEntry(raw) {
   // Eintrag: Plain Object, nur erlaubte Keys, jede Property typgeprüft.
   // Unbekannte Keys und falsche Typen → Default. Verwirft auch
   // `__proto__`/`constructor`/`prototype` über den Reviver.
   if (!isPlainObject(raw)) return null;
   var out = {};
-  out.time        = sanitizeNumber(raw.time, 0);
-  out.einheit     = sanitizeNumber(raw.einheit, 0);
-  out.duenger     = sanitizeNumber(raw.duenger, 0);
-  out.hektar      = sanitizeNumber(raw.hektar, 0);
-  out.istHektar   = sanitizeNumber(raw.istHektar, 0);
-  out.koerner     = sanitizeNumber(raw.koerner, 0);
-  out.duengerRate = sanitizeNumber(raw.duengerRate, 0);
+  out.time         = sanitizeEntryTime(raw.time);
+  out.einheit      = sanitizeNumber(raw.einheit, 0);
+  out.duenger      = sanitizeNumber(raw.duenger, 0);
+  out.hektar       = sanitizeNumber(raw.hektar, 0);
+  out.istHektar    = sanitizeNumber(raw.istHektar, 0);
+  out.koerner      = sanitizeNumber(raw.koerner, 0);
+  out.duengerRate  = sanitizeNumber(raw.duengerRate, 0);
+  out.zaehlerStand = sanitizeNumber(raw.zaehlerStand, 0);
   if (raw.mlIdx !== undefined) {
     var ml = sanitizeNumber(raw.mlIdx, -1);
     out.mlIdx = ml >= 0 ? Math.floor(ml) : -1;
@@ -197,13 +206,14 @@ function sanitizeEntry(raw) {
 function sanitizeMachineLogEntry(raw) {
   if (!isPlainObject(raw)) return null;
   var out = {};
-  out.time        = sanitizeNumber(raw.time, 0);
-  out.einheit     = sanitizeNumber(raw.einheit, 0);
-  out.duenger     = sanitizeNumber(raw.duenger, 0);
-  out.hektar      = sanitizeNumber(raw.hektar, 0);
-  out.istHektar   = sanitizeNumber(raw.istHektar, 0);
-  out.koerner     = sanitizeNumber(raw.koerner, 0);
-  out.duengerRate = sanitizeNumber(raw.duengerRate, 0);
+  out.time         = sanitizeEntryTime(raw.time);
+  out.einheit      = sanitizeNumber(raw.einheit, 0);
+  out.duenger      = sanitizeNumber(raw.duenger, 0);
+  out.hektar       = sanitizeNumber(raw.hektar, 0);
+  out.istHektar    = sanitizeNumber(raw.istHektar, 0);
+  out.koerner      = sanitizeNumber(raw.koerner, 0);
+  out.duengerRate  = sanitizeNumber(raw.duengerRate, 0);
+  out.zaehlerStand = sanitizeNumber(raw.zaehlerStand, 0);
   return out;
 }
 
