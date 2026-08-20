@@ -7,23 +7,34 @@
 // das war die Ursache wiederholter Stale-Cache-Probleme. Ein Bump hier räumt
 // nur noch alte Offline-Caches auf, ist für sichtbare Updates nicht mehr nötig.
 const CACHE_VERSION = 'agrar-rechner-v51';
+// STATIC_ASSETS muss exakt zu den lokalen Produktions-Assets aus index.html
+// passen, damit eine frische PWA-Installation (oder ein Update-SW) beim
+// ersten Offline-Restart alle Bootstrap-Dateien im Cache hat. Kongruenz wird
+// durch tests/37-deploy-sanity.test.js abgesichert (lokale <script src>/
+// <link href> + apple-touch-icon/manifest gegen STATIC_ASSETS, externe
+// Google-Fonts sind explizit außerhalb des Precache-Vertrags).
 const STATIC_ASSETS = [
     '/',
     '/index.html',
-    '/css/styles.css?v=18',
+    '/css/styles.css?v=21',
     '/js/app-globals.js',
     '/js/state.js',
-    '/js/calculations.js',
-    '/js/ui-handlers.js',
+    '/js/culture.js',
+    '/js/calculations.js?v=21',
+    '/js/ui-handlers.js?v=22',
     '/js/render-tabs.js',
-    '/js/render-results.js',
+    '/js/render-results.js?v=21',
     '/js/render-drill.js',
     '/js/render-dashboard.js',
+    '/js/render-local-protocol.js?v=3',
     '/js/main.js',
     '/icon.svg',
+    '/icon-180.png',
     '/manifest.json',
     '/icon-192.png',
     '/icon-512.png',
+    '/icon-maskable-192.png',
+    '/icon-maskable-512.png',
 ];
 
 self.addEventListener('install', e => {

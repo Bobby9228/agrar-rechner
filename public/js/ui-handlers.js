@@ -876,7 +876,11 @@ function confirmChangeKultur() {
       return {
         time: mlIdx >= 0 ? AppGlobals.getTabNextTime(tab) : new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
         mlIdx: mlIdx,
-        einheit: Math.round(unitsForThisTab * 100) / 100,
+        // Saat-Einheiten werden intern auf 6 Nachkommastellen begrenzt, damit
+        // kleine Saat-Mengen (z. B. 0,004 E) nicht durch 2-Stellen-Rundung zu 0
+        // werden. Dünger bleibt unabhängig davon auf 0,01 kg gerundet; seine
+        // Verteilungsschwelle EPSILON_QUANTITY beträgt weiterhin 0,05 kg.
+        einheit: AppGlobals.round6(unitsForThisTab),
         duenger: Math.round(duengerRaw * 100) / 100,
         hektar: tab.hektar, istHektar: 0, zaehlerStand: zaehlerStand,
         koerner: tab.koerner, duengerRate: tab.duenger
@@ -1021,8 +1025,12 @@ function confirmChangeKultur() {
         for (var ipi = 0; ipi < priorities.length; ipi++) {
           var p = priorities[ipi];
           if (p.prio <= 0) continue;
-          if (remE <= AppGlobals.EPSILON_QUANTITY && remD <= AppGlobals.EPSILON_QUANTITY) break;
-          if (remE > AppGlobals.EPSILON_QUANTITY) {
+          // Saat und Dünger nutzen getrennte Epsilon-Schwellen:
+          // Saat: EPSILON_EINHEIT (0,0005) — kleine Saatmengen wie 0,040 E
+          //       bleiben erhalten und werden auf priorisierte Schläge verteilt.
+          // Dünger: EPSILON_QUANTITY (0,05 kg) — kg-Granularität bleibt stabil.
+          if (remE <= AppGlobals.EPSILON_EINHEIT && remD <= AppGlobals.EPSILON_QUANTITY) break;
+          if (remE > AppGlobals.EPSILON_EINHEIT) {
             plan[p.idx].giveE = Math.min(remE, p.rem);
             remE -= plan[p.idx].giveE;
           }
@@ -1047,14 +1055,15 @@ function confirmChangeKultur() {
             remD -= plan[p.idx].giveD;
           }
         }
-        // Leftover-Absorption im letzten priorisierten Reiter (Issue #266)
-        if (lastPrioIdx >= 0 && remE > AppGlobals.EPSILON_QUANTITY) {
+        // Leftover-Absorption im letzten priorisierten Reiter (Issue #266).
+        // Saat-spezifische Schwelle, damit kleine Saat-Reste nicht verloren gehen.
+        if (lastPrioIdx >= 0 && remE > AppGlobals.EPSILON_EINHEIT) {
           var lastPlan = plan[lastPrioIdx];
           var lastP = null;
           for (var lpf = 0; lpf < priorities.length; lpf++) {
             if (priorities[lpf].idx === lastPrioIdx) { lastP = priorities[lpf]; break; }
           }
-          if (lastP && lastPlan.giveE < lastP.rem - AppGlobals.EPSILON_QUANTITY) {
+          if (lastP && lastPlan.giveE < lastP.rem - AppGlobals.EPSILON_EINHEIT) {
             lastPlan.giveE += remE;
           }
         }

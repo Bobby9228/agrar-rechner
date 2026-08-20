@@ -71,3 +71,38 @@ describe('Einheiten-Präzision', () => {
         expect(w.isTabDone({ ...reiter[10], hektar: 0.04 })).toBe(false);
     });
 });
+
+// ── Task 1 Folgefix: Entry-Bau mit round6 für Saat, 2-Stellen für Dünger ────
+//
+// Vor 507142b/2be0499 rundete _buildDrillEntry entry.einheit auf zwei
+// Nachkommastellen, wodurch 0,004 Saat zu 0 wurde. Mit round6() bleibt der
+// 6-Stellen-Wert für Berechnungen erhalten; Dünger behält seine kg-/2-Stellen-
+// Logik (Issue: keine Doppel-Architektur einführen).
+
+describe('_buildDrillEntry Saat-Präzision', () => {
+    it('0,004 Saat wird auf 6 Nachkommastellen erhalten, nicht auf 0 gerundet', () => {
+        const { window: w } = createDom();
+        const tab = {
+            hektar: 1, koerner: 50, koernerProEinheit: 50,
+            fahrgassenEnabled: false, fahrgassenBreite: 0,
+            duenger: 0,
+        };
+        var entry = w._buildDrillEntry(tab, 0.004, 100, 0.5, 0);
+        // Saat: 6-Stellen-Semantik erhalten (nicht zu 0 reduziert)
+        expect(entry.einheit).toBe(0.004);
+        // Dünger: bestehende 2-Stellen-Logik (100 kg) unverändert
+        expect(entry.duenger).toBe(100);
+    });
+
+    it('0,040 Saat bleibt mit 6 Nachkommastellen im Entry erhalten', () => {
+        const { window: w } = createDom();
+        const tab = {
+            hektar: 1, koerner: 50, koernerProEinheit: 50,
+            fahrgassenEnabled: false, fahrgassenBreite: 0,
+            duenger: 0,
+        };
+        var entry = w._buildDrillEntry(tab, 0.04, 50, 0.5, 0);
+        expect(entry.einheit).toBe(0.04);
+        expect(entry.duenger).toBe(50);
+    });
+});

@@ -541,3 +541,115 @@ describe('drillPriorities persistence', () => {
     expect(w.state.drillPriorities).toEqual({});
   });
 });
+
+// ── Task 1 (Präzisions-Fix Folgefix): kleine Saatmengen ──────────────────────
+//
+// Vor 507142b/2be0499 wurden Saat-Mengen unter EPSILON_QUANTITY (0,05 E)
+// komplett verworfen und entry.einheit auf zwei Nachkommastellen gerundet.
+// 0,040 E Saatgut verschwanden dadurch in drillCalcAll und 0,004 E wurden
+// im Entry-Bau zu 0. Diese Tests dokumentieren den RED-Nachweis für den
+// Fix (EPSILON_EINHEIT + round6 für Saat, EPSILON_QUANTITY bleibt für Dünger).
+
+describe('kleine Saatmengen — Multi-Tab-Verteilung (Saat-Epsilon getrennt)', () => {
+  it('_calcDrillDistribution: 0,040 Saat wird auf priorisierten Schlag verteilt', () => {
+    const { window: w } = createDom();
+    setupMultiTab(w);
+    // Nur Tab 0 priorisieren
+    w.state.drillPriorities = { 0: 1 };
+    var plan = w._calcDrillDistribution(0.04, 0);
+    // Saat-Epsilon ist 0,000499999 → 0,040 ist weit darüber und muss
+    // vollständig auf Tab 0 (Rest 18 E) wandern.
+    expect(plan[0].giveE).toBeCloseTo(0.04, 6);
+    expect(plan[0].giveD).toBe(0);
+    // Tab 1 hat keine Prio → nichts
+    expect(plan[1].giveE).toBe(0);
+    expect(plan[1].giveD).toBe(0);
+    // Tab 2 hat keine Prio → nichts
+    expect(plan[2].giveE).toBe(0);
+  });
+
+  it('drillCalcAll: 0,040 Saat füllt dtl_e_<i> mit 3 Nachkommastellen', () => {
+    const { window: w } = createDom();
+    setupMultiTab(w);
+    w.renderDrillTabList();
+    w.document.getElementById('dtl_prio_0').click();
+    w.document.getElementById('drill_einheit').value = '0,040';
+    w.document.getElementById('drill_duenger').value = '0';
+    w.drillCalcAll();
+    // 3 Nachkommastellen sichtbar in der UI, rawValue hält die 6-Stellen-Semantik
+    expect(w.document.getElementById('dtl_e_0').value).toBe('0,040');
+    expect(w.document.getElementById('dtl_e_0').dataset.rawValue).toBe('0.04');
+    // Unpriorisierte Tabs bleiben leer
+    expect(w.document.getElementById('dtl_e_1').value).toBe('');
+    expect(w.document.getElementById('dtl_e_2').value).toBe('');
+  });
+
+  it('drillCalcAll: 0,004 Saat bleibt erhalten (über EPSILON_EINHEIT)', () => {
+    const { window: w } = createDom();
+    setupMultiTab(w);
+    w.renderDrillTabList();
+    w.document.getElementById('dtl_prio_0').click();
+    w.document.getElementById('drill_einheit').value = '0,004';
+    w.document.getElementById('drill_duenger').value = '0';
+    w.drillCalcAll();
+    expect(w.document.getElementById('dtl_e_0').value).toBe('0,004');
+  });
+
+  it('drillAdd: Multi-Tab mit 0,040 Saat bucht korrekt und legt machineLog an', () => {
+    const { window: w } = createDom();
+    setupMultiTab(w);
+    w.renderDrillTabList();
+    // Tab 0 priorisieren
+    w.document.getElementById('dtl_prio_0').click();
+    w.document.getElementById('drill_einheit').value = '0,040';
+    w.document.getElementById('drill_duenger').value = '0';
+    w.document.getElementById('drill_hektar').value = '1';
+    // Verteilung anzeigen → dtl_e_0 = 0,040
+    w.drillCalcAll();
+    // Buchen
+    w.drillAdd();
+    // Tab 0 muss genau eine Buchung mit 0,040 tragen
+    expect(w.state.reiter[0].entries.length).toBe(1);
+    expect(w.state.reiter[0].entries[0].einheit).toBeCloseTo(0.04, 6);
+    expect(w.state.reiter[0].entries[0].mlIdx).toBe(0);
+    // machineLog muss genau eine Füllung mit 0,040 tragen
+    expect(w.state.machineLog.length).toBe(1);
+    expect(w.state.machineLog[0].einheit).toBeCloseTo(0.04, 6);
+    // Σ der Schlagbuchungen entspricht der Maschinenfüllung (kein Verlust)
+    var sumE = 0;
+    for (var ti = 0; ti < w.state.reiter.length; ti++) {
+      var ents = w.state.reiter[ti].entries || [];
+      for (var ei = 0; ei < ents.length; ei++) sumE += ents[ei].einheit || 0;
+    }
+    expect(sumE).toBeCloseTo(0.04, 6);
+  });
+
+  it('drillAdd: 0,040 mit zwei priorisierten Schlägen landet vollständig auf Schlag 0', () => {
+    const { window: w } = createDom();
+    setupMultiTab(w);
+    w.renderDrillTabList();
+    // Tab 0 prio 1, Tab 1 prio 2
+    w.document.getElementById('dtl_prio_0').click();
+    w.document.getElementById('dtl_prio_1').click();
+    w.document.getElementById('dtl_prio_1').click();
+    w.document.getElementById('drill_einheit').value = '0,040';
+    w.document.getElementById('drill_duenger').value = '0';
+    w.document.getElementById('drill_hektar').value = '1';
+    w.drillCalcAll();
+    w.drillAdd();
+    // Tab 0 (höchste Prio, Rest 18 E) erhält die volle 0,040
+    expect(w.state.reiter[0].entries.length).toBe(1);
+    expect(w.state.reiter[0].entries[0].einheit).toBeCloseTo(0.04, 6);
+    // Tab 1 hat keinen Rest mehr → keine Buchung
+    expect(w.state.reiter[1].entries.length).toBe(0);
+    // Summe = 0,040
+    var sumE = 0;
+    for (var ti = 0; ti < w.state.reiter.length; ti++) {
+      var ents = w.state.reiter[ti].entries || [];
+      for (var ei = 0; ei < ents.length; ei++) sumE += ents[ei].einheit || 0;
+    }
+    expect(sumE).toBeCloseTo(0.04, 6);
+    expect(w.state.machineLog.length).toBe(1);
+    expect(w.state.machineLog[0].einheit).toBeCloseTo(0.04, 6);
+  });
+});
