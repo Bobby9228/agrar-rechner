@@ -13,7 +13,7 @@
 // Braucht zur Laufzeit (AppGlobals):
 //   - state, appEmit (state.js)
 //   - parseDE (calculations.js)
-//   - getActiveReiter (ui-handlers.js)
+//   - getActiveReiter (input-handlers.js)
 //
 // Öffentliche Namen sind sowohl für bestehende Inline-HTML-/Window-Nutzung
 // (onclick="fahrgassenToggle()" etc.) als auch für AppGlobals-Konsumenten
@@ -146,7 +146,7 @@
     }
 
     // Synchronisiert den per-Schlag-Editor (Eingabefeld + saved-Text) aus
-    // dem aktuellen Tab. Wird von syncInputsFromState (ui-handlers.js,
+    // dem aktuellen Tab. Wird von syncInputsFromState (input-handlers.js,
     // via AppGlobals-Brücke) aufgerufen und kann auch direkt (z. B. nach
     // Korrekturen via DevTools) genutzt werden.
     // 0/leer → Feld leer, saved-Text leer.

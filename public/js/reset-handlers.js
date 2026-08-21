@@ -19,7 +19,7 @@
 //
 // Braucht zur Laufzeit (AppGlobals):
 //   - state, appEmit, saveState, resetLoadStateEverSucceeded (state.js)
-//   - getActiveReiter (ui-handlers.js; bereits vorher geladen und erst beim
+//   - getActiveReiter (input-handlers.js; bereits vorher geladen und erst beim
 //     Nutzeraufruf gelesen)
 //   - renderTabs, _renderKulturEmpfehlung (render-tabs.js) — erst beim
 //     Nutzeraufruf aufgelöst

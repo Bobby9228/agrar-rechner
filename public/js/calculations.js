@@ -578,7 +578,8 @@ function getTabNextTime(r) {
 }
 
 // --- UI Wrappers (bridge between handlers/rendering and pure calculations) ---
-// These use getActiveReiter() so they are NOT pure — they live in ui-handlers.js
+// These use getActiveReiter() so they are NOT pure — their active-tab wrappers
+// live in input-handlers.js.
 
 // Körner gesamt für Tab r (inkl. Fahrgassen-Korrektur)
 // Formel: hektar × koerner × computeFahrgassenFaktor(breite)

@@ -84,6 +84,8 @@ export function createDom() {
   // und tab-handlers.js geladen, exakt wie in index.html.
   // Issue #416 Welle 5: drill-handlers.js wird zwischen reset-handlers.js
   // und tab-handlers.js geladen, exakt wie in index.html.
+  // Issue #416 Welle 6: input-handlers.js wird zwischen ui-handlers.js
+  // und settings-handlers.js geladen, exakt wie in index.html.
   const moduleScript = [
     loadModule('app-globals.js'),
     'var _internal = { carryoverCache: null, drillCalcTimer: null };',
@@ -92,6 +94,7 @@ export function createDom() {
     loadModule('calculations.js'),
     loadModule('culture-handlers.js'),
     loadModule('ui-handlers.js'),
+    loadModule('input-handlers.js'),
     loadModule('settings-handlers.js'),
     loadModule('reset-handlers.js'),
     loadModule('drill-handlers.js'),

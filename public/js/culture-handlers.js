@@ -16,8 +16,8 @@
 // Braucht zur Laufzeit (AppGlobals):
 //   - state, saveState, appEmit, isValidCultureKey, getDefaultKoernerProEinheit
 //     (state.js / culture.js)
-//   - syncEinheitGroesseEditorFromTab, getActiveReiter (ui-handlers.js,
-//     erst zur Laufzeit aufgelöst)
+//   - syncEinheitGroesseEditorFromTab (settings-handlers.js) und
+//     getActiveReiter (input-handlers.js), erst zur Laufzeit aufgelöst
 // ============================================================================
 
 // Pending-Auswahl im Wechsel-Modal. Wird über AppGlobals._pendingKulturChoice

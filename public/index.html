@@ -312,15 +312,15 @@
     //   Accessibility in culture-handlers.js extrahiert)
     // Dann: 11 Module (Issue #416 Welle 2 — Tab-/Ansichtsverwaltung in
     //   tab-handlers.js extrahiert)
-    // Jetzt: 14 Module (Issue #416 Welle 5 — Drill-Einfüllung/Verteilung/
-    //   Maschinen-Log in drill-handlers.js extrahiert)
+    // Jetzt: 15 Module (Issue #416 Welle 6 — Eingaben/Formatierung/
+    //   State-Synchronisierung in input-handlers.js extrahiert)
     //
     // Lade-Reihenfolge (wichtig!):
     //   app-globals.js → state.js → culture.js → calculations.js
-    //     → culture-handlers.js → ui-handlers.js → settings-handlers.js
-    //     → reset-handlers.js → drill-handlers.js → tab-handlers.js
-    //     → render-tabs.js → render-results.js → render-drill.js
-    //     → render-dashboard.js → main.js
+    //     → culture-handlers.js → ui-handlers.js → input-handlers.js
+    //     → settings-handlers.js → reset-handlers.js → drill-handlers.js
+    //     → tab-handlers.js → render-tabs.js → render-results.js
+    //     → render-drill.js → render-dashboard.js → main.js
     //
     //   app-globals.js: AppGlobals-Namespace + Live-Alias für `state`
     //   state.js definiert: state, saveState(), loadState()
@@ -331,22 +331,35 @@
     //     _internal (von state.js)
     //   culture-handlers.js braucht: AppGlobals.* aus state.js + culture.js,
     //     und referenziert syncEinheitGroesseEditorFromTab/getActiveReiter
-    //     aus settings-handlers.js/ui-handlers.js erst zur Laufzeit
-    //     (Issue #416 Welle 1 + Welle 3).
-    //   ui-handlers.js braucht: state, calculations.js, culture,
-    //     culture-handlers.js
+    //     aus input-handlers.js erst zur Laufzeit
+    //     (Issue #416 Welle 1 + Welle 3 + Welle 6).
+    //   ui-handlers.js enthält das Lokale Protokoll (setProtocolView,
+    //     requestLocalProtocolDelete, …) und die Daten-Export/Import-
+    //     Modal-Pfade. Diese greifen defensiv über
+    //     AppGlobals.syncStateFromInputs / AppGlobals.syncInputsFromState
+    //     aus input-handlers.js zu — sie sind zum Modul-Load-Zeitpunkt
+    //     noch nicht gesetzt.
+    //   input-handlers.js stellt die Eingabe-/Formatierungs-/
+    //     State-Sync-Brücke bereit (onInputHektar/…/onInputNotizen,
+    //     getKornerGesamt, getActiveTotal*, getTotal*, onInputFormat,
+    //     getActiveReiter, syncStateFromInputs/toInputValue/
+    //     syncInputsFromState, Issue #416 Welle 6). Wird VOR
+    //     settings-handlers.js geladen, damit dessen
+    //     fahrgassen/einheitGroesse-Handler AppGlobals.getActiveReiter
+    //     vorfinden; syncInputsFromState ruft seinerseits
+    //     AppGlobals.syncEinheitGroesseEditorFromTab defensiv auf.
     //   settings-handlers.js nutzt AppGlobals.* aus state.js,
-    //     calculations.js und ui-handlers.js; das Modul stellt die
+    //     calculations.js und input-handlers.js; das Modul stellt die
     //     syncEinheitGroesseEditorFromTab-Brücke bereit (Issue #416 Welle 3).
-    //   reset-handlers.js nutzt AppGlobals.* aus state.js + ui-handlers.js
+    //   reset-handlers.js nutzt AppGlobals.* aus state.js + input-handlers.js
     //     (getActiveReiter) und löst Renderer/Kultur-Funktionen erst beim
     //     Nutzeraufruf auf (Issue #416 Welle 4).
     //   drill-handlers.js nutzt AppGlobals.* aus state.js, calculations.js
-    //     und ui-handlers.js und löst Renderer-Funktionen (renderDrillTabList,
+    //     und input-handlers.js und löst Renderer-Funktionen (renderDrillTabList,
     //     renderDrillSummary, renderResults) erst beim Nutzeraufruf auf
     //     (Issue #416 Welle 5). Wird VOR tab-handlers.js geladen, damit dessen
     //     spätere Wechsel-Handler AppGlobals._syncActiveTabLock vorfinden.
-    //   tab-handlers.js braucht beim Laden AppGlobals.* aus ui-handlers.js
+    //   tab-handlers.js braucht beim Laden AppGlobals.* aus input-handlers.js
     //     (syncStateFromInputs) und aus drill-handlers.js
     //     (_syncActiveTabLock) und löst spätere Renderer-Abhängigkeiten
     //     (renderDrillTabList, closeDashboard) erst beim Nutzeraufruf auf
@@ -369,6 +382,7 @@
   <script src="js/calculations.js?v=21"></script>
   <script src="js/culture-handlers.js"></script>
   <script src="js/ui-handlers.js?v=22"></script>
+  <script src="js/input-handlers.js"></script>
   <script src="js/settings-handlers.js"></script>
   <script src="js/reset-handlers.js"></script>
   <script src="js/drill-handlers.js"></script>

@@ -12,7 +12,7 @@
 // Braucht zur Laufzeit (AppGlobals):
 //   - state, appEmit, isValidCultureKey, getDefaultKoernerProEinheit
 //     (state.js / culture.js)
-//   - syncStateFromInputs (ui-handlers.js)
+//   - syncStateFromInputs (input-handlers.js)
 //   - _syncActiveTabLock (drill-handlers.js; deshalb wird dieses Modul
 //     nach drill-handlers.js geladen)
 //   - renderDrillTabList (render-drill.js) und closeDashboard
