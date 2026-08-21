@@ -74,12 +74,15 @@ export function createDom() {
   // app-globals.js declares the namespace AND installs the `state` getter/setter
   // (Live-Alias für `var state`); the test harness loads the real file so the
   // test scope matches production.
+  // Issue #416 Welle 1: culture-handlers.js wird zwischen calculations.js
+  // und ui-handlers.js geladen, exakt wie in index.html.
   const moduleScript = [
     loadModule('app-globals.js'),
     'var _internal = { carryoverCache: null, drillCalcTimer: null };',
     loadModule('state.js'),
     loadModule('culture.js'),
     loadModule('calculations.js'),
+    loadModule('culture-handlers.js'),
     loadModule('ui-handlers.js'),
     loadModule('render-tabs.js'),
     loadModule('render-results.js'),

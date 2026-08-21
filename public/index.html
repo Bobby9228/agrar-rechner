@@ -306,13 +306,17 @@
     // Früher: ~2172 Zeilen inline JS in index.html
     // Dann: 5 Module (state/calculations/ui-handlers/rendering/main)
     // Dann: 8 Module (rendering aufgeteilt in 4: Issue #212)
-    // Jetzt: 9 Module (Kultur-Feature ergänzt culture.js: Mais/Raps/Sonstiges
+    // Dann: 9 Module (Kultur-Feature ergänzt culture.js: Mais/Raps/Sonstiges
     //   + per-Tab koernerProEinheit)
+    // Jetzt: 10 Module (Issue #416 Welle 1 — Kultur-Auswahl + Kultur-Modal-
+    //   Accessibility aus ui-handlers.js in eigenes Modul culture-handlers.js
+    //   extrahiert)
     //
     // Lade-Reihenfolge (wichtig!):
     //   app-globals.js → state.js → culture.js → calculations.js
-    //     → ui-handlers.js → render-tabs.js → render-results.js
-    //     → render-drill.js → render-dashboard.js → main.js
+    //     → culture-handlers.js → ui-handlers.js → render-tabs.js
+    //     → render-results.js → render-drill.js → render-dashboard.js
+    //     → main.js
     //
     //   app-globals.js: AppGlobals-Namespace + Live-Alias für `state`
     //   state.js definiert: state, saveState(), loadState()
@@ -321,7 +325,11 @@
     //     chooseKultur/resetAll/addReiter diese Helper nutzen.
     //   calculations.js braucht: state, culture (Profil-Defaults),
     //     _internal (von state.js)
-    //   ui-handlers.js braucht: state, calculations.js, culture
+    //   culture-handlers.js braucht: AppGlobals.* aus state.js + culture.js,
+    //     und referenziert syncEinheitGroesseEditorFromTab/getActiveReiter
+    //     aus ui-handlers.js erst zur Laufzeit (Issue #416 Welle 1).
+    //   ui-handlers.js braucht: state, calculations.js, culture,
+    //     culture-handlers.js
     //   render-tabs.js braucht: state, ui-handlers.js, calculations.js
     //   render-results.js braucht: state, render-tabs.js, render-drill.js,
     //     calculations.js
@@ -334,6 +342,7 @@
   <script src="js/state.js"></script>
   <script src="js/culture.js"></script>
   <script src="js/calculations.js?v=21"></script>
+  <script src="js/culture-handlers.js"></script>
   <script src="js/ui-handlers.js?v=22"></script>
   <script src="js/render-tabs.js"></script>
   <script src="js/render-results.js?v=21"></script>
