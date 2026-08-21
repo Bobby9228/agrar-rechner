@@ -308,15 +308,16 @@
     // Dann: 8 Module (rendering aufgeteilt in 4: Issue #212)
     // Dann: 9 Module (Kultur-Feature ergänzt culture.js: Mais/Raps/Sonstiges
     //   + per-Tab koernerProEinheit)
-    // Jetzt: 10 Module (Issue #416 Welle 1 — Kultur-Auswahl + Kultur-Modal-
-    //   Accessibility aus ui-handlers.js in eigenes Modul culture-handlers.js
-    //   extrahiert)
+    // Dann: 10 Module (Issue #416 Welle 1 — Kultur-Auswahl + Kultur-Modal-
+    //   Accessibility in culture-handlers.js extrahiert)
+    // Jetzt: 11 Module (Issue #416 Welle 2 — Tab-/Ansichtsverwaltung in
+    //   tab-handlers.js extrahiert)
     //
     // Lade-Reihenfolge (wichtig!):
     //   app-globals.js → state.js → culture.js → calculations.js
-    //     → culture-handlers.js → ui-handlers.js → render-tabs.js
-    //     → render-results.js → render-drill.js → render-dashboard.js
-    //     → main.js
+    //     → culture-handlers.js → ui-handlers.js → tab-handlers.js
+    //     → render-tabs.js → render-results.js → render-drill.js
+    //     → render-dashboard.js → main.js
     //
     //   app-globals.js: AppGlobals-Namespace + Live-Alias für `state`
     //   state.js definiert: state, saveState(), loadState()
@@ -330,7 +331,12 @@
     //     aus ui-handlers.js erst zur Laufzeit (Issue #416 Welle 1).
     //   ui-handlers.js braucht: state, calculations.js, culture,
     //     culture-handlers.js
-    //   render-tabs.js braucht: state, ui-handlers.js, calculations.js
+    //   tab-handlers.js braucht beim Laden AppGlobals.* aus ui-handlers.js
+    //     (syncStateFromInputs, _syncActiveTabLock) und löst spätere
+    //     Renderer-Abhängigkeiten (renderDrillTabList, closeDashboard)
+    //     erst beim Nutzeraufruf auf (Issue #416 Welle 2).
+    //   render-tabs.js braucht: state, ui-handlers.js, tab-handlers.js,
+    //     calculations.js
     //   render-results.js braucht: state, render-tabs.js, render-drill.js,
     //     calculations.js
     //   render-drill.js braucht: state, ui-handlers.js, calculations.js
@@ -344,6 +350,7 @@
   <script src="js/calculations.js?v=21"></script>
   <script src="js/culture-handlers.js"></script>
   <script src="js/ui-handlers.js?v=22"></script>
+  <script src="js/tab-handlers.js"></script>
   <script src="js/render-tabs.js"></script>
   <script src="js/render-results.js?v=21"></script>
   <script src="js/render-drill.js"></script>

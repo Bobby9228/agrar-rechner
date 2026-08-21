@@ -76,6 +76,8 @@ export function createDom() {
   // test scope matches production.
   // Issue #416 Welle 1: culture-handlers.js wird zwischen calculations.js
   // und ui-handlers.js geladen, exakt wie in index.html.
+  // Issue #416 Welle 2: tab-handlers.js wird zwischen ui-handlers.js
+  // und render-tabs.js geladen, exakt wie in index.html.
   const moduleScript = [
     loadModule('app-globals.js'),
     'var _internal = { carryoverCache: null, drillCalcTimer: null };',
@@ -84,6 +86,7 @@ export function createDom() {
     loadModule('calculations.js'),
     loadModule('culture-handlers.js'),
     loadModule('ui-handlers.js'),
+    loadModule('tab-handlers.js'),
     loadModule('render-tabs.js'),
     loadModule('render-results.js'),
     loadModule('render-drill.js'),

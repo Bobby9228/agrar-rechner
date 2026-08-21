@@ -1,12 +1,13 @@
 // ============================================================================
-// RENDER-TABS — Tab-Verwaltung, App-Init, Tab-Remove-Confirm
+// RENDER-TABS — Tab-Rendering, App-Init, Tab-Remove-Confirm
 //
 // Lade-Reihenfolge (laut index.html): state.js → calculations.js →
-//   ui-handlers.js → render-tabs.js → render-results.js → render-drill.js
-//   → render-dashboard.js → main.js
+//   culture-handlers.js → ui-handlers.js → tab-handlers.js → render-tabs.js
+//   → render-results.js → render-drill.js → render-dashboard.js → main.js
 //
-// render-tabs.js braucht: state, ui-handlers.js (switchReiter, addReiter,
-//   removeReiter, renameReiter, confirmRemoveReiter-Trigger), main.js (appOnStateChange)
+// render-tabs.js braucht: state, tab-handlers.js (switchReiter, addReiter,
+//   removeReiter, renameReiter), ui-handlers.js (confirmRemoveReiter-Trigger)
+//   und main.js (appOnStateChange).
 // Funktionen werden im globalen Scope definiert (Vanilla-JS / <script>-Tags).
 // ============================================================================
 
