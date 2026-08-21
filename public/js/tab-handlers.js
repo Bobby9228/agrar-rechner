@@ -7,13 +7,14 @@
 //     switchReiter, switchToProtokoll, switchToRechner, renameReiter
 //
 // Lade-Reihenfolge (siehe index.html):
-//   ui-handlers.js → tab-handlers.js → render-tabs.js
+//   ui-handlers.js → drill-handlers.js → tab-handlers.js → render-tabs.js
 //
 // Braucht zur Laufzeit (AppGlobals):
 //   - state, appEmit, isValidCultureKey, getDefaultKoernerProEinheit
 //     (state.js / culture.js)
-//   - syncStateFromInputs, _syncActiveTabLock (ui-handlers.js; deshalb
-//     die Reihenfolge NACH ui-handlers.js)
+//   - syncStateFromInputs (ui-handlers.js)
+//   - _syncActiveTabLock (drill-handlers.js; deshalb wird dieses Modul
+//     nach drill-handlers.js geladen)
 //   - renderDrillTabList (render-drill.js) und closeDashboard
 //     (render-dashboard.js), beide erst beim späteren Nutzeraufruf aufgelöst
 //

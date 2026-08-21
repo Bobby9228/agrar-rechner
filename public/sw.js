@@ -25,6 +25,7 @@ const STATIC_ASSETS = [
     '/js/ui-handlers.js?v=22',
     '/js/settings-handlers.js',
     '/js/reset-handlers.js',
+    '/js/drill-handlers.js',
     '/js/tab-handlers.js',
     '/js/render-tabs.js',
     '/js/render-results.js?v=21',
