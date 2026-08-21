@@ -21,12 +21,12 @@
 // erhalten; zusätzlich registriert Object.assign(window.AppGlobals, …)
 // die bisherige AppGlobals-API.
 //
-// Das in ui-handlers.js verbleibende Lokale Protokoll
+// Das in protocol-handlers.js lebende Lokale Protokoll-Redesign
 // (setProtocolView, toggleProtocolAccordion, requestLocalProtocolDelete,
 // closeLocalProtocolSheet, confirmLocalProtocolDelete) greift defensiv
 // über AppGlobals.drillRemove und AppGlobals.drillMachineRemove zu —
 // diese werden beim Funktionsaufruf aufgelöst, nicht beim Laden des
-// ui-handlers.js.
+// protocol-handlers.js.
 //
 // Braucht zur Laufzeit (AppGlobals):
 //   - state, appEmit, parseDE, EPSILON_EINHEIT, EPSILON_QUANTITY
@@ -385,7 +385,7 @@
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 // Damit sind sie sowohl für bestehende HTML-/Window-Nutzung (onclick="drillAdd()")
 // als auch für AppGlobals-Konsumenten (render-drill, render-results, Tests,
-// lokales Protokoll in ui-handlers.js) erreichbar.
+// lokales Protokoll in protocol-handlers.js) erreichbar.
 Object.assign(window.AppGlobals, {
   _parseDrillInputs: _parseDrillInputs,
   _resolvePerTabDistribution: _resolvePerTabDistribution,

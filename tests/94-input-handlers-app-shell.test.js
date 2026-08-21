@@ -13,14 +13,16 @@
  *   - syncStateFromInputs, toInputValue, syncInputsFromState
  *
  * Bewusst NICHT extrahiert (bleiben in ui-handlers.js):
- *   - Lokales Protokoll (setProtocolView, toggleProtocolAccordion,
- *     requestLocalProtocolDelete, closeLocalProtocolSheet,
- *     confirmLocalProtocolDelete) — die Brücke AppGlobals.drillRemove /
- *     AppGlobals.drillMachineRemove wird defensiv über AppGlobals aufgelöst.
  *   - Import/Export-Block (buildExportEnvelope, exportData,
  *     validateImportText, …) — nutzt defensiv
  *     AppGlobals.syncStateFromInputs / syncInputsFromState.
  *   - Tabs / Settings / Reset / Drill / Kultur
+ *
+ * Bewusst ANDERNSWO extrahiert (Issue #416 Welle 7):
+ *   - Lokales Protokoll (setProtocolView, toggleProtocolAccordion,
+ *     requestLocalProtocolDelete, closeLocalProtocolSheet,
+ *     confirmLocalProtocolDelete) lebt in public/js/protocol-handlers.js
+ *     und wird zwischen drill-handlers.js und tab-handlers.js geladen.
  *
  * Der Vertrag ist so eng wie möglich gefasst, damit die Extraktion
  * keine ungeplanten Seiteneffekte hat:
@@ -28,9 +30,9 @@
  *   1. Die Datei `public/js/input-handlers.js` MUSS existieren —
  *      ohne sie ist die Extraktion nicht abgeschlossen.
  *   2. `index.html` lädt `input-handlers.js` NACH `ui-handlers.js`
- *      (ui-handlers.js behält sein lokales Protokoll und Import/Export,
- *      die defensiv auf AppGlobals.syncStateFromInputs / syncInputsFromState
- *      zugreifen — diese müssen VOR dem ersten Aufruf bereits geladen sein)
+ *      (ui-handlers.js behält Import/Export, das defensiv auf
+ *      AppGlobals.syncStateFromInputs / syncInputsFromState zugreift —
+ *      diese müssen VOR dem ersten Aufruf bereits geladen sein)
  *      und VOR `settings-handlers.js` (das via AppGlobals.getActiveReiter
  *      in fahrgassen-/einheitGroesse-Handlern auf einen Reiter zugreift
  *      und via AppGlobals.syncEinheitGroesseEditorFromTab selbst aus
@@ -53,7 +55,8 @@
  *
  * Die Reihenfolge in der App-Shell (Production + Test-Helper):
  *   ... → ui-handlers.js → input-handlers.js → settings-handlers.js
- *     → reset-handlers.js → drill-handlers.js → tab-handlers.js → ...
+ *     → reset-handlers.js → drill-handlers.js → protocol-handlers.js
+ *     → tab-handlers.js → ...
  */
 import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';

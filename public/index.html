@@ -312,15 +312,16 @@
     //   Accessibility in culture-handlers.js extrahiert)
     // Dann: 11 Module (Issue #416 Welle 2 — Tab-/Ansichtsverwaltung in
     //   tab-handlers.js extrahiert)
-    // Jetzt: 15 Module (Issue #416 Welle 6 — Eingaben/Formatierung/
-    //   State-Synchronisierung in input-handlers.js extrahiert)
+    // Jetzt: 16 Module (Issue #416 Welle 7 — Lokales Protokoll-Redesign
+    //   in protocol-handlers.js extrahiert)
     //
     // Lade-Reihenfolge (wichtig!):
     //   app-globals.js → state.js → culture.js → calculations.js
     //     → culture-handlers.js → ui-handlers.js → input-handlers.js
     //     → settings-handlers.js → reset-handlers.js → drill-handlers.js
-    //     → tab-handlers.js → render-tabs.js → render-results.js
-    //     → render-drill.js → render-dashboard.js → main.js
+    //     → protocol-handlers.js → tab-handlers.js → render-tabs.js
+    //     → render-results.js → render-drill.js → render-dashboard.js
+    //     → main.js
     //
     //   app-globals.js: AppGlobals-Namespace + Live-Alias für `state`
     //   state.js definiert: state, saveState(), loadState()
@@ -333,12 +334,10 @@
     //     und referenziert syncEinheitGroesseEditorFromTab/getActiveReiter
     //     aus input-handlers.js erst zur Laufzeit
     //     (Issue #416 Welle 1 + Welle 3 + Welle 6).
-    //   ui-handlers.js enthält das Lokale Protokoll (setProtocolView,
-    //     requestLocalProtocolDelete, …) und die Daten-Export/Import-
-    //     Modal-Pfade. Diese greifen defensiv über
-    //     AppGlobals.syncStateFromInputs / AppGlobals.syncInputsFromState
-    //     aus input-handlers.js zu — sie sind zum Modul-Load-Zeitpunkt
-    //     noch nicht gesetzt.
+    //   ui-handlers.js enthält die Daten-Export/Import-Modal-Pfade.
+    //     Diese greifen defensiv über AppGlobals.syncStateFromInputs /
+    //     AppGlobals.syncInputsFromState aus input-handlers.js zu — sie
+    //     sind zum Modul-Load-Zeitpunkt noch nicht gesetzt.
     //   input-handlers.js stellt die Eingabe-/Formatierungs-/
     //     State-Sync-Brücke bereit (onInputHektar/…/onInputNotizen,
     //     getKornerGesamt, getActiveTotal*, getTotal*, onInputFormat,
@@ -359,6 +358,12 @@
     //     renderDrillSummary, renderResults) erst beim Nutzeraufruf auf
     //     (Issue #416 Welle 5). Wird VOR tab-handlers.js geladen, damit dessen
     //     spätere Wechsel-Handler AppGlobals._syncActiveTabLock vorfinden.
+    //   protocol-handlers.js nutzt AppGlobals.state/saveState aus state.js
+    //     und AppGlobals.appEmit aus main.js defensiv erst beim Nutzeraufruf;
+    //     außerdem löst es
+    //     AppGlobals.drillRemove / AppGlobals.drillMachineRemove aus
+    //     drill-handlers.js sowie AppGlobals.renderLocalProtocolFields aus
+    //     render-local-protocol.js — alle erst beim Nutzeraufruf (Welle 7).
     //   tab-handlers.js braucht beim Laden AppGlobals.* aus input-handlers.js
     //     (syncStateFromInputs) und aus drill-handlers.js
     //     (_syncActiveTabLock) und löst spätere Renderer-Abhängigkeiten
@@ -373,6 +378,11 @@
     //     calculations.js
     //   render-drill.js braucht: state, ui-handlers.js, calculations.js
     //   render-dashboard.js braucht: state, calculations.js
+    //   render-local-protocol.js braucht: state, calculations.js,
+    //     AppGlobals.toggleProtocolAccordion / requestLocalProtocolDelete /
+    //     closeLocalProtocolSheet aus protocol-handlers.js, sowie
+    //     AppGlobals.drillRemove / AppGlobals.drillMachineRemove aus
+    //     drill-handlers.js (alle defensiv beim Nutzeraufruf aufgelöst)
     //   main.js: APP_VERSION, Event-Emitter, initTheme
     // ============================================================================
   </script>
@@ -386,6 +396,7 @@
   <script src="js/settings-handlers.js"></script>
   <script src="js/reset-handlers.js"></script>
   <script src="js/drill-handlers.js"></script>
+  <script src="js/protocol-handlers.js"></script>
   <script src="js/tab-handlers.js"></script>
   <script src="js/render-tabs.js"></script>
   <script src="js/render-results.js?v=21"></script>

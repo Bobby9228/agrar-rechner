@@ -63,9 +63,7 @@
 // public/js/drill-handlers.js. Wird zwischen reset-handlers.js und
 // tab-handlers.js geladen (siehe index.html Kommentar). Schnittstelle
 // bleibt unverändert; alle Modulabhängigkeiten werden zur Laufzeit über
-// AppGlobals aufgelöst. Das in dieser Datei verbleibende Lokale Protokoll
-// greift defensiv über AppGlobals.drillRemove und AppGlobals.drillMachineRemove
-// zu (beim Funktionsaufruf, nicht beim Modul-Load).
+// AppGlobals aufgelöst.
 
 // --- Input-Handler ---
 //
@@ -80,8 +78,8 @@
 // bleibt unverändert; alle Modulabhängigkeiten (AppGlobals.getActiveReiter,
 // AppGlobals.parseDE, AppGlobals.appEmit,
 // AppGlobals.syncEinheitGroesseEditorFromTab) werden zur Laufzeit über
-// AppGlobals aufgelöst. Die in dieser Datei verbleibenden lokalen
-// Protokoll-/Import-/Export-Pfade greifen defensiv über
+// AppGlobals aufgelöst. Die in dieser Datei verbleibenden
+// Import-/Export-Pfade greifen defensiv über
 // AppGlobals.syncStateFromInputs und AppGlobals.syncInputsFromState zu
 // (beim Funktionsaufruf, nicht beim Modul-Load).
 
@@ -89,127 +87,17 @@
 // Lokales Protokoll-Redesign — Action-Sheet, View-Toggle, Accordion
 // ============================================================================
 //
-// Verhalten dieser UI-Funktionen:
-// - setProtocolView(view): wechselt 'fields' ⇄ 'machine' im neuen
-//   Protokoll-Tab. Persistent (state.protocolView).
-// - toggleProtocolAccordion(tabIdx, dateKey, cardKey): Single-Open-Logik
-//   "ein Schlag gleichzeitig offen". Speichert das aktuell offene pro
-//   Datum, sodass beim Wechsel auf einen anderen Schlag der vorherige
-//   automatisch schließt. Beim Klick auf denselben Schlag wird er
-//   geschlossen (toggle).
-// - requestLocalProtocolDelete(kind, payload, timeLabel): öffnet das
-//   Action-Sheet (Bottom-Sheet statt roter X), ruft beim Klick auf
-//   "Buchung löschen" confirmLocalProtocolDelete(kind, payload) auf,
-//   das die zugrundeliegende Datenoperation anstößt (drillRemove oder
-//   drillMachineRemove — KEINE neuen Mutations, nur vorhandene Pfade).
-//
-// Die hier definierten Funktionen sind reine DOM-State-Bridge-Funktionen
-// (kein Berechnungs-Code, keine Demowerte). Felder, die zuvor ein ✕
-// hatten, sind jetzt entry-action (Drei-Punkte) → confirm-flow.
-
-// Action-Sheet-Pending-Targets: was im offenen Sheet "schwebt".
-// { kind: 'field'|'machine', payload: {tabIdx, entryIdx} | {mlIdx} }
-var _localProtocolSheetTarget = null;
-
-function setProtocolView(view) {
-  if (view !== 'fields' && view !== 'machine') return;
-  if (AppGlobals.state.protocolView === view) return;
-  AppGlobals.state.protocolView = view;
-  AppGlobals.saveState();
-  AppGlobals.appEmit('PROTOCOL_VIEW_CHANGED', { view: view });
-}
-
-function toggleProtocolAccordion(tabIdx, dateKey, cardKey) {
-  var openMap = AppGlobals.state.protocolOpenCards || (AppGlobals.state.protocolOpenCards = {});
-  var key = String(tabIdx);
-  var wasOpen = openMap[dateKey] === key;
-  // Es darf im gesamten Protokoll nur eine Karte offen sein, nicht eine pro Tag.
-  Object.keys(openMap).forEach(function(openDateKey) {
-    delete openMap[openDateKey];
-  });
-  if (!wasOpen) {
-    openMap[dateKey] = key;
-  }
-  AppGlobals.saveState();
-  // Re-Render nur des Schläge-Panels (nicht der gesamten App).
-  if (typeof AppGlobals.renderLocalProtocolFields === 'function') {
-    AppGlobals.renderLocalProtocolFields();
-  }
-}
-
-function requestLocalProtocolDelete(kind, payload, timeLabel) {
-  // Sheet-Backdrop + Sheet sichtbar machen, Label/Pending speichern.
-  _localProtocolSheetTarget = { kind: kind, payload: payload, timeLabel: timeLabel };
-  var backdrop = document.getElementById('local_protocol_sheet_backdrop');
-  var sheet = document.getElementById('local_protocol_action_sheet');
-  var label = document.getElementById('local_protocol_sheet_label');
-  var deleteBtn = document.getElementById('local_protocol_sheet_delete');
-  if (label) {
-    var sheetTimeLabel = timeLabel || '—';
-    label.textContent = kind === 'machine'
-      ? 'Maschinenfüllung um ' + sheetTimeLabel
-      : 'Buchung um ' + sheetTimeLabel;
-  }
-  if (deleteBtn) {
-    deleteBtn.textContent = kind === 'machine' ? 'Füllung löschen' : 'Buchung löschen';
-  }
-  if (backdrop) {
-    backdrop.hidden = false;
-    backdrop.classList.add('show');
-  }
-  if (sheet) {
-    sheet.hidden = false;
-    sheet.classList.add('show');
-  }
-}
-
-function closeLocalProtocolSheet() {
-  _localProtocolSheetTarget = null;
-  var backdrop = document.getElementById('local_protocol_sheet_backdrop');
-  var sheet = document.getElementById('local_protocol_action_sheet');
-  if (backdrop) {
-    backdrop.classList.remove('show');
-    backdrop.hidden = true;
-  }
-  if (sheet) {
-    sheet.classList.remove('show');
-    sheet.hidden = true;
-  }
-}
-
-function confirmLocalProtocolDelete() {
-  var target = _localProtocolSheetTarget;
-  if (!target) { closeLocalProtocolSheet(); return; }
-  if (target.kind === 'field') {
-    // drillRemove(tabIdx, entryIdx) ist der kanonische Pfad (render-drill.js)
-    if (typeof AppGlobals.drillRemove === 'function') {
-      AppGlobals.drillRemove(target.payload.tabIdx, target.payload.entryIdx);
-    }
-  } else if (target.kind === 'machine') {
-    // drillMachineRemove ist der kanonische Pfad für Maschinen-Log.
-    if (typeof AppGlobals.drillMachineRemove === 'function') {
-      AppGlobals.drillMachineRemove(target.payload.mlIdx);
-    }
-  }
-  closeLocalProtocolSheet();
-}
-
-// Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
-Object.assign(window.AppGlobals, {
-  // syncEinheitGroesseEditorFromTab ist seit Issue #416 Welle 3 in
-  // public/js/settings-handlers.js registriert.
-  // Reset-Funktionen und -Hilfen (DOM_IDS, _resetInput, resetActiveTab, resetAll,
-  // openResetModal, closeResetModal, _onOverlayClick, _onResetTab,
-  // _onResetAll, _onCancel, _countAllEntries, _populateResetContext)
-  // werden seit Issue #416 Welle 4 in public/js/reset-handlers.js
-  // registriert.
-  // Lokales Protokoll-Redesign — Action-Sheet + View-Toggle + Accordion
-  setProtocolView: setProtocolView,
-  toggleProtocolAccordion: toggleProtocolAccordion,
-  requestLocalProtocolDelete: requestLocalProtocolDelete,
-  closeLocalProtocolSheet: closeLocalProtocolSheet,
-  confirmLocalProtocolDelete: confirmLocalProtocolDelete,
-});
+// Verhalten dieser UI-Funktionen (jetzt in public/js/protocol-handlers.js,
+// Issue #416 Welle 7): setProtocolView, toggleProtocolAccordion,
+// requestLocalProtocolDelete, closeLocalProtocolSheet,
+// confirmLocalProtocolDelete sowie der private Modulzustand
+// _localProtocolSheetTarget. Wird zwischen drill-handlers.js und
+// tab-handlers.js geladen (siehe index.html Kommentar). Schnittstelle
+// bleibt unverändert: alle fünf Funktionen bleiben sowohl als
+// klassische window-Namen als auch auf AppGlobals erreichbar. Die
+// Löschpfade confirmLocalProtocolDelete → AppGlobals.drillRemove /
+// AppGlobals.drillMachineRemove werden defensiv beim Nutzeraufruf
+// aufgelöst, nicht beim Modul-Load.
 // Kultur-Funktionen (chooseKultur, requestChangeKultur, …) und
 // AppGlobals._pendingKulturChoice werden seit Issue #416 Welle 1 in
 // public/js/culture-handlers.js registriert.
@@ -225,6 +113,10 @@ Object.assign(window.AppGlobals, {
 // _calcDrillDistribution, _applyDrillPlan, drillCalcAll,
 // _syncActiveTabLock, drillCalcDebounced, drillMachineRemove) werden seit
 // Issue #416 Welle 5 in public/js/drill-handlers.js registriert.
+// Lokales Protokoll (setProtocolView, toggleProtocolAccordion,
+// requestLocalProtocolDelete, closeLocalProtocolSheet,
+// confirmLocalProtocolDelete) wird seit Issue #416 Welle 7 in
+// public/js/protocol-handlers.js registriert.
 // Input-Handler (onInputHektar, onInputIstHektar, onInputKoerner, onInputDuenger,
 // onInputNotizen, getKornerGesamt, getActiveTotalEinheiten, getActiveTotalDuenger,
 // getTotalEinheiten, getTotalDuenger, onInputFormat, getActiveReiter,

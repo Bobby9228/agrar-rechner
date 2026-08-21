@@ -15,17 +15,21 @@
 //   ui-handlers.js → input-handlers.js → settings-handlers.js
 //
 // Bewusst NICHT extrahiert (bleiben in ui-handlers.js):
-//   - Lokales Protokoll (setProtocolView, toggleProtocolAccordion,
-//     requestLocalProtocolDelete, closeLocalProtocolSheet,
-//     confirmLocalProtocolDelete) — die Brücke AppGlobals.drillRemove /
-//     AppGlobals.drillMachineRemove wird defensiv über AppGlobals aufgelöst.
 //   - Daten-Export/Import (buildExportEnvelope, exportData,
 //     validateImportText, …) — nutzt defensiv
 //     AppGlobals.syncStateFromInputs / syncInputsFromState.
 //   - Tabs / Settings / Reset / Drill / Kultur
 //
-// ui-handlers.js bleibt VOR input-handlers.js geladen: sein lokales
-// Protokoll und Import/Export greifen erst zur Laufzeit defensiv auf
+// Bewusst ANDERNSWO extrahiert (Issue #416 Welle 7):
+//   - Lokales Protokoll (setProtocolView, toggleProtocolAccordion,
+//     requestLocalProtocolDelete, closeLocalProtocolSheet,
+//     confirmLocalProtocolDelete) lebt in public/js/protocol-handlers.js
+//     und wird zwischen drill-handlers.js und tab-handlers.js geladen.
+//     Die Brücke AppGlobals.drillRemove / AppGlobals.drillMachineRemove
+//     wird dort defensiv über AppGlobals aufgelöst.
+//
+// ui-handlers.js bleibt VOR input-handlers.js geladen: sein
+// Import/Export greift erst zur Laufzeit defensiv auf
 // AppGlobals.syncStateFromInputs / AppGlobals.syncInputsFromState zu,
 // diese sind zum Modul-Load-Zeitpunkt noch nicht gesetzt. Erst die
 // später geladene input-handlers.js füllt die AppGlobals-API.

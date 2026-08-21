@@ -13,13 +13,16 @@
  *   - drillMachineRemove
  *
  * Bewusst NICHT extrahiert (bleiben in ui-handlers.js):
+ *   - Import/Export (buildExportEnvelope, exportData, …) — nutzt
+ *     defensiv AppGlobals.syncStateFromInputs / syncInputsFromState.
+ *
+ * Bewusst ANDERNSWO extrahiert (spätere Wellen von Issue #416):
+ *   - Input-Binding/-Formatierung und Wrapper leben seit Welle 6 in
+ *     public/js/input-handlers.js.
  *   - Lokales Protokoll (setProtocolView, toggleProtocolAccordion,
  *     requestLocalProtocolDelete, closeLocalProtocolSheet,
- *     confirmLocalProtocolDelete) — die Brücke AppGlobals.drillRemove /
- *     AppGlobals.drillMachineRemove wird defensiv über AppGlobals aufgelöst.
- *   - Input-Binding/-Formatierung (onInputHektar, onInputFormat, …)
- *   - Wrapper (getKornerGesamt, getActiveTotalEinheiten, …)
- *   - Import/Export, Tabs, Settings, Kultur, Reset
+ *     confirmLocalProtocolDelete) lebt seit Welle 7 in
+ *     public/js/protocol-handlers.js.
  *
  * Der Vertrag ist so eng wie möglich gefasst, damit eine spätere
  * Extraktion keine ungeplanten Seiteneffekte hat:

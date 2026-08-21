@@ -11,8 +11,9 @@
 //     computeFahrgassenFaktor, getTabRates, getTabIstHektar, getCarryover,
 //     getTabTotalEinheiten, getTabIstEinheiten, getTabTotalDuenger,
 //     getTabIstDuenger, getTabUsedEinheiten, getTabUsedDuenger, fmt, formatEinheit)
-//   - state (AppGlobals.state) und ui-handlers (drillRemove, drillMachineRemove,
-//     setProtocolView, toggleProtocolAccordion, requestLocalProtocolDelete)
+//   - state (AppGlobals.state), drill-handlers (drillRemove, drillMachineRemove)
+//     und protocol-handlers (setProtocolView, toggleProtocolAccordion,
+//     requestLocalProtocolDelete, closeLocalProtocolSheet)
 //
 // Fachliche Garantie: ALLE Werte (Gesamtbilanz, Verbleibend, Ersparnis,
 // Mehrbedarf) stammen aus existierenden Aggregations-/Berechnungs-Helpern.
