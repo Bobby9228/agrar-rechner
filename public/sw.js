@@ -23,6 +23,7 @@ const STATIC_ASSETS = [
     '/js/calculations.js?v=21',
     '/js/culture-handlers.js',
     '/js/ui-handlers.js?v=22',
+    '/js/settings-handlers.js',
     '/js/tab-handlers.js',
     '/js/render-tabs.js',
     '/js/render-results.js?v=21',
