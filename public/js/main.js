@@ -136,6 +136,9 @@ document.addEventListener('input', function() {
 
 document.addEventListener('DOMContentLoaded', function() {
   AppGlobals.initUI();
+  if (typeof AppGlobals.initDataExportImport === 'function') {
+    AppGlobals.initDataExportImport();
+  }
 });
 
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).

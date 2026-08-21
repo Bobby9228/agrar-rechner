@@ -280,6 +280,12 @@
 
     <div class="version-footer" id="version_footer"></div>
     <div class="footer-actions">
+      <div class="footer-dataio" role="group" aria-label="Daten sichern und wiederherstellen">
+        <button class="footer-io-btn footer-export-btn" id="data_export_btn" type="button" aria-label="Daten exportieren">📤 Daten exportieren</button>
+        <button class="footer-io-btn footer-import-btn" id="data_import_btn" type="button" aria-label="Daten importieren">📥 Daten importieren</button>
+        <input type="file" id="data_import_file" accept="application/json,.json" hidden>
+        <div class="data-io-status" id="data_io_status" role="status" aria-live="polite"></div>
+      </div>
       <button class="footer-reset-btn" onclick="openResetModal()" aria-label="Daten zurücksetzen">🗑️ Daten zurücksetzen</button>
     </div>
 
@@ -397,6 +403,21 @@
   </div>
   <!-- Reset Confirmation Modal (Issue #236, redesign v3) -->
   <div class="reset-overlay" id="reset_overlay" onclick="_onOverlayClick(event)"></div>
+  <!-- Daten-Import Vorschau-Modal (IDEAS.md „Daten exportieren/importieren") -->
+  <div class="import-overlay" id="import_overlay" aria-hidden="true"></div>
+  <div class="import-modal" id="import_modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="import_modal_title" aria-describedby="import_modal_desc" hidden>
+    <button class="import-modal-x" id="import_modal_x" type="button" aria-label="Abbrechen">✕</button>
+    <div class="import-modal-badge" aria-hidden="true">📥</div>
+    <h2 class="import-modal-title" id="import_modal_title">Daten importieren</h2>
+    <p class="import-modal-desc" id="import_modal_desc">
+      Der aktuelle Zustand wird komplett ersetzt. Diese Aktion kann nicht rückgängig gemacht werden.
+    </p>
+    <div class="import-modal-counts" id="import_modal_counts" aria-live="polite"></div>
+    <div class="import-modal-actions">
+      <button class="import-modal-cancel" id="import_modal_cancel" type="button">Abbrechen</button>
+      <button class="import-modal-confirm" id="import_modal_confirm" type="button">Importieren</button>
+    </div>
+  </div>
   <div class="reset-modal" id="reset_modal" role="dialog" aria-modal="true" aria-labelledby="reset_modal_title" aria-describedby="reset_modal_desc">
     <button class="reset-modal-x" id="reset_modal_cancel" onclick="_onCancel()" aria-label="Schließen">✕</button>
     <div class="reset-modal-badge" aria-hidden="true">⚠️</div>
