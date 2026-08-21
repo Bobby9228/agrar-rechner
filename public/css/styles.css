@@ -1215,7 +1215,7 @@ font-size: 0.75rem;
 
     /* ===== Reset confirmation modal (Issue #236) =====
        shown as a centered modal via the .open class, same as the dashboard
-       sheet pattern. See public/js/ui-handlers.js for openResetModal(). */
+       sheet pattern. See public/js/reset-handlers.js for openResetModal(). */
 
     .footer-actions {
       display: flex;

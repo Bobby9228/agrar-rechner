@@ -312,20 +312,21 @@
     //   Accessibility in culture-handlers.js extrahiert)
     // Dann: 11 Module (Issue #416 Welle 2 — Tab-/Ansichtsverwaltung in
     //   tab-handlers.js extrahiert)
-    // Jetzt: 12 Module (Issue #416 Welle 3 — Einstellungs-Handler in
-    //   settings-handlers.js extrahiert)
+    // Jetzt: 13 Module (Issue #416 Welle 4 — Reset-Handler in
+    //   reset-handlers.js extrahiert)
     //
     // Lade-Reihenfolge (wichtig!):
     //   app-globals.js → state.js → culture.js → calculations.js
     //     → culture-handlers.js → ui-handlers.js → settings-handlers.js
-    //     → tab-handlers.js → render-tabs.js → render-results.js
-    //     → render-drill.js → render-dashboard.js → main.js
+    //     → reset-handlers.js → tab-handlers.js → render-tabs.js
+    //     → render-results.js → render-drill.js → render-dashboard.js
+    //     → main.js
     //
     //   app-globals.js: AppGlobals-Namespace + Live-Alias für `state`
     //   state.js definiert: state, saveState(), loadState()
     //   culture.js: Profile (Mais/Raps/Sonstiges), isValidCultureKey etc.
-    //     — wird VOR calculations.js/ui-handlers.js gebraucht, weil
-    //     chooseKultur/resetAll/addReiter diese Helper nutzen.
+    //     — wird vor calculations.js und den späteren Kultur-, Reset- und
+    //     Tab-Handlern gebraucht.
     //   calculations.js braucht: state, culture (Profil-Defaults),
     //     _internal (von state.js)
     //   culture-handlers.js braucht: AppGlobals.* aus state.js + culture.js,
@@ -337,6 +338,9 @@
     //   settings-handlers.js nutzt AppGlobals.* aus state.js,
     //     calculations.js und ui-handlers.js; das Modul stellt die
     //     syncEinheitGroesseEditorFromTab-Brücke bereit (Issue #416 Welle 3).
+    //   reset-handlers.js nutzt AppGlobals.* aus state.js + ui-handlers.js
+    //     (getActiveReiter) und löst Renderer/Kultur-Funktionen erst beim
+    //     Nutzeraufruf auf (Issue #416 Welle 4).
     //   tab-handlers.js braucht beim Laden AppGlobals.* aus ui-handlers.js
     //     (syncStateFromInputs, _syncActiveTabLock) und löst spätere
     //     Renderer-Abhängigkeiten (renderDrillTabList, closeDashboard)
@@ -344,7 +348,8 @@
     //     syncInputsFromState-Aufrufe brauchen AppGlobals.
     //     syncEinheitGroesseEditorFromTab aus settings-handlers.js (Welle 3).
     //   render-tabs.js braucht: state, ui-handlers.js, settings-handlers.js,
-    //     tab-handlers.js, calculations.js
+    //     tab-handlers.js, calculations.js; resetAll löst renderTabs erst
+    //     beim Nutzeraufruf über AppGlobals auf.
     //   render-results.js braucht: state, render-tabs.js, render-drill.js,
     //     calculations.js
     //   render-drill.js braucht: state, ui-handlers.js, calculations.js
@@ -359,6 +364,7 @@
   <script src="js/culture-handlers.js"></script>
   <script src="js/ui-handlers.js?v=22"></script>
   <script src="js/settings-handlers.js"></script>
+  <script src="js/reset-handlers.js"></script>
   <script src="js/tab-handlers.js"></script>
   <script src="js/render-tabs.js"></script>
   <script src="js/render-results.js?v=21"></script>

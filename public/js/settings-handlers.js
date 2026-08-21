@@ -20,9 +20,10 @@
 // (Tests, render-tabs.js, culture-handlers.js) erreichbar — siehe
 // Object.assign(window.AppGlobals, …) am Dateiende.
 //
-// DOM_IDS bleibt in ui-handlers.js, weil Reset (resetAll / resetActiveTab)
-// die IDs weiter nutzt. Diese Funktionen lesen ihre IDs direkt aus dem DOM
-// — keine DOM_IDS-Abhängigkeit.
+// DOM_IDS ist seit Issue #416 Welle 4 mit der Reset-Verantwortung in
+// public/js/reset-handlers.js extrahiert (resetAll / resetActiveTab
+// nutzen die IDs dort direkt). Diese Funktionen lesen ihre IDs weiter
+// direkt aus dem DOM — keine DOM_IDS-Abhängigkeit.
 // ============================================================================
 
     // --- Fahrgassen ---
