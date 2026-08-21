@@ -1219,6 +1219,8 @@ font-size: 0.75rem;
 
     .footer-actions {
       display: flex;
+      flex-direction: column;
+      align-items: center;
       justify-content: center;
       margin-top: -8px;
       margin-bottom: 8px;
@@ -1457,6 +1459,215 @@ font-size: 0.75rem;
       color: var(--color-card-text);
     }
     .footer-reset-btn:active { transform: scale(0.97); }
+
+    /* --- Footer Daten Export/Import buttons (Issue: IDEAS.md
+       "Daten exportieren/importieren") ---
+       Zwei Buttons neben dem Reset-Button (mobile-first: kompakt, hohe
+       Touchziele ≥ 44px). Dunkler Modus konsistent mit derselben
+       Farbpalette wie der Reset-Button (primary-light-Glow statt
+       danger-soft), damit sie in beiden Modi klar lesbar bleiben. */
+    .footer-dataio {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+      width: min(100%, 420px);
+      margin-bottom: 6px;
+    }
+    .footer-io-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
+      border: 2px solid var(--color-primary-soft, #b7d8a2);
+      border-radius: 12px;
+      background: var(--color-bg-success-soft, #eaf3df);
+      color: var(--color-text-success-strong, #254321);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      min-height: 44px;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+    }
+    .footer-io-btn:hover {
+      background: var(--color-primary, #4a7c23);
+      border-color: var(--color-primary-dark, #254321);
+      color: var(--color-card-text, #fffdf8);
+    }
+    .footer-io-btn:active { transform: scale(0.97); }
+    .footer-export-btn,
+    .footer-import-btn { min-width: 0; }
+    html.dark .footer-io-btn {
+      background: rgba(74, 124, 35, 0.18);
+      border-color: rgba(140, 196, 90, 0.45);
+      color: #d4e7c5;
+    }
+    html.dark .footer-io-btn:hover {
+      background: var(--color-primary, #4a7c23);
+      border-color: #8cc45a;
+      color: #fffdf8;
+    }
+    @media (max-width: 380px) {
+      .footer-dataio { flex-direction: column; }
+      .footer-io-btn { width: 100%; justify-content: center; }
+    }
+    .data-io-status {
+      flex-basis: 100%;
+      text-align: center;
+      font-size: 0.85rem;
+      min-height: 1.2em;
+      padding-top: 2px;
+      color: var(--color-text-muted, #5a6b48);
+    }
+    .data-io-status--success { color: var(--color-primary-dark, #254321); }
+    .data-io-status--error {
+      color: var(--color-text-danger, #a83232);
+      font-weight: 600;
+    }
+    html.dark .data-io-status { color: #c1cdb0; }
+    html.dark .data-io-status--success { color: #b3d28b; }
+    html.dark .data-io-status--error { color: #f29a9a; }
+
+    /* --- Import Vorschau-Modal (Daten-Export/Import) ---
+       Folgt dem Pattern des Reset-Modal-Popups (.overlay + .modal.open)
+       für Screenreader-/Backdrop-Verhalten und Animation. Eigene Klassen-
+       Präfixe (.import-*) vermeiden Kollisionen mit .reset-modal/* /
+       .kultur-modal/*. */
+    .import-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 16, 6, 0.55);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      z-index: 230;
+      animation: fadeIn 0.18s ease;
+    }
+    .import-overlay.open { display: block; }
+    .import-modal {
+      display: none;
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(94vw, 440px);
+      background: var(--color-card-bg, #fffdf8);
+      border-radius: 22px;
+      padding: 28px 24px 18px;
+      z-index: 231;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+    html.dark .import-modal {
+      background: var(--color-card-bg, #1f2618);
+      color: #e5edd6;
+    }
+    .import-modal.open {
+      display: block;
+      animation: popIn 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    }
+    .import-modal-x {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 50%;
+      background: var(--color-bg-soft, #f4ede0);
+      color: var(--color-text-muted, #5a6b48);
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s, transform 0.1s;
+    }
+    html.dark .import-modal-x {
+      background: rgba(255, 255, 255, 0.08);
+      color: #c1cdb0;
+    }
+    .import-modal-x:hover {
+      background: var(--color-bg-hover, #ede5d3);
+      color: var(--color-text, #1a1f16);
+    }
+    .import-modal-x:active { transform: scale(0.9); }
+    .import-modal-badge {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--color-bg-success-soft, #eaf3df);
+      color: var(--color-text-success-strong, #254321);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin: 0 auto 14px;
+      box-shadow: 0 0 0 6px rgba(74, 124, 35, 0.12);
+    }
+    .import-modal-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--color-primary-dark, #254321);
+      margin: 0 0 6px;
+    }
+    html.dark .import-modal-title { color: #b3d28b; }
+    .import-modal-desc {
+      font-size: 0.88rem;
+      color: var(--color-text-muted, #5a6b48);
+      line-height: 1.45;
+      margin: 0 auto 14px;
+      max-width: 320px;
+    }
+    .import-modal-counts {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--color-text, #1a1f16);
+      padding: 10px 0;
+      margin-bottom: 18px;
+      border-top: 1px dashed var(--color-border, #ddd1b3);
+      border-bottom: 1px dashed var(--color-border, #ddd1b3);
+    }
+    html.dark .import-modal-counts {
+      color: #e5edd6;
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    .import-modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .import-modal-cancel,
+    .import-modal-confirm {
+      flex: 1 1 140px;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      min-height: 44px;
+      transition: background 0.15s, color 0.15s, transform 0.1s;
+    }
+    .import-modal-cancel {
+      background: transparent;
+      color: var(--color-text-muted, #5a6b48);
+    }
+    .import-modal-cancel:hover {
+      background: var(--color-bg-soft, #f4ede0);
+      color: var(--color-text, #1a1f16);
+    }
+    .import-modal-cancel:active { background: var(--color-bg-hover, #ede5d3); }
+    .import-modal-confirm {
+      background: var(--color-primary, #4a7c23);
+      color: var(--color-card-text, #fffdf8);
+    }
+    .import-modal-confirm:hover {
+      background: var(--color-primary-dark, #254321);
+    }
+    .import-modal-confirm:active { transform: scale(0.97); }
 
     /* --- Kultur-Auswahl Modal (Erststart, verpflichtend) --- */
     .kultur-overlay {

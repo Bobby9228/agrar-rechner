@@ -91,11 +91,13 @@ function saveState() {
   AppGlobals.invalidateCarryoverCache();
   try {
     localStorage.setItem('agrar_rechner', JSON.stringify(state));
+    return true;
   } catch(e) {
     if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_FILE_CANT_CREATE') {
       showSaveError();
     }
     console.error('saveState failed:', e);
+    return false;
   }
 }
 
