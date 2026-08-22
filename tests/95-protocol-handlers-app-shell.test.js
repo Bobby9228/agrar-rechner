@@ -10,10 +10,13 @@
  *   - privater Modulzustand _localProtocolSheetTarget
  *
  * Bewusst NICHT extrahiert (bleiben in ui-handlers.js):
- *   - Import/Export-Block (buildExportEnvelope, exportData,
- *     validateImportText, …) — nutzt defensiv
- *     AppGlobals.syncStateFromInputs / syncInputsFromState.
  *   - Kultur / Tabs / Settings / Reset / Drill / Input / Berechnung / Render
+ *
+ * Bewusst ANDERNSWO extrahiert (Issue #416 Welle 8):
+ *   - Daten-Export/Import (Konstanten EXPORT_APP_KEY, EXPORT_FORMAT_VERSION,
+ *     EXPORT_MAX_BYTES sowie buildExportEnvelope, exportData,
+ *     validateImportText, …) lebt in public/js/data-io-handlers.js
+ *     und wird zwischen render-local-protocol.js und main.js geladen.
  *
  * Der Vertrag ist so eng wie möglich gefasst, damit eine spätere
  * Extraktion keine ungeplanten Seiteneffekte hat:

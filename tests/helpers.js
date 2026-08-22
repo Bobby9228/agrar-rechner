@@ -88,6 +88,8 @@ export function createDom() {
   // und settings-handlers.js geladen, exakt wie in index.html.
   // Issue #416 Welle 7: protocol-handlers.js wird zwischen drill-handlers.js
   // und tab-handlers.js geladen, exakt wie in index.html.
+  // Issue #416 Welle 8: data-io-handlers.js wird zwischen
+  // render-local-protocol.js und main.js geladen, exakt wie in index.html.
   const moduleScript = [
     loadModule('app-globals.js'),
     'var _internal = { carryoverCache: null, drillCalcTimer: null };',
@@ -107,6 +109,7 @@ export function createDom() {
     loadModule('render-drill.js'),
     loadModule('render-dashboard.js'),
     loadModule('render-local-protocol.js'),
+    loadModule('data-io-handlers.js'),
     // Remove DOMContentLoaded auto-init from main.js (initUI is called manually below).
     // The actual code uses `AppGlobals.initUI()` (ADR-001, Issue #278) — match
     // the real text so the replace actually fires. If we don't strip it, the

@@ -13,9 +13,6 @@
  *   - syncStateFromInputs, toInputValue, syncInputsFromState
  *
  * Bewusst NICHT extrahiert (bleiben in ui-handlers.js):
- *   - Import/Export-Block (buildExportEnvelope, exportData,
- *     validateImportText, …) — nutzt defensiv
- *     AppGlobals.syncStateFromInputs / syncInputsFromState.
  *   - Tabs / Settings / Reset / Drill / Kultur
  *
  * Bewusst ANDERNSWO extrahiert (Issue #416 Welle 7):
@@ -24,15 +21,24 @@
  *     confirmLocalProtocolDelete) lebt in public/js/protocol-handlers.js
  *     und wird zwischen drill-handlers.js und tab-handlers.js geladen.
  *
+ * Bewusst ANDERNSWO extrahiert (Issue #416 Welle 8):
+ *   - Daten-Export/Import (Konstanten EXPORT_APP_KEY, EXPORT_FORMAT_VERSION,
+ *     EXPORT_MAX_BYTES sowie buildExportEnvelope, exportData,
+ *     validateImportText, …) lebt in public/js/data-io-handlers.js
+ *     und wird zwischen render-local-protocol.js und main.js geladen.
+ *     Es nutzt defensiv AppGlobals.syncStateFromInputs und
+ *     AppGlobals.syncInputsFromState (beim Funktionsaufruf, nicht beim
+ *     Modul-Load).
+ *
  * Der Vertrag ist so eng wie möglich gefasst, damit die Extraktion
  * keine ungeplanten Seiteneffekte hat:
  *
  *   1. Die Datei `public/js/input-handlers.js` MUSS existieren —
  *      ohne sie ist die Extraktion nicht abgeschlossen.
  *   2. `index.html` lädt `input-handlers.js` NACH `ui-handlers.js`
- *      (ui-handlers.js behält Import/Export, das defensiv auf
- *      AppGlobals.syncStateFromInputs / syncInputsFromState zugreift —
- *      diese müssen VOR dem ersten Aufruf bereits geladen sein)
+ *      (Architektur-Index-Reihenfolge — keine lexikalische Abhängigkeit
+ *      mehr in ui-handlers.js selbst, seit Welle 8 der Daten-Export/
+ *      Import-Block nach data-io-handlers.js umgezogen ist)
  *      und VOR `settings-handlers.js` (das via AppGlobals.getActiveReiter
  *      in fahrgassen-/einheitGroesse-Handlern auf einen Reiter zugreift
  *      und via AppGlobals.syncEinheitGroesseEditorFromTab selbst aus

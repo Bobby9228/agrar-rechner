@@ -312,8 +312,8 @@
     //   Accessibility in culture-handlers.js extrahiert)
     // Dann: 11 Module (Issue #416 Welle 2 — Tab-/Ansichtsverwaltung in
     //   tab-handlers.js extrahiert)
-    // Jetzt: 16 Module (Issue #416 Welle 7 — Lokales Protokoll-Redesign
-    //   in protocol-handlers.js extrahiert)
+    // Jetzt: 17 Module (Issue #416 Welle 8 — Daten-Export/Import in
+    //   data-io-handlers.js extrahiert)
     //
     // Lade-Reihenfolge (wichtig!):
     //   app-globals.js → state.js → culture.js → calculations.js
@@ -321,7 +321,7 @@
     //     → settings-handlers.js → reset-handlers.js → drill-handlers.js
     //     → protocol-handlers.js → tab-handlers.js → render-tabs.js
     //     → render-results.js → render-drill.js → render-dashboard.js
-    //     → main.js
+    //     → render-local-protocol.js → data-io-handlers.js → main.js
     //
     //   app-globals.js: AppGlobals-Namespace + Live-Alias für `state`
     //   state.js definiert: state, saveState(), loadState()
@@ -334,10 +334,10 @@
     //     und referenziert syncEinheitGroesseEditorFromTab/getActiveReiter
     //     aus input-handlers.js erst zur Laufzeit
     //     (Issue #416 Welle 1 + Welle 3 + Welle 6).
-    //   ui-handlers.js enthält die Daten-Export/Import-Modal-Pfade.
-    //     Diese greifen defensiv über AppGlobals.syncStateFromInputs /
-    //     AppGlobals.syncInputsFromState aus input-handlers.js zu — sie
-    //     sind zum Modul-Load-Zeitpunkt noch nicht gesetzt.
+    //   ui-handlers.js enthält seit Issue #416 Wellen 1–8 keine
+    //     ausführbaren Funktionsdefinitionen mehr (Architektur-Index).
+    //     Die Daten-Export/Import-Modal-Pfade wurden nach
+    //     data-io-handlers.js extrahiert (Welle 8).
     //   input-handlers.js stellt die Eingabe-/Formatierungs-/
     //     State-Sync-Brücke bereit (onInputHektar/…/onInputNotizen,
     //     getKornerGesamt, getActiveTotal*, getTotal*, onInputFormat,
@@ -383,6 +383,17 @@
     //     closeLocalProtocolSheet aus protocol-handlers.js, sowie
     //     AppGlobals.drillRemove / AppGlobals.drillMachineRemove aus
     //     drill-handlers.js (alle defensiv beim Nutzeraufruf aufgelöst)
+    //   data-io-handlers.js nutzt AppGlobals.* aus state.js
+    //     (parseAndSanitizeState, saveState, invalidateCarryoverCache),
+    //     input-handlers.js (syncStateFromInputs, syncInputsFromState),
+    //     calculations.js (fmtCompact), allen Renderern (renderTabs,
+    //     renderResults, renderView, renderDrillTabList, renderDrillSummary,
+    //     renderLocalProtocol, renderDashboard) und culture-handlers.js
+    //     (renderKulturBadge, _renderKulturEmpfehlung, openKulturFirstRun,
+    //     closeKulturFirstRun) — alle defensiv beim Nutzeraufruf aufgelöst.
+    //     Wird NACH render-local-protocol.js und VOR main.js geladen, weil
+    //     main.js AppGlobals.initDataExportImport() im DOMContentLoaded-
+    //     Handler ruft (Issue #416 Welle 8).
     //   main.js: APP_VERSION, Event-Emitter, initTheme
     // ============================================================================
   </script>
@@ -403,6 +414,7 @@
   <script src="js/render-drill.js"></script>
   <script src="js/render-dashboard.js"></script>
   <script src="js/render-local-protocol.js?v=3"></script>
+  <script src="js/data-io-handlers.js"></script>
   <script src="js/main.js"></script>
   <!-- Dashboard-Overlay: nur noch als leeres Backdrop-Element für Alt-Tests
        erhalten (.dashboard-sheet selbst liegt jetzt oben in .app-layout). -->

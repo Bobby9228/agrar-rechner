@@ -34,6 +34,7 @@ const STATIC_ASSETS = [
     '/js/render-drill.js',
     '/js/render-dashboard.js',
     '/js/render-local-protocol.js?v=3',
+    '/js/data-io-handlers.js',
     '/js/main.js',
     '/icon.svg',
     '/icon-180.png',

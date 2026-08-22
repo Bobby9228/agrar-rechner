@@ -14,12 +14,6 @@
 // Lade-Reihenfolge (siehe index.html):
 //   ui-handlers.js → input-handlers.js → settings-handlers.js
 //
-// Bewusst NICHT extrahiert (bleiben in ui-handlers.js):
-//   - Daten-Export/Import (buildExportEnvelope, exportData,
-//     validateImportText, …) — nutzt defensiv
-//     AppGlobals.syncStateFromInputs / syncInputsFromState.
-//   - Tabs / Settings / Reset / Drill / Kultur
-//
 // Bewusst ANDERNSWO extrahiert (Issue #416 Welle 7):
 //   - Lokales Protokoll (setProtocolView, toggleProtocolAccordion,
 //     requestLocalProtocolDelete, closeLocalProtocolSheet,
@@ -28,11 +22,15 @@
 //     Die Brücke AppGlobals.drillRemove / AppGlobals.drillMachineRemove
 //     wird dort defensiv über AppGlobals aufgelöst.
 //
-// ui-handlers.js bleibt VOR input-handlers.js geladen: sein
-// Import/Export greift erst zur Laufzeit defensiv auf
-// AppGlobals.syncStateFromInputs / AppGlobals.syncInputsFromState zu,
-// diese sind zum Modul-Load-Zeitpunkt noch nicht gesetzt. Erst die
-// später geladene input-handlers.js füllt die AppGlobals-API.
+// Bewusst ANDERNSWO extrahiert (Issue #416 Welle 8):
+//   - Daten-Export/Import (Konstanten EXPORT_APP_KEY, EXPORT_FORMAT_VERSION,
+//     EXPORT_MAX_BYTES sowie buildExportEnvelope, exportData,
+//     validateImportText, showImportPreview, commitImportedState,
+//     initDataExportImport, …) lebt in public/js/data-io-handlers.js
+//     und wird zwischen render-local-protocol.js und main.js geladen.
+//     Es nutzt defensiv AppGlobals.syncStateFromInputs und
+//     AppGlobals.syncInputsFromState (beim Funktionsaufruf, nicht beim
+//     Modul-Load).
 //
 // Braucht zur Laufzeit (AppGlobals):
 //   - state, parseDE, appEmit (state.js / calculations.js / main.js)

@@ -33,10 +33,10 @@
 //   - renderLocalProtocolFields (render-local-protocol.js) — erst
 //     beim Nutzeraufruf aufgelöst
 //
-// Bewusst NICHT in protocol-handlers.js (bleiben in ui-handlers.js):
-//   - Import/Export (buildExportEnvelope, exportData, …) — nutzt
-//     defensiv AppGlobals.syncStateFromInputs / syncInputsFromState
-//     aus input-handlers.js
+// Bewusst NICHT in protocol-handlers.js:
+//   - Import/Export (buildExportEnvelope, exportData, …) lebt seit
+//     Issue #416 Welle 8 in public/js/data-io-handlers.js
+//     (geladen zwischen render-local-protocol.js und main.js).
 //   - Kultur / Tabs / Settings / Reset / Drill / Input / Render
 //
 // Verhaltensgleich zur ui-handlers.js-Variante (Issue #416 Welle 7 —
