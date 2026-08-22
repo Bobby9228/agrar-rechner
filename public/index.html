@@ -306,27 +306,94 @@
     // Früher: ~2172 Zeilen inline JS in index.html
     // Dann: 5 Module (state/calculations/ui-handlers/rendering/main)
     // Dann: 8 Module (rendering aufgeteilt in 4: Issue #212)
-    // Jetzt: 9 Module (Kultur-Feature ergänzt culture.js: Mais/Raps/Sonstiges
+    // Dann: 9 Module (Kultur-Feature ergänzt culture.js: Mais/Raps/Sonstiges
     //   + per-Tab koernerProEinheit)
+    // Dann: 10 Module (Issue #416 Welle 1 — Kultur-Auswahl + Kultur-Modal-
+    //   Accessibility in culture-handlers.js extrahiert)
+    // Dann: 11 Module (Issue #416 Welle 2 — Tab-/Ansichtsverwaltung in
+    //   tab-handlers.js extrahiert)
+    // Jetzt: 17 Module (Issue #416 Welle 8 — Daten-Export/Import in
+    //   data-io-handlers.js extrahiert)
     //
     // Lade-Reihenfolge (wichtig!):
     //   app-globals.js → state.js → culture.js → calculations.js
-    //     → ui-handlers.js → render-tabs.js → render-results.js
-    //     → render-drill.js → render-dashboard.js → main.js
+    //     → culture-handlers.js → ui-handlers.js → input-handlers.js
+    //     → settings-handlers.js → reset-handlers.js → drill-handlers.js
+    //     → protocol-handlers.js → tab-handlers.js → render-tabs.js
+    //     → render-results.js → render-drill.js → render-dashboard.js
+    //     → render-local-protocol.js → data-io-handlers.js → main.js
     //
     //   app-globals.js: AppGlobals-Namespace + Live-Alias für `state`
     //   state.js definiert: state, saveState(), loadState()
     //   culture.js: Profile (Mais/Raps/Sonstiges), isValidCultureKey etc.
-    //     — wird VOR calculations.js/ui-handlers.js gebraucht, weil
-    //     chooseKultur/resetAll/addReiter diese Helper nutzen.
+    //     — wird vor calculations.js und den späteren Kultur-, Reset- und
+    //     Tab-Handlern gebraucht.
     //   calculations.js braucht: state, culture (Profil-Defaults),
     //     _internal (von state.js)
-    //   ui-handlers.js braucht: state, calculations.js, culture
-    //   render-tabs.js braucht: state, ui-handlers.js, calculations.js
+    //   culture-handlers.js braucht: AppGlobals.* aus state.js + culture.js,
+    //     und referenziert syncEinheitGroesseEditorFromTab/getActiveReiter
+    //     aus input-handlers.js erst zur Laufzeit
+    //     (Issue #416 Welle 1 + Welle 3 + Welle 6).
+    //   ui-handlers.js enthält seit Issue #416 Wellen 1–8 keine
+    //     ausführbaren Funktionsdefinitionen mehr (Architektur-Index).
+    //     Die Daten-Export/Import-Modal-Pfade wurden nach
+    //     data-io-handlers.js extrahiert (Welle 8).
+    //   input-handlers.js stellt die Eingabe-/Formatierungs-/
+    //     State-Sync-Brücke bereit (onInputHektar/…/onInputNotizen,
+    //     getKornerGesamt, getActiveTotal*, getTotal*, onInputFormat,
+    //     getActiveReiter, syncStateFromInputs/toInputValue/
+    //     syncInputsFromState, Issue #416 Welle 6). Wird VOR
+    //     settings-handlers.js geladen, damit dessen
+    //     fahrgassen/einheitGroesse-Handler AppGlobals.getActiveReiter
+    //     vorfinden; syncInputsFromState ruft seinerseits
+    //     AppGlobals.syncEinheitGroesseEditorFromTab defensiv auf.
+    //   settings-handlers.js nutzt AppGlobals.* aus state.js,
+    //     calculations.js und input-handlers.js; das Modul stellt die
+    //     syncEinheitGroesseEditorFromTab-Brücke bereit (Issue #416 Welle 3).
+    //   reset-handlers.js nutzt AppGlobals.* aus state.js + input-handlers.js
+    //     (getActiveReiter) und löst Renderer/Kultur-Funktionen erst beim
+    //     Nutzeraufruf auf (Issue #416 Welle 4).
+    //   drill-handlers.js nutzt AppGlobals.* aus state.js, calculations.js
+    //     und input-handlers.js und löst Renderer-Funktionen (renderDrillTabList,
+    //     renderDrillSummary, renderResults) erst beim Nutzeraufruf auf
+    //     (Issue #416 Welle 5). Wird VOR tab-handlers.js geladen, damit dessen
+    //     spätere Wechsel-Handler AppGlobals._syncActiveTabLock vorfinden.
+    //   protocol-handlers.js nutzt AppGlobals.state/saveState aus state.js
+    //     und AppGlobals.appEmit aus main.js defensiv erst beim Nutzeraufruf;
+    //     außerdem löst es
+    //     AppGlobals.drillRemove / AppGlobals.drillMachineRemove aus
+    //     drill-handlers.js sowie AppGlobals.renderLocalProtocolFields aus
+    //     render-local-protocol.js — alle erst beim Nutzeraufruf (Welle 7).
+    //   tab-handlers.js braucht beim Laden AppGlobals.* aus input-handlers.js
+    //     (syncStateFromInputs) und aus drill-handlers.js
+    //     (_syncActiveTabLock) und löst spätere Renderer-Abhängigkeiten
+    //     (renderDrillTabList, closeDashboard) erst beim Nutzeraufruf auf
+    //     (Issue #416 Welle 2). Seine syncInputsFromState-Aufrufe brauchen
+    //     AppGlobals.syncEinheitGroesseEditorFromTab aus settings-handlers.js
+    //     (Welle 3).
+    //   render-tabs.js braucht: state, ui-handlers.js, settings-handlers.js,
+    //     tab-handlers.js, calculations.js; resetAll löst renderTabs erst
+    //     beim Nutzeraufruf über AppGlobals auf.
     //   render-results.js braucht: state, render-tabs.js, render-drill.js,
     //     calculations.js
     //   render-drill.js braucht: state, ui-handlers.js, calculations.js
     //   render-dashboard.js braucht: state, calculations.js
+    //   render-local-protocol.js braucht: state, calculations.js,
+    //     AppGlobals.toggleProtocolAccordion / requestLocalProtocolDelete /
+    //     closeLocalProtocolSheet aus protocol-handlers.js, sowie
+    //     AppGlobals.drillRemove / AppGlobals.drillMachineRemove aus
+    //     drill-handlers.js (alle defensiv beim Nutzeraufruf aufgelöst)
+    //   data-io-handlers.js nutzt AppGlobals.* aus state.js
+    //     (parseAndSanitizeState, saveState, invalidateCarryoverCache),
+    //     input-handlers.js (syncStateFromInputs, syncInputsFromState),
+    //     calculations.js (fmtCompact), allen Renderern (renderTabs,
+    //     renderResults, renderView, renderDrillTabList, renderDrillSummary,
+    //     renderLocalProtocol, renderDashboard) und culture-handlers.js
+    //     (renderKulturBadge, _renderKulturEmpfehlung, openKulturFirstRun,
+    //     closeKulturFirstRun) — alle defensiv beim Nutzeraufruf aufgelöst.
+    //     Wird NACH render-local-protocol.js und VOR main.js geladen, weil
+    //     main.js AppGlobals.initDataExportImport() im DOMContentLoaded-
+    //     Handler ruft (Issue #416 Welle 8).
     //   main.js: APP_VERSION, Event-Emitter, initTheme
     // ============================================================================
   </script>
@@ -334,12 +401,20 @@
   <script src="js/state.js"></script>
   <script src="js/culture.js"></script>
   <script src="js/calculations.js?v=21"></script>
+  <script src="js/culture-handlers.js"></script>
   <script src="js/ui-handlers.js?v=22"></script>
+  <script src="js/input-handlers.js"></script>
+  <script src="js/settings-handlers.js"></script>
+  <script src="js/reset-handlers.js"></script>
+  <script src="js/drill-handlers.js"></script>
+  <script src="js/protocol-handlers.js"></script>
+  <script src="js/tab-handlers.js"></script>
   <script src="js/render-tabs.js"></script>
   <script src="js/render-results.js?v=21"></script>
   <script src="js/render-drill.js"></script>
   <script src="js/render-dashboard.js"></script>
   <script src="js/render-local-protocol.js?v=3"></script>
+  <script src="js/data-io-handlers.js"></script>
   <script src="js/main.js"></script>
   <!-- Dashboard-Overlay: nur noch als leeres Backdrop-Element für Alt-Tests
        erhalten (.dashboard-sheet selbst liegt jetzt oben in .app-layout). -->

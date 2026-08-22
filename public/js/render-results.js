@@ -5,9 +5,10 @@
 //   → render-results.js (DIESE DATEI) → render-drill.js → render-dashboard.js
 //   → main.js
 //
-// render-results.js braucht: state, ui-handlers.js (syncInputsFromState),
-//   calculations.js (getActiveReiter, getTabIstHektar, getActiveTotalEinheiten,
-//   getActiveTotalDuenger, getTabIstEinheiten, getTabIstDuenger, getCarryover, fmt)
+// render-results.js braucht: state, input-handlers.js (syncInputsFromState,
+//   getActiveReiter, getActiveTotalEinheiten, getActiveTotalDuenger),
+//   calculations.js (getTabIstHektar,
+//   getTabIstEinheiten, getTabIstDuenger, getCarryover, fmt)
 // Funktionen werden im globalen Scope definiert (Vanilla-JS / <script>-Tags).
 // ============================================================================
 

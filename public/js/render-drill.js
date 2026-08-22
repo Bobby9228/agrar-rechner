@@ -1,11 +1,12 @@
 // ============================================================================
 // RENDER-DRILL — Drill-Protokoll-Ansicht
 //
-// Lade-Reihenfolge: state → calc → ui → render-tabs → render-results → render-drill (DIESE DATEI)
-//   → render-dashboard → main.js
+// Lade-Reihenfolge: state → calc → ui → drill-handlers → render-tabs
+//   → render-results → render-drill (DIESE DATEI) → render-dashboard → main.js
 //
-// render-drill.js braucht: state, ui-handlers.js (drillRemove, drillCalcDebounced),
-//   calculations.js (getTabIstHektar, getTabTotalEinheiten, getTabIstEinheiten,
+// render-drill.js braucht: state, drill-handlers.js (drillRemove,
+//   drillCalcAll, drillCalcDebounced, drillMachineRemove), calculations.js
+//   (getTabIstHektar, getTabTotalEinheiten, getTabIstEinheiten,
 //   getActiveTotalEinheiten, getActiveTotalDuenger, getTabTotalDuenger,
 //   getTabIstDuenger, getCarryover, fmt)
 // Funktionen werden im globalen Scope definiert (Vanilla-JS / <script>-Tags).

@@ -74,18 +74,42 @@ export function createDom() {
   // app-globals.js declares the namespace AND installs the `state` getter/setter
   // (Live-Alias für `var state`); the test harness loads the real file so the
   // test scope matches production.
+  // Issue #416 Welle 1: culture-handlers.js wird zwischen calculations.js
+  // und ui-handlers.js geladen, exakt wie in index.html.
+  // Issue #416 Welle 2: tab-handlers.js wird zwischen ui-handlers.js
+  // und render-tabs.js geladen, exakt wie in index.html.
+  // Issue #416 Welle 3: settings-handlers.js wird zwischen ui-handlers.js
+  // und tab-handlers.js geladen, exakt wie in index.html.
+  // Issue #416 Welle 4: reset-handlers.js wird zwischen settings-handlers.js
+  // und tab-handlers.js geladen, exakt wie in index.html.
+  // Issue #416 Welle 5: drill-handlers.js wird zwischen reset-handlers.js
+  // und tab-handlers.js geladen, exakt wie in index.html.
+  // Issue #416 Welle 6: input-handlers.js wird zwischen ui-handlers.js
+  // und settings-handlers.js geladen, exakt wie in index.html.
+  // Issue #416 Welle 7: protocol-handlers.js wird zwischen drill-handlers.js
+  // und tab-handlers.js geladen, exakt wie in index.html.
+  // Issue #416 Welle 8: data-io-handlers.js wird zwischen
+  // render-local-protocol.js und main.js geladen, exakt wie in index.html.
   const moduleScript = [
     loadModule('app-globals.js'),
     'var _internal = { carryoverCache: null, drillCalcTimer: null };',
     loadModule('state.js'),
     loadModule('culture.js'),
     loadModule('calculations.js'),
+    loadModule('culture-handlers.js'),
     loadModule('ui-handlers.js'),
+    loadModule('input-handlers.js'),
+    loadModule('settings-handlers.js'),
+    loadModule('reset-handlers.js'),
+    loadModule('drill-handlers.js'),
+    loadModule('protocol-handlers.js'),
+    loadModule('tab-handlers.js'),
     loadModule('render-tabs.js'),
     loadModule('render-results.js'),
     loadModule('render-drill.js'),
     loadModule('render-dashboard.js'),
     loadModule('render-local-protocol.js'),
+    loadModule('data-io-handlers.js'),
     // Remove DOMContentLoaded auto-init from main.js (initUI is called manually below).
     // The actual code uses `AppGlobals.initUI()` (ADR-001, Issue #278) — match
     // the real text so the replace actually fires. If we don't strip it, the
