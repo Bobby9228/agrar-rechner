@@ -90,6 +90,10 @@ export function createDom() {
   // und tab-handlers.js geladen, exakt wie in index.html.
   // Issue #416 Welle 8: data-io-handlers.js wird zwischen
   // render-local-protocol.js und main.js geladen, exakt wie in index.html.
+  // Issue #417: state-coordinator.js wird zwischen render-tabs.js und
+  // render-results.js geladen (genau wie in index.html), damit initUI()
+  // die AppGlobals-Brücke (appDispatch + registerStateCoordinator)
+  // vorfindet.
   const moduleScript = [
     loadModule('app-globals.js'),
     'var _internal = { carryoverCache: null, drillCalcTimer: null };',
@@ -105,6 +109,7 @@ export function createDom() {
     loadModule('protocol-handlers.js'),
     loadModule('tab-handlers.js'),
     loadModule('render-tabs.js'),
+    loadModule('state-coordinator.js'),
     loadModule('render-results.js'),
     loadModule('render-drill.js'),
     loadModule('render-dashboard.js'),
@@ -112,12 +117,14 @@ export function createDom() {
     loadModule('data-io-handlers.js'),
     // Remove DOMContentLoaded auto-init from main.js (initUI is called manually below).
     // The actual code uses `AppGlobals.initUI()` (ADR-001, Issue #278) — match
-    // the real text so the replace actually fires. If we don't strip it, the
-    // DOMContentLoaded listener fires AFTER the manual call below and registers
-    // a duplicate state listener, causing double-renders (e.g. test 17-edge-cases
-    // "calls renderDrillSummary to clear stale drill summary" got 2 calls).
+    // the real text so the replace actually fires. Since Issue #416 Welle 8 the
+    // block also calls initDataExportImport, so the needle must cover the whole
+    // block. If we don't strip it, the DOMContentLoaded listener fires AFTER the
+    // manual call below and registers a duplicate state coordinator listener,
+    // causing double-renders/double-persists (e.g. tests/98 asserting exactly 1
+    // saveState call got 2).
     loadModule('main.js').replace(
-      "document.addEventListener('DOMContentLoaded', function() {\n  AppGlobals.initUI();\n});",
+      "document.addEventListener('DOMContentLoaded', function() {\n  AppGlobals.initUI();\n  if (typeof AppGlobals.initDataExportImport === 'function') {\n    AppGlobals.initDataExportImport();\n  }\n});",
       ''
     ),
   ].join('\n');
