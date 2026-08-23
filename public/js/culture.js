@@ -80,7 +80,6 @@ function isValidCultureKey(key) {
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 Object.assign(window.AppGlobals, {
   CULTURE_PROFILES: CULTURE_PROFILES,
-  VALID_CULTURE_KEYS: VALID_CULTURE_KEYS,
   getCultureProfile: getCultureProfile,
   getCultureLabel: getCultureLabel,
   getCultureEmoji: getCultureEmoji,

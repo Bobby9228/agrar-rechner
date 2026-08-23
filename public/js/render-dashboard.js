@@ -295,8 +295,6 @@
     // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
     Object.assign(window.AppGlobals, {
       renderDashboard: renderDashboard,
-      makeSummaryStat: makeSummaryStat,
-      _dashboardKeyHandler: _dashboardKeyHandler,
       openDashboard: openDashboard,
       closeDashboard: closeDashboard,
     });
