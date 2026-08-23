@@ -1,11 +1,22 @@
+import { createDom } from './helpers.js';
+import { describe, expect, it, vi } from 'vitest';
+
+/**
+ * Cross-Tab-Sync (storage-Events)
+ * Zusammengeführt in Issue #419 (Welle 4) aus:
+ * 36-cross-tab-sync.test.js
+ * Jede Quelldatei ist als eigener describe-Block vollständig
+ * erhalten (nur Import-Zeilen dedupliziert) — keine Assertions
+ * wurden verändert oder entfernt.
+ */
+
+describe('Cross-Tab-Sync (storage-Events) — übernommen aus 36-cross-tab-sync.test.js', () => {
 /**
  * Tests for Cross-Tab-Synchronisation (Issue #128)
  *
  * Verifies that a `storage` event listener is registered during initUI()
  * and correctly updates state + UI when another tab writes to localStorage.
  */
-import { describe, it, expect, vi } from 'vitest';
-import { createDom } from './helpers.js';
 
 function setup() {
   const { dom, window: w, store } = createDom();
@@ -425,4 +436,5 @@ describe('Cross-Tab-Sync hardening — sanitize pipeline (Issue #128)', () => {
       expect(({}).polluted).toBeUndefined();
     });
   });
+});
 });

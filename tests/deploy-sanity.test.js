@@ -1,8 +1,18 @@
-import { readFileSync, existsSync, readdirSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { existsSync, readFileSync, readdirSync } from 'fs';
+import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
+/**
+ * Cloudflare-Deploy-Sanity
+ * Zusammengeführt in Issue #419 (Welle 4) aus:
+ * 37-deploy-sanity.test.js
+ * Jede Quelldatei ist als eigener describe-Block vollständig
+ * erhalten (nur Import-Zeilen dedupliziert) — keine Assertions
+ * wurden verändert oder entfernt.
+ */
+
+describe('Cloudflare-Deploy-Sanity — übernommen aus 37-deploy-sanity.test.js', () => {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = resolve(__dirname, '..', 'public');
 
@@ -478,4 +488,5 @@ describe('sw.js STATIC_ASSETS — volle Kongruenz, Dateiexistenz, keine Altlaste
     }
   });
 
+});
 });

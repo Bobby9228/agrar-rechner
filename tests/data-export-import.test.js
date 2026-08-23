@@ -1,3 +1,16 @@
+import { createDom } from './helpers.js';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+/**
+ * Daten-Export/Import
+ * Zusammengeführt in Issue #419 (Welle 4) aus:
+ * 45-data-export-import.test.js
+ * Jede Quelldatei ist als eigener describe-Block vollständig
+ * erhalten (nur Import-Zeilen dedupliziert) — keine Assertions
+ * wurden verändert oder entfernt.
+ */
+
+describe('Daten-Export/Import — übernommen aus 45-data-export-import.test.js', () => {
 /**
  * Tests für Daten-Export/Import (Issue: IDEAS.md Hohe Priorität
  * „Daten exportieren/importieren").
@@ -24,8 +37,6 @@
  * für Export; nutzt validateImportText(text) als direkten Einstieg für den
  * reinen Reader-unabhängigen Pfad.
  */
-import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
-import { createDom } from './helpers.js';
 
 // ───────────────────────── helpers ─────────────────────────
 
@@ -731,4 +742,5 @@ describe('Daten-Export/Import — AppGlobals-API', () => {
     expect(w.AppGlobals.EXPORT_MAX_BYTES).toBeGreaterThan(1024);
     expect(w.AppGlobals.EXPORT_MAX_BYTES).toBeLessThanOrEqual(100 * 1024 * 1024);
   });
+});
 });
