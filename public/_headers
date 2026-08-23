@@ -1,9 +1,4 @@
-# CSP nach Issue #418: keine Inline-Event-Handler mehr in index.html —
-# script-src kommt ohne 'unsafe-inline' aus. style-src bleibt absichtlich
-# permissiv, weil styles.css via stylesheet-Link (kein Inline-Style) geladen
-# wird, aber UI-Module gelegentlich .style.cssText dynamisch setzen (z.B.
-# #r_carryover_hint, #r_net_hint). img-src 'self' data: deckt base64-PNG
-# für die Tab-Indicator-Icons. frame-ancestors 'none' verhindert Clickjacking.
+# CSP ist permissiv wegen inline-event-handlern (siehe Deep Dive §6.1). Migration auf addEventListener steht aus.
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
