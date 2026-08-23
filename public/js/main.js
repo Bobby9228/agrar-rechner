@@ -136,10 +136,59 @@ document.addEventListener('input', function() {
 
 document.addEventListener('DOMContentLoaded', function() {
   AppGlobals.initUI();
-  if (typeof AppGlobals.initDataExportImport === 'function') {
-    AppGlobals.initDataExportImport();
-  }
 });
+
+// --- initUIBindings (Issue #418 Welle 1) ---
+//
+// Zentrale Registrierung aller DOM-Event-Handler, die NICHT von dynamisch
+// erzeugten Elementen abhängen. Wird aus initUI() (render-tabs.js)
+// aufgerufen — sowohl in Production (main.js DOMContentLoaded → initUI)
+// als auch in jsdom (tests/helpers.js → initUI). Idempotent: ein zweiter
+// Aufruf registriert KEINE doppelten Listener.
+//
+// Bewusst NICHT hier:
+//   - Dynamisch erzeugte Elemente (Tabs, Drill-Inputs, Protokoll-Entries):
+//     werden per addEventListener beim Erzeugen gebunden (render-tabs.js,
+//     render-drill.js, render-local-protocol.js).
+//   - Lokales-Protokoll-Sheet-Backdrop + Escape: lebt in render-local-
+//     protocol.js (Modul-Load, weil die Elemente zu Modul-Load-Zeit
+//     bereits existieren und die Bindings über die App-Lebenszeit
+//     stabil sind).
+//   - data_export_btn / data_import_btn / data_import_file /
+//     import_modal_* / import_overlay: bleiben in initDataExportImport
+//     (data-io-handlers.js) — werden in Welle 4 von dort übernommen.
+function _bindClick(id, handler) {
+  var el = document.getElementById(id);
+  if (el && typeof handler === 'function') {
+    el.addEventListener('click', handler);
+  }
+}
+function initUIBindings() {
+  if (AppGlobals._uiBindingsRegistered) return;
+  AppGlobals._uiBindingsRegistered = true;
+
+  // Header / Navigation
+  // Theme-Toggle: es gibt mehrere .theme-toggle-Buttons (Header + Dashboard).
+  // querySelectorAll + forEach deckt beide mit einem Aufruf ab.
+  var themeToggles = document.querySelectorAll('.theme-toggle');
+  for (var ti = 0; ti < themeToggles.length; ti++) {
+    themeToggles[ti].addEventListener('click', toggleTheme);
+  }
+  _bindClick('dashboard_open_btn', AppGlobals.openDashboard);
+  _bindClick('nav_rechner', AppGlobals.switchToRechner);
+  _bindClick('nav_protokoll', AppGlobals.switchToProtokoll);
+  _bindClick('nav_uebersicht', AppGlobals.openDashboard);
+  _bindClick('protokoll_tab_btn', AppGlobals.switchToProtokoll);
+  _bindClick('dashboard_overlay', AppGlobals.closeDashboard);
+
+  // Save-Error-Banner: Schließen-Button (Issue #243 — Inline-Handler
+  // entfernt). Es gibt genau einen <button> innerhalb des Banners.
+  var saveBanner = document.getElementById('save_error_banner');
+  if (saveBanner) {
+    var saveBannerClose = saveBanner.querySelector('button');
+    if (saveBannerClose) saveBannerClose.addEventListener('click', AppGlobals.dismissSaveError);
+  }
+}
 
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 Object.assign(window.AppGlobals, {
@@ -154,4 +203,5 @@ Object.assign(window.AppGlobals, {
   applyTheme: applyTheme,
   toggleTheme: toggleTheme,
   initTheme: initTheme,
+  initUIBindings: initUIBindings,
 });

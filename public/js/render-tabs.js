@@ -298,6 +298,14 @@
       }
       var vf = document.getElementById('version_footer');
       if (vf) vf.textContent = APP_VERSION + ' · ' + APP_BUILD_DATE;
+      // Issue #418 Welle 1: Bindings-Registrierung NACH DOMContentLoaded.
+      // Idempotent — ein zweiter Aufruf (z.B. Cross-Tab-Sync-Pfad) ist ein
+      // No-op. Bewusst nach renderDashboard()/renderTabs(), damit Handler-
+      // Module (settings, reset, drill, …) ihre AppGlobals-Exporte bereits
+      // registriert haben.
+      if (typeof AppGlobals.initUIBindings === 'function') {
+        AppGlobals.initUIBindings();
+      }
     }
 
     // --- Confirm Remove Tab ---

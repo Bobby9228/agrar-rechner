@@ -17,7 +17,7 @@
   <div class="app-layout">
     <div id="save_error_banner" class="save-error-banner" style="display:none">
       <span>⚠️ <strong>Speichern fehlgeschlagen</strong> — localStorage voll. Daten gehen bei Neuladung verloren!</span>
-      <button onclick="dismissSaveError()" aria-label="Schließen">✕</button>
+      <button aria-label="Schließen">✕</button>
     </div>
     <!-- Dashboard-Sheet ("Übersicht") lebt jetzt HIER als echtes Flex-Geschwister
          von .scrollable-content (statt position:fixed außerhalb von
@@ -31,7 +31,7 @@
           <p class="subtitle eyebrow">Einheiten &amp; Dünger für Aussaat</p>
           <h1>🌾 Agrar-Rechner</h1>
         </div>
-        <button class="theme-toggle" onclick="toggleTheme()" id="dashboard_theme_toggle" aria-label="Dark Mode umschalten">🌙</button>
+        <button class="theme-toggle" id="dashboard_theme_toggle" aria-label="Dark Mode umschalten">🌙</button>
       </div>
       <div class="dashboard-content" id="dashboard_content"></div>
     </div>
@@ -48,8 +48,8 @@
           <span class="kultur-badge-label" id="kultur_badge_label">Mais</span>
           <button class="kultur-badge-change" id="kultur_badge_change" onclick="requestChangeKultur()" aria-label="Kultur wechseln">ändern</button>
         </div>
-        <button class="theme-toggle" onclick="toggleTheme()" id="theme_toggle" aria-label="Dark Mode umschalten">🌙</button>
-        <button class="dashboard-open-btn" onclick="openDashboard()">📊 Dashboard</button>
+        <button class="theme-toggle" id="theme_toggle" aria-label="Dark Mode umschalten">🌙</button>
+        <button class="dashboard-open-btn" id="dashboard_open_btn">📊 Dashboard</button>
       </div>
     </div>
 
@@ -57,7 +57,7 @@
     <div class="tab-bar" id="tab_bar">
       <div class="tab-bar-left" id="tab_bar_left"><button class="tab-add" onclick="addReiter()">+ Tab</button></div>
       <div class="tab-separator"></div>
-      <button class="tab-btn protokoll-tab" id="protokoll_tab_btn" onclick="switchToProtokoll()">🔧 Protokoll</button>
+      <button class="tab-btn protokoll-tab" id="protokoll_tab_btn">🔧 Protokoll</button>
     </div>
 
     <div class="card card-input" id="card_input">
@@ -290,9 +290,9 @@
     </div><!-- end .scrollable-content -->
 
     <nav class="bottom-nav">
-      <button class="nav-btn" id="nav_rechner" onclick="switchToRechner()"><span class="ic">🌾</span>Rechner</button>
-      <button class="nav-btn" id="nav_protokoll" onclick="switchToProtokoll()"><span class="ic">🔧</span>Protokoll</button>
-      <button class="nav-btn" id="nav_uebersicht" onclick="openDashboard()"><span class="ic">📊</span>Übersicht</button>
+      <button class="nav-btn" id="nav_rechner"><span class="ic">🌾</span>Rechner</button>
+      <button class="nav-btn" id="nav_protokoll"><span class="ic">🔧</span>Protokoll</button>
+      <button class="nav-btn" id="nav_uebersicht"><span class="ic">📊</span>Übersicht</button>
     </nav>
   </div><!-- end .app-layout -->
 
@@ -425,7 +425,7 @@
   <script src="js/main.js"></script>
   <!-- Dashboard-Overlay: nur noch als leeres Backdrop-Element für Alt-Tests
        erhalten (.dashboard-sheet selbst liegt jetzt oben in .app-layout). -->
-  <div class="dashboard-overlay" id="dashboard_overlay" onclick="closeDashboard()"></div>
+  <div class="dashboard-overlay" id="dashboard_overlay"></div>
   <!-- Lokales Protokoll-Redesign: Action-Sheet (Bottom-Sheet) statt roter X.
        Löschbestätigung mit "Buchung löschen" und "Abbrechen". -->
   <div class="lp-sheet-backdrop" id="local_protocol_sheet_backdrop" hidden></div>
