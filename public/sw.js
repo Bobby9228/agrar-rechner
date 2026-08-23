@@ -1,18 +1,16 @@
-// ⚠️ CACHE_VERSION muss bei jedem Release manuell gebumpet werden!
-// Bei Vergessen bekommen Nutzer die alte Version aus dem Cache.
-// alternativa: Build-Script das Hash/Zeitstempel injiziert.
-// CACHE_VERSION dient nur noch als Namespace für den Offline-Fallback-Cache.
-// Seit der Umstellung auf network-first (siehe fetch-Handler unten) MUSS
-// dieser Wert nicht mehr manuell gebumpt werden, damit Nutzer Updates sehen —
-// das war die Ursache wiederholter Stale-Cache-Probleme. Ein Bump hier räumt
-// nur noch alte Offline-Caches auf, ist für sichtbare Updates nicht mehr nötig.
+// CACHE_VERSION ist der Namespace des Offline-Fallback-Caches. Bei jedem
+// Release wird sie gebumpet, damit der activate-Handler (siehe unten) alte
+// Caches aufräumt. Für sichtbare Updates ist der Bump NICHT mehr nötig —
+// der fetch-Handler ist network-first (Network schlägt Cache), Nutzer sehen
+// also bei jedem Online-Besuch sofort die neue Version. Der Bump räumt
+// nur noch den Offline-Fallback-Cache auf.
 const CACHE_VERSION = 'agrar-rechner-v51';
 // STATIC_ASSETS muss exakt zu den lokalen Produktions-Assets aus index.html
 // passen, damit eine frische PWA-Installation (oder ein Update-SW) beim
 // ersten Offline-Restart alle Bootstrap-Dateien im Cache hat. Kongruenz wird
 // durch tests/37-deploy-sanity.test.js abgesichert (lokale <script src>/
-// <link href> + apple-touch-icon/manifest gegen STATIC_ASSETS, externe
-// Google-Fonts sind explizit außerhalb des Precache-Vertrags).
+// <link href> + apple-touch-icon/manifest + self-gehostete Fonts in
+// public/fonts/ gegen STATIC_ASSETS).
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -36,6 +34,18 @@ const STATIC_ASSETS = [
     '/js/render-local-protocol.js?v=3',
     '/js/data-io-handlers.js',
     '/js/main.js',
+    '/fonts/inter-400-latin.woff2',
+    '/fonts/inter-400-latin-ext.woff2',
+    '/fonts/inter-500-latin.woff2',
+    '/fonts/inter-500-latin-ext.woff2',
+    '/fonts/inter-600-latin.woff2',
+    '/fonts/inter-600-latin-ext.woff2',
+    '/fonts/inter-700-latin.woff2',
+    '/fonts/inter-700-latin-ext.woff2',
+    '/fonts/source-serif-4-600-latin.woff2',
+    '/fonts/source-serif-4-600-latin-ext.woff2',
+    '/fonts/source-serif-4-700-latin.woff2',
+    '/fonts/source-serif-4-700-latin-ext.woff2',
     '/icon.svg',
     '/icon-180.png',
     '/manifest.json',
