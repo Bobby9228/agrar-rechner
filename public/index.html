@@ -214,22 +214,22 @@
         <div class="drill-machine-row">
           <div class="field">
             <label for="drill_einheit">Maschine eingefüllt (Einheiten)</label>
-            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_einheit" placeholder="z.B. 4" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal', event)">
+            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_einheit" placeholder="z.B. 4">
           </div>
           <div class="field">
             <label for="drill_duenger">Maschine eingefüllt (Dünger kg)</label>
-            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_duenger" placeholder="z.B. 200" oninput="drillCalcDebounced(); onInputFormat(this, 'decimal', event)">
+            <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_duenger" placeholder="z.B. 200">
           </div>
         </div>
         <div class="field">
           <label for="drill_hektar">Zählerstand (ha)</label>
-          <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_hektar" placeholder="z.B. 5,2" oninput="onInputFormat(this, 'decimal', event)">
+          <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="drill_hektar" placeholder="z.B. 5,2">
         </div>
         <div class="drill-tabs-section">
           <div class="drill-tabs-header">Aufteilen auf (Klick = Prio: 1 → 2 → 3 → aus):</div>
           <div id="drill_tab_list"></div>
         </div>
-        <button class="btn-add" onclick="drillAdd()">+ Einfüllen</button>
+        <button class="btn-add">+ Einfüllen</button>
       </div>
       <div id="drill_summary" class="drill-summary" style="display:none">
         <div id="ds_total_summary" class="drill-total-summary" style="display:none"></div>

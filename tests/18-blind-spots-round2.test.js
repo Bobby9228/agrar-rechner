@@ -696,16 +696,16 @@ describe('renderDrillTabList()', () => {
     w.renderDrillTabList();
 
     // 0 → 1
-    doc.getElementById('dtl_prio_0').onclick();
+    doc.getElementById('dtl_prio_0').click();
     expect(doc.getElementById('dtl_prio_0').getAttribute('data-prio')).toBe('1');
     expect(doc.getElementById('dtl_prio_0').classList.contains('active')).toBe(true);
 
     // 1 → 2
-    doc.getElementById('dtl_prio_0').onclick();
+    doc.getElementById('dtl_prio_0').click();
     expect(doc.getElementById('dtl_prio_0').getAttribute('data-prio')).toBe('2');
 
     // 2 → 0
-    doc.getElementById('dtl_prio_0').onclick();
+    doc.getElementById('dtl_prio_0').click();
     expect(doc.getElementById('dtl_prio_0').getAttribute('data-prio')).toBe('0');
     expect(doc.getElementById('dtl_prio_0').classList.contains('active')).toBe(false);
   });
@@ -718,11 +718,11 @@ describe('renderDrillTabList()', () => {
     w.renderDrillTabList();
 
     expect(doc.getElementById('dtl_prio_0').classList.contains('active')).toBe(false);
-    doc.getElementById('dtl_prio_0').onclick();
+    doc.getElementById('dtl_prio_0').click();
     expect(doc.getElementById('dtl_prio_0').classList.contains('active')).toBe(true);
-    doc.getElementById('dtl_prio_0').onclick(); // 1 → 2
+    doc.getElementById('dtl_prio_0').click(); // 1 → 2
     expect(doc.getElementById('dtl_prio_0').classList.contains('active')).toBe(true);
-    doc.getElementById('dtl_prio_0').onclick(); // 2 → 0
+    doc.getElementById('dtl_prio_0').click(); // 2 → 0
     expect(doc.getElementById('dtl_prio_0').classList.contains('active')).toBe(false);
   });
 
@@ -752,7 +752,7 @@ describe('renderDrillTabList()', () => {
     w.state.drillPriorities = { 1: 1 };
     doc.getElementById('drill_einheit').value = '5';
     doc.getElementById('drill_duenger').value = '';
-    doc.getElementById('dtl_prio_0').onclick(); // sets prio 0 → 1, calls drillCalcAll
+    doc.getElementById('dtl_prio_0').click(); // sets prio 0 → 1, calls drillCalcAll
     expect(doc.getElementById('dtl_e_0').value).toBe('5,000');
   });
 });

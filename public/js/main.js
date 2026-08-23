@@ -233,6 +233,31 @@ function initUIBindings() {
   // Settings-Toggles: reine click-Handler, kein input.
   _bindClick('einheit_groesse_toggle', AppGlobals.einheitGroesseToggle);
   _bindClick('fahrgassen_toggle', AppGlobals.fahrgassenToggle);
+
+  // Drill-Eingabefelder + "+ Einfüllen" (Welle 3).
+  // drill_einheit / drill_duenger feuern drillCalcDebounced + Live-Format.
+  // drill_hektar feuert NUR Live-Format (kein State-Write — der Wert wird
+  // erst beim "+ Einfüllen"-Klick in den Entry übernommen, siehe
+  // _parseDrillInputs in drill-handlers.js).
+  function _bindDrillInput(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', function(e) {
+      if (id === 'drill_einheit' || id === 'drill_duenger') {
+        AppGlobals.drillCalcDebounced();
+      }
+      AppGlobals.onInputFormat(el, 'decimal', e);
+    });
+  }
+  _bindDrillInput('drill_einheit');
+  _bindDrillInput('drill_duenger');
+  _bindDrillInput('drill_hektar');
+  // "+ Einfüllen" — der statische Button im HTML. Innerhalb von
+  // .drill_mask; nur einer existiert. Dynamische Drill-Buttons
+  // (prioBtn, doneBtn, removeBtn) werden in render-drill.js beim
+  // Erzeugen gebunden — siehe Welle 5.
+  var drillAddBtn = document.querySelector('#drill_mask .btn-add');
+  if (drillAddBtn) drillAddBtn.addEventListener('click', AppGlobals.drillAdd);
 }
 
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
