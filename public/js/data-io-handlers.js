@@ -462,22 +462,15 @@ function triggerImportClick() {
 }
 
 function initDataExportImport() {
-  var exportBtn = document.getElementById('data_export_btn');
-  if (exportBtn) exportBtn.addEventListener('click', exportData);
-  var importBtn = document.getElementById('data_import_btn');
-  if (importBtn) importBtn.addEventListener('click', triggerImportClick);
-  var fileInput = document.getElementById('data_import_file');
-  if (fileInput) fileInput.addEventListener('change', onImportFileChange);
-  var confirmBtn = document.getElementById('import_modal_confirm');
-  if (confirmBtn) confirmBtn.addEventListener('click', confirmImportFromModal);
-  var cancelBtn = document.getElementById('import_modal_cancel');
-  if (cancelBtn) cancelBtn.addEventListener('click', cancelImportFromModal);
-  var xBtn = document.getElementById('import_modal_x');
-  if (xBtn) xBtn.addEventListener('click', cancelImportFromModal);
-  var overlay = document.getElementById('import_overlay');
-  if (overlay) overlay.addEventListener('click', function (e) {
-    if (e && e.target && e.target.id === 'import_overlay') cancelImportFromModal();
-  });
+  // Issue #418 Welle 4: Die DOM-Event-Bindings (data_export_btn, data_import_btn,
+  // data_import_file, import_modal_x, import_modal_cancel, import_modal_confirm,
+  // import_overlay) leben jetzt zentral in main.js → initUIBindings() — dort
+  // sind sie idempotent und neben allen anderen App-Shell-Bindings
+  // dokumentiert. Doppel-Bindings wurden vermieden, indem initDataExportImport
+  // hier KEIN addEventListener mehr aufruft. Die Funktion bleibt auf
+  // AppGlobals registriert, weil sie in der Test-Suite (tests/96) als
+  // Modul-API-Vertrag geprüft wird — und weil ein zukünftiger Aufrufer aus
+  // einem Bootstrap-Pfad sie weiterhin erwarten darf (siehe AGENTS.md).
 }
 
 Object.assign(window.AppGlobals, {

@@ -46,7 +46,7 @@
         <div class="kultur-badge" id="kultur_badge" hidden>
           <span class="kultur-badge-emoji" id="kultur_badge_emoji" aria-hidden="true">🌽</span>
           <span class="kultur-badge-label" id="kultur_badge_label">Mais</span>
-          <button class="kultur-badge-change" id="kultur_badge_change" onclick="requestChangeKultur()" aria-label="Kultur wechseln">ändern</button>
+          <button class="kultur-badge-change" id="kultur_badge_change" aria-label="Kultur wechseln">ändern</button>
         </div>
         <button class="theme-toggle" id="theme_toggle" aria-label="Dark Mode umschalten">🌙</button>
         <button class="dashboard-open-btn" id="dashboard_open_btn">📊 Dashboard</button>
@@ -267,8 +267,8 @@
          Die Gesamtbilanz steht bewusst darüber (siehe local_protocol_balance_section). -->
     <section class="local-protocol" id="local_protocol_section" aria-label="Lokales Protokoll" hidden>
       <div class="lp-view-switch" role="tablist" aria-label="Protokoll auswählen">
-        <button type="button" id="lp_view_fields_btn" class="lp-view-tab active" role="tab" aria-selected="true" aria-controls="local_protocol_fields_panel" onclick="AppGlobals.setProtocolView('fields')">Schläge</button>
-        <button type="button" id="lp_view_machine_btn" class="lp-view-tab" role="tab" aria-selected="false" aria-controls="local_protocol_machine_panel" onclick="AppGlobals.setProtocolView('machine')">Maschine</button>
+        <button type="button" id="lp_view_fields_btn" class="lp-view-tab active" role="tab" aria-selected="true" aria-controls="local_protocol_fields_panel">Schläge</button>
+        <button type="button" id="lp_view_machine_btn" class="lp-view-tab" role="tab" aria-selected="false" aria-controls="local_protocol_machine_panel">Maschine</button>
       </div>
       <section id="local_protocol_fields_panel" class="lp-panel" role="tabpanel" aria-labelledby="lp_view_fields_btn"></section>
       <section id="local_protocol_machine_panel" class="lp-panel lp-machine-panel" role="tabpanel" aria-labelledby="lp_view_machine_btn" hidden></section>
@@ -284,7 +284,7 @@
         <input type="file" id="data_import_file" accept="application/json,.json" hidden>
         <div class="data-io-status" id="data_io_status" role="status" aria-live="polite"></div>
       </div>
-      <button class="footer-reset-btn" onclick="openResetModal()" aria-label="Daten zurücksetzen">🗑️ Daten zurücksetzen</button>
+      <button class="footer-reset-btn" id="footer_reset_btn" aria-label="Daten zurücksetzen">🗑️ Daten zurücksetzen</button>
     </div>
 
     </div><!-- end .scrollable-content -->
@@ -431,8 +431,8 @@
   <div class="lp-sheet-backdrop" id="local_protocol_sheet_backdrop" hidden></div>
   <div class="lp-action-sheet" id="local_protocol_action_sheet" role="dialog" aria-modal="true" aria-labelledby="local_protocol_sheet_label" hidden>
     <p class="lp-sheet-label" id="local_protocol_sheet_label">Buchung auswählen</p>
-    <button type="button" class="lp-sheet-button danger" id="local_protocol_sheet_delete" onclick="AppGlobals.confirmLocalProtocolDelete()">Buchung löschen</button>
-    <button type="button" class="lp-sheet-button cancel" id="local_protocol_sheet_cancel" onclick="AppGlobals.closeLocalProtocolSheet()">Abbrechen</button>
+    <button type="button" class="lp-sheet-button danger" id="local_protocol_sheet_delete">Buchung löschen</button>
+    <button type="button" class="lp-sheet-button cancel" id="local_protocol_sheet_cancel">Abbrechen</button>
   </div>
   <!-- Kultur-Auswahl (Erststart, verpflichtend) -->
   <div class="kultur-overlay" id="kultur_overlay" aria-hidden="true"></div>
@@ -440,19 +440,19 @@
     <div class="kultur-modal-badge" aria-hidden="true">🌾</div>
     <h2 class="kultur-modal-title" id="kultur_modal_title">Welche Kultur planst du?</h2>
     <div class="kultur-options">
-      <button class="kultur-option" id="kultur_choice_mais" onclick="chooseKultur('mais')" aria-label="Kultur Mais wählen">
+      <button class="kultur-option" id="kultur_choice_mais" aria-label="Kultur Mais wählen">
         <span class="kultur-option-icon" aria-hidden="true">🌽</span>
         <span class="kultur-option-body">
           <span class="kultur-option-title">Mais</span>
         </span>
       </button>
-      <button class="kultur-option" id="kultur_choice_raps" onclick="chooseKultur('raps')" aria-label="Kultur Raps wählen">
+      <button class="kultur-option" id="kultur_choice_raps" aria-label="Kultur Raps wählen">
         <span class="kultur-option-icon" aria-hidden="true">🌼</span>
         <span class="kultur-option-body">
           <span class="kultur-option-title">Raps</span>
         </span>
       </button>
-      <button class="kultur-option" id="kultur_choice_sonstiges" onclick="chooseKultur('sonstiges')" aria-label="Kultur Sonstiges wählen">
+      <button class="kultur-option" id="kultur_choice_sonstiges" aria-label="Kultur Sonstiges wählen">
         <span class="kultur-option-icon" aria-hidden="true">🌱</span>
         <span class="kultur-option-body">
           <span class="kultur-option-title">Sonstiges</span>
@@ -464,7 +464,7 @@
   <!-- Kultur-Wechsel Confirm (für spätere Änderung) -->
   <div class="kultur-confirm-overlay" id="kultur_confirm_overlay" aria-hidden="true"></div>
   <div class="kultur-confirm-modal" id="kultur_confirm_modal" role="alertdialog" aria-modal="true" aria-labelledby="kultur_confirm_title" aria-describedby="kultur_confirm_desc" hidden>
-    <button class="kultur-confirm-x" id="kultur_confirm_cancel" onclick="cancelChangeKultur()" aria-label="Abbrechen">✕</button>
+    <button class="kultur-confirm-x" id="kultur_confirm_cancel" aria-label="Abbrechen">✕</button>
     <div class="kultur-confirm-badge" aria-hidden="true">⚠️</div>
     <h2 class="kultur-confirm-title" id="kultur_confirm_title">Kultur wirklich wechseln?</h2>
     <p class="kultur-confirm-desc" id="kultur_confirm_desc">
@@ -473,18 +473,18 @@
       und <strong>künftige neue Schläge</strong> erhalten den neuen Standard.
     </p>
     <label class="kultur-confirm-select-label" for="kultur_change_select">Neue Kultur</label>
-    <select id="kultur_change_select" class="kultur-confirm-select" onchange="_onKulturChangeSelectChange(this)" aria-label="Neue Kultur auswählen">
+    <select id="kultur_change_select" class="kultur-confirm-select" aria-label="Neue Kultur auswählen">
       <option value="mais">🌽 Mais</option>
       <option value="raps">🌼 Raps</option>
       <option value="sonstiges">🌱 Sonstiges</option>
     </select>
     <div class="kultur-confirm-actions">
-      <button class="kultur-confirm-cancel" id="kultur_confirm_cancel_btn" onclick="cancelChangeKultur()">Abbrechen</button>
-      <button class="kultur-confirm-ok" id="kultur_confirm_ok" onclick="confirmChangeKultur()">Trotzdem wechseln</button>
+      <button class="kultur-confirm-cancel" id="kultur_confirm_cancel_btn">Abbrechen</button>
+      <button class="kultur-confirm-ok" id="kultur_confirm_ok">Trotzdem wechseln</button>
     </div>
   </div>
   <!-- Reset Confirmation Modal (Issue #236, redesign v3) -->
-  <div class="reset-overlay" id="reset_overlay" onclick="_onOverlayClick(event)"></div>
+  <div class="reset-overlay" id="reset_overlay"></div>
   <!-- Daten-Import Vorschau-Modal (IDEAS.md „Daten exportieren/importieren") -->
   <div class="import-overlay" id="import_overlay" aria-hidden="true"></div>
   <div class="import-modal" id="import_modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="import_modal_title" aria-describedby="import_modal_desc" hidden>
@@ -501,21 +501,21 @@
     </div>
   </div>
   <div class="reset-modal" id="reset_modal" role="dialog" aria-modal="true" aria-labelledby="reset_modal_title" aria-describedby="reset_modal_desc">
-    <button class="reset-modal-x" id="reset_modal_cancel" onclick="_onCancel()" aria-label="Schließen">✕</button>
+    <button class="reset-modal-x" id="reset_modal_cancel" aria-label="Schließen">✕</button>
     <div class="reset-modal-badge" aria-hidden="true">⚠️</div>
     <h2 class="reset-modal-title" id="reset_modal_title">Daten zurücksetzen</h2>
     <p class="reset-modal-subtitle" id="reset_modal_desc">
       Wähle, was zurückgesetzt werden soll. Diese Aktion kann nicht rückgängig gemacht werden.
     </p>
     <div class="reset-options">
-      <button class="reset-option reset-option-tab" id="reset_modal_tab" onclick="_onResetTab()">
+      <button class="reset-option reset-option-tab" id="reset_modal_tab">
         <span class="reset-option-icon" aria-hidden="true">🗂️</span>
         <span class="reset-option-body">
           <span class="reset-option-title">Aktuellen Tab</span>
           <span class="reset-option-desc" id="reset_modal_tab_ctx">Leert Felder &amp; Protokoll dieses Tabs</span>
         </span>
       </button>
-      <button class="reset-option reset-option-all" id="reset_modal_confirm_all" onclick="_onResetAll()">
+      <button class="reset-option reset-option-all" id="reset_modal_confirm_all">
         <span class="reset-option-icon" aria-hidden="true">🗑️</span>
         <span class="reset-option-body">
           <span class="reset-option-title">Alle Daten löschen</span>
@@ -523,7 +523,7 @@
         </span>
       </button>
     </div>
-    <button class="reset-modal-cancel" onclick="_onCancel()">Abbrechen</button>
+    <button class="reset-modal-cancel">Abbrechen</button>
   </div>
 </body>
 </html>

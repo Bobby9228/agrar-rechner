@@ -258,6 +258,68 @@ function initUIBindings() {
   // Erzeugen gebunden — siehe Welle 5.
   var drillAddBtn = document.querySelector('#drill_mask .btn-add');
   if (drillAddBtn) drillAddBtn.addEventListener('click', AppGlobals.drillAdd);
+
+  // Footer Reset / Daten-I/O
+  _bindClick('footer_reset_btn', AppGlobals.openResetModal);
+  // Footer Daten-I/O (data_export_btn, data_import_btn, data_import_file,
+  // import_modal_*) bleibt in initDataExportImport (data-io-handlers.js).
+  // Welle 4 zieht die letzten drei hierher um — danach bleibt in
+  // initDataExportImport nur noch die Konstanten/Funktionen-Registrierung
+  // übrig (die Buttons selbst wandern hier in initUIBindings).
+  _bindClick('import_modal_x', AppGlobals.cancelImportFromModal);
+  _bindClick('import_modal_cancel', AppGlobals.cancelImportFromModal);
+  _bindClick('import_modal_confirm', AppGlobals.confirmImportFromModal);
+  var importOverlay = document.getElementById('import_overlay');
+  if (importOverlay) {
+    importOverlay.addEventListener('click', function(e) {
+      if (e && e.target && e.target.id === 'import_overlay') {
+        AppGlobals.cancelImportFromModal();
+      }
+    });
+  }
+
+  // Reset-Modal
+  _bindClick('reset_modal_x', AppGlobals._onCancel);
+  _bindClick('reset_modal_cancel', AppGlobals._onCancel);
+  _bindClick('reset_modal_tab', AppGlobals._onResetTab);
+  _bindClick('reset_modal_confirm_all', AppGlobals._onResetAll);
+  // Der zweite "Abbrechen"-Button innerhalb des Reset-Modals (ohne ID
+  // im Markup) — querySelector innerhalb des Modals.
+  var resetModal = document.getElementById('reset_modal');
+  if (resetModal) {
+    var cancelButtons = resetModal.querySelectorAll('button.reset-modal-cancel');
+    for (var rci = 0; rci < cancelButtons.length; rci++) {
+      cancelButtons[rci].addEventListener('click', AppGlobals._onCancel);
+    }
+  }
+  // reset_overlay: Klick auf Overlay schließt das Modal (nur wenn direkt
+  // auf das Overlay geklickt, nicht auf ein Kind-Element — _onOverlayClick
+  // enthält genau diese Logik).
+  var resetOverlay = document.getElementById('reset_overlay');
+  if (resetOverlay) {
+    resetOverlay.addEventListener('click', AppGlobals._onOverlayClick);
+  }
+
+  // Kultur-Auswahl (Erststart + Wechsel)
+  _bindClick('kultur_choice_mais', function() { AppGlobals.chooseKultur('mais'); });
+  _bindClick('kultur_choice_raps', function() { AppGlobals.chooseKultur('raps'); });
+  _bindClick('kultur_choice_sonstiges', function() { AppGlobals.chooseKultur('sonstiges'); });
+  _bindClick('kultur_badge_change', AppGlobals.requestChangeKultur);
+  _bindClick('kultur_confirm_cancel', AppGlobals.cancelChangeKultur);
+  _bindClick('kultur_confirm_cancel_btn', AppGlobals.cancelChangeKultur);
+  _bindClick('kultur_confirm_ok', AppGlobals.confirmChangeKultur);
+  var kulturChangeSelect = document.getElementById('kultur_change_select');
+  if (kulturChangeSelect) {
+    kulturChangeSelect.addEventListener('change', function(e) {
+      AppGlobals._onKulturChangeSelectChange(e.target);
+    });
+  }
+
+  // Lokales Protokoll — View-Toggle + Action-Sheet
+  _bindClick('lp_view_fields_btn', function() { AppGlobals.setProtocolView('fields'); });
+  _bindClick('lp_view_machine_btn', function() { AppGlobals.setProtocolView('machine'); });
+  _bindClick('local_protocol_sheet_delete', AppGlobals.confirmLocalProtocolDelete);
+  _bindClick('local_protocol_sheet_cancel', AppGlobals.closeLocalProtocolSheet);
 }
 
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
