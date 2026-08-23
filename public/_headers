@@ -1,6 +1,15 @@
-# CSP ist permissiv wegen inline-event-handlern (siehe Deep Dive §6.1). Migration auf addEventListener steht aus.
+# CSP nach Issue #418/#436: keine Inline-Event-Handler mehr in index.html,
+# daher kommt script-src OHNE 'unsafe-inline' aus (real getestet unter der
+# gehärteten Policy: keine CSP-Verletzungen, alle Flows funktional).
+#
+# WICHTIG (Regressionsschutz): Die Pfad-Zeile "/*" unter diesem Kommentar
+# ist PFLICHT — Cloudflare parst die Datei streng ("Expected a path before
+# headers", Code 100324). Beim Kommentar-Umbau in #418 Welle 6 wurde sie
+# versehentlich gelöscht und ALLE Workers-Builds brachen deterministisch
+# (siehe Issue #436). tests/37-deploy-sanity.test.js stellt sicher, dass
+# jede Header-Zeile eine Pfad-Zeile hat.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
   X-Content-Type-Options: nosniff
@@ -14,13 +23,13 @@
 /js/*.js
   Cache-Control: no-cache
 
+/fonts/*.woff2
+  Cache-Control: public, max-age=604800
+
 /*.png
   Cache-Control: public, max-age=604800
 
 /*.svg
-  Cache-Control: public, max-age=604800
-
-/fonts/*.woff2
   Cache-Control: public, max-age=604800
 
 /manifest.json
