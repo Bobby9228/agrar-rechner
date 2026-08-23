@@ -1,6 +1,6 @@
 # Agrar-Rechner — Dokumentation
 
-> Stand: `e62a37e` · 425 Commits · 3.601 LOC prod JS · 10.762 LOC Tests · 45 Test-Dateien / 771 Tests
+> Stand: `1744697` · 488 Commits · ~7.160 LOC prod JS · ~19.860 LOC Tests · 24 Test-Suiten / 1256 Tests
 
 ## Inhaltsverzeichnis
 
@@ -49,7 +49,7 @@ Der **Agrar-Rechner** ist eine statische Single-Page Progressive Web App (PWA) f
 - **Offline-fähig** (Service Worker mit Network-First-Cache)
 - **Dark Mode** mit System-Präferenz-Erkennung
 - **Persistenz** in `localStorage` mit Cross-Tab-Synchronisierung
-- **45 Test-Dateien, 771 Tests** (Vitest + jsdom)
+- **24 Test-Suiten, 1256 Tests** (Vitest + jsdom, fachliche Suiten ohne Nummern-Präfix)
 
 ---
 
@@ -60,7 +60,7 @@ Der **Agrar-Rechner** ist eine statische Single-Page Progressive Web App (PWA) f
 - **Vanilla JS** — keine Bundler, kein TypeScript, kein Framework. ES5-Syntax mit `var`, split in 9 Module.
 - **Statische PWA** — `index.html` + 1 CSS + 9 JS-Module + `manifest.json` + `sw.js`. Kein Build-Step.
 - **Persistenz** — `localStorage` mit JSON-Serialisierung, eigene Schema-Validierung.
-- **Tests** — Vitest + jsdom, 45 Test-Dateien, 771 Tests.
+- **Tests** — Vitest + jsdom, 24 fachliche Suiten, 1256 Tests.
 
 ### Dateistruktur
 
@@ -72,22 +72,34 @@ agrar-rechner/
 │   ├── sw.js                        # Service Worker (Network-First)
 │   ├── _headers                     # Cloudflare-Pages-Header (Cache + Security)
 │   ├── css/
-│   │   └── styles.css               # 1899 Zeilen, Custom Properties, Dark Mode
-│   ├── js/                          # 9 Module, Lade-Reihenfolge via <script>-Tags
+│   │   └── styles.css               # ~3.180 Zeilen, Custom Properties, Dark Mode, self-hosted Fonts
+│   ├── fonts/                       # WOFF2 (Inter, Source Serif 4) — self-hosted, offline
+│   ├── js/                          # 20 Module, Lade-Reihenfolge via <script>-Tags
 │   │   ├── app-globals.js           # Namespace (AppGlobals), state-Live-Alias
 │   │   ├── state.js                 # state-Objekt, Schema-Validierung, Persistenz
+│   │   ├── culture.js               # Kultur-Profile (Mais/Raps/Sonstiges)
 │   │   ├── calculations.js          # Pure Berechnungen + Carryover-Senken-Modell
-│   │   ├── ui-handlers.js           # Event-Handler: Tabs, Drill, Reset, Input
-│   │   ├── render-tabs.js           # Tab-Bar, Cross-Tab-Sync, Subscriber-Hub
+│   │   ├── culture-handlers.js      # Kultur-Auswahl, -Wechsel, Badge, Empfehlung
+│   │   ├── ui-handlers.js           # UI-Utilities (Einheiten-Editor, Fahrgassen-Toggle)
+│   │   ├── input-handlers.js        # Input-Bindings (onInputFormat, onInputX)
+│   │   ├── settings-handlers.js     # Einstellungen (Einheiten-Größe, Fahrgassen)
+│   │   ├── reset-handlers.js        # Reset-Modal + Reset-Logik
+│   │   ├── drill-handlers.js        # Drill-Verteilung (Prio-Modell), machineLog
+│   │   ├── protocol-handlers.js     # Protokoll-View-Wechsel, Buchungs-Löschung
+│   │   ├── tab-handlers.js          # Tab-Verwaltung (add/remove/switch/rename)
+│   │   ├── render-tabs.js           # Tab-Bar-Rendering, Cross-Tab-Sync, initUI
+│   │   ├── state-coordinator.js     # Zentrale Persistenz+Render-Koordination (#417)
 │   │   ├── render-results.js        # Rechner-Ergebniskarten
-│   │   ├── render-drill.js          # Drill-Protokoll + Maschinen-Log
+│   │   ├── render-drill.js          # Drill-Protokoll + Maschinen-Log (Rendering)
 │   │   ├── render-dashboard.js      # Dashboard-Übersicht aller Felder
+│   │   ├── render-local-protocol.js # Lokales Protokoll (Schläge/Maschine-Tabs)
+│   │   ├── data-io-handlers.js      # Daten-Export/Import (JSON-Envelope)
 │   │   └── main.js                  # Init, Theme, Service-Worker-Registration
 │   └── icon*.{svg,png}              # PWA-Icons
-├── tests/                           # Vitest, 45 Dateien, 771 Tests
-│   ├── helpers.js                   # DOM-Mock, Module-Loader
-│   └── *.test.js                    # Thematisch (manche mit numerischem Präfix)
-├── CODE_DEEP_DIVE.md                # Strukturanalyse (großer Audit-Bericht)
+├── tests/                           # Vitest, 24 Suiten, 1256 Tests
+│   ├── helpers.js                   # DOM-Mock, Module-Loader (spiegelt index.html)
+│   ├── helpers/                     # Thematische Test-Helper (z.B. Invarianten)
+│   └── *.test.js                    # Fachliche Suiten ohne Nummern-Präfix (#419)
 ├── AGENTS.md                        # Working Agreement für AI-Agents
 ├── IDEAS.md                         # Roadmap
 ├── eslint.config.js                 # Flat Config, ESM
@@ -99,13 +111,20 @@ agrar-rechner/
 
 ### Lade-Reihenfolge der JS-Module
 
-Per `<script>`-Tags in `index.html` (Zeile 254-276) — kritisch wegen implizitem Window-Scope und ADR-001-Namespace-Pattern:
+Per `<script>`-Tags am Ende von `index.html` — kritisch wegen implizitem Window-Scope und ADR-001-Namespace-Pattern:
 
 ```
-app-globals.js  →  state.js  →  calculations.js  →  ui-handlers.js
-   →  render-tabs.js  →  render-results.js  →  render-drill.js
-   →  render-dashboard.js  →  main.js
+app-globals.js → state.js → culture.js → calculations.js
+  → culture-handlers.js → ui-handlers.js → input-handlers.js
+  → settings-handlers.js → reset-handlers.js → drill-handlers.js
+  → protocol-handlers.js → tab-handlers.js → render-tabs.js
+  → state-coordinator.js → render-results.js → render-drill.js
+  → render-dashboard.js → render-local-protocol.js
+  → data-io-handlers.js → main.js
 ```
+
+Die Kongruenz dieser Liste mit `index.html` und dem Service-Worker-Precache
+(`STATIC_ASSETS`) wird von `tests/deploy-sanity.test.js` erzwungen.
 
 Jedes Modul registriert seine Exporte am Dateiende via `Object.assign(window.AppGlobals, …)`. Konsumenten greifen über `AppGlobals.funktionName()` zu, nicht über `window.funktionName()`. ADR-001 (Issue #278) dokumentiert die Migration.
 
@@ -114,22 +133,28 @@ Jedes Modul registriert seine Exporte am Dateiende via `Object.assign(window.App
 ```
 User-Input (HTML <input>)          Cross-Tab-Sync
         ↓                                ↓
-onInputFormat / onInputX (ui-handlers)  storage-Event
+onInputFormat / onInputX              storage-Event
+(input-handlers)                       ↓
+        ↓                          AppGlobals.state = remote
+syncStateFromInputs()              (parseAndSanitizeState-Pipeline)
         ↓                                ↓
-syncStateFromInputs()              AppGlobals.state = remote
-        ↓                                ↓
-AppGlobals.state.X = Wert                ↓
-        ↓                                ↓
-appEmit('STATE_CHANGED')                 ↓
-        ↓                                ↓
-appOnStateChange (Subscriber in render-tabs.js)
+AppGlobals.state.X = Wert          direkte Renderer-Aufrufe
+        ↓                          (bewusst KEIN appDispatch,
+appEmit(EVENTTYP)  →  state-coordinator.js (appDispatch)   ↓
+        ↓                          sonst Endlosschleife)
+EVENT_PLAN: persist? + Renderer-Liste
         ↓
 saveState()  →  localStorage
         ↓
-renderTabs() / renderResults() / renderDashboard()
+geplante Renderer (renderTabs / renderResults / renderView / …)
         ↓
 DOM-Update
 ```
+
+Seit #417 entscheidet der `EVENT_PLAN` im `state-coordinator.js` zentral,
+welcher Eventtyp persistiert wird und welche Renderer laufen — Handler und
+Renderer selbst rufen kein `saveState()` mehr auf (einziger dokumentierter
+Sonderfall: `commitImportedState` beim Daten-Import).
 
 ---
 
@@ -162,7 +187,7 @@ var state = {
 
 ### Schema-Validierung
 
-`loadState()` parst jede gespeicherte State-Datei durch eine mehrstufige Validierungspipeline (`state.js:124-230`):
+`loadState()` parst jede gespeicherte State-Datei durch eine mehrstufige Validierungspipeline (in `state.js`):
 
 - `sanitizeNumber(v, fallback)` — Number + Finite + NaN-Guard
 - `sanitizeString(v, fallback, maxLen)` — String + Length-Limit (verhindert Memory-Bomb)
@@ -204,7 +229,7 @@ Dünger/Einheit =  duenger × koernerProEinheit / koerner   (kg pro Einheit Saat
 
 ### Reaktive Eingabe-Verarbeitung
 
-`onInputFormat(el, mode, e)` (in `ui-handlers.js:828`) verarbeitet Tastendrücke in Input-Feldern mit `inputmode="decimal"`:
+`onInputFormat(el, mode, e)` (in `input-handlers.js`) verarbeitet Tastendrücke in Input-Feldern mit `inputmode="decimal"`:
 
 - **Integer-Modus** (Körner/ha): nur Ziffern behalten
 - **Decimal-Modus** (Hektar, Dünger): Ziffern + genau ein Komma
@@ -232,7 +257,7 @@ Dünger/Einheit =  duenger × koernerProEinheit / koerner   (kg pro Einheit Saat
 
 ## Tab-Verwaltung
 
-`ui-handlers.js` und `render-tabs.js` kümmern sich um die Tab-Bar.
+`render-tabs.js` kümmert sich um die Tab-Bar (Rendering + `fitTabNames`), `tab-handlers.js` um die Fachlogik (add/remove/switch/rename).
 
 ### Tab-Operationen
 
@@ -248,7 +273,7 @@ Dünger/Einheit =  duenger × koernerProEinheit / koerner   (kg pro Einheit Saat
 
 ### Tab-Namen
 
-Tab-Namen sind **`span[contenteditable]`** — direktes Bearbeiten per Klick, kein separates Input-Feld. Lange Namen werden per `fitTabNames()` (render-tabs.js:88) automatisch per CSS-`transform: scale()` verkleinert, bis sie in die Tab-Breite passen.
+Tab-Namen sind **`span[contenteditable]`** — direktes Bearbeiten per Klick, kein separates Input-Feld. Lange Namen werden per `fitTabNames()` (render-tabs.js) automatisch per CSS-`transform: scale()` verkleinert, bis sie in die Tab-Breite passen.
 
 ### Multi-Tab-Verteilung
 
@@ -293,7 +318,7 @@ Pro Tab. Eintrag-Form:
 
 ### Prognose-Berechnung (Maschinen-Protokoll)
 
-`render-drill.js:495-620` (`renderMachineLog`) zeigt pro Log-Eintrag:
+`renderMachineLog` (in `render-drill.js`) zeigt pro Log-Eintrag:
 - Eingefüllte Einheiten + Dünger
 - Tatsächliche Rate (kg Dünger/Einheit Saat)
 - Soll-Rate (basierend auf `getTabRates`)
@@ -303,7 +328,7 @@ Pro Tab. Eintrag-Form:
 
 ## Carryover-System (Senken-Modell)
 
-> **Algorithmus seit #335/#371/#377:** Senken-Modell (Prio-Workfront). Die alte zweiphasige Vorwärts/Rückwärts-Verteilung wurde entfernt (siehe `tests/19-savings-carryover.test.js:72-79`).
+> **Algorithmus seit #335/#371/#377:** Senken-Modell (Prio-Workfront). Die alte zweiphasige Vorwärts/Rückwärts-Verteilung wurde entfernt (Carryover-Suiten: `tests/carryover.test.js`).
 
 ### Das Problem, das es löst
 
@@ -405,7 +430,7 @@ Globale Konfiguration: `state.koernerProEinheit` (Standard 50.000). Mit Toggle `
 
 ### Migrationen
 
-`migrateLegacyStorageKeys()` (state.js:54) läuft synchron beim Modul-Load (also beim ersten Page-Load):
+`migrateLegacyStorageKeys()` (in `state.js`) läuft synchron beim Modul-Load (also beim ersten Page-Load):
 
 ```javascript
 var LEGACY_KEY_MAP = {
@@ -416,7 +441,7 @@ var LEGACY_KEY_MAP = {
 
 Liest alte Keys, schreibt in neue (falls dort noch nichts), löscht alte. Idempotent.
 
-`parsePersistedState()` (state.js:242) führt Schema-Migrationen durch:
+`parsePersistedState()` (in `state.js`) führt Schema-Migrationen durch:
 - Alte Single-Flat-State-Struktur (ohne Tabs) → neues Tab-Schema
 - Globale `entries` → per-Tab `entries`
 - Fehlende Felder (`machineLog`, `drillPriorities`, `done`, `dashboardOpen`) auf Default-Werte
@@ -427,7 +452,7 @@ Siehe [State → Schema-Validierung](#schema-validierung). Verhindert Crashes be
 
 ### Cross-Tab-Sync
 
-`render-tabs.js:146-160`: Listener auf `window.addEventListener('storage', ...)`. Wenn ein anderer Tab den State schreibt, wird der neue State geladen, aber **die Schema-Validierung aus `loadState()` wird NICHT angewendet** (siehe [Bekannte Limitationen](#bekannte-limitationen) TODO-Eintrag).
+in `render-tabs.js` (`initUI`): Listener auf `window.addEventListener('storage', ...)`. Wenn ein anderer Tab den State schreibt, wird der neue State geladen, aber **die Schema-Validierung aus `loadState()` wird NICHT angewendet** (siehe [Bekannte Limitationen](#bekannte-limitationen) TODO-Eintrag).
 
 ### Quota-Handling
 
@@ -465,7 +490,7 @@ Footer-Button 🗑️ öffnet ein **Reset-Modal** mit zwei Optionen:
 | 🗂️ Tab zurücksetzen | Setzt nur aktiven Tab zurück (Eingaben + Drill-Entries + Carryover-Anteil) |
 | 🗑️ Alles zurücksetzen | Setzt gesamten State auf Defaults (1 Tab „Schlag 1", leer) |
 
-Implementiert in `ui-handlers.js:247-405`. Cancel-Buttons (X, „Abbrechen", Overlay-Click).
+Implementiert in `reset-handlers.js`. Cancel-Buttons (X, „Abbrechen", Overlay-Click).
 
 ---
 
@@ -503,7 +528,7 @@ Wie `fmt()`, aber ohne nachstehendes `,0` für ganze Zahlen (z. B. `5` statt `5,
 
 ## Theme / Dark Mode
 
-- **Initialer Theme-Load** synchron beim Modul-Load (`main.js:117 initTheme()`), um FOUC zu vermeiden.
+- **Initialer Theme-Load** synchron beim Modul-Load (`initTheme()` in `main.js`), um FOUC zu vermeiden.
 - **Reihenfolge**: 1) gespeicherte User-Präferenz (`localStorage['theme']`), 2) `prefers-color-scheme: dark` System-Settings.
 - **Toggle-Buttons** im Header (Rechner-Ansicht) und im Dashboard-Header.
 - **CSS-Variablen** in `:root` für Light, in `html.dark` für Dark. **Keine** `@media (prefers-color-scheme: dark)` — nur die `.dark`-Klasse wird umgeschaltet.
@@ -569,7 +594,7 @@ isTabDone(r)   = (used + carryover_in − carryover_out) ≥ total  (± EPSILON)
 
 ## Testabdeckung
 
-**45 Test-Dateien, 771 Tests** — alle in Vitest+jsdom, laufen via `pnpm test`.
+**24 fachliche Suiten, 1256 Tests** — alle in Vitest+jsdom, laufen via `pnpm test` (seit #419 ohne Nummern-Präfixe: kultur-*, carryover, drill-distribution, app-shell-parity, …).
 
 Die Test-Suite deckt substantiell mehr ab als „happy path":
 
@@ -623,10 +648,9 @@ Deployed als **Cloudflare Pages** (Static Assets), Projekt `agrar-rechner-dev`.
 
 ## Bekannte Limitationen
 
-- **Inline-Event-Handler** (`onclick="…"`) — 19 Stellen in `index.html`. CSP muss daher `script-src 'unsafe-inline'` enthalten. Migration auf `addEventListener` ist offen.
-- **Google Fonts extern** — `fonts.googleapis.com` als einzige externe Abhängigkeit. Bricht offline-first für Fonts (nicht für App selbst). DSGVO-relevant. Self-Hosting offen (siehe `IDEAS.md`).
-- **CSS-Version `?v=18`** an zwei Stellen (`index.html:16` + `sw.js:13`) — Drift-Risiko bei künftigen CSS-Änderungen. Langfristig auf network-first-Cache-Busting umstellen.
-- **Cross-Tab-Sync umgeht Schema-Validierung** (`render-tabs.js:151-159`) — wenn ein anderer Tab korrumpierten State schreibt, wird er ohne `parsePersistedState` übernommen. Fix offen.
+- **`style-src 'unsafe-inline'`** — UI-Module setzen dynamisch `.style.cssText` (z.B. Carryover-Hints). `script-src` kommt seit #418/#436 **ohne** `'unsafe-inline'` aus (keine Inline-Handler mehr, alle Bindings via `addEventListener`).
+- **Cross-Tab-Sync umgeht Teile der Schema-Validierung nicht mehr** — Remote-State läuft seit #418-Ära über dieselbe `parseAndSanitizeState`-Pipeline wie `loadState()`. Verbleibend: ein kompromittierter Tab kann weiterhin gültig aussehenden, aber fachlich falschen State schreiben (kein Signatur-Schutz).
+- **CSS-Version `?v=21`** an mehreren Stellen (`index.html` + `sw.js`) — Drift-Risiko bei künftigen CSS-Änderungen. Langfristig auf network-first-Cache-Busting umstellen.
 - **Touch-Targets teilweise < 44×44 px** — `.tab-close`, `.drill-prio-btn`, `.theme-toggle`, `.reset-modal-x`. WCAG-Verbesserung offen.
 - **WCAG-Kontrast** an einigen Stellen unter 4,5:1 (Placeholder, Dashboard-Statusfarben). Verbesserung offen.
 - **WAI-ARIA Tab-Pattern** unvollständig — kein `role="tablist"`, keine Arrow-Key-Navigation. A11y-Verbesserung offen.
@@ -639,7 +663,7 @@ Deployed als **Cloudflare Pages** (Static Assets), Projekt `agrar-rechner-dev`.
 - **`ui-handlers.js` ist 997-LOC-God-File** — Tab-Mgmt, Drill, Reset, Input-Format in einer Datei. Split offen.
 - **`0.05` Magic-Number** 43× statt Konstante `EPSILON_QUANTITY` — Konsolidierung offen.
 
-Detaillierte Liste mit Datei:Zeile-Referenzen: siehe `CODE_DEEP_DIVE.md`.
+Detaillierte Liste: siehe die jeweiligen Modul-Header-Kommentare in `public/js/`.
 
 ---
 
