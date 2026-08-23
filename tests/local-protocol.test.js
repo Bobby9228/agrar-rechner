@@ -1,3 +1,248 @@
+import { createDom } from './helpers.js';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+import { beforeEach, describe, expect, it } from 'vitest';
+
+/**
+ * Lokales Protokoll (View, Redesign, Notizen-Card, Inline-Redesign)
+ * Zusammengeführt in Issue #419 (Welle 3) aus:
+ * 22-protocol-view.test.js, 84-local-protocol-redesign.test.js, 85-notizen-card-restructure.test.js, 86-inline-protocol-redesign.test.js
+ * Jede Quelldatei ist als eigener describe-Block vollständig
+ * erhalten (nur Import-Zeilen dedupliziert) — keine Assertions
+ * wurden verändert oder entfernt.
+ */
+
+describe('Lokales Protokoll (View, Redesign, Notizen-Card, Inline-Redesign) — übernommen aus 22-protocol-view.test.js', () => {
+/**
+ * Test 22: Protocol view — switchToProtokoll + renderView
+ *
+ * The Protokoll view is a View-Toggle (Issue #291, Pre-#291 pattern): the
+ * 🔧 tab button is NOT a separate tab; it's a view-mode toggle that swaps
+ * the main content between "Feld" (input/results cards) and "Protokoll"
+ * (drill_section). `state.activeView` tracks the current view:
+ *   - 'protokoll' → Protokoll-Ansicht (drill_section sichtbar)
+ *   - null        → Feld-Ansicht (input/results cards sichtbar)
+ *
+ * Tests cover:
+ *   - switchToProtokoll() sets/clears state.activeView
+ *   - renderView() toggles .card visibility (drill_section on, rest off)
+ *   - renderView() hides results even when tab has data, when in protokoll
+ *   - state.activeView roundtrips through localStorage
+ *   - switchReiter() resets activeView to null (Tab-Wechsel beendet Protokoll)
+ */
+
+function getDrillSection(w) { return w.document.getElementById('drill_section'); }
+function getDrillMask(w) { return w.document.getElementById('drill_mask'); }
+function getResults(w) { return w.document.getElementById('results'); }
+function getProtokollBtn(w) { return w.document.getElementById('protokoll_tab_btn'); }
+
+describe('switchToProtokoll()', () => {
+  let w;
+  beforeEach(() => { w = createDom().window; });
+
+  it('switches to protokoll view from field view', () => {
+    w.document.getElementById('hektar').value = '10';
+    w.document.getElementById('koerner').value = '90000';
+    w.syncStateFromInputs();
+    w.renderResults();
+
+    expect(w.state.activeView).toBeNull();
+    w.switchToProtokoll();
+
+    expect(w.state.activeView).toBe('protokoll');
+  });
+
+  it('switches back to field view when already in protokoll', () => {
+    w.switchToProtokoll(); // → protokoll
+    expect(w.state.activeView).toBe('protokoll');
+
+    w.switchToProtokoll(); // → back to null
+    expect(w.state.activeView).toBeNull();
+  });
+
+  it('calls renderDrillTabList when entering protokoll', () => {
+    w.addReiter();
+    w.state.reiter[0].hektar = 10;
+    w.state.reiter[0].koerner = 90000;
+    w.state.reiter[0].duenger = 150;
+    w.saveState();
+
+    w.switchToProtokoll();
+
+    // renderDrillTabList should have created elements
+    expect(w.document.getElementById('dtl_prio_0')).toBeTruthy();
+    expect(w.document.getElementById('dtl_e_0')).toBeTruthy();
+  });
+
+  it('syncs state from inputs before switching', () => {
+    w.document.getElementById('hektar').value = '15';
+    w.document.getElementById('koerner').value = '80000';
+
+    w.switchToProtokoll();
+
+    // syncStateFromInputs reads hektar/koerner inputs into state
+    expect(w.state.reiter[0].hektar).toBe(15);
+    expect(w.state.reiter[0].koerner).toBe(80000);
+  });
+
+  it('persists view state to localStorage', () => {
+    w.document.getElementById('hektar').value = '10';
+    w.document.getElementById('koerner').value = '90000';
+    w.syncStateFromInputs();
+    w.renderResults(); // Ensure state is initialized and sv() works
+
+    w.switchToProtokoll();
+
+    const saved = JSON.parse(w.localStorage.getItem('agrar_rechner'));
+    expect(saved.activeView).toBe('protokoll');
+  });
+
+  it('marks protokoll tab button as active when entering protokoll', () => {
+    w.switchToProtokoll();
+    expect(getProtokollBtn(w).classList.contains('active')).toBe(true);
+  });
+
+  it('unmarks protokoll tab button when leaving protokoll', () => {
+    w.switchToProtokoll();
+    w.switchToProtokoll();
+    expect(getProtokollBtn(w).classList.contains('active')).toBe(false);
+  });
+});
+
+describe('renderView()', () => {
+  let w;
+  beforeEach(() => { w = createDom().window; });
+
+  it('hides all cards except drill_section when in protokoll view', () => {
+    w.document.getElementById('hektar').value = '10';
+    w.document.getElementById('koerner').value = '90000';
+    w.syncStateFromInputs();
+    w.renderResults();
+    w.switchToProtokoll();
+
+    const cards = w.document.querySelectorAll('.card');
+    cards.forEach(c => {
+      if (c.id === 'drill_section') {
+        expect(c.style.display).toBe('block');
+      } else {
+        expect(c.style.display).toBe('none');
+      }
+    });
+  });
+
+  it('hides results in protokoll mode even with data', () => {
+    w.document.getElementById('hektar').value = '10';
+    w.document.getElementById('koerner').value = '90000';
+    w.syncStateFromInputs();
+    w.renderResults();
+
+    w.state.activeView = 'protokoll';
+    w.renderView();
+
+    expect(getResults(w).style.display).toBe('none');
+  });
+
+  it('shows drill section in protokoll mode', () => {
+    w.state.activeView = 'protokoll';
+    w.renderView();
+    expect(getDrillSection(w).style.display).toBe('block');
+  });
+
+  it('shows drill mask in protokoll mode (clears display:none)', () => {
+    w.state.activeView = 'protokoll';
+    w.renderView();
+    // drill_mask starts with style="display:none" in the HTML — renderView
+    // resets it to '' (default) when in protokoll mode
+    expect(getDrillMask(w).style.display).toBe('');
+  });
+
+  it('hides drill section in field mode', () => {
+    w.renderView();
+    expect(getDrillSection(w).style.display).toBe('none');
+  });
+
+  it('shows results in field mode when tab has data', () => {
+    w.document.getElementById('hektar').value = '10';
+    w.document.getElementById('koerner').value = '90000';
+    w.syncStateFromInputs();
+    w.renderResults();
+
+    expect(getResults(w).style.display).toBe('block');
+  });
+
+  it('hides results when no data in field mode', () => {
+    w.renderView();
+    expect(getResults(w).style.display).toBe('none');
+  });
+});
+
+describe('switchReiter resets activeView from protokoll', () => {
+  let w;
+  beforeEach(() => { w = createDom().window; });
+
+  it('switchReiter(0) when in protokoll view returns to field view (same tab)', () => {
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
+    w.switchToProtokoll();
+    expect(w.state.activeView).toBe('protokoll');
+    expect(w.state.activeReiter).toBe(0);
+
+    // Tab-Klick aus dem Protokoll-Tab zurück in den Feld-Tab:
+    // activeView muss null werden, sonst bleibt das Protokoll sichtbar.
+    w.switchReiter(0);
+    expect(w.state.activeView).toBeNull();
+    expect(w.state.activeReiter).toBe(0);
+  });
+
+  it('switchReiter(1) when in protokoll view switches tab AND exits protokoll', () => {
+    w.addReiter();
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 5, koerner: 80000 };
+    w.switchToProtokoll();
+    expect(w.state.activeView).toBe('protokoll');
+
+    w.switchReiter(1);
+    expect(w.state.activeView).toBeNull();
+    expect(w.state.activeReiter).toBe(1);
+  });
+
+  it('switchReiter from protokoll triggers renderView so drill_section hides', () => {
+    w.addReiter();
+    w.state.reiter[0] = { ...w.state.reiter[0], hektar: 10, koerner: 90000 };
+    w.state.reiter[1] = { ...w.state.reiter[1], hektar: 5, koerner: 80000 };
+    w.switchToProtokoll();
+    expect(getDrillSection(w).style.display).toBe('block');
+
+    w.switchReiter(1);
+    // Nach Tab-Wechsel ist drill_section wieder versteckt
+    expect(getDrillSection(w).style.display).toBe('none');
+  });
+});
+
+describe('state.activeView persistence', () => {
+  it('roundtrips activeView=protokoll through localStorage', () => {
+    const { window: w, store } = createDom();
+    w.document.getElementById('hektar').value = '10';
+    w.document.getElementById('koerner').value = '90000';
+    w.syncStateFromInputs();
+    w.renderResults();
+    w.switchToProtokoll();
+    expect(w.state.activeView).toBe('protokoll');
+
+    // Re-read from localStorage
+    const saved = JSON.parse(store['agrar_rechner']);
+    expect(saved.activeView).toBe('protokoll');
+  });
+
+  it('roundtrips activeView=null through localStorage', () => {
+    const { window: w, store } = createDom();
+    w.saveState();
+    const saved = JSON.parse(store['agrar_rechner']);
+    expect(saved.activeView).toBeNull();
+  });
+});
+});
+
+describe('Lokales Protokoll (View, Redesign, Notizen-Card, Inline-Redesign) — übernommen aus 84-local-protocol-redesign.test.js', () => {
 /**
  * Tests für das lokale Protokoll-Redesign (Gesamtbilanz, Tagesgruppen,
  * Accordion, drei-Punkte-Aktion mit Löschbestätigung).
@@ -19,8 +264,6 @@
  *     (oder drillMachineRemove). Löschbestätigung statt direktem ✕.
  *   - Persistent: protocolView/protocolOpenCards überleben localStorage.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
-import { createDom } from './helpers.js';
 
 // ───────────────────────── helpers ─────────────────────────
 //
@@ -1036,4 +1279,752 @@ describe('Lokales Protokoll — Legacy/Orphan-Heuristik (Review-Fix)', () => {
     expect(filled.textContent).toContain('250');
     expect(filled.textContent).not.toContain('450');
   });
+});
+});
+
+describe('Lokales Protokoll (View, Redesign, Notizen-Card, Inline-Redesign) — übernommen aus 85-notizen-card-restructure.test.js', () => {
+/**
+ * Regression tests für die Karten-Restrukturierung (Notizen pro Schlag,
+ * Dünger in die Eingabekarte integriert, IST-Fläche in den
+ * Einstellungsbereich verschoben).
+ *
+ * Abdeckung:
+ *   1) Struktur/Reihenfolge — Reihenfolge der Felder in card_input,
+ *      Existenz + Reihenfolge der Karten (Notizen, Einstellungen) und
+ *      dass die alten IDs (hektar, ist_hektar, koerner, duenger,
+ *      einheit_groesse_*, fahrgassen_*) weiterhin vorhanden sind.
+ *   2) Notiz-Persistenz — saveState() schreibt r.notizen mit,
+ *      loadState() restauriert sie, alte States ohne notizen laden
+ *      sauber durch (Backwards-Compat).
+ *   3) Tab-Wechsel — Notizen werden pro Tab/Reiter separat gespeichert
+ *      und beim Tab-Wechsel via syncInputsFromState() in die textarea
+ *      geladen.
+ *   4) Reset-Pfade — resetActiveTab() und resetAll() leeren die Notiz
+ *      des aktiven Tabs bzw. aller Tabs.
+ */
+
+describe('Karten-Restrukturierung: Struktur & Reihenfolge', () => {
+  let w, doc;
+
+  beforeEach(() => {
+    const { window } = createDom();
+    w = window;
+    doc = w.document;
+  });
+
+  it('Eingabekarte enthält die Pflicht-IDs in der richtigen Reihenfolge', () => {
+    var card = doc.getElementById('card_input');
+    expect(card).toBeTruthy();
+    var ids = ['hektar', 'koerner', 'duenger'];
+    ids.forEach(function(id) {
+      var el = doc.getElementById(id);
+      expect(el, 'Element #' + id + ' fehlt').toBeTruthy();
+      // Element muss ein Nachfahre der Karte sein.
+      expect(card.contains(el), '#' + id + ' muss in #card_input liegen').toBe(true);
+    });
+    // Reihenfolge: Hektar (SOLL) → Körner pro Hektar → Dünger (kg/ha).
+    // Vergleicht zwei Elemente über compareDocumentPosition
+    // (Node.DOCUMENT_POSITION_FOLLOWING = 4): ist `cur` im Dokument
+    // NACH `prev`, liefert das Bit einen Treffer. Robust gegen
+    // unterschiedliche DOM-Tiefen.
+    function follows(prev, cur) {
+      return (prev.compareDocumentPosition(cur) & 4) !== 0;
+    }
+    var he = doc.getElementById('hektar');
+    var ko = doc.getElementById('koerner');
+    var du = doc.getElementById('duenger');
+    expect(follows(he, ko), 'hektar muss vor koerner kommen').toBe(true);
+    expect(follows(ko, du), 'koerner muss vor duenger kommen').toBe(true);
+  });
+
+  it('Es existiert eine separate Notizen-Karte mit textarea#notizen', () => {
+    var card = doc.getElementById('card_notes');
+    expect(card).toBeTruthy();
+    var ta = doc.getElementById('notizen');
+    expect(ta).toBeTruthy();
+    expect(ta.tagName.toLowerCase()).toBe('textarea');
+    expect(card.contains(ta)).toBe(true);
+  });
+
+  it('Es existiert eine separate Einstellungs-Karte (card_settings)', () => {
+    var card = doc.getElementById('card_settings');
+    expect(card).toBeTruthy();
+  });
+
+  it('Einstellungs-Karte enthält IST-Fläche, Einheiten-Größe und Fahrgassen', () => {
+    var card = doc.getElementById('card_settings');
+    expect(card.contains(doc.getElementById('ist_hektar'))).toBe(true);
+    expect(card.contains(doc.getElementById('einheit_groesse_toggle'))).toBe(true);
+    expect(card.contains(doc.getElementById('einheit_groesse_settings'))).toBe(true);
+    expect(card.contains(doc.getElementById('fahrgassen_toggle'))).toBe(true);
+    expect(card.contains(doc.getElementById('fahrgassen_settings'))).toBe(true);
+  });
+
+  it('Reihenfolge in der Einstellungs-Karte: IST-Fläche → Einheiten-Größe → Fahrgassen', () => {
+    function follows(prev, cur) {
+      return (prev.compareDocumentPosition(cur) & 4) !== 0;
+    }
+    var ids = ['ist_hektar', 'einheit_groesse_toggle', 'fahrgassen_toggle'];
+    for (var i = 1; i < ids.length; i++) {
+      var prev = doc.getElementById(ids[i - 1]);
+      var cur = doc.getElementById(ids[i]);
+      expect(follows(prev, cur), ids[i - 1] + ' muss vor ' + ids[i] + ' kommen').toBe(true);
+    }
+  });
+
+  it('Karten-Reihenfolge im DOM: card_input → card_notes → card_settings', () => {
+    function follows(prev, cur) {
+      return (prev.compareDocumentPosition(cur) & 4) !== 0;
+    }
+    expect(follows(doc.getElementById('card_input'), doc.getElementById('card_notes'))).toBe(true);
+    expect(follows(doc.getElementById('card_notes'), doc.getElementById('card_settings'))).toBe(true);
+  });
+
+  it('Es gibt KEINE separate "Dünger"-Karte mehr (Dünger ist integriert)', () => {
+    var cards = doc.querySelectorAll('.card');
+    var duengerCard = false;
+    cards.forEach(function(c) {
+      var h2 = c.querySelector('h2');
+      if (h2 && h2.textContent.indexOf('Dünger') !== -1 && c.id !== 'card_input') {
+        duengerCard = true;
+      }
+    });
+    expect(duengerCard).toBe(false);
+  });
+});
+
+describe('Notiz-Persistenz', () => {
+  let w, doc, store;
+
+  beforeEach(() => {
+    const result = createDom();
+    w = result.window;
+    doc = result.window.document;
+    store = result.store;
+  });
+
+  it('Notiz landet nach saveState() in localStorage und wird korrekt geladen', () => {
+    // Realistischer Round-Trip: vorhandenen Snapshot via loadState()
+    // laden (Migration 0→9 → _lv=9), dann Eingabe + saveState().
+    store['agrar_rechner'] = JSON.stringify({
+      reiter: [{ name: 'Schlag 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [] }],
+      activeReiter: 0,
+      fahrgassenEnabled: false,
+      fahrgassenBreite: 0,
+      einheitGroesseEnabled: false,
+      koernerProEinheit: 50000,
+      machineLog: [],
+      drillPriorities: {}
+    });
+    w.loadState();
+    doc.getElementById('notizen').value = 'Vorgewende nass, Charge 42';
+    w.syncStateFromInputs();
+    w.saveState();
+    var persisted = JSON.parse(store['agrar_rechner']);
+    expect(persisted.reiter[0].notizen).toBe('Vorgewende nass, Charge 42');
+    expect(persisted._lv).toBe(9);
+  });
+
+  it('Reload nach Reload restauriert die Notiz in das textarea-Element', () => {
+    store['agrar_rechner'] = JSON.stringify({
+      _lv: 9,
+      reiter: [{ name: 'X', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], notizen: 'Saatgut Charge 42' }],
+      activeReiter: 0,
+      einheitGroesseEnabled: false,
+      koernerProEinheit: 50000,
+      fahrgassenEnabled: false,
+      fahrgassenBreite: 0,
+      machineLog: [],
+      drillPriorities: {}
+    });
+    w.loadState();
+    // loadState() allein befüllt die Inputs nicht — syncInputsFromState()
+    // ist der Brücken-Pfad state → DOM (genau wie TAB_CHANGED).
+    w.syncInputsFromState();
+    expect(doc.getElementById('notizen').value).toBe('Saatgut Charge 42');
+  });
+
+  it('Alter State OHNE notizen-Feld lädt sauber durch (Backwards-Compat)', () => {
+    // Migration 0→9 muss für ein altes reiter-Objekt ohne notizen einen
+    // Default '' vergeben — sonst zeigt die textarea undefined oder null.
+    store['agrar_rechner'] = JSON.stringify({
+      reiter: [{ name: 'Schlag 1', hektar: 10, koerner: 90000, duenger: 150, entries: [] }],
+      activeReiter: 0,
+      fahrgassenEnabled: false,
+      fahrgassenBreite: 0,
+      einheitGroesseEnabled: false,
+      koernerProEinheit: 50000,
+      machineLog: [],
+      drillPriorities: {}
+    });
+    w.loadState();
+    expect(w.state.reiter[0].notizen).toBe('');
+    expect(doc.getElementById('notizen').value).toBe('');
+    // Persistierter Snapshot wurde auf _lv=9 angehoben.
+    expect(JSON.parse(store['agrar_rechner'])._lv).toBe(9);
+  });
+
+  it('Manipulierter notizen-Wert (kein String) wird auf "" normalisiert', () => {
+    store['agrar_rechner'] = JSON.stringify({
+      _lv: 9,
+      reiter: [{ name: 'X', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], notizen: 12345 }],
+      activeReiter: 0,
+      einheitGroesseEnabled: false,
+      koernerProEinheit: 50000,
+      fahrgassenEnabled: false,
+      fahrgassenBreite: 0,
+      machineLog: [],
+      drillPriorities: {}
+    });
+    w.loadState();
+    expect(w.state.reiter[0].notizen).toBe('');
+  });
+
+  it('Übergroße Notiz (länger als 500 Zeichen) wird beim Sanitisieren gekappt', () => {
+    var huge = 'x';
+    for (var i = 0; i < 600; i++) huge += 'x';
+    store['agrar_rechner'] = JSON.stringify({
+      _lv: 9,
+      reiter: [{ name: 'X', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], notizen: huge }],
+      activeReiter: 0,
+      einheitGroesseEnabled: false,
+      koernerProEinheit: 50000,
+      fahrgassenEnabled: false,
+      fahrgassenBreite: 0,
+      machineLog: [],
+      drillPriorities: {}
+    });
+    w.loadState();
+    expect(w.state.reiter[0].notizen.length).toBe(500);
+  });
+});
+
+describe('Notiz pro Schlag/Reiter (Tabwechsel)', () => {
+  let w, doc;
+
+  beforeEach(() => {
+    const { window } = createDom();
+    w = window;
+    doc = w.document;
+  });
+
+  it('onInputNotizen schreibt auf den aktiven Reiter', () => {
+    w.addReiter();                              // active = 1
+    var ta = doc.getElementById('notizen');
+    ta.value = 'Notiz für Schlag 2';
+    w.onInputNotizen(ta);
+    expect(w.state.reiter[1].notizen).toBe('Notiz für Schlag 2');
+    expect(w.state.reiter[0].notizen).toBe('');
+  });
+
+  it('Tab-Wechsel zeigt die Notiz des Ziel-Reiters in der textarea', () => {
+    w.addReiter();                              // active = 1 (Schlag 2)
+    var ta = doc.getElementById('notizen');
+    ta.value = 'Notiz Schlag 2';
+    w.onInputNotizen(ta);
+    w.switchReiter(0);                          // zurück auf Schlag 1
+    expect(doc.getElementById('notizen').value).toBe('');
+    w.switchReiter(1);                          // wieder Schlag 2
+    expect(doc.getElementById('notizen').value).toBe('Notiz Schlag 2');
+  });
+
+  it('Mehrere Tabs mit unterschiedlichen Notizen bleiben separat erhalten', () => {
+    w.addReiter();
+    w.switchReiter(0);
+    doc.getElementById('notizen').value = 'A-Notiz';
+    w.onInputNotizen(doc.getElementById('notizen'));
+    w.switchReiter(1);
+    doc.getElementById('notizen').value = 'B-Notiz';
+    w.onInputNotizen(doc.getElementById('notizen'));
+    expect(w.state.reiter[0].notizen).toBe('A-Notiz');
+    expect(w.state.reiter[1].notizen).toBe('B-Notiz');
+    w.switchReiter(0);
+    expect(doc.getElementById('notizen').value).toBe('A-Notiz');
+    w.switchReiter(1);
+    expect(doc.getElementById('notizen').value).toBe('B-Notiz');
+  });
+
+  it('addReiter initialisiert die Notiz des neuen Tabs mit ""', () => {
+    w.addReiter();
+    expect(w.state.reiter[1].notizen).toBe('');
+    expect(doc.getElementById('notizen').value).toBe('');
+  });
+
+  it('resetActiveTab leert die Notiz des aktiven Tabs', () => {
+    doc.getElementById('notizen').value = 'Wird gleich weg sein';
+    w.onInputNotizen(doc.getElementById('notizen'));
+    expect(w.state.reiter[0].notizen).toBe('Wird gleich weg sein');
+    w.resetActiveTab();
+    expect(w.state.reiter[0].notizen).toBe('');
+    expect(doc.getElementById('notizen').value).toBe('');
+  });
+
+  it('resetAll leert die Notizen aller Tabs', () => {
+    w.addReiter();
+    w.switchReiter(0);
+    doc.getElementById('notizen').value = 'A';
+    w.onInputNotizen(doc.getElementById('notizen'));
+    w.switchReiter(1);
+    doc.getElementById('notizen').value = 'B';
+    w.onInputNotizen(doc.getElementById('notizen'));
+    expect(w.state.reiter[0].notizen).toBe('A');
+    expect(w.state.reiter[1].notizen).toBe('B');
+    w.resetAll();
+    expect(w.state.reiter.length).toBe(1);
+    expect(w.state.reiter[0].notizen).toBe('');
+    expect(doc.getElementById('notizen').value).toBe('');
+  });
+
+  it('Notiz überlebt einen simulierten Reload (saveState → loadState → syncInputs)', () => {
+    doc.getElementById('notizen').value = 'persistent';
+    w.onInputNotizen(doc.getElementById('notizen'));
+    w.saveState();
+    // Reset des in-memory-State + simulate Reload
+    w.state = {
+      reiter: [{ name: 'Schlag 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], notizen: '' }],
+      activeReiter: 0,
+      einheitGroesseEnabled: false,
+      koernerProEinheit: 50000,
+      fahrgassenEnabled: false,
+      fahrgassenBreite: 0,
+      machineLog: [],
+      drillPriorities: {}
+    };
+    doc.getElementById('notizen').value = '';
+    w.loadState();
+    w.syncInputsFromState();
+    expect(doc.getElementById('notizen').value).toBe('persistent');
+  });
+});
+});
+
+describe('Lokales Protokoll (View, Redesign, Notizen-Card, Inline-Redesign) — übernommen aus 86-inline-protocol-redesign.test.js', () => {
+/**
+ * Regression tests für das Inline-Protokoll-Redesign in der
+ * Ergebnis-Karte (render-results.js → renderDrillEntriesInline).
+ *
+ * Vorher: einzeilige #1 ✕-Liste.
+ * Nachher: kompakte Mini-Karte mit
+ *   - dezentem Zeitstempel oben  ("15.08.2026 · 10:12 Uhr")
+ *   - klar hervorgehobenem Hauptteil ("10,0 ha • 1,7 Einheiten",
+ *     optional "… kg Dünger")
+ *   - kleinem Papierkorb-Button rechts (44×44 Touch-Target,
+ *     aria-label + title)
+ *
+ * Abdeckung:
+ *   1) Pure-Helper `formatEntryTimeCard`: number, "HH:MM", "HH:MM:SS",
+ *      sonstige Strings, null/undefined/leer.
+ *   2) DOM: jede Karte ist `.deim-row`, mit `.deim-time` oben und
+ *      `.deim-body` darunter — KEINE `.drill-entry`/`.entry-text`-Klasse
+ *      (damit andere Protokoll-Ansichten unangetastet bleiben).
+ *   3) Textformat: Timestamp in "dd.mm.yyyy · HH:MM Uhr", darunter
+ *      "X,X ha • X,E Einheiten", #Nummer entfernt, @ vor Hektar entfernt.
+ *   4) Fehlender Dünger: ohne `duenger` wird das `.deim-duenger`-Segment
+ *      weggelassen (kein "0 kg Dünger"-Müll).
+ *   5) aria-label + title auf dem Papierkorb-Button (sprechend, mit Uhrzeit).
+ *   6) Klick auf den Papierkorb-Button ruft `drillRemove` auf und entfernt
+ *      den richtigen Eintrag — bestehende drillRemove-Funktionalität
+ *      unverändert.
+ *   7) Touch-Target: Das `.deim-remove::before` Overlay ist mindestens
+ *      44×44 px (CSS-Vertrag).
+ */
+
+function setUpTabWithEntries(w, entries) {
+  var r = w.getActiveReiter();
+  r.hektar = 10;
+  r.koerner = 90000;
+  r.duenger = 100;
+  r.entries = entries;
+}
+
+// ───────────────────────── Pure-Helper ─────────────────────────
+
+describe('Inline-Protokoll-Redesign — formatEntryTimeCard (pure)', () => {
+  let w;
+  beforeEach(() => { w = createDom().window; });
+
+  it('number (Date-Ms) → "dd.mm.yyyy · HH:MM Uhr"', () => {
+    var d = new Date(2026, 7, 15, 10, 12, 0); // 15.08.2026 10:12 lokal
+    expect(w.formatEntryTimeCard(d.getTime())).toBe('15.08.2026 \u00B7 10:12 Uhr');
+  });
+
+  it('number: einstellige Stunde wird auf 2 Stellen gepaddet', () => {
+    var d = new Date(2026, 7, 15, 8, 7, 0);
+    expect(w.formatEntryTimeCard(d.getTime())).toBe('15.08.2026 \u00B7 08:07 Uhr');
+  });
+
+  it('number: einstellige Minute wird auf 2 Stellen gepaddet', () => {
+    var d = new Date(2026, 7, 15, 14, 5, 0);
+    expect(w.formatEntryTimeCard(d.getTime())).toBe('15.08.2026 \u00B7 14:05 Uhr');
+  });
+
+  it('string "HH:MM" → heutiges Datum + HH:MM (in der Session)', () => {
+    var today = new Date();
+    var expected = String(today.getDate()).padStart(2, '0') + '.' +
+                   String(today.getMonth() + 1).padStart(2, '0') + '.' +
+                   today.getFullYear();
+    expect(w.formatEntryTimeCard('14:30')).toBe(expected + ' \u00B7 14:30 Uhr');
+  });
+
+  it('string "HH:MM:SS" → Sekunden werden entfernt', () => {
+    var today = new Date();
+    var expected = String(today.getDate()).padStart(2, '0') + '.' +
+                   String(today.getMonth() + 1).padStart(2, '0') + '.' +
+                   today.getFullYear();
+    expect(w.formatEntryTimeCard('22:03:45')).toBe(expected + ' \u00B7 22:03 Uhr');
+    expect(w.formatEntryTimeCard('08:30:00')).toBe(expected + ' \u00B7 08:30 Uhr');
+  });
+
+  it('sonstige Strings (z.B. ISO) → Date.parse-Fallback', () => {
+    var s = w.formatEntryTimeCard('2026-08-14T22:03:00');
+    // Nicht-leer + enthält das Trennzeichen " · " + "Uhr"
+    expect(s).toContain(' \u00B7 ');
+    expect(s).toContain('Uhr');
+    expect(s).toContain('22:03');
+  });
+
+  it('leer / ungültig → leerer String (kein Crash)', () => {
+    expect(w.formatEntryTimeCard(null)).toBe('');
+    expect(w.formatEntryTimeCard(undefined)).toBe('');
+    expect(w.formatEntryTimeCard('')).toBe('');
+    expect(w.formatEntryTimeCard('garbage')).toBe('');
+    expect(w.formatEntryTimeCard(NaN)).toBe('');
+    expect(w.formatEntryTimeCard(Infinity)).toBe('');
+    // sanitizeEntry() setzt fehlende/ungültige Alt-Zeitwerte auf 0.
+    // Das darf nicht als erfundener Unix-Epoch-Zeitstempel erscheinen.
+    expect(w.formatEntryTimeCard(0)).toBe('');
+    expect(w.formatEntryTimeCard(-1)).toBe('');
+    expect(w.formatEntryTimeCard('99:99')).toBe('');
+    expect(w.formatEntryTimeCard('10:12 Rest')).toBe('');
+    // Non-finite / NaN-Werte dürfen nicht crashen und geben "" zurück.
+    expect(typeof w.formatEntryTimeCard(NaN)).toBe('string');
+    expect(typeof w.formatEntryTimeCard(undefined)).toBe('string');
+  });
+
+  it('robuste Behandlung: kein Crash auf beliebigen Garbage-Werten', () => {
+    // "ohne Crash" — wir probieren eine Reihe seltsamer Eingaben durch
+    // und stellen sicher, dass die Funktion immer einen String
+    // zurückgibt (eventuell leer, aber nie eine Exception).
+    var cases = [{}, [], true, false, Symbol('x'), new Date(), /regex/];
+    cases.forEach(function(c) {
+      expect(function() { w.formatEntryTimeCard(c); }).not.toThrow();
+      expect(typeof w.formatEntryTimeCard(c)).toBe('string');
+    });
+  });
+});
+
+// ───────────────────────── DOM ─────────────────────────
+
+describe('Inline-Protokoll-Redesign — DOM', () => {
+  let w, doc;
+  beforeEach(() => {
+    var d = createDom();
+    w = d.window; doc = w.document;
+  });
+
+  it('rendert pro Entry genau eine .deim-row in #r_drill_entries', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 2, zaehlerStand: 5, duenger: 100, time: '10:00' },
+      { einheit: 1.5, zaehlerStand: 8, duenger: 50, time: '10:05' }
+    ]);
+    w.renderResults();
+    var rows = doc.querySelectorAll('#r_drill_entries .deim-row');
+    expect(rows.length).toBe(2);
+  });
+
+  it('jede .deim-row enthält .deim-time und .deim-body — keine .drill-entry-Klasse', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 2, zaehlerStand: 5, duenger: 100, time: '10:00' }
+    ]);
+    w.renderResults();
+    var row = doc.querySelector('#r_drill_entries .deim-row');
+    expect(row).not.toBeNull();
+    expect(row.classList.contains('drill-entry')).toBe(false);
+    expect(row.querySelector('.deim-time')).not.toBeNull();
+    expect(row.querySelector('.deim-body')).not.toBeNull();
+    // Legacy-Klasse `.entry-text` darf hier NICHT auftauchen — sonst würden
+    // Tests/Stile für die anderen Protokoll-Ansichten mitgreifen.
+    expect(row.querySelector('.entry-text')).toBeNull();
+  });
+
+  it('layout: .deim-time liegt im DOM VOR .deim-body', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 2, zaehlerStand: 5, duenger: 100, time: '10:00' }
+    ]);
+    w.renderResults();
+    var row = doc.querySelector('#r_drill_entries .deim-row');
+    var time = row.querySelector('.deim-time');
+    var body = row.querySelector('.deim-body');
+    // DOCUMENT_POSITION_FOLLOWING = 4 — body muss NACH time liegen.
+    expect((time.compareDocumentPosition(body) & 4) !== 0).toBe(true);
+  });
+
+  it('änderungen am Inline-Layout haben KEINE Auswirkung auf #drill_entries', () => {
+    // Bestehende Protokoll-Ansichten (renderDrillLog) müssen ihre
+    // .drill-entry-Layout behalten.
+    setUpTabWithEntries(w, [
+      { einheit: 2, zaehlerStand: 5, duenger: 100, time: '10:00' }
+    ]);
+    w.renderResults();
+    var drillEntries = doc.querySelectorAll('#drill_entries .drill-entry');
+    expect(drillEntries.length).toBe(1);
+    expect(drillEntries[0].classList.contains('deim-row')).toBe(false);
+  });
+});
+
+// ───────────────────────── Textformat ─────────────────────────
+
+describe('Inline-Protokoll-Redesign — Textformat', () => {
+  let w, doc;
+  beforeEach(() => {
+    var d = createDom();
+    w = d.window; doc = w.document;
+  });
+
+  it('Zeitstempel nutzt "dd.mm.yyyy · HH:MM Uhr" (mitte-dot + " Uhr"-Suffix)', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 2, zaehlerStand: 5, duenger: 0, time: '14:30' }
+    ]);
+    w.renderResults();
+    var time = doc.querySelector('#r_drill_entries .deim-time');
+    var today = new Date();
+    var expected = String(today.getDate()).padStart(2, '0') + '.' +
+                   String(today.getMonth() + 1).padStart(2, '0') + '.' +
+                   today.getFullYear();
+    expect(time.textContent).toBe(expected + ' \u00B7 14:30 Uhr');
+  });
+
+  it('Hauptzeile: "X,X ha • X,X Einheiten" (Bullet-Trenner, kein #N, kein @)', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 1.7, zaehlerStand: 10, duenger: 0, time: '10:00' }
+    ]);
+    w.renderResults();
+    var row = doc.querySelector('#r_drill_entries .deim-row');
+    var ha = row.querySelector('.deim-ha');
+    var sep = row.querySelector('.deim-sep');
+    var ein = row.querySelector('.deim-einheiten');
+    expect(ha.textContent).toBe('10,0 ha');
+    expect(sep.textContent).toBe(' • ');
+    expect(sep.getAttribute('aria-hidden')).toBe('true');
+    expect(ein.textContent).toBe('1,700 Einheiten');
+    // Der zusammengesetzte Summary-Text muss die Marker NICHT enthalten.
+    var summary = row.querySelector('.deim-summary');
+    expect(summary.textContent).not.toContain('#');
+    expect(summary.textContent).not.toContain('@');
+  });
+
+  it('numerischer Timestamp wird zu "dd.mm.yyyy · HH:MM Uhr" formatiert', () => {
+    var t = new Date(2026, 7, 15, 10, 12, 0).getTime();
+    setUpTabWithEntries(w, [
+      { einheit: 1, zaehlerStand: 5, duenger: 0, time: t }
+    ]);
+    w.renderResults();
+    var time = doc.querySelector('#r_drill_entries .deim-time');
+    expect(time.textContent).toBe('15.08.2026 \u00B7 10:12 Uhr');
+  });
+
+  it('Hektar-Quelle: zaehlerStand vor istHektar, fallback entry.hektar ohne @', () => {
+    // Entry-Form wie sie _buildDrillEntry() produziert: entry.hektar ist der
+    // Snapshot des Tabs zum Zeitpunkt der Einfüllung. Hier kein
+    // zaehlerStand/istHektar → fallback auf entry.hektar (10), OHNE "@"-Präfix.
+    setUpTabWithEntries(w, [
+      { einheit: 1, hektar: 10, istHektar: 0, zaehlerStand: 0, duenger: 0, time: '10:00' }
+    ]);
+    w.renderResults();
+    var ha = doc.querySelector('#r_drill_entries .deim-ha');
+    expect(ha).not.toBeNull();
+    expect(ha.textContent).toBe('10,0 ha');
+    expect(ha.textContent.charAt(0)).not.toBe('@');
+  });
+
+  it('mehrere Entries: jeder Eintrag eigene Zeit + Summary', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 2, zaehlerStand: 5, duenger: 0, time: '10:00' },
+      { einheit: 0.5, zaehlerStand: 6, duenger: 0, time: '10:05' }
+    ]);
+    w.renderResults();
+    var rows = doc.querySelectorAll('#r_drill_entries .deim-row');
+    expect(rows.length).toBe(2);
+    var times = doc.querySelectorAll('#r_drill_entries .deim-time');
+    expect(times[0].textContent).toContain('10:00');
+    expect(times[1].textContent).toContain('10:05');
+  });
+});
+
+// ───────────────────────── Dünger-Segment ─────────────────────────
+
+describe('Inline-Protokoll-Redesign — Dünger-Segment', () => {
+  let w, doc;
+  beforeEach(() => {
+    var d = createDom();
+    w = d.window; doc = w.document;
+  });
+
+  it('mit Dünger (entry.duenger > 0): ".deim-duenger" wird mit "… kg Dünger" gefüllt', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 1, zaehlerStand: 5, duenger: 100, time: '10:00' }
+    ]);
+    w.renderResults();
+    var duenger = doc.querySelector('#r_drill_entries .deim-duenger');
+    expect(duenger).not.toBeNull();
+    expect(duenger.textContent).toBe('100 kg Dünger');
+  });
+
+  it('ohne Dünger (entry.duenger = 0 / fehlt): kein .deim-duenger-Element', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 1, zaehlerStand: 5, duenger: 0, time: '10:00' }
+    ]);
+    w.renderResults();
+    expect(doc.querySelector('#r_drill_entries .deim-duenger')).toBeNull();
+    // Summary soll trotzdem nur "X ha • X Einheiten" enthalten, ohne "kg"
+    var summary = doc.querySelector('#r_drill_entries .deim-summary');
+    expect(summary.textContent).not.toContain('kg');
+    expect(summary.textContent).not.toContain('Dünger');
+  });
+
+  it('große Dünger-Werte bekommen deutschen Tausenderpunkt', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 1, zaehlerStand: 5, duenger: 1500, time: '10:00' }
+    ]);
+    w.renderResults();
+    var duenger = doc.querySelector('#r_drill_entries .deim-duenger');
+    expect(duenger.textContent).toBe('1.500 kg Dünger');
+  });
+});
+
+// ───────────────────────── aria-label / title ─────────────────────────
+
+describe('Inline-Protokoll-Redesign — aria-label und title', () => {
+  let w, doc;
+  beforeEach(() => {
+    var d = createDom();
+    w = d.window; doc = w.document;
+  });
+
+  it('Papierkorb-Button hat type="button" und Klasse .deim-remove', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 1, zaehlerStand: 5, duenger: 0, time: '10:00' }
+    ]);
+    w.renderResults();
+    var btn = doc.querySelector('#r_drill_entries .deim-remove');
+    expect(btn).not.toBeNull();
+    expect(btn.tagName.toLowerCase()).toBe('button');
+    expect(btn.getAttribute('type')).toBe('button');
+  });
+
+  it('aria-label enthält "Buchung löschen" + Uhrzeit (HH:MM, ohne Sekunden)', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 1, zaehlerStand: 5, duenger: 0, time: '22:03:45' }
+    ]);
+    w.renderResults();
+    var btn = doc.querySelector('#r_drill_entries .deim-remove');
+    var aria = btn.getAttribute('aria-label');
+    expect(aria).toContain('Buchung');
+    expect(aria).toContain('l\u00f6schen');
+    expect(aria).toContain('22:03');
+    expect(aria).not.toContain(':45');
+    expect(aria).not.toContain('22:03:');
+  });
+
+  it('title spiegelt aria-label (für Hover-Tooltip)', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 1, zaehlerStand: 5, duenger: 0, time: '10:00' }
+    ]);
+    w.renderResults();
+    var btn = doc.querySelector('#r_drill_entries .deim-remove');
+    expect(btn.getAttribute('title')).toBe(btn.getAttribute('aria-label'));
+  });
+
+  it('numerischer Timestamp → aria-label enthält HH:MM (lokale Zeit)', () => {
+    var t = new Date(2026, 7, 15, 10, 12, 0).getTime();
+    setUpTabWithEntries(w, [
+      { einheit: 1, zaehlerStand: 5, duenger: 0, time: t }
+    ]);
+    w.renderResults();
+    var btn = doc.querySelector('#r_drill_entries .deim-remove');
+    expect(btn.getAttribute('aria-label')).toContain('10:12');
+  });
+
+  it('mehrere Einträge: jeder Button hat seinen eigenen aria-label mit eigener Zeit', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 1, zaehlerStand: 5, duenger: 0, time: '10:00' },
+      { einheit: 1, zaehlerStand: 6, duenger: 0, time: '10:05' }
+    ]);
+    w.renderResults();
+    var btns = doc.querySelectorAll('#r_drill_entries .deim-remove');
+    expect(btns.length).toBe(2);
+    expect(btns[0].getAttribute('aria-label')).toContain('10:00');
+    expect(btns[1].getAttribute('aria-label')).toContain('10:05');
+  });
+});
+
+// ───────────────────────── Klick → drillRemove ─────────────────────────
+
+describe('Inline-Protokoll-Redesign — Klick entfernt Eintrag via drillRemove', () => {
+  let w, doc;
+  beforeEach(() => {
+    var d = createDom();
+    w = d.window; doc = w.document;
+  });
+
+  it('Klick auf Papierkorb-Button des ersten Eintrags entfernt entry[0]', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 2, zaehlerStand: 5, duenger: 0, time: '10:00' },
+      { einheit: 3, zaehlerStand: 8, duenger: 0, time: '10:05' }
+    ]);
+    w.renderResults();
+    expect(w.getActiveReiter().entries.length).toBe(2);
+    var btn0 = doc.querySelectorAll('#r_drill_entries .deim-remove')[0];
+    btn0.click();
+    expect(w.getActiveReiter().entries.length).toBe(1);
+    expect(w.getActiveReiter().entries[0].einheit).toBe(3);
+  });
+
+  it('Klick auf Papierkorb-Button des zweiten Eintrags entfernt nur entry[1]', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 2, zaehlerStand: 5, duenger: 0, time: '10:00' },
+      { einheit: 3, zaehlerStand: 8, duenger: 0, time: '10:05' }
+    ]);
+    w.renderResults();
+    var btn1 = doc.querySelectorAll('#r_drill_entries .deim-remove')[1];
+    btn1.click();
+    expect(w.getActiveReiter().entries.length).toBe(1);
+    expect(w.getActiveReiter().entries[0].einheit).toBe(2);
+  });
+
+  it('data-deim-idx spiegelt den tatsächlichen Index wider', () => {
+    setUpTabWithEntries(w, [
+      { einheit: 1, zaehlerStand: 5, duenger: 0, time: '10:00' },
+      { einheit: 1, zaehlerStand: 6, duenger: 0, time: '10:05' },
+      { einheit: 1, zaehlerStand: 7, duenger: 0, time: '10:10' }
+    ]);
+    w.renderResults();
+    var rows = doc.querySelectorAll('#r_drill_entries .deim-row');
+    expect(rows[0].getAttribute('data-deim-idx')).toBe('0');
+    expect(rows[1].getAttribute('data-deim-idx')).toBe('1');
+    expect(rows[2].getAttribute('data-deim-idx')).toBe('2');
+  });
+});
+
+// ───────────────────────── Touch-Target (CSS-Vertrag) ─────────────────────────
+
+describe('Inline-Protokoll-Redesign — Touch-Target 44×44', () => {
+  let w, doc;
+  beforeEach(() => {
+    var d = createDom();
+    w = d.window; doc = w.document;
+  });
+
+  it('CSS-Regel für .deim-remove::before definiert 44×44 px Hit-Area', () => {
+    // Vertrag: der ::before-Overlay vergrößert das effektive Touch-Target
+    // unsichtbar auf mindestens 44×44 px. Wir prüfen die Roh-Regel im CSS.
+    var cssPath = resolve(process.cwd(), 'public/css/styles.css');
+    var cssText = readFileSync(cssPath, 'utf-8');
+    expect(cssText).toMatch(/\.deim-remove::before/);
+    // 44px width + 44px height im Block — robust gegen Quoting-Varianten.
+    var block = cssText.match(/\.deim-remove::before\s*\{[^}]*\}/);
+    expect(block).not.toBeNull();
+    expect(block[0]).toContain('44px');
+  });
+});
 });
