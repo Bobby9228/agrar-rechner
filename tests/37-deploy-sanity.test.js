@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { describe, it, expect } from 'vitest';
@@ -189,8 +189,9 @@ describe('Cloudflare deploy sanity', () => {
 // Vor 2be0499/86b285b enthielt STATIC_ASSETS veraltete Versionen und fehlende
 // neue Skripte. Eine frische PWA-Installation bekam damit nicht alle
 // aktuellen Produktions-Assets in den Offline-Cache. Diese Tests parsen
-// beide Quellen (lokal!) und fordern exakte Kongruenz — externe
-// Google-Fonts sind ausdrücklich außerhalb des Precache-Vertrags.
+// beide Quellen (lokal!) und fordern exakte Kongruenz — die self-gehosteten
+// WOFF2-Fonts unter public/fonts/ (Issue #421, vorher extern via Google)
+// sind jetzt explizit Teil des Precache-Vertrags.
 
 // Helpers (Modul-Scope, damit sie auch für die Review-Fix-Sektion unten
 // sichtbar sind):
@@ -374,7 +375,8 @@ describe('sw.js STATIC_ASSETS — volle Kongruenz, Dateiexistenz, keine Altlaste
     // Erlaubte Quellen:
     //   1) Lokale index.html-Assets (script/css/icon/apple-touch-icon/manifest).
     //   2) icon.src aus manifest.json.
-    //   3) Whitelist: '/' und '/index.html' als Bootstrap-Einträge.
+    //   3) Self-gehostete WOFF2-Fonts unter public/fonts/ (Issue #421).
+    //   4) Whitelist: '/' und '/index.html' als Bootstrap-Einträge.
     // Alles andere in STATIC_ASSETS ist eine "Altlast" und muss entfernt
     // werden (z. B. veraltete Dateinamen, vergessene Cache-Bustings).
     var indexContent = readFileSync(resolve(publicDir, 'index.html'), 'utf-8');
@@ -388,8 +390,39 @@ describe('sw.js STATIC_ASSETS — volle Kongruenz, Dateiexistenz, keine Altlaste
     var whitelist = new Set(['/', '/index.html']);
     for (var i = 0; i < local.length; i++) whitelist.add(local[i]);
     for (var j = 0; j < icons.length; j++) whitelist.add(icons[j]);
+    // Issue #421: self-gehostete Fonts in public/fonts/ müssen Teil des
+    // Precache-Vertrags sein. Wir scannen das Verzeichnis zur Laufzeit und
+    // erwarten jeden Eintrag in STATIC_ASSETS — damit können neue Fonts
+    // hinzugefügt werden, ohne dass der Test manuell angepasst werden muss.
+    var fontsDir = resolve(publicDir, 'fonts');
+    if (existsSync(fontsDir)) {
+      var fontEntries = readdirSync(fontsDir).filter(function (f) {
+        return /\.woff2$/i.test(f);
+      });
+      for (var k = 0; k < fontEntries.length; k++) {
+        whitelist.add('/fonts/' + fontEntries[k]);
+      }
+    }
     var unexpected = staticAssets.filter(function (a) { return !whitelist.has(a); });
     expect(unexpected, 'unerwartete STATIC_ASSETS-Einträge: ' + unexpected.join(', ')).toEqual([]);
+  });
+
+  // Issue #421: Self-Hosted Fonts sind Teil der App-Shell. Jede WOFF2-Datei
+  // unter public/fonts/ muss explizit in STATIC_ASSETS gelistet sein, sonst
+  // ist die PWA beim ersten Offline-Start ohne Schriftarten.
+  it('jede WOFF2-Datei unter public/fonts/ ist in STATIC_ASSETS', () => {
+    var swContent = readFileSync(resolve(publicDir, 'sw.js'), 'utf-8');
+    var staticAssets = readStaticAssets(swContent);
+    var fontsDir = resolve(publicDir, 'fonts');
+    expect(existsSync(fontsDir), 'public/fonts/ fehlt — App-Shell nicht offline-fähig').toBe(true);
+    var fontEntries = readdirSync(fontsDir).filter(function (f) {
+      return /\.woff2$/i.test(f);
+    });
+    expect(fontEntries.length, 'public/fonts/ enthält keine WOFF2-Dateien').toBeGreaterThan(0);
+    for (var i = 0; i < fontEntries.length; i++) {
+      var entry = '/fonts/' + fontEntries[i];
+      expect(staticAssets, 'Font fehlt in STATIC_ASSETS: ' + entry).toContain(entry);
+    }
   });
 
 });
