@@ -468,7 +468,7 @@ function initDataExportImport() {
   // sind sie idempotent und neben allen anderen App-Shell-Bindings
   // dokumentiert. Doppel-Bindings wurden vermieden, indem initDataExportImport
   // hier KEIN addEventListener mehr aufruft. Die Funktion bleibt auf
-  // AppGlobals registriert, weil sie in der Test-Suite (tests/96) als
+  // AppGlobals registriert, weil sie in der Test-Suite (tests/app-shell-parity.test.js) als
   // Modul-API-Vertrag geprüft wird — und weil ein zukünftiger Aufrufer aus
   // einem Bootstrap-Pfad sie weiterhin erwarten darf (siehe AGENTS.md).
 }

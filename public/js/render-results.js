@@ -23,7 +23,7 @@
     //   co   = carryover-Objekt für DIESEN Tab aus AppGlobals.getCarryover(activeIdx)
     // Rückgabe: { shownExcessE, shownExcessD } — nie negativ.
     //
-    // Testbar ohne DOM; renderResultCard ruft dies auf, der Test in tests/57
+    // Testbar ohne DOM; renderResultCard ruft dies auf, der Test in tests/carryover.test.js
     // ruft es direkt und assertet auf die Rückgabe (nicht auf getTabRemaining,
     // weil das für volle Mehrbedarf-Tabs ohnehin 0 ist und den Bug nicht deckt).
     function computeShownExcess(raw, co) {

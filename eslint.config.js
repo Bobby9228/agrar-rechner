@@ -137,6 +137,18 @@ export default [
     // Test-Konfiguration: lockerer — Tests dürfen console.log etc.
     {
         files: ["tests/**/*.js", "test_*.mjs"],
+        languageOptions: {
+            globals: {
+                // Vitest Lifecycle (Issue #419 Welle 2/3/4 — vorher nicht
+                // deklariert, was bei beforeEach-Tests zu no-undef-Errors führte).
+                beforeEach: "readonly",
+                afterEach: "readonly",
+                beforeAll: "readonly",
+                afterAll: "readonly",
+                // Vitest Mock-Helper
+                vi: "readonly",
+            },
+        },
         rules: {
             "no-console": "off",
             "no-unused-vars": "off", // helper-Importe können ungenutzt sein

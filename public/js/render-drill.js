@@ -488,7 +488,7 @@ prioBtn.addEventListener('click', (function(idx, btn) {
     // --- Render: Machine Log (Maschinen-Protokoll) ---
 
     // renderResults() must populate the #drill_machine_log container
-    // so the test in tests/16-machine-log.test.js can find the entries, header,
+    // so the test in tests/machine-log.test.js can find the entries, header,
     // delete buttons and prognose. The machine log is a flat global list
     // (AppGlobals.state.machineLog), independent of the per-tab entries — each row shows
     // what was filled into the machine, not the per-tab allocation.

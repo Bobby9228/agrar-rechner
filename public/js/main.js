@@ -52,7 +52,7 @@ function appEmit(type, data) {
 }
 
 // --- App Namespace ---
-// Hinweis: nur die Members, die von Tests (tests/44) referenziert werden,
+// Hinweis: nur die Members, die von Tests (tests/state-persistence.test.js) referenziert werden,
 // bleiben hier. Die anderen (onStateChange, emit, etc.) liegen ausschließlich
 // auf AppGlobals (Issue #278, ADR-001).
 window.app = {

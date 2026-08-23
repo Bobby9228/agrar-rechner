@@ -232,7 +232,7 @@ function openKulturFirstRun() {
   modal.classList.add('open');
   // Accessibility: Fokus in Dialog + Tab-Trap. Escape bleibt ohne
   // Wirkung (onEscape=null) — die Erstauswahl ist verpflichtend
-  // (siehe tests/61-kultur-first-run.test.js).
+  // (siehe tests/kultur-first-run-and-change.test.js).
   _installKulturModalA11y(modal, { onEscape: null });
 }
 

@@ -37,7 +37,7 @@ function _closeDashboardIfOpen() {
 function addReiter() {
   AppGlobals.syncStateFromInputs();
   // Neue Tabs erben koerner/duenger vom zuvor aktiven Reiter (Test-RED
-  // tests/06-tab-management.test.js): der aktive Reiter ist nach
+  // tests/tab-management.test.js): der aktive Reiter ist nach
   // syncStateFromInputs() auf Stand, also direkt aus state.reiter lesen.
   var sourceTab = AppGlobals.state.reiter[AppGlobals.state.activeReiter];
   var maxIdx = 0;
