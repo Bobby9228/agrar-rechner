@@ -16,6 +16,11 @@ Read these files in this order before making changes:
 4. `vitest.config.js` — test setup (jsdom env, Node test runner via `vitest`)
 5. `wrangler.jsonc` — deploy target (Cloudflare Pages, `./public` assets)
 6. `.github/workflows/*.yml` — CI behaviour (test + deploy on `dev`)
+7. `public/index.html` (script load order) and `tests/helpers.js` — the
+   module list there is the authoritative load order; `tests/deploy-sanity.test.js`
+   enforces congruence with the service worker precache
+8. `public/js/state-coordinator.js` (header comment) — the EVENT_PLAN is the
+   single source of truth for persistence + re-render per event type (#417)
 
 Do **not** read `node_modules/`, `pnpm-lock.yaml` (treat as generated), or
 `.local/` (untracked scratch).
@@ -68,8 +73,14 @@ directly.
   (enforced by `.editorconfig` and `.gitattributes`).
 - **Code style:** ESLint config in repo; run `pnpm lint` before
   committing JS changes.
-- **Tests:** colocate in `tests/`, use `vitest` + `jsdom`; one
-  `describe` per module under test.
+- **Tests:** colocate in `tests/`, use `vitest` + `jsdom`. Since #419,
+  test files are named by **domain, without numeric prefixes**
+  (`kultur-*.test.js`, `carryover.test.js`, `drill-distribution.test.js`,
+  `app-shell-parity.test.js`, …). Group related cases in the matching
+  existing suite instead of creating numbered one-off files; when adding
+  a new module, extend `tests/app-shell-parity.test.js` (module-loading
+  parity) and keep `tests/helpers.js` module list in sync with
+  `index.html`.
 - **No build step.** This is a static PWA — edit files in `public/`
   directly. Do not introduce a bundler.
 
@@ -88,7 +99,9 @@ directly.
 - A PR touches `wrangler.jsonc` or `.github/workflows/`.
 - A new runtime dependency is proposed (anything in `dependencies`,
   not `devDependencies`).
-- A change to `public/sw.js` (service worker) — caching rules need
-  human review.
+- A change to `public/sw.js` (service worker) or `public/_headers`
+  — caching/CSP rules need human review. `_headers` additionally has a
+  strict Cloudflare parse rule: every header line needs a path line
+  before it (see `tests/deploy-sanity.test.js`, issue #436).
 - A migration of `public/js/*.js` away from the split-module layout
   established in #212.
