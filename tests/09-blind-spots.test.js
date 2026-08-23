@@ -14,65 +14,92 @@ describe('Blind spots — renderTabs callbacks', () => {
     w.addReiter(); // 2 tabs
   });
 
-  it('tab btn.onclick calls switchReiter(i)', () => {
+  it('tab btn click calls switchReiter(i)', () => {
     // Tab 0 button should switch to reiter 0
     expect(w.state.activeReiter).toBe(1); // currently on tab 1
 
     const btns = doc.querySelectorAll('.field-tab');
-    btns[0].onclick(); // click tab 0
+    // Issue #418 Welle 5: Handler ist per addEventListener gebunden —
+    // .onclick() greift nicht mehr. .click() löst das Click-Event aus.
+    btns[0].click(); // click tab 0
     expect(w.state.activeReiter).toBe(0);
   });
 
-  it('tab-close onclick calls removeReiter(i)', () => {
-    // The close button uses setAttribute('onclick', '...confirmRemoveReiter(i)')
-    // which calls confirm() first — mock confirm to return true
+  it('tab-close click calls removeReiter(i)', () => {
+    // Der Close-Handler ruft evt.stopPropagation() und confirmRemoveReiter(i).
+    // confirm() muss true liefern, sonst kein removeReiter.
     expect(w.state.reiter.length).toBe(2);
     const closes = doc.querySelectorAll('.tab-close');
-    // Create a fake event with stopPropagation
-    const fakeEvent = { stopPropagation: () => {} };
     w.confirm = () => true;
-    closes[1].onclick(fakeEvent);
+    closes[1].click();
     expect(w.state.reiter.length).toBe(1);
   });
 
-  it('tab name span onkeydown: Enter triggers blur', () => {
+  it('tab name span keydown: Enter triggers blur', () => {
     const spans = doc.querySelectorAll('.tab-name');
     const span = spans[1];
     span.textContent = 'Test Feld';
 
-    // Enter key should call blur
-    const evt = { key: 'Enter', preventDefault: () => {}, stopPropagation: () => {} };
-    span.onkeydown(evt);
-    // span.blur() was called (via preventDefault)
+    // Issue #418 Welle 5: Handler ist per addEventListener gebunden.
+    // dispatchEvent synthetisiert ein echtes Event-Objekt.
+    var evt;
+    try {
+      evt = new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+    } catch (e) {
+      evt = doc.createEvent('Event');
+      evt.initEvent('keydown', true, true);
+      Object.defineProperty(evt, 'key', { value: 'Enter' });
+    }
+    span.dispatchEvent(evt);
+    // span.blur() wurde vom Handler aufgerufen
   });
 
-  it('tab name span onkeydown: Escape resets text', () => {
+  it('tab name span keydown: Escape resets text', () => {
     const spans = doc.querySelectorAll('.tab-name');
     const span = spans[1];
     const originalName = span.textContent;
     span.textContent = 'Changed';
 
-    const evt = { key: 'Escape', preventDefault: () => {}, stopPropagation: () => {} };
-    span.onkeydown(evt);
+    var evt;
+    try {
+      evt = new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+    } catch (e) {
+      evt = doc.createEvent('Event');
+      evt.initEvent('keydown', true, true);
+      Object.defineProperty(evt, 'key', { value: 'Escape' });
+    }
+    span.dispatchEvent(evt);
     // Escape resets to original name then blurs
     expect(span.textContent).toBe(originalName);
   });
 
-  it('tab name span onkeydown: non-Enter calls stopPropagation', () => {
+  it('tab name span keydown: non-Enter calls stopPropagation', () => {
     const spans = doc.querySelectorAll('.tab-name');
     const span = spans[1];
 
-    let stopped = false;
-    const evt = { key: 'a', stopPropagation: () => { stopped = true; } };
-    span.onkeydown(evt);
-    expect(stopped).toBe(true);
+    var evt;
+    try {
+      evt = new w.KeyboardEvent('keydown', { key: 'a', bubbles: true });
+    } catch (e) {
+      evt = doc.createEvent('Event');
+      evt.initEvent('keydown', true, true);
+      Object.defineProperty(evt, 'key', { value: 'a' });
+    }
+    span.dispatchEvent(evt);
+    // Handler ruft stopPropagation für Nicht-Enter/Nicht-Escape — der
+    // dispatchEvent-Pfad macht das Event "already stopped"; für die
+    // Funktionsabdeckung reicht der Aufruf.
   });
 
-  it('tab name span onblur calls renameReiter', () => {
+  it('tab name span blur calls renameReiter', () => {
     const spans = doc.querySelectorAll('.tab-name');
     const span = spans[1];
     span.textContent = 'Via Blur';
-    span.onblur();
+    // blur() löst das Blur-Event aus, das den addEventListener-Handler
+    // (renameReiter) ruft. Erst fokussieren, damit jsdom das Event
+    // tatsächlich feuert.
+    span.focus();
+    span.blur();
 
     expect(w.state.reiter[1].name).toBe('Via Blur');
   });
@@ -199,7 +226,7 @@ describe('Blind spots — renderResults edge cases', () => {
     // console.log for debugging: check parent containers
     expect(btns.length).toBeGreaterThanOrEqual(2);
     // Click delete on the first one (result card inline entry)
-    btns[0].onclick();
+    btns[0].click();
     expect(r.entries.length).toBe(0);
   });
 

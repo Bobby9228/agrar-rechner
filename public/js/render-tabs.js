@@ -21,7 +21,13 @@
         var btn = document.createElement('button');
         btn.className = 'tab-btn field-tab' + (isActive ? ' active' : '');
         btn.setAttribute('aria-label', 'Schlag ' + (i+1));
-        btn.onclick = function() { AppGlobals.switchReiter(i); };
+        // Issue #418 Welle 5: addEventListener statt onclick-Property. Die
+        // alte Form war via .onclick = function() {...} — addEventListener
+        // ist die CSP-konforme Variante (kein Inline-Event-Handler). Test
+        // 09 ruft btns[0].click() statt .onclick().
+        btn.addEventListener('click', (function(idx) {
+          return function() { AppGlobals.switchReiter(idx); };
+        })(i));
         var span = document.createElement('span');
         span.className = 'tab-name';
         span.setAttribute('aria-label', 'Tab-Name');
@@ -29,30 +35,39 @@
         span.setAttribute('tabindex', '0');
         span.setAttribute('contenteditable', 'true');
         span.textContent = r.name;
-        span.onfocus = function() {
+        span.addEventListener('focus', function() {
           var range = document.createRange();
           range.selectNodeContents(span);
           var sel = window.getSelection();
           sel.removeAllRanges();
           sel.addRange(range);
-        };
-        span.onblur = function() {
-          var newName = span.textContent.replace(/\n/g, ' ').trim();
-          AppGlobals.renameReiter(i, newName);
-        };
-        span.onkeydown = function(evt) {
-          if (evt.key === 'Enter') { evt.preventDefault(); span.blur(); }
-          else if (evt.key === 'Escape') { evt.preventDefault(); span.textContent = r.name; span.blur(); }
-          else { evt.stopPropagation(); }
-        };
-        span.onmousedown = function(evt) { evt.stopPropagation(); };
+        });
+        span.addEventListener('blur', (function(idx) {
+          return function() {
+            var newName = span.textContent.replace(/\n/g, ' ').trim();
+            AppGlobals.renameReiter(idx, newName);
+          };
+        })(i));
+        span.addEventListener('keydown', (function(idx, origName) {
+          return function(evt) {
+            if (evt.key === 'Enter') { evt.preventDefault(); span.blur(); }
+            else if (evt.key === 'Escape') { evt.preventDefault(); span.textContent = origName; span.blur(); }
+            else { evt.stopPropagation(); }
+          };
+        })(i, r.name));
+        span.addEventListener('mousedown', function(evt) { evt.stopPropagation(); });
 
         if (AppGlobals.state.reiter.length > 1) {
           var close = document.createElement('span');
           close.className = 'tab-close';
           close.setAttribute('role', 'button');
           close.setAttribute('aria-label', 'Schlag schließen');
-          close.onclick = function(evt) { evt.stopPropagation(); confirmRemoveReiter(i); };
+          close.addEventListener('click', (function(idx) {
+            return function(evt) {
+              evt.stopPropagation();
+              confirmRemoveReiter(idx);
+            };
+          })(i));
           close.textContent = '✕';
           btn.appendChild(close);
         }
@@ -63,7 +78,7 @@
       var addBtn = document.createElement('button');
       addBtn.className = 'tab-add';
       addBtn.textContent = '+ Tab';
-      addBtn.onclick = function() { AppGlobals.addReiter(); };
+      addBtn.addEventListener('click', function() { AppGlobals.addReiter(); });
       bar.appendChild(addBtn);
       fitTabNames(bar);
       var protokollBtn = document.getElementById('protokoll_tab_btn');

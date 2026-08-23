@@ -148,14 +148,15 @@ describe('Regression: renderTabs creates tab-add button fresh', () => {
     expect(doc.querySelector('.tab-add')).not.toBeNull();
   });
 
-  it('tab-add onclick still works after multiple renderTabs calls', () => {
+  it('tab-add click still works after multiple renderTabs calls', () => {
     w.renderTabs();
     w.renderTabs();
 
-    // Click the add button
+    // Issue #418 Welle 5: Handler ist per addEventListener gebunden
+    // (renderTabs erzeugt das Element und registriert den Click-Listener).
     const addBtn = doc.querySelector('.tab-add');
     expect(addBtn).not.toBeNull();
-    addBtn.onclick();
+    addBtn.click();
     expect(w.state.reiter.length).toBe(2);
   });
 });

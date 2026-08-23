@@ -661,13 +661,13 @@
       chevron.textContent = '⌄';
       summaryBtn.appendChild(chevron);
 
-      summaryBtn.onclick = (function(ti, dk, ck) {
+      summaryBtn.addEventListener('click', (function(ti, dk, ck) {
         return function() {
           if (typeof AppGlobals.toggleProtocolAccordion === 'function') {
             AppGlobals.toggleProtocolAccordion(ti, dk, ck);
           }
         };
-      })(tabIdx, dateKey, cardKey);
+      })(tabIdx, dateKey, cardKey));
 
       article.appendChild(summaryBtn);
 
@@ -739,13 +739,13 @@
       var timeLabel = AppGlobals.formatEntryTimeHHMM(entry.time) || '—';
       actionBtn.setAttribute('aria-label', 'Aktionen für Buchung um ' + timeLabel);
       actionBtn.setAttribute('data-entry-action', 'field');
-      actionBtn.onclick = (function(ti, ei, t) {
+      actionBtn.addEventListener('click', (function(ti, ei, t) {
         return function() {
           if (typeof AppGlobals.requestLocalProtocolDelete === 'function') {
             AppGlobals.requestLocalProtocolDelete('field', { tabIdx: ti, entryIdx: ei }, t);
           }
         };
-      })(tabIdx, actualIdx, timeLabel);
+      })(tabIdx, actualIdx, timeLabel));
       row.appendChild(actionBtn);
 
       return row;
@@ -845,13 +845,13 @@
           var timeLabel = AppGlobals.formatEntryTimeHHMM(entry.time) || '—';
           actionBtn.setAttribute('aria-label', 'Aktionen für Maschinenfüllung um ' + timeLabel);
           actionBtn.setAttribute('data-entry-action', 'machine');
-          actionBtn.onclick = (function(idx, t) {
+          actionBtn.addEventListener('click', (function(idx, t) {
             return function() {
               if (typeof AppGlobals.requestLocalProtocolDelete === 'function') {
                 AppGlobals.requestLocalProtocolDelete('machine', { mlIdx: idx }, t);
               }
             };
-          })(it.originalIdx, timeLabel);
+          })(it.originalIdx, timeLabel));
           row.appendChild(actionBtn);
 
           card.appendChild(row);
