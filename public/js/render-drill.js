@@ -39,8 +39,10 @@
           prioBtn.textContent = next === 0 ? '—' : String(next);
           prioBtn.classList.toggle('active', next > 0);
           AppGlobals.state.drillPriorities[i] = next;
-          AppGlobals.saveState();
-          AppGlobals.drillCalcAll();
+          // Issue #417: Persistenz + drillCalcAll laufen zentral über den
+          // State-Coordinator (eventType DRILL_PRIORITY_CHANGED). Renderer
+          // selbst rufen KEIN saveState() mehr.
+          AppGlobals.appEmit('DRILL_PRIORITY_CHANGED', { tabIdx: i, priority: next });
         };
         row.appendChild(prioBtn);
         var nameWrap = document.createElement('div');
@@ -123,10 +125,10 @@
             var tab = AppGlobals.state.reiter[tabIdx];
             if (!tab) return;
             tab.done = tab.done === true ? false : true;
-            AppGlobals.saveState();
-            // Vollständiger Re-Render: Liste, Summary, Results und Dashboard,
-            // weil Locking + Status-Anzeige + Verteilungs-Plan berührt sind.
-            AppGlobals.drillCalcAll();
+            // Issue #417: Persistenz + Re-Render zentral über den
+            // State-Coordinator (eventType DRILL_DONE_CHANGED). Renderer
+            // selbst rufen KEIN saveState() mehr.
+            AppGlobals.appEmit('DRILL_DONE_CHANGED', { tabIdx: tabIdx, done: tab.done });
           };
         })(i, doneBtn);
         row.appendChild(doneBtn);

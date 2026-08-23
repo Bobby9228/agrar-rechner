@@ -192,24 +192,11 @@
       var egSv = document.getElementById(DOM_IDS.einheitGroesseSaved);
       if (egSv) egSv.textContent = '';
       AppGlobals.state.drillPriorities = {};
-      AppGlobals.renderTabs();
-      AppGlobals.saveState();
-      // Kultur-UI konsistent nachziehen: resetAll() setzt state.kultur = null
-      // und erstauswahlDone = false. Der Landwirt MUSS nach dem Reset eine
-      // Kultur wählen, damit der Rechner produktiv nutzbar ist. Wir
-      // aktualisieren Badge/Empfehlung und öffnen den verpflichtenden
-      // First-run-Dialog hier selbst — kein Reload, kein erneuter initUI()
-      // nötig. Dieselbe Logik wie der initUI-Pfad (Issue: storage-Event-
-      // Sync hat diese Synchronisierung als Vorbild).
-      if (typeof AppGlobals.renderKulturBadge === 'function') {
-        AppGlobals.renderKulturBadge();
-      }
-      if (typeof AppGlobals._renderKulturEmpfehlung === 'function') {
-        AppGlobals._renderKulturEmpfehlung();
-      }
-      if (typeof AppGlobals.openKulturFirstRun === 'function') {
-        AppGlobals.openKulturFirstRun();
-      }
+      // Issue #417: Persistenz + Re-Render zentral über den
+      // State-Coordinator (eventType RESET_ALL). Der Coordinator übernimmt
+      // renderTabs, renderResults, renderView, renderKulturBadge,
+      // _renderKulturEmpfehlung und openKulturFirstRun.
+      AppGlobals.appEmit('RESET_ALL');
     }
 
     // --- Reset-Modal (Issue #236, redesign v3) ---

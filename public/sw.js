@@ -4,7 +4,7 @@
 // der fetch-Handler ist network-first (Network schlägt Cache), Nutzer sehen
 // also bei jedem Online-Besuch sofort die neue Version. Der Bump räumt
 // nur noch den Offline-Fallback-Cache auf.
-const CACHE_VERSION = 'agrar-rechner-v51';
+const CACHE_VERSION = 'agrar-rechner-v52';
 // STATIC_ASSETS muss exakt zu den lokalen Produktions-Assets aus index.html
 // passen, damit eine frische PWA-Installation (oder ein Update-SW) beim
 // ersten Offline-Restart alle Bootstrap-Dateien im Cache hat. Kongruenz wird
@@ -28,6 +28,7 @@ const STATIC_ASSETS = [
     '/js/protocol-handlers.js',
     '/js/tab-handlers.js',
     '/js/render-tabs.js',
+    '/js/state-coordinator.js',
     '/js/render-results.js?v=21',
     '/js/render-drill.js',
     '/js/render-dashboard.js',

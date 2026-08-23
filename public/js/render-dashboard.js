@@ -256,9 +256,12 @@
       if (overlay) overlay.classList.add('open');
       document.body.style.overflow = 'hidden';
       AppGlobals.state.dashboardOpen = true;
-      AppGlobals.saveState();
+      // Issue #417: renderDashboard() ist Präsentation (bleibt hier, weil
+      // sie konkret das Öffnen des Sheets ist) — Persistenz und
+      // Tab-Bar-Nav-Indikator-Refresh laufen zentral über den Coordinator
+      // (eventType DASHBOARD_OPENED).
       renderDashboard();
-      if (typeof AppGlobals.renderTabs === 'function') AppGlobals.renderTabs();
+      AppGlobals.appEmit('DASHBOARD_OPENED');
       // Move focus into the dialog for accessibility (Issue #211)
       // Use setTimeout to avoid jsdom focus-event side effects
       if (sheet) {
@@ -279,8 +282,9 @@
       document.body.style.overflow = '';
       document.removeEventListener('keydown', _dashboardKeyHandler);
       AppGlobals.state.dashboardOpen = false;
-      AppGlobals.saveState();
-      if (typeof AppGlobals.renderTabs === 'function') AppGlobals.renderTabs();
+      // Issue #417: Persistenz + Tab-Bar-Nav-Indikator-Refresh laufen
+      // zentral über den Coordinator (eventType DASHBOARD_CLOSED).
+      AppGlobals.appEmit('DASHBOARD_CLOSED');
       // Restore focus to the element that opened the dashboard
       if (_dashboardPrevFocus && _dashboardPrevFocus.focus) {
         _dashboardPrevFocus.focus();

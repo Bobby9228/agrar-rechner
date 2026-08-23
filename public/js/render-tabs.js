@@ -177,6 +177,12 @@
       // damit ein anderer Tab nicht durch direktes Schreiben eines
       // manipulierten JSON-Strings den jsonReviver, die Schema-Migrationen
       // oder die Top-Level-Whitelist umgehen kann.
+      //
+      // Issue #417: Cross-Tab-Sync ist eine separate Bridge und läuft
+      // NICHT durch den State-Coordinator. Grund: ein zweiter appDispatch
+      // (über saveState → storage-Event → andere Tabs → deren appDispatch)
+      // wäre eine Endlosschleife. Daher bleibt das Re-Render hier direkt,
+      // identisch zum Coordinator-Plan für TAB_CHANGED + KULTUR-CHANGED.
       window.addEventListener('storage', function(e) {
         if (e.key === 'agrar_rechner' && e.newValue) {
           try {
@@ -209,6 +215,14 @@
           }
         }
       });
+      // --- State-Coordinator (Issue #417) ---
+      // Ab jetzt fließt jeder appEmit()-Aufruf durch den zentralen
+      // EVENT_PLAN (state-coordinator.js). Persistenz + Re-Render werden
+      // dort zentral entschieden — kein Handler, kein Renderer ruft
+      // saveState() mehr selbst. Die Registrierung erfolgt einmalig hier
+      // und ist damit die Single Source of Truth für die Frage "was
+      // passiert bei welchem Event?".
+      AppGlobals.registerStateCoordinator();
       AppGlobals.syncInputsFromState();
       AppGlobals.renderTabs();
       // Fahrgassen-Toggle aus State restaurieren
@@ -284,129 +298,6 @@
       }
       var vf = document.getElementById('version_footer');
       if (vf) vf.textContent = APP_VERSION + ' · ' + APP_BUILD_DATE;
-      AppGlobals.appOnStateChange(function(type, data) {
-        switch (type) {
-          case 'TAB_CHANGED':
-            AppGlobals.syncInputsFromState();
-            AppGlobals.renderTabs();
-            AppGlobals.saveState();
-            AppGlobals.renderResults();
-            renderView();
-            break;
-          case 'ENTRY_ADDED':
-          case 'ENTRY_REMOVED':
-          case 'ENTRY_CHANGED':
-          case 'CALCULATION_DONE':
-            AppGlobals.saveState();
-            AppGlobals.renderTabs();
-            AppGlobals.renderResults();
-            renderView();
-            // Issue #186: Dashboard muss bei State-Änderungen mit-synchronisieren.
-            // Wenn das Dashboard-Sheet offen ist, sofort neu rendern, damit
-            // verbleibende Einheiten/Dünger konsistent mit Tab-Ergebnis sind.
-            var dashSheet = document.getElementById('dashboard_sheet');
-            if (dashSheet && dashSheet.classList.contains('open')) {
-              AppGlobals.renderDashboard();
-            }
-            if (type === 'ENTRY_CHANGED' && AppGlobals.state.reiter[AppGlobals.state.activeReiter].hektar > 0 && AppGlobals.state.reiter[AppGlobals.state.activeReiter].koerner > 0) {
-              var re = document.getElementById('results');
-              if (re) re.style.display = 'block';
-            } else if (type !== 'ENTRY_CHANGED') {
-              var re2 = document.getElementById('results');
-              if (re2) re2.style.display = 'block';
-            }
-            // Lokales Protokoll-Redesign: Gesamtbilanz und Felder reflektieren
-            // geänderte SOLL/IST-Werte, Carryover und Saldo. Im Protokoll-Modus
-            // nachziehen — sparsam (nur Re-Render des neuen Panels).
-            if (AppGlobals.state.activeView === 'protokoll'
-                && typeof AppGlobals.renderLocalProtocol === 'function') {
-              AppGlobals.renderLocalProtocol();
-            }
-            break;
-          case 'SETTINGS_CHANGED':
-            AppGlobals.saveState();
-            AppGlobals.renderResults();
-            break;
-          case 'TAB_RENAMED':
-            AppGlobals.saveState();
-            AppGlobals.renderTabs();
-            break;
-          case 'TAB_RESET':
-            AppGlobals.saveState();
-            AppGlobals.renderTabs();
-            AppGlobals.renderResults();
-            renderView();
-            var re3 = document.getElementById('results');
-            if (re3) re3.style.display = 'none';
-            var ds = document.getElementById('drill_section');
-            if (ds) ds.style.display = 'none';
-            var eh = document.getElementById('err_hektar');
-            if (eh) eh.textContent = '';
-            var ek = document.getElementById('err_koerner');
-            if (ek) ek.textContent = '';
-            var he = document.getElementById('hektar');
-            if (he) he.style.borderColor = '';
-            var ke = document.getElementById('koerner');
-            if (ke) ke.style.borderColor = '';
-            break;
-          case 'TAB_ADDED':
-            AppGlobals.syncInputsFromState();
-            AppGlobals.saveState();
-            AppGlobals.renderTabs();
-            renderView();
-            break;
-          case 'TAB_REMOVED':
-            AppGlobals.syncInputsFromState();
-            AppGlobals.saveState();
-            AppGlobals.renderTabs();
-            AppGlobals.renderResults();
-            renderView();
-            break;
-          case 'VIEW_CHANGED':
-            AppGlobals.saveState();
-            AppGlobals.renderTabs();
-            renderView();
-            if (AppGlobals.state.activeView === 'protokoll') AppGlobals.renderDrillTabList();
-            AppGlobals.renderResults();
-            break;
-          case 'PROTOCOL_VIEW_CHANGED':
-            // Innerhalb des Protokoll-Tabs: nur das neue Panel anzeigen,
-            // keine komplette Re-Render-Kaskade (Tabs/Results/Dashboard).
-            AppGlobals.saveState();
-            if (typeof AppGlobals.renderLocalProtocol === 'function') {
-              AppGlobals.renderLocalProtocol();
-            }
-            break;
-          case 'DRILL_ENTRY_ADDED':
-            AppGlobals.saveState();
-            AppGlobals.renderDrillTabList();
-            AppGlobals.renderResults();
-            AppGlobals.drillCalcAll();
-            if (AppGlobals.state.activeView === 'protokoll'
-                && typeof AppGlobals.renderLocalProtocol === 'function') {
-              AppGlobals.renderLocalProtocol();
-            }
-            break;
-          case 'DRILL_ENTRY_REMOVED':
-            AppGlobals.saveState();
-            AppGlobals.renderDrillTabList();
-            AppGlobals.renderResults();
-            AppGlobals.drillCalcAll();
-            if (AppGlobals.state.activeView === 'protokoll'
-                && typeof AppGlobals.renderLocalProtocol === 'function') {
-              AppGlobals.renderLocalProtocol();
-            }
-            break;
-          case 'KULTUR_CHANGED':
-            AppGlobals.saveState();
-            if (typeof AppGlobals.renderKulturBadge === 'function') {
-              AppGlobals.renderKulturBadge();
-            }
-            _renderKulturEmpfehlung();
-            AppGlobals.renderResults();
-            break;
-        }
-      });
     }
 
     // --- Confirm Remove Tab ---

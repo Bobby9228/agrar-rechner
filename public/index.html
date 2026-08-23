@@ -310,16 +310,18 @@
     //   Accessibility in culture-handlers.js extrahiert)
     // Dann: 11 Module (Issue #416 Welle 2 — Tab-/Ansichtsverwaltung in
     //   tab-handlers.js extrahiert)
-    // Jetzt: 17 Module (Issue #416 Welle 8 — Daten-Export/Import in
-    //   data-io-handlers.js extrahiert)
+    // Jetzt: 18 Module (Issue #417 — state-coordinator.js bündelt
+    //   Persistenz + Re-Render als Single Source of Truth zwischen
+    //   render-tabs.js und render-results.js)
     //
     // Lade-Reihenfolge (wichtig!):
     //   app-globals.js → state.js → culture.js → calculations.js
     //     → culture-handlers.js → ui-handlers.js → input-handlers.js
     //     → settings-handlers.js → reset-handlers.js → drill-handlers.js
     //     → protocol-handlers.js → tab-handlers.js → render-tabs.js
-    //     → render-results.js → render-drill.js → render-dashboard.js
-    //     → render-local-protocol.js → data-io-handlers.js → main.js
+    //     → state-coordinator.js → render-results.js → render-drill.js
+    //     → render-dashboard.js → render-local-protocol.js
+    //     → data-io-handlers.js → main.js
     //
     //   app-globals.js: AppGlobals-Namespace + Live-Alias für `state`
     //   state.js definiert: state, saveState(), loadState()
@@ -372,6 +374,12 @@
     //   render-tabs.js braucht: state, ui-handlers.js, settings-handlers.js,
     //     tab-handlers.js, calculations.js; resetAll löst renderTabs erst
     //     beim Nutzeraufruf über AppGlobals auf.
+    //   state-coordinator.js (Issue #417) wird NACH render-tabs.js und
+    //     VOR render-results.js geladen, damit initUI() die AppGlobals-
+    //     Brücke (appDispatch, registerStateCoordinator) bereits vorfindet
+    //     und der Coordinator seinerseits render-results.js / render-drill.js
+    //     / render-dashboard.js / render-local-protocol.js / culture-
+    //     handlers.js defensiv auflöst.
     //   render-results.js braucht: state, render-tabs.js, render-drill.js,
     //     calculations.js
     //   render-drill.js braucht: state, ui-handlers.js, calculations.js
@@ -408,6 +416,7 @@
   <script src="js/protocol-handlers.js"></script>
   <script src="js/tab-handlers.js"></script>
   <script src="js/render-tabs.js"></script>
+  <script src="js/state-coordinator.js"></script>
   <script src="js/render-results.js?v=21"></script>
   <script src="js/render-drill.js"></script>
   <script src="js/render-dashboard.js"></script>

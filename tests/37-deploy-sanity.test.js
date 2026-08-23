@@ -51,7 +51,9 @@ describe('Cloudflare deploy sanity', () => {
     // CACHE_VERSION muss vorhanden sein und darf nicht leer sein
     const match = content.match(/CACHE_VERSION\s*=\s*'([^']+)'/);
     expect(match).not.toBeNull();
-    expect(match[1]).toBe('agrar-rechner-v51');
+    // v51 = Stand nach Issue #416 Welle 8 (data-io-handlers.js);
+    // v52 = nach Issue #417 (state-coordinator.js hinzugefügt).
+    expect(match[1]).toBe('agrar-rechner-v52');
   });
 
   // Issue #144: SW ohne Offline-Fallback + Registration ohne Error-Handling

@@ -72,7 +72,8 @@ function setProtocolView(view) {
   if (view !== 'fields' && view !== 'machine') return;
   if (AppGlobals.state.protocolView === view) return;
   AppGlobals.state.protocolView = view;
-  AppGlobals.saveState();
+  // Issue #417: Persistenz + Re-Render zentral über den
+  // State-Coordinator (eventType PROTOCOL_VIEW_CHANGED).
   AppGlobals.appEmit('PROTOCOL_VIEW_CHANGED', { view: view });
 }
 
@@ -87,11 +88,9 @@ function toggleProtocolAccordion(tabIdx, dateKey, cardKey) {
   if (!wasOpen) {
     openMap[dateKey] = key;
   }
-  AppGlobals.saveState();
-  // Re-Render nur des Schläge-Panels (nicht der gesamten App).
-  if (typeof AppGlobals.renderLocalProtocolFields === 'function') {
-    AppGlobals.renderLocalProtocolFields();
-  }
+  // Issue #417: Persistenz + Re-Render zentral über den
+  // State-Coordinator (eventType PROTOCOL_ACCORDION_TOGGLED).
+  AppGlobals.appEmit('PROTOCOL_ACCORDION_TOGGLED', { tabIdx: tabIdx, dateKey: dateKey, cardKey: cardKey });
 }
 
 function requestLocalProtocolDelete(kind, payload, timeLabel) {

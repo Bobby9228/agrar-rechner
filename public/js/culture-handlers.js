@@ -213,10 +213,9 @@ function chooseKultur(key) {
     AppGlobals.syncEinheitGroesseEditorFromTab(AppGlobals.getActiveReiter());
   }
   closeKulturFirstRun();
-  if (typeof AppGlobals.renderKulturBadge === 'function') {
-    AppGlobals.renderKulturBadge();
-  }
-  AppGlobals.saveState();
+  // Issue #417: Persistenz + Re-Render zentral über den
+  // State-Coordinator (eventType KULTUR_CHANGED). Der Coordinator
+  // übernimmt renderKulturBadge, _renderKulturEmpfehlung und renderResults.
   AppGlobals.appEmit('KULTUR_CHANGED', { kultur: key, source: 'first-run' });
   return true;
 }
@@ -326,15 +325,10 @@ function confirmChangeKultur() {
   AppGlobals.state.erstauswahlDone = true;
   AppGlobals.state.koernerProEinheit = AppGlobals.getDefaultKoernerProEinheit(key);
   cancelChangeKultur();
-  if (typeof AppGlobals.renderKulturBadge === 'function') {
-    AppGlobals.renderKulturBadge();
-  }
-  AppGlobals.saveState();
+  // Issue #417: Persistenz + Re-Render zentral über den
+  // State-Coordinator (eventType KULTUR_CHANGED). Der Coordinator
+  // übernimmt renderKulturBadge, _renderKulturEmpfehlung und renderResults.
   AppGlobals.appEmit('KULTUR_CHANGED', { kultur: key, prevKultur: prevKultur, source: 'confirm' });
-  // Re-render: Results/Header/Körner-Empfehlung könnten sich ändern.
-  if (typeof AppGlobals.renderResults === 'function') {
-    AppGlobals.renderResults();
-  }
 }
 
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
