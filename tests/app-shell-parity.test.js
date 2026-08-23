@@ -1442,7 +1442,7 @@ describe('App-Shell-Parität (Handler/Renderer/Coordinator-Brücken) — überno
  * Objekt (z.B. window.renderTabs). Da der Coordinator alle Renderer über
  * AppGlobals.X aufruft, müssen die Spies auf AppGlobals.X gesetzt werden.
  *
- * Cross-Tab-Sync (storage-Event) wird in tests/36-cross-tab-sync.test.js
+ * Cross-Tab-Sync (storage-Event) wird in tests/cross-tab-sync.test.js
  * separat abgesichert und ist hier kein Thema — diese Suite testet nur den
  * in-page Datenfluss.
  */

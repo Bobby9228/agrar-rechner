@@ -21,15 +21,15 @@
  *   - isTabDone(t) ≡ isTabDone(t, i) — keine Carryover-Cache-Splits.
  *   - computeShownExcess(raw, co) klemmt bei 0, ist nil-safe.
  *
- * Zugehörige frühere Dateien: tests/19-savings-carryover.test.js,
- * tests/35-carryover-isTabDone-fix.test.js,
- * tests/40-ist-flaeche-sync.test.js,
- * tests/47-dashboard-carryover-subtraction.test.js,
- * tests/48-render-results-ist-fallback.test.js,
- * tests/50-result-card-carryover-blocks.test.js,
- * tests/51-result-card-no-carryover-line.test.js,
- * tests/57-render-excess-netted.test.js,
- * tests/101-carryover-conservation.test.js (Issue #419 Welle 2).
+ * Zugehörige frühere Dateien: tests/carryover.test.js,
+ * tests/carryover.test.js,
+ * tests/carryover.test.js,
+ * tests/carryover.test.js,
+ * tests/carryover.test.js,
+ * tests/carryover.test.js,
+ * tests/carryover.test.js,
+ * tests/carryover.test.js,
+ * tests/carryover.test.js (Issue #419 Welle 2).
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createDom } from './helpers.js';
@@ -152,8 +152,8 @@ describe('IST/SOLL Savings & Carryover', () => {
 
   // REMOVED (#378 Regel-7): 'getCarryover: all savings go to first not-done tab'
   //   — Phase-1 Ersparnis-Kaskade gestrichen. `savedEinheit` ist unter Regel 7
-  //   IMMER 0. Coverage für die neue Pool-Semantik liegt in tests/55
-  //   (Carryover-Invarianten) und tests/56 (Pool-Definition).
+  //   IMMER 0. Coverage für die Pool-Semantik liegt in dieser Datei
+  //   (Carryover-Invarianten + Pool-Definition, Issue #419 konsolidiert).
 
   it('no savings shown when no istHektar set', () => {
     const { w } = setup();

@@ -121,7 +121,7 @@ export function createDom() {
     // block also calls initDataExportImport, so the needle must cover the whole
     // block. If we don't strip it, the DOMContentLoaded listener fires AFTER the
     // manual call below and registers a duplicate state coordinator listener,
-    // causing double-renders/double-persists (e.g. tests/98 asserting exactly 1
+    // causing double-renders/double-persists (e.g. app-shell-parity.test.js asserting exactly 1
     // saveState call got 2).
     loadModule('main.js').replace(
       "document.addEventListener('DOMContentLoaded', function() {\n  AppGlobals.initUI();\n  if (typeof AppGlobals.initDataExportImport === 'function') {\n    AppGlobals.initDataExportImport();\n  }\n});",

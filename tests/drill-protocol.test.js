@@ -580,7 +580,7 @@ describe('drillCalcAll (priority distribution)', () => {
     var dA = w.document.getElementById('dtl_d_0');
     var dB = w.document.getElementById('dtl_d_1');
     // Symmetrisch zu Saat-Pfad: Tab A nimmt min(remD, tabDRem=1500)=1500,
-    // Rest 300 geht zu Tab B (cap=500) → Tab B = 300. Siehe tests/43.
+    // Rest 300 geht zu Tab B (cap=500) → Tab B = 300. Siehe tests/drill-distribution.test.js.
     expect(w.parseDE(dA.value)).toBeCloseTo(1500);
     expect(w.parseDE(dB.value)).toBeCloseTo(300);
   });

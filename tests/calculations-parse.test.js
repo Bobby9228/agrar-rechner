@@ -9,8 +9,8 @@
  * Berechnungs-Primitive, die render-results, render-dashboard,
  * render-drill und das Carryover-System gemeinsam nutzen.
  *
- * Zugehörige frühere Dateien: tests/01-parseDE-calculations.test.js,
- * tests/33-parseDE-edge.test.js (Issue #419 Welle 2).
+ * Zugehörige frühere Dateien: tests/calculations-parse.test.js,
+ * tests/calculations-parse.test.js (Issue #419 Welle 2).
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createDom } from './helpers.js';

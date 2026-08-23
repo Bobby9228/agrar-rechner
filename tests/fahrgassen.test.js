@@ -10,9 +10,9 @@
  * Reduktionsformel (breite - 1) / breite — alle 4 Aufrufer (Dashboard,
  * Drill-Verteilung, Berechnungen) müssen sie konsistent nutzen.
  *
- * Zugehörige frühere Dateien: tests/04-fahrgassen.test.js,
- * tests/26-dashboard-fahrgassen.test.js,
- * tests/41-fahrgassen-faktor.test.js (Issue #419 Welle 2).
+ * Zugehörige frühere Dateien: tests/fahrgassen.test.js,
+ * tests/fahrgassen.test.js,
+ * tests/fahrgassen.test.js (Issue #419 Welle 2).
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createDom } from './helpers.js';

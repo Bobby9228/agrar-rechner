@@ -14,7 +14,7 @@
  * Zugehörige frühere Dateien: tests/66-kultur-sonstiges.test.js,
  * tests/73-sonstiges-korner-duenger-stay-visible.test.js,
  * tests/74-koerner-empfehlung-sonstiges-leer.test.js,
- * tests/75-einheit-editor-kein-mais-standard.test.js (Issue #419 Welle 1).
+ * tests/einheit-groesse.test.js (Issue #419 Welle 1).
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';

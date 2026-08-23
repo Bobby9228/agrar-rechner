@@ -10,9 +10,9 @@
  * zu NaN im DOM führen. _buildDrillEntry bewahrt kleine Saat-Mengen
  * (≥ 0,0005 E) statt sie auf 0 zu runden.
  *
- * Zugehörige frühere Dateien: tests/21-multi-tab-drill-distribution.test.js,
- * tests/43-tabDCap-bug-1333.test.js,
- tests/NN-drill-nan-missing-einheit.test.js (Issue #419 Welle 2).
+ * Zugehörige frühere Dateien: tests/drill-distribution.test.js,
+ * tests/drill-distribution.test.js,
+ tests/drill-distribution.test.js (Issue #419 Welle 2).
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createDom } from './helpers.js';
@@ -181,7 +181,7 @@ describe('drillCalcAll (priority distribution)', () => {
     var dA = w.document.getElementById('dtl_d_0');
     var dB = w.document.getElementById('dtl_d_1');
     // Symmetrisch zu Saat-Pfad: Tab 0 nimmt min(remD, tabDRem=1500)=1500,
-    // Rest 300 geht zu Tab 1 (cap=1120) → Tab 1 = 300. Siehe tests/43.
+    // Rest 300 geht zu Tab 1 (cap=1120) → Tab 1 = 300. Siehe tests/drill-distribution.test.js.
     expect(w.parseDE(dA.value)).toBeCloseTo(1500);
     expect(w.parseDE(dB.value)).toBeCloseTo(300);
   });

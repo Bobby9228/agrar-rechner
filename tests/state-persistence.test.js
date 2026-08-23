@@ -854,10 +854,10 @@ describe('State-Persistenz, Schema-Validierung, Legacy-Key-Migration — überno
  * typischerweise mit derselben Aussaatstärke und Düngermenge weiterplanen —
  * hektar, istHektar, Drill-Entries, Notizen und done sind schlag-spezifisch
  * und bleiben frisch. Die per-Tab Einheitsgröße folgt weiterhin der
- * Kultur-/Global-Settings-Logik (siehe tests/63-kultur-per-tab-kpe), und
+ * Kultur-/Global-Settings-Logik (siehe tests/kultur-per-tab-values.test.js), und
  * Fahrgassen übernehmen den globalen Stand (keine Per-Tab-Vererbung).
  *
- * Diese Datei ergänzt tests/06-tab-management.test.js um fokussierte
+ * Diese Datei ergänzt tests/tab-management.test.js um fokussierte
  * Regressionstests, die das Zusammenspiel aus
  *   - syncStateFromInputs() läuft in addReiter() als erstes,
  *   - Vererbung liest direkt aus state.reiter[activeReiter],

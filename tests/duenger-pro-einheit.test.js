@@ -11,8 +11,8 @@
  * unter der EPSILON_EINHEIT-Schwelle verschwinden (0,0005 E Saatgut
  * bleibt sichtbar). _buildDrillEntry verwendet round6 für Saat.
  *
- * Zugehörige frühere Dateien: tests/42-duenger-pro-einheit.test.js,
- * tests/88-einheiten-praezision.test.js (Issue #419 Welle 2).
+ * Zugehörige frühere Dateien: tests/duenger-pro-einheit.test.js,
+ * tests/duenger-pro-einheit.test.js (Issue #419 Welle 2).
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createDom } from './helpers.js';

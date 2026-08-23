@@ -10,8 +10,8 @@
  * Migration 5→6: Per-Tab kpe ist authoritative — state.koernerProEinheit
  * ist nur Fallback, falls der Tab keinen eigenen Wert führt.
  *
- * Zugehörige frühere Dateien: tests/12-einheit-groesse.test.js,
- * tests/24-einheit-groesse.test.js (Issue #419 Welle 2).
+ * Zugehörige frühere Dateien: tests/einheit-groesse.test.js,
+ * tests/einheit-groesse.test.js (Issue #419 Welle 2).
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createDom } from './helpers.js';
