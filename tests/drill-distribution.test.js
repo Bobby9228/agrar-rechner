@@ -142,6 +142,34 @@ describe('renderDrillTabList', () => {
 });
 
 describe('drillCalcAll (priority distribution)', () => {
+  it('distributes remaining to second priority tab', () => {
+    // Originaltest aus tests/21-multi-tab-drill-distribution.test.js
+    // (bei der #419-Konsolidierung versehentlich gefallen, in #419
+    // Abschluss-Review wiederhergestellt — Saat-Pfad: 20 Einheiten auf
+    // Prio 1 (Bedarf 18) + Prio 2 (Rest 2) verteilen).
+    const { window: w } = createDom();
+    setupMultiTab(w);
+    w.renderDrillTabList();
+
+    // Issue #264: Prio 1 = highest priority. Tab 0 = prio 1 (higher), Tab 1 = prio 2 (lower) — fill tab 0 first
+    const btn0 = w.document.getElementById('dtl_prio_0');
+    btn0.click(); // prio 1
+    const btn1 = w.document.getElementById('dtl_prio_1');
+    btn1.click(); // prio 1
+    btn1.click(); // prio 2
+
+    // Tab 0 needs 18 einheiten, give 20 total → gets 18 first
+    w.document.getElementById('drill_einheit').value = '20';
+    w.document.getElementById('drill_duenger').value = '0';
+
+    w.drillCalcAll();
+
+    // Tab 0 (prio 1 = highest) needs 18 → gets min(18, 20) = 18
+    expect(w.document.getElementById('dtl_e_0').value).toBe('18,000');
+    // Tab 1 (prio 2) needs 13.6 → gets min(13.6, 20-18=2) = 2
+    expect(w.document.getElementById('dtl_e_1').value).toBe('2,000');
+  });
+
   it('distributes total to highest priority tab first', () => {
     const { window: w } = createDom();
     setupMultiTab(w);
@@ -214,6 +242,11 @@ describe('drillCalcAll (priority distribution)', () => {
 
     var eB = w.document.getElementById('dtl_e_1');
     expect(eB.value).toBe('');
+    // Original-Assertions aus tests/21 (bei #419-Konsolidierung gefallen,
+    // hier wiederhergestellt): auch Tab 2 (unpriorisiert) bleibt Saat UND
+    // Dünger-seitig leer.
+    expect(w.document.getElementById('dtl_e_2').value).toBe('');
+    expect(w.document.getElementById('dtl_d_2').value).toBe('');
   });
 
   it('handles zero total einheit and duenger', () => {
