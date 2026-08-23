@@ -136,10 +136,191 @@ document.addEventListener('input', function() {
 
 document.addEventListener('DOMContentLoaded', function() {
   AppGlobals.initUI();
-  if (typeof AppGlobals.initDataExportImport === 'function') {
-    AppGlobals.initDataExportImport();
-  }
 });
+
+// --- initUIBindings (Issue #418 Welle 1+) ---
+//
+// Zentrale Registrierung aller DOM-Event-Handler, die NICHT von dynamisch
+// erzeugten Elementen abhängen. Wird aus initUI() (render-tabs.js)
+// aufgerufen — sowohl in Production (main.js DOMContentLoaded → initUI)
+// als auch in jsdom (tests/helpers.js → initUI). Idempotent: ein zweiter
+// Aufruf registriert KEINE doppelten Listener.
+//
+// Bewusst NICHT hier:
+//   - Dynamisch erzeugte Elemente (Tabs, Drill-Inputs, Protokoll-Entries):
+//     werden per addEventListener beim Erzeugen gebunden (render-tabs.js,
+//     render-drill.js, render-local-protocol.js).
+//   - Lokales-Protokoll-Sheet-Backdrop + Escape: lebt in render-local-
+//     protocol.js (Modul-Load, weil die Elemente zu Modul-Load-Zeit
+//     bereits existieren und die Bindings über die App-Lebenszeit
+//     stabil sind).
+//   - data_export_btn / data_import_btn / data_import_file /
+//     import_modal_* / import_overlay: bleiben in initDataExportImport
+//     (data-io-handlers.js) — werden in Welle 4 von dort übernommen.
+function _bindClick(id, handler) {
+  var el = document.getElementById(id);
+  if (el && typeof handler === 'function') {
+    el.addEventListener('click', handler);
+  }
+}
+// Issue #418 Welle 2: input/change/blur-Timing 1:1 erhalten.
+//   oninput          → Live-Formatierung (onInputFormat), ohne State-Write
+//   onchange + onblur → State-Write (onInputHektar/…/einheitGroesseUpdate/…).
+//                      blur UND change sind absichtlich beide gebunden —
+//                      Browser feuern je nach Focus-Pfad nur eins der beiden
+//                      Events (Mobile: blur; Desktop+Tab: change → blur).
+//
+// Wichtig (Migration on*="onInputX(this)" → addEventListener): der
+// Inline-Handler bekam das Element als `this` zugespielt, der
+// addEventListener-Aufruf bekommt das Event als ersten Parameter.
+// Wir wrappen den Handler daher in eine Closure, die das Element
+// fest übergibt — sonst würde z.B. onInputHektar(undefined) aufgerufen
+// und parseDE(undefined) → 0 den State zurückschreiben.
+function _bindNumberInput(id, mode, stateHandler) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', function(e) {
+    if (mode === 'integer') AppGlobals.onInputFormat(el, 'integer', e);
+    else AppGlobals.onInputFormat(el, 'decimal', e);
+  });
+  if (typeof stateHandler === 'function') {
+    el.addEventListener('change', function() { stateHandler(el); });
+    el.addEventListener('blur', function() { stateHandler(el); });
+  }
+}
+function initUIBindings() {
+  if (AppGlobals._uiBindingsRegistered) return;
+  AppGlobals._uiBindingsRegistered = true;
+
+  // Header / Navigation
+  // Theme-Toggle: es gibt mehrere .theme-toggle-Buttons (Header + Dashboard).
+  // querySelectorAll + forEach deckt beide mit einem Aufruf ab.
+  var themeToggles = document.querySelectorAll('.theme-toggle');
+  for (var ti = 0; ti < themeToggles.length; ti++) {
+    themeToggles[ti].addEventListener('click', toggleTheme);
+  }
+  _bindClick('dashboard_open_btn', AppGlobals.openDashboard);
+  _bindClick('nav_rechner', AppGlobals.switchToRechner);
+  _bindClick('nav_protokoll', AppGlobals.switchToProtokoll);
+  _bindClick('nav_uebersicht', AppGlobals.openDashboard);
+  _bindClick('protokoll_tab_btn', AppGlobals.switchToProtokoll);
+  _bindClick('dashboard_overlay', AppGlobals.closeDashboard);
+
+  // Save-Error-Banner: Schließen-Button (Issue #243 — Inline-Handler
+  // entfernt). Es gibt genau einen <button> innerhalb des Banners.
+  var saveBanner = document.getElementById('save_error_banner');
+  if (saveBanner) {
+    var saveBannerClose = saveBanner.querySelector('button');
+    if (saveBannerClose) saveBannerClose.addEventListener('click', AppGlobals.dismissSaveError);
+  }
+
+  // Formulare — Hektar/Koerner/Duenger/Notizen/IST-Fläche/Einheitsgröße/Fahrgassenbreite.
+  // Timing ist kritisch: input feuert pro Tastendruck (Format), change/blur
+  // feuern bei Fokus-Wechsel (State-Write). Browser-spezifisch feuert manchmal
+  // nur change, manchmal nur blur → wir binden BEIDE, damit der State auf
+  // jedem Pfad konsistent landet. Issue #262 / #416 / #418.
+  _bindNumberInput('hektar', 'decimal', AppGlobals.onInputHektar);
+  _bindNumberInput('koerner', 'integer', AppGlobals.onInputKoerner);
+  _bindNumberInput('duenger', 'decimal', AppGlobals.onInputDuenger);
+  _bindNumberInput('ist_hektar', 'decimal', AppGlobals.onInputIstHektar);
+  _bindNumberInput('koerner_pro_einheit', 'integer', AppGlobals.einheitGroesseUpdate);
+  _bindNumberInput('fahrgassen_breite', 'decimal', AppGlobals.fahrgassenUpdate);
+
+  // Notizen: nur input (textarea feuert keinen change auf Autocomplete-Tap).
+  var notizenEl = document.getElementById('notizen');
+  if (notizenEl) notizenEl.addEventListener('input', AppGlobals.onInputNotizen);
+
+  // Settings-Toggles: reine click-Handler, kein input.
+  _bindClick('einheit_groesse_toggle', AppGlobals.einheitGroesseToggle);
+  _bindClick('fahrgassen_toggle', AppGlobals.fahrgassenToggle);
+
+  // Drill-Eingabefelder + "+ Einfüllen" (Welle 3).
+  // drill_einheit / drill_duenger feuern drillCalcDebounced + Live-Format.
+  // drill_hektar feuert NUR Live-Format (kein State-Write — der Wert wird
+  // erst beim "+ Einfüllen"-Klick in den Entry übernommen, siehe
+  // _parseDrillInputs in drill-handlers.js).
+  function _bindDrillInput(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', function(e) {
+      if (id === 'drill_einheit' || id === 'drill_duenger') {
+        AppGlobals.drillCalcDebounced();
+      }
+      AppGlobals.onInputFormat(el, 'decimal', e);
+    });
+  }
+  _bindDrillInput('drill_einheit');
+  _bindDrillInput('drill_duenger');
+  _bindDrillInput('drill_hektar');
+  // "+ Einfüllen" — der statische Button im HTML. Innerhalb von
+  // .drill_mask; nur einer existiert. Dynamische Drill-Buttons
+  // (prioBtn, doneBtn, removeBtn) werden in render-drill.js beim
+  // Erzeugen gebunden — siehe Welle 5.
+  var drillAddBtn = document.querySelector('#drill_mask .btn-add');
+  if (drillAddBtn) drillAddBtn.addEventListener('click', AppGlobals.drillAdd);
+
+  // Footer Reset / Daten-I/O
+  _bindClick('footer_reset_btn', AppGlobals.openResetModal);
+  // Footer Daten-I/O (data_export_btn, data_import_btn, data_import_file,
+  // import_modal_*) bleibt in initDataExportImport (data-io-handlers.js).
+  // Welle 4 zieht die letzten drei hierher um — danach bleibt in
+  // initDataExportImport nur noch die Konstanten/Funktionen-Registrierung
+  // übrig (die Buttons selbst wandern hier in initUIBindings).
+  _bindClick('import_modal_x', AppGlobals.cancelImportFromModal);
+  _bindClick('import_modal_cancel', AppGlobals.cancelImportFromModal);
+  _bindClick('import_modal_confirm', AppGlobals.confirmImportFromModal);
+  var importOverlay = document.getElementById('import_overlay');
+  if (importOverlay) {
+    importOverlay.addEventListener('click', function(e) {
+      if (e && e.target && e.target.id === 'import_overlay') {
+        AppGlobals.cancelImportFromModal();
+      }
+    });
+  }
+
+  // Reset-Modal
+  _bindClick('reset_modal_x', AppGlobals._onCancel);
+  _bindClick('reset_modal_cancel', AppGlobals._onCancel);
+  _bindClick('reset_modal_tab', AppGlobals._onResetTab);
+  _bindClick('reset_modal_confirm_all', AppGlobals._onResetAll);
+  // Der zweite "Abbrechen"-Button innerhalb des Reset-Modals (ohne ID
+  // im Markup) — querySelector innerhalb des Modals.
+  var resetModal = document.getElementById('reset_modal');
+  if (resetModal) {
+    var cancelButtons = resetModal.querySelectorAll('button.reset-modal-cancel');
+    for (var rci = 0; rci < cancelButtons.length; rci++) {
+      cancelButtons[rci].addEventListener('click', AppGlobals._onCancel);
+    }
+  }
+  // reset_overlay: Klick auf Overlay schließt das Modal (nur wenn direkt
+  // auf das Overlay geklickt, nicht auf ein Kind-Element — _onOverlayClick
+  // enthält genau diese Logik).
+  var resetOverlay = document.getElementById('reset_overlay');
+  if (resetOverlay) {
+    resetOverlay.addEventListener('click', AppGlobals._onOverlayClick);
+  }
+
+  // Kultur-Auswahl (Erststart + Wechsel)
+  _bindClick('kultur_choice_mais', function() { AppGlobals.chooseKultur('mais'); });
+  _bindClick('kultur_choice_raps', function() { AppGlobals.chooseKultur('raps'); });
+  _bindClick('kultur_choice_sonstiges', function() { AppGlobals.chooseKultur('sonstiges'); });
+  _bindClick('kultur_badge_change', AppGlobals.requestChangeKultur);
+  _bindClick('kultur_confirm_cancel', AppGlobals.cancelChangeKultur);
+  _bindClick('kultur_confirm_cancel_btn', AppGlobals.cancelChangeKultur);
+  _bindClick('kultur_confirm_ok', AppGlobals.confirmChangeKultur);
+  var kulturChangeSelect = document.getElementById('kultur_change_select');
+  if (kulturChangeSelect) {
+    kulturChangeSelect.addEventListener('change', function(e) {
+      AppGlobals._onKulturChangeSelectChange(e.target);
+    });
+  }
+
+  // Lokales Protokoll — View-Toggle + Action-Sheet
+  _bindClick('lp_view_fields_btn', function() { AppGlobals.setProtocolView('fields'); });
+  _bindClick('lp_view_machine_btn', function() { AppGlobals.setProtocolView('machine'); });
+  _bindClick('local_protocol_sheet_delete', AppGlobals.confirmLocalProtocolDelete);
+  _bindClick('local_protocol_sheet_cancel', AppGlobals.closeLocalProtocolSheet);
+}
 
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 Object.assign(window.AppGlobals, {
@@ -154,4 +335,5 @@ Object.assign(window.AppGlobals, {
   applyTheme: applyTheme,
   toggleTheme: toggleTheme,
   initTheme: initTheme,
+  initUIBindings: initUIBindings,
 });

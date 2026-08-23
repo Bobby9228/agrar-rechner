@@ -630,7 +630,6 @@ Object.assign(window.AppGlobals, {
   getTabNextTime: getTabNextTime,
   getTabKornerGesamt: getTabKornerGesamt,
   getTabRates: getTabRates,
-  parseEntryTime: parseEntryTime,
   formatEntryTime: formatEntryTime,
   parseEntryDateKey: parseEntryDateKey,
   formatEntryTimeHHMM: formatEntryTimeHHMM,

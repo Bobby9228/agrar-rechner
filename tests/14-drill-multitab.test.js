@@ -307,13 +307,13 @@ describe('priority button cycling', () => {
     expect(prioBtn.textContent).toBe('—');
 
     // Click once → prio 1
-    prioBtn.onclick();
+    prioBtn.click();
     expect(prioBtn.getAttribute('data-prio')).toBe('1');
     expect(prioBtn.textContent).toBe('1');
     expect(prioBtn.classList.contains('active')).toBe(true);
 
     // Click again → prio 2 (but maxPrio=1 since only 1 tab, so cycles to 0)
-    prioBtn.onclick();
+    prioBtn.click();
     // With 1 tab, maxPrio=1, so 1 >= 1 → cycles to 0
     expect(prioBtn.getAttribute('data-prio')).toBe('0');
     expect(prioBtn.textContent).toBe('—');
@@ -325,12 +325,12 @@ describe('priority button cycling', () => {
     w.renderDrillTabList();
     var prioBtn = w.document.getElementById('dtl_prio_0');
 
-    prioBtn.onclick(); // 0→1
+    prioBtn.click(); // 0→1
     expect(prioBtn.getAttribute('data-prio')).toBe('1');
-    prioBtn.onclick(); // 1→2
+    prioBtn.click(); // 1→2
     expect(prioBtn.getAttribute('data-prio')).toBe('2');
-    prioBtn.onclick(); // 2→3
-    prioBtn.onclick(); // 3 → maxPrio=3 → 0
+    prioBtn.click(); // 2→3
+    prioBtn.click(); // 3 → maxPrio=3 → 0
     expect(prioBtn.getAttribute('data-prio')).toBe('0');
     expect(prioBtn.textContent).toBe('—');
   });

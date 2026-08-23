@@ -317,7 +317,11 @@ describe('Tab management', () => {
       expect(spans[0].textContent).toBe('Schlag 1');
       // Simulate renaming by setting textContent and triggering blur
       spans[0].textContent = 'Mein Feld';
-      spans[0].onblur();
+      // Issue #418 Welle 5: Handler ist per addEventListener gebunden.
+      // Erst fokussieren, dann blur() — jsdom feuert Blur-Event nur,
+      // wenn das Element vorher fokussiert war.
+      spans[0].focus();
+      spans[0].blur();
       expect(w.state.reiter[0].name).toBe('Mein Feld');
     });
 

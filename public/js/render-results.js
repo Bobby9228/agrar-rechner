@@ -438,9 +438,9 @@
         }
         removeBtn.setAttribute('aria-label', ariaLabel);
         removeBtn.setAttribute('title', ariaLabel);
-        removeBtn.onclick = function() {
+        removeBtn.addEventListener('click', function() {
           AppGlobals.drillRemove(AppGlobals.state.activeReiter, actualIdx);
-        };
+        });
         body.appendChild(removeBtn);
 
         row.appendChild(body);

@@ -31,19 +31,21 @@
         prioBtn.textContent = initPrio === 0 ? '—' : String(initPrio);
         prioBtn.setAttribute('data-prio', String(initPrio));
         prioBtn.classList.toggle('active', initPrio > 0);
-        prioBtn.onclick = function() {
-          var current = parseInt(prioBtn.getAttribute('data-prio')) || 0;
-          var maxPrio = AppGlobals.state.reiter.length;
-          var next = current >= maxPrio ? 0 : current + 1;
-          prioBtn.setAttribute('data-prio', String(next));
-          prioBtn.textContent = next === 0 ? '—' : String(next);
-          prioBtn.classList.toggle('active', next > 0);
-          AppGlobals.state.drillPriorities[i] = next;
-          // Issue #417: Persistenz + drillCalcAll laufen zentral über den
-          // State-Coordinator (eventType DRILL_PRIORITY_CHANGED). Renderer
-          // selbst rufen KEIN saveState() mehr.
-          AppGlobals.appEmit('DRILL_PRIORITY_CHANGED', { tabIdx: i, priority: next });
-        };
+prioBtn.addEventListener('click', (function(idx, btn) {
+          return function() {
+            var current = parseInt(btn.getAttribute('data-prio')) || 0;
+            var maxPrio = AppGlobals.state.reiter.length;
+            var next = current >= maxPrio ? 0 : current + 1;
+            btn.setAttribute('data-prio', String(next));
+            btn.textContent = next === 0 ? '—' : String(next);
+            btn.classList.toggle('active', next > 0);
+            AppGlobals.state.drillPriorities[idx] = next;
+            // Issue #417: Persistenz + drillCalcAll laufen zentral über den
+            // State-Coordinator (eventType DRILL_PRIORITY_CHANGED). Renderer
+            // selbst rufen KEIN saveState() mehr.
+            AppGlobals.appEmit('DRILL_PRIORITY_CHANGED', { tabIdx: idx, priority: next });
+          };
+        })(i, prioBtn));
         row.appendChild(prioBtn);
         var nameWrap = document.createElement('div');
         nameWrap.className = 'drill-tab-name-wrap';
@@ -94,9 +96,9 @@
         einheitIn.placeholder = 'Einheiten';
         einheitIn.dataset.tabIdx = String(i);
         if (isDone) einheitIn.disabled = true;
-        einheitIn.oninput = function() {
+        einheitIn.addEventListener('input', function() {
           AppGlobals.drillCalcDebounced();
-        };
+        });
         row.appendChild(einheitIn);
         var duengerIn = document.createElement('input');
         duengerIn.type = 'text';
@@ -105,9 +107,9 @@
         duengerIn.placeholder = 'kg Dünger';
         duengerIn.dataset.tabIdx = String(i);
         if (isDone) duengerIn.disabled = true;
-        duengerIn.oninput = function() {
+        duengerIn.addEventListener('input', function() {
           AppGlobals.drillCalcDebounced();
-        };
+        });
         row.appendChild(duengerIn);
         // Issue #377: Toggle-Button "Feld fertig" / "Fertig zurücknehmen".
         // Setzt state.reiter[i].done, persistiert, rendert neu.
@@ -120,7 +122,7 @@
         doneBtn.title = isDone
           ? 'Markierung aufheben — Werte bleiben erhalten'
           : 'Feld als fertig markieren';
-        doneBtn.onclick = (function(tabIdx, btnRef) {
+        doneBtn.addEventListener('click', (function(tabIdx, btnRef) {
           return function() {
             var tab = AppGlobals.state.reiter[tabIdx];
             if (!tab) return;
@@ -130,7 +132,7 @@
             // selbst rufen KEIN saveState() mehr.
             AppGlobals.appEmit('DRILL_DONE_CHANGED', { tabIdx: tabIdx, done: tab.done });
           };
-        })(i, doneBtn);
+        })(i, doneBtn));
         row.appendChild(doneBtn);
         container.appendChild(row);
       });
@@ -474,9 +476,9 @@
           // Use the per-tab index (tabIdx), not state.activeReiter — entries
           // are aggregated across tabs in renderDrillLog, so the delete
           // handler must address the correct tab.
-          removeBtn.onclick = (function(ti, ai) {
+          removeBtn.addEventListener('click', (function(ti, ai) {
             return function() { AppGlobals.drillRemove(ti, ai); };
-          })(tabIdx, actualIdx);
+          })(tabIdx, actualIdx));
           row.appendChild(removeBtn);
           container.appendChild(row);
         });
@@ -578,9 +580,9 @@
         var removeBtn = document.createElement('button');
         removeBtn.className = 'btn-danger';
         removeBtn.textContent = '✕';
-        removeBtn.onclick = (function(idx) {
+        removeBtn.addEventListener('click', (function(idx) {
           return function() { AppGlobals.drillMachineRemove(idx); };
-        })(i);
+        })(i));
         row.appendChild(removeBtn);
         container.appendChild(row);
         // Update cumulative tank-level: subtract driven ha since last fill, then add this fill.
