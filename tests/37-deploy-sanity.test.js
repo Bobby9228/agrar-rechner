@@ -38,6 +38,57 @@ describe('Cloudflare deploy sanity', () => {
     expect(content).toMatch(/Cache-Control:\s*no-cache/);
   });
 
+  it('_headers: jede Header-Zeile gehört zu einer Pfad-Zeile (Cloudflare-Parse-Schutz)', () => {
+    // Regression zu Issue #436: In #418 Welle 6 wurde die "/*"-Pfad-Zeile
+    // versehentlich gelöscht. Cloudflare parst _headers streng und bricht
+    // den DEPLOY (nicht lint/test) mit "Expected a path before headers"
+    // [code 100324] ab — CI war grün, das Deploy trotzdem kaputt. Dieser
+    // Test spiegelt die Parse-Regel: Eine Zeile beginnt entweder mit
+    // Kommentar (#), ist leer/Whitespace, ist eine Pfad-Zeile (kein
+    // führender Whitespace, endet mit ":" oder nicht), ODER eine
+    // Header-Zeile (führender Whitespace, "Name: value") — und jede
+    // Header-Zeile muss nach mindestens einer Pfad-Zeile folgen.
+    const content = readFileSync(resolve(publicDir, '_headers'), 'utf-8');
+    const lines = content.split('\n');
+    let currentPath = null;
+    const errors = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lineNo = i + 1;
+      if (line.trim() === '' || line.trim().startsWith('#')) continue;
+      const isIndented = /^[ \t]/.test(line);
+      if (isIndented) {
+        // Header-Zeile: nur gültig, wenn eine Pfad-Zeile davor steht
+        if (!currentPath) {
+          errors.push('Zeile ' + lineNo + ': Header ohne vorherige Pfad-Zeile ("Expected a path before headers") — Zeile: ' + JSON.stringify(line));
+        } else if (!/^[ \t]+[\w-]+\s*:\s*\S+/.test(line)) {
+          errors.push('Zeile ' + lineNo + ': sieht weder nach Pfad noch nach "Name: Wert"-Header aus: ' + JSON.stringify(line));
+        }
+      } else {
+        // Pfad-Zeile (keine Einrückung)
+        currentPath = line.trim();
+      }
+    }
+    expect(errors, '_headers Parse-Fehler:\n' + errors.join('\n')).toEqual([]);
+    expect(currentPath, 'mindestens eine Pfad-Zeile muss existieren').not.toBeNull();
+  });
+
+  it('_headers: CSP script-src kommt ohne unsafe-inline aus (#418/#436)', () => {
+    const content = readFileSync(resolve(publicDir, '_headers'), 'utf-8');
+    const cspLine = content.split('\n').find((l) => l.includes('Content-Security-Policy'));
+    expect(cspLine, 'Content-Security-Policy-Zeile muss existieren').toBeTruthy();
+    // Directive-weise prüfen (CSP = "dir1; dir2; ..."), damit das erlaubte
+    // style-src 'unsafe-inline' nicht die script-src-Prüfung verfälscht.
+    const scriptSrc = cspLine.split(';').map((s) => s.trim()).find((s) => s.startsWith('script-src'));
+    expect(scriptSrc, 'script-src-Directive muss existieren').toBeTruthy();
+    expect(scriptSrc, "script-src muss 'self' erlauben").toContain("'self'");
+    expect(scriptSrc, "script-src darf KEIN 'unsafe-inline' enthalten").not.toContain("'unsafe-inline'");
+    // Pfad-Zeile muss direkt (nach Kommentaren/Leerzeilen) vor der CSP stehen
+    const lines = content.split('\n');
+    const cspIdx = lines.findIndex((l) => l.includes('Content-Security-Policy'));
+    expect(lines[cspIdx - 1].trim(), 'CSP-Zeile braucht die "/*"-Pfad-Zeile direkt davor').toBe('/*');
+  });
+
   it('main.js exposes the current minor release version and build date', () => {
     const mainPath = resolve(publicDir, 'js', 'main.js');
     const content = readFileSync(mainPath, 'utf-8');
