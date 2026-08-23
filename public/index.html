@@ -65,19 +65,19 @@
       <div class="unit" style="margin-bottom:10px">Berechnet aus deiner Fläche, wie viele Saatgut-Einheiten und kg Dünger du brauchst.</div>
       <div class="field">
         <label for="hektar">Hektar (SOLL)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="hektar" placeholder="z.B. 12,5" maxlength="8" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputHektar(this)" onblur="onInputHektar(this)" aria-describedby="err_hektar">
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="hektar" placeholder="z.B. 12,5" maxlength="8" aria-describedby="err_hektar">
         <div class="unit">Die geplante Fläche, für die gesät werden soll.</div>
         <div class="error-msg" id="err_hektar" role="alert"></div>
       </div>
       <div class="field">
         <label for="koerner">Körner pro Hektar</label>
-        <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" maxlength="8" oninput="onInputFormat(this, 'integer', event)" onchange="onInputKoerner(this)" onblur="onInputKoerner(this)" aria-describedby="err_koerner">
+        <input type="text" inputmode="numeric" id="koerner" placeholder="z.B. 90000" maxlength="8" aria-describedby="err_koerner">
         <div class="unit" id="koerner_empfehlung">üblich: 80.000 – 100.000</div>
         <div class="error-msg" id="err_koerner" role="alert"></div>
       </div>
       <div class="field">
         <label for="duenger">Dünger (kg/ha)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="duenger" placeholder="z.B. 150" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputDuenger(this)" onblur="onInputDuenger(this)">
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="duenger" placeholder="z.B. 150">
         <div class="unit">Berechnet die benötigte Düngermenge für dieselbe Fläche.</div>
       </div>
     </div>
@@ -87,7 +87,7 @@
       <div class="unit" style="margin-bottom:10px">Freitext pro Schlag — wird beim Tab-Wechsel automatisch gewechselt.</div>
       <div class="field field-notizen">
         <label for="notizen">Notiz</label>
-        <textarea id="notizen" rows="3" maxlength="500" autocomplete="off" autocorrect="off" spellcheck="true" placeholder="z.B. Vorgewende nass, Saatgut Charge 42…" oninput="onInputNotizen(this)" aria-describedby="notizen_hint"></textarea>
+        <textarea id="notizen" rows="3" maxlength="500" autocomplete="off" autocorrect="off" spellcheck="true" placeholder="z.B. Vorgewende nass, Saatgut Charge 42…" aria-describedby="notizen_hint"></textarea>
         <div class="unit" id="notizen_hint">Wird lokal in deinem Browser gespeichert und bleibt nach einem Neustart erhalten.</div>
       </div>
     </div>
@@ -97,18 +97,18 @@
 
       <div class="field">
         <label for="ist_hektar">IST-Fläche (ha)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="ist_hektar" placeholder="z.B. 12,3" oninput="onInputFormat(this, 'decimal', event)" onchange="onInputIstHektar(this)" onblur="onInputIstHektar(this)">
+        <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="ist_hektar" placeholder="z.B. 12,3">
         <div class="unit">Optional: tatsächlich gesäte Fläche, z.B. laut Maschinen-Zähler.</div>
       </div>
 
       <div class="fahrgassen-toggle">
         <label for="einheit_groesse_toggle">Einheiten-Größe anpassen</label>
-        <button class="toggle-btn" id="einheit_groesse_toggle" onclick="einheitGroesseToggle()" aria-label="Einheiten-Größe" aria-pressed="false"></button>
+        <button class="toggle-btn" id="einheit_groesse_toggle" aria-label="Einheiten-Größe" aria-pressed="false"></button>
       </div>
       <div class="fahrgassen-settings" id="einheit_groesse_settings">
         <div class="field" style="margin-bottom:8px">
           <label for="koerner_pro_einheit">Körner pro Einheit</label>
-          <input type="text" inputmode="numeric" id="koerner_pro_einheit" placeholder="z.B. 50000" oninput="onInputFormat(this, 'integer', event)" onchange="einheitGroesseUpdate()" onblur="einheitGroesseUpdate()">
+          <input type="text" inputmode="numeric" id="koerner_pro_einheit" placeholder="z.B. 50000">
         </div>
         <div class="fahrgassen-saved" id="einheit_groesse_saved"></div>
         <div class="fahrgassen-info">Der Standard richtet sich nach der gewählten Kultur und kann für diesen Schlag angepasst werden.</div>
@@ -116,12 +116,12 @@
 
       <div class="fahrgassen-toggle">
         <label for="fahrgassen_toggle">Fahrgassen berücksichtigen</label>
-        <button class="toggle-btn" id="fahrgassen_toggle" onclick="fahrgassenToggle()" aria-label="Fahrgassen" aria-pressed="false"></button>
+        <button class="toggle-btn" id="fahrgassen_toggle" aria-label="Fahrgassen" aria-pressed="false"></button>
       </div>
       <div class="fahrgassen-settings" id="fahrgassen_settings">
         <div class="field" style="margin-bottom:8px">
           <label for="fahrgassen_breite">Fahrgassenbreite (m)</label>
-          <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="fahrgassen_breite" placeholder="z.B. 24" oninput="onInputFormat(this, 'decimal', event)" onchange="fahrgassenUpdate()" onblur="fahrgassenUpdate()">
+          <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" id="fahrgassen_breite" placeholder="z.B. 24">
         </div>
         <div class="fahrgassen-saved" id="fahrgassen_saved"></div>
         <div class="fahrgassen-info">Die Körnerzahl wird um ca. 1/Fahrgassenbreite × 100 % reduziert.</div>

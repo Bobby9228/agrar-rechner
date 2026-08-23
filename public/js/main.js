@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
   AppGlobals.initUI();
 });
 
-// --- initUIBindings (Issue #418 Welle 1) ---
+// --- initUIBindings (Issue #418 Welle 1+) ---
 //
 // Zentrale Registrierung aller DOM-Event-Handler, die NICHT von dynamisch
 // erzeugten Elementen abhängen. Wird aus initUI() (render-tabs.js)
@@ -161,6 +161,31 @@ function _bindClick(id, handler) {
   var el = document.getElementById(id);
   if (el && typeof handler === 'function') {
     el.addEventListener('click', handler);
+  }
+}
+// Issue #418 Welle 2: input/change/blur-Timing 1:1 erhalten.
+//   oninput          → Live-Formatierung (onInputFormat), ohne State-Write
+//   onchange + onblur → State-Write (onInputHektar/…/einheitGroesseUpdate/…).
+//                      blur UND change sind absichtlich beide gebunden —
+//                      Browser feuern je nach Focus-Pfad nur eins der beiden
+//                      Events (Mobile: blur; Desktop+Tab: change → blur).
+//
+// Wichtig (Migration on*="onInputX(this)" → addEventListener): der
+// Inline-Handler bekam das Element als `this` zugespielt, der
+// addEventListener-Aufruf bekommt das Event als ersten Parameter.
+// Wir wrappen den Handler daher in eine Closure, die das Element
+// fest übergibt — sonst würde z.B. onInputHektar(undefined) aufgerufen
+// und parseDE(undefined) → 0 den State zurückschreiben.
+function _bindNumberInput(id, mode, stateHandler) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', function(e) {
+    if (mode === 'integer') AppGlobals.onInputFormat(el, 'integer', e);
+    else AppGlobals.onInputFormat(el, 'decimal', e);
+  });
+  if (typeof stateHandler === 'function') {
+    el.addEventListener('change', function() { stateHandler(el); });
+    el.addEventListener('blur', function() { stateHandler(el); });
   }
 }
 function initUIBindings() {
@@ -188,6 +213,26 @@ function initUIBindings() {
     var saveBannerClose = saveBanner.querySelector('button');
     if (saveBannerClose) saveBannerClose.addEventListener('click', AppGlobals.dismissSaveError);
   }
+
+  // Formulare — Hektar/Koerner/Duenger/Notizen/IST-Fläche/Einheitsgröße/Fahrgassenbreite.
+  // Timing ist kritisch: input feuert pro Tastendruck (Format), change/blur
+  // feuern bei Fokus-Wechsel (State-Write). Browser-spezifisch feuert manchmal
+  // nur change, manchmal nur blur → wir binden BEIDE, damit der State auf
+  // jedem Pfad konsistent landet. Issue #262 / #416 / #418.
+  _bindNumberInput('hektar', 'decimal', AppGlobals.onInputHektar);
+  _bindNumberInput('koerner', 'integer', AppGlobals.onInputKoerner);
+  _bindNumberInput('duenger', 'decimal', AppGlobals.onInputDuenger);
+  _bindNumberInput('ist_hektar', 'decimal', AppGlobals.onInputIstHektar);
+  _bindNumberInput('koerner_pro_einheit', 'integer', AppGlobals.einheitGroesseUpdate);
+  _bindNumberInput('fahrgassen_breite', 'decimal', AppGlobals.fahrgassenUpdate);
+
+  // Notizen: nur input (textarea feuert keinen change auf Autocomplete-Tap).
+  var notizenEl = document.getElementById('notizen');
+  if (notizenEl) notizenEl.addEventListener('input', AppGlobals.onInputNotizen);
+
+  // Settings-Toggles: reine click-Handler, kein input.
+  _bindClick('einheit_groesse_toggle', AppGlobals.einheitGroesseToggle);
+  _bindClick('fahrgassen_toggle', AppGlobals.fahrgassenToggle);
 }
 
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
