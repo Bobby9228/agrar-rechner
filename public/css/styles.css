@@ -1,5 +1,37 @@
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
     input, textarea { -webkit-user-select: auto; user-select: auto; }
+    /* Issue #446 Welle 2a: gezielte Freigabe der Textauswahl. Das globale
+       *-Verbot bleibt (Touch-UX: Tabs/Buttons/Nav nicht markierbar), aber
+       normale Lese-Texte — Dashboard-Karten, Ergebnis-Zahlen, Protokoll-
+       Einträge, Notiz-Vorschau — werden wieder selektierbar. Landwirte
+       können Werte wie "19,8 ha" ins Führungsbuch kopieren oder Notizen
+       markieren, ohne dass mobile Browser die Auswahl blocken. Die Freigabe
+       wirkt über die höhere Spezifität dieser Klassen-/ID-Selektoren gegen
+       den *-Universalselektor; Inputs/Textareas haben ohnehin ihre eigene
+       user-select:auto-Regel (Zeile 2). */
+    .dashboard-summary,
+    .dashboard-reiter-card,
+    .result-row .value,
+    #r_einheiten,
+    #r_duenger,
+    #r_soll_ha,
+    #r_ist_ha,
+    #r_diff_ha,
+    #r_drill_e_used,
+    #r_drill_e_rem,
+    #r_drill_d_used,
+    #r_drill_d_rem,
+    .drill-entry,
+    .drill-entry-tab-header,
+    .lp-entry,
+    .lp-machine-values,
+    .lp-field-summary,
+    .lp-balance,
+    .lp-metric,
+    .local-protocol {
+      -webkit-user-select: text;
+      user-select: text;
+    }
 
     /* ===== Self-hosted Webfonts (Issue #421, dedupliziert in #443) =====
        WOFF2-Dateien unter /fonts/ aus dem Google-Fonts-CSS2-Endpoint übernommen.
@@ -436,10 +468,14 @@
       font-family: inherit;
       opacity: 0.6;
       flex-shrink: 0;
-      /* Schmaleres X als früher (44px → 28px), damit 3 Reiter + der "+ Tab"-Button
-         in eine Zeile passen. Touch-Target bleibt mit 2px Margin rundum effektiv
-         bei 32px (Material-Design Minimum), und die übergeordnete .tab-btn-Karte
-         ist 44px hoch → kein "Treffer ins Leere"-Problem. */
+      /* Issue #446 Welle 2a: visuell kleines X bleibt (22×22px), damit 3
+         Reiter + "+ Tab"-Button weiterhin in eine Zeile passen. Die effektive
+         Trefferfläche wird per ::before-Pseudo auf 44×44 erweitert (Projekt-
+         Pattern, vgl. .deim-remove). Die übergeordnete .tab-btn-Karte ist
+         bereits 44px hoch (siehe .tab-btn → min-height: 44px) — das Pseudo
+         zentriert sich um das X und ragt oben/unten leicht über die Karte
+         hinaus, ohne den Tab-Wechsel zu behindern (siehe :focus-visible-
+         Outline-Offset-Korrektur unten). */
       width: 22px;
       height: 22px;
       min-width: 22px;
@@ -450,6 +486,20 @@
       font-size: 0.75rem;
       transition: opacity 0.15s, background 0.15s;
       margin: 2px 2px 2px 4px;
+      position: relative;
+    }
+    /* Issue #446 Welle 2a: Hit-only-Pseudo vergrößert die Trefferfläche auf
+       44×44 px (WCAG 2.5.5 AAA), ohne das visuelle Layout zu verändern.
+       Pointer-Events sind auf das Pseudo erweitert, damit Taps im erweiterten
+       Bereich den Button auslösen. */
+    .tab-close::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 44px;
+      height: 44px;
+      transform: translate(-50%, -50%);
     }
     .tab-close:hover {
       opacity: 1;
@@ -721,8 +771,8 @@ font-size: 0.75rem;
       background: rgba(0,0,0,0.03);
     }
     .drill-prio-btn {
-      width: 32px;
-      height: 32px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       border: 2px solid var(--color-divider);
       background: var(--color-bg);
@@ -2126,11 +2176,23 @@ textarea#notizen {
   outline: none;
   resize: vertical;
   min-height: 76px;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
 textarea#notizen:focus {
   border-color: var(--color-primary);
   background: var(--color-bg-card);
+  /* Issue #446 Welle 2a: zusätzlich zur Border ein deutlich sichtbarer Fokus-
+     Indikator per box-shadow. Border-only-Fokus hat im Dark Mode zu wenig
+     Kontrast gegen den Hintergrund — der 3px Soft-Shadow umrandet die Textarea
+     auch dann klar, wenn die Border mit dem dunklen Hintergrund verschwimmt.
+     Alpha bewusst hoch gewählt (Review #446 W2a): Halo soll auch solo die
+     3:1-Kontrastmarke erreichen, nicht nur in Kombination mit der Border. */
+  box-shadow: 0 0 0 3px rgba(74, 124, 61, 0.45);
+}
+html.dark textarea#notizen:focus {
+  /* Dark Mode: Heller, kontrastreicherer Soft-Shadow (Primary-Hell) damit der
+     Fokusring auch über --color-bg-hover (dunkelgrün) sicher erkennbar bleibt. */
+  box-shadow: 0 0 0 3px rgba(124, 187, 110, 0.55);
 }
 textarea#notizen::placeholder {
   color: var(--color-text-subtle);
@@ -2258,7 +2320,7 @@ input {
    Kind-Reihenfolge — keine JS-Änderung nötig. ---------------------------- */
 .drill-tab-row {
   display: grid;
-  grid-template-columns: 32px 1fr 1fr auto;
+  grid-template-columns: 44px 1fr 1fr auto;
   column-gap: 8px;
   row-gap: 8px;
   align-items: center;

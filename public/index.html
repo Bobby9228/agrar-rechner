@@ -15,7 +15,7 @@
 </head>
 <body>
   <div class="app-layout">
-    <div id="save_error_banner" class="save-error-banner" style="display:none">
+    <div id="save_error_banner" class="save-error-banner" style="display:none" role="alert">
       <span>⚠️ <strong>Speichern fehlgeschlagen</strong> — deine letzten Änderungen konnten nicht lokal gespeichert werden (z.&nbsp;B. Speicher voll oder blockiert). Ohne Speichern gehen sie bei Neuladung verloren!</span>
       <button aria-label="Schließen">✕</button>
     </div>
@@ -39,7 +39,11 @@
       <div class="dashboard-header header-row">
         <div class="dashboard-header-titles header-titles">
           <p class="subtitle eyebrow">Einheiten &amp; Dünger für Aussaat</p>
-          <h1>🌾 Agrar-Rechner</h1>
+          <!-- Issue #446 Welle 2a: 🌾 ist dekorativ — der sichtbare Text
+               "Agrar-Rechner" beschreibt das Produkt bereits. aria-hidden
+               verhindert, dass Screenreader "Weizenähle Agrar-Rechner"
+               vorlesen. -->
+          <h1><span aria-hidden="true">🌾</span> Agrar-Rechner</h1>
         </div>
         <button class="theme-toggle" id="dashboard_theme_toggle" aria-label="Dark Mode umschalten">🌙</button>
       </div>
@@ -50,7 +54,8 @@
     <div class="header-row">
       <div class="header-titles">
         <p class="subtitle eyebrow">Einheiten &amp; Dünger für Aussaat</p>
-        <h1>🌾 Agrar-Rechner</h1>
+        <!-- Issue #446 Welle 2a: gleiches Emoji-Muster wie Dashboard-Header. -->
+        <h1><span aria-hidden="true">🌾</span> Agrar-Rechner</h1>
       </div>
       <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end;">
         <div class="kultur-badge" id="kultur_badge" hidden>
@@ -71,7 +76,9 @@
     </div>
 
     <div class="card card-input" id="card_input">
-      <h2>📐 Fläche &amp; Aussaatstärke</h2>
+      <!-- Issue #446 Welle 2a: Deko-Emoji im Heading aria-hidden, damit
+           Screenreader nur "Fläche und Aussaatstärke" vorlesen. -->
+      <h2><span aria-hidden="true">📐</span> Fläche &amp; Aussaatstärke</h2>
       <div class="unit" style="margin-bottom:10px">Berechnet aus deiner Fläche, wie viele Saatgut-Einheiten und kg Dünger du brauchst.</div>
       <div class="field">
         <label for="hektar">Hektar (SOLL)</label>
@@ -93,7 +100,7 @@
     </div>
 
     <div class="card card-notes" id="card_notes">
-      <h2>📝 Notizen</h2>
+      <h2><span aria-hidden="true">📝</span> Notizen</h2>
       <div class="unit" style="margin-bottom:10px">Freitext pro Schlag — wird beim Tab-Wechsel automatisch gewechselt.</div>
       <div class="field field-notizen">
         <label for="notizen">Notiz</label>
@@ -103,7 +110,7 @@
     </div>
 
     <div class="card card-settings" id="card_settings">
-      <h2>⚙️ Einstellungen</h2>
+      <h2><span aria-hidden="true">⚙️</span> Einstellungen</h2>
 
       <div class="field">
         <label for="ist_hektar">IST-Fläche (ha)</label>
@@ -139,7 +146,7 @@
     </div>
 
     <div class="card result" id="results" style="display:none">
-      <h2>📊 Ergebnis</h2>
+      <h2><span aria-hidden="true">📊</span> Ergebnis</h2>
       <div class="result-ring-wrap" id="result_ring_wrap" aria-hidden="true" style="display:none">
         <div class="result-ring">
           <svg viewBox="0 0 96 96">
@@ -218,7 +225,7 @@
     </section>
 
     <div class="card" id="drill_section" style="display:none">
-      <h2>🔧 Drill-Protokoll</h2>
+      <h2><span aria-hidden="true">🔧</span> Drill-Protokoll</h2>
       <div class="unit" style="margin-bottom:10px">Hier trägst du ein, was du in die Maschine eingefüllt hast.</div>
       <div id="drill_mask">
         <div class="drill-machine-row">
@@ -289,20 +296,30 @@
     <div class="version-footer" id="version_footer"></div>
     <div class="footer-actions">
       <div class="footer-dataio" role="group" aria-label="Daten sichern und wiederherstellen">
-        <button class="footer-io-btn footer-export-btn" id="data_export_btn" type="button" aria-label="Daten exportieren">📤 Daten exportieren</button>
-        <button class="footer-io-btn footer-import-btn" id="data_import_btn" type="button" aria-label="Daten importieren">📥 Daten importieren</button>
+        <!-- Issue #446 Welle 2a: Emojis (📤/📥/🗑️) sind visuell nett, aber für
+             Screenreader redundant — das aria-label nennt die Aktion bereits
+             ohne Emoji. Das Emoji-Span bekommt aria-hidden="true", damit
+             die Vorlese-Reihenfolge "Daten exportieren" lautet statt
+             "Outbox-Tray Daten exportieren". -->
+        <button class="footer-io-btn footer-export-btn" id="data_export_btn" type="button" aria-label="Daten exportieren"><span aria-hidden="true">📤</span> Daten exportieren</button>
+        <button class="footer-io-btn footer-import-btn" id="data_import_btn" type="button" aria-label="Daten importieren"><span aria-hidden="true">📥</span> Daten importieren</button>
         <input type="file" id="data_import_file" accept="application/json,.json" hidden>
         <div class="data-io-status" id="data_io_status" role="status" aria-live="polite"></div>
       </div>
-      <button class="footer-reset-btn" id="footer_reset_btn" aria-label="Daten zurücksetzen">🗑️ Daten zurücksetzen</button>
+      <button class="footer-reset-btn" id="footer_reset_btn" aria-label="Daten zurücksetzen"><span aria-hidden="true">🗑️</span> Daten zurücksetzen</button>
     </div>
 
     </div><!-- end .scrollable-content -->
 
     <nav class="bottom-nav">
-      <button class="nav-btn" id="nav_rechner"><span class="ic">🌾</span>Rechner</button>
-      <button class="nav-btn" id="nav_protokoll"><span class="ic">🔧</span>Protokoll</button>
-      <button class="nav-btn" id="nav_uebersicht"><span class="ic">📊</span>Übersicht</button>
+      <!-- Issue #446 Welle 2a: aria-hidden="true" auf den Deko-Emojis der
+           Bottom-Nav. Screenreader sollen nicht "Weizenähre Rechner" oder
+           "Hammer und Schraubenschlüssel Protokoll" vorlesen — der sichtbare
+           Text ("Rechner"/"Protokoll"/"Übersicht") beschreibt die Aktion
+           bereits. Muster: kultur-badge-emoji (siehe Z. 57 oben). -->
+      <button class="nav-btn" id="nav_rechner"><span class="ic" aria-hidden="true">🌾</span>Rechner</button>
+      <button class="nav-btn" id="nav_protokoll"><span class="ic" aria-hidden="true">🔧</span>Protokoll</button>
+      <button class="nav-btn" id="nav_uebersicht"><span class="ic" aria-hidden="true">📊</span>Übersicht</button>
     </nav>
   </div><!-- end .app-layout -->
 

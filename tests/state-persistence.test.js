@@ -1389,4 +1389,14 @@ describe('Issue #445 D — Save-Error-Banner wird für jeden setItem-Fehler geze
     // saveState() schluckt den Fehler intern → kein Throw nach außen
     expect(threw).toBe(false);
   });
+
+  // Issue #446 Welle 2a: #save_error_banner braucht role="alert", damit
+  // Screenreader den Live-Fehler sofort ankündigen (sonst nur visuell).
+  // #storage_corrupt_banner hat role="alert" bereits in Welle 1 (Issue #445);
+  // hier sichern wir die Markup-Kongruenz für den Save-Error-Banner.
+  it('#save_error_banner hat role="alert" (Live-Fehler-Ankündigung, #446 Welle 2a)', () => {
+    const banner = doc.getElementById('save_error_banner');
+    expect(banner, '#save_error_banner muss im DOM sein').toBeTruthy();
+    expect(banner.getAttribute('role')).toBe('alert');
+  });
 });

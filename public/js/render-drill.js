@@ -14,6 +14,27 @@
 
     // --- Render: Drill Tab List ---
 
+    /**
+     * Setzt aria-label und title des Drill-Prio-Buttons sprechend.
+     * Issue #446 Welle 2a: das bloße "—"/"1"/"2"/"3" im Button-Text ist
+     * für Screenreader nichtssagend — sie brauchen Schlag-Name + aktuellen
+     * Prio-Wert ("Priorität Schlag <name>: 1" / ": keine"). Wird sowohl beim
+     * Render als auch bei jedem Klick neu gesetzt.
+     */
+    function _updatePrioBtnAriaLabel(btn, tabName, prio) {
+      var label;
+      var title;
+      if (prio === 0) {
+        label = 'Priorität ' + tabName + ': keine';
+        title = label;
+      } else {
+        label = 'Priorität ' + tabName + ': ' + prio;
+        title = label + ' (Klick erhöht oder entfernt die Priorität)';
+      }
+      btn.setAttribute('aria-label', label);
+      btn.setAttribute('title', title);
+    }
+
     function renderDrillTabList() {
       var container = document.getElementById('drill_tab_list');
       if (!container) return;
@@ -31,7 +52,14 @@
         prioBtn.textContent = initPrio === 0 ? '—' : String(initPrio);
         prioBtn.setAttribute('data-prio', String(initPrio));
         prioBtn.classList.toggle('active', initPrio > 0);
-prioBtn.addEventListener('click', (function(idx, btn) {
+        // Issue #446 Welle 2a: sprechende Beschriftung des Prio-Buttons.
+        // Screenreader können den visuellen "—/1/2/3"-Wechsel nicht eindeutig
+        // einem Schlag zuordnen; aria-label + title nennen Schlag-Namen und
+        // aktuellen Prio-Wert. Wird bei jedem Klick im Click-Handler aktualisiert
+        // (siehe _updatePrioBtnAriaLabel unten).
+        var tabName = r.name || ('Schlag ' + (i + 1));
+        _updatePrioBtnAriaLabel(prioBtn, tabName, initPrio);
+prioBtn.addEventListener('click', (function(idx, btn, name) {
           return function() {
             var current = parseInt(btn.getAttribute('data-prio')) || 0;
             var maxPrio = AppGlobals.state.reiter.length;
@@ -39,13 +67,17 @@ prioBtn.addEventListener('click', (function(idx, btn) {
             btn.setAttribute('data-prio', String(next));
             btn.textContent = next === 0 ? '—' : String(next);
             btn.classList.toggle('active', next > 0);
+            // Beschriftung nachgeführt, damit aria-label/title immer den
+            // aktuellen Wert spiegeln (Screenreader können nicht raten, was
+            // "—/1/2/3" inhaltlich bedeutet).
+            _updatePrioBtnAriaLabel(btn, name, next);
             AppGlobals.state.drillPriorities[idx] = next;
             // Issue #417: Persistenz + drillCalcAll laufen zentral über den
             // State-Coordinator (eventType DRILL_PRIORITY_CHANGED). Renderer
             // selbst rufen KEIN saveState() mehr.
             AppGlobals.appEmit('DRILL_PRIORITY_CHANGED', { tabIdx: idx, priority: next });
           };
-        })(i, prioBtn));
+        })(i, prioBtn, tabName));
         row.appendChild(prioBtn);
         var nameWrap = document.createElement('div');
         nameWrap.className = 'drill-tab-name-wrap';

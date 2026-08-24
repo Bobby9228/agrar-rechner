@@ -1080,4 +1080,92 @@ describe('Dashboard open/close', () => {
     expect(doc.body.style.overflow).toBe('');
   });
 });
+
+/**
+ * Issue #446 Welle 2a — Bottom-Navigation semantisch auszeichnen (aria-current)
+ *
+ * Die Bottom-Nav (Rechner / Protokoll / Übersicht) hat heute nur eine
+ * .active-Klasse. Screenreader können nicht erkennen, welcher Bereich gerade
+ * sichtbar ist. WAI-ARIA: aktiver Navigationspunkt bekommt aria-current="page".
+ * Setzen + Entfernen läuft zentral in renderTabs() (siehe public/js/render-tabs.js),
+ * ein einziger Sync-Punkt für alle drei Nav-Buttons.
+ */
+describe('Issue #446 Welle 2a — Bottom-Nav aria-current (#nav_rechner/#nav_protokoll/#nav_uebersicht)', () => {
+  let w, doc;
+
+  beforeEach(() => {
+    const result = createDom();
+    w = result.window;
+    doc = w.document;
+    w.initUI();
+  });
+
+  it('Rechner-Ansicht: #nav_rechner hat aria-current="page", die anderen nicht', () => {
+    // Default nach initUI(): activeView = null, activeReiter = 0 → Rechner sichtbar.
+    w.renderTabs();
+    expect(doc.getElementById('nav_rechner').getAttribute('aria-current')).toBe('page');
+    expect(doc.getElementById('nav_protokoll').getAttribute('aria-current')).toBeNull();
+    expect(doc.getElementById('nav_uebersicht').getAttribute('aria-current')).toBeNull();
+  });
+
+  it('Protokoll-Ansicht: #nav_protokoll hat aria-current="page", die anderen nicht', () => {
+    w.switchToProtokoll();
+    w.renderTabs();
+    expect(doc.getElementById('nav_rechner').getAttribute('aria-current')).toBeNull();
+    expect(doc.getElementById('nav_protokoll').getAttribute('aria-current')).toBe('page');
+    expect(doc.getElementById('nav_uebersicht').getAttribute('aria-current')).toBeNull();
+  });
+
+  it('Übersicht offen: #nav_uebersicht hat aria-current="page", die anderen nicht', () => {
+    w.openDashboard();
+    w.renderTabs();
+    expect(doc.getElementById('nav_rechner').getAttribute('aria-current')).toBeNull();
+    expect(doc.getElementById('nav_protokoll').getAttribute('aria-current')).toBeNull();
+    expect(doc.getElementById('nav_uebersicht').getAttribute('aria-current')).toBe('page');
+  });
+
+  it('View-Wechsel: aria-current wandert von #nav_rechner zu #nav_protokoll und zurück', () => {
+    w.renderTabs();
+    expect(doc.getElementById('nav_rechner').getAttribute('aria-current')).toBe('page');
+    w.switchToProtokoll();
+    w.renderTabs();
+    expect(doc.getElementById('nav_protokoll').getAttribute('aria-current')).toBe('page');
+    expect(doc.getElementById('nav_rechner').getAttribute('aria-current')).toBeNull();
+    w.switchToRechner();
+    w.renderTabs();
+    expect(doc.getElementById('nav_rechner').getAttribute('aria-current')).toBe('page');
+    expect(doc.getElementById('nav_protokoll').getAttribute('aria-current')).toBeNull();
+  });
+
+  it('Übersicht schließen: aria-current auf #nav_uebersicht wird entfernt, Rechner übernimmt', () => {
+    w.openDashboard();
+    w.renderTabs();
+    expect(doc.getElementById('nav_uebersicht').getAttribute('aria-current')).toBe('page');
+    w.closeDashboard();
+    w.renderTabs();
+    expect(doc.getElementById('nav_uebersicht').getAttribute('aria-current')).toBeNull();
+    expect(doc.getElementById('nav_rechner').getAttribute('aria-current')).toBe('page');
+  });
+
+  it('Nur genau EIN Nav-Button hat aria-current="page" (Exklusivitäts-Vertrag)', () => {
+    w.renderTabs();
+    // Exklusivität in jeder der drei Hauptansichten prüfen
+    var sequence = [
+      function() { /* Default Rechner */ },
+      function() { w.switchToProtokoll(); },
+      function() { w.openDashboard(); },
+      function() { w.closeDashboard(); },
+    ];
+    for (var si = 0; si < sequence.length; si++) {
+      sequence[si]();
+      w.renderTabs();
+      var btns = ['nav_rechner', 'nav_protokoll', 'nav_uebersicht']
+        .map(function (id) { return doc.getElementById(id); });
+      var withCurrent = btns.filter(function (b) {
+        return b.getAttribute('aria-current') === 'page';
+      });
+      expect(withCurrent.length, 'genau EIN Nav-Button soll aria-current="page" haben, gefunden: ' + withCurrent.length).toBe(1);
+    }
+  });
+});
 });

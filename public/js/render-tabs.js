@@ -92,12 +92,40 @@
       var isProtokollView = AppGlobals.state.activeView === 'protokoll';
       var dashSheet = document.getElementById('dashboard_sheet');
       var isDashOpen = !!(dashSheet && dashSheet.classList.contains('open'));
+      // Issue #446 Welle 2a: Bottom-Navigation semantisch auszeichnen. Neben
+      // der visuellen .active-Klasse bekommt der jeweils sichtbare Button
+      // aria-current="page" (WAI-ARIA), die anderen entfernen das Attribut
+      // wieder. Screenreader können so den aktuellen Hauptbereich eindeutig
+      // ansagen, ohne sich am Klassenwechsel zu orientieren. Der Wert "page"
+      // statt "step"/"location"/"true"/"false" folgt der Empfehlung der
+      // WAI-ARIA Authoring Practices für Navigationsleisten.
       var navRechner = document.getElementById('nav_rechner');
-      if (navRechner) navRechner.classList.toggle('active', !isProtokollView && !isDashOpen);
+      if (navRechner) {
+        navRechner.classList.toggle('active', !isProtokollView && !isDashOpen);
+        if (!isProtokollView && !isDashOpen) {
+          navRechner.setAttribute('aria-current', 'page');
+        } else {
+          navRechner.removeAttribute('aria-current');
+        }
+      }
       var navProtokoll = document.getElementById('nav_protokoll');
-      if (navProtokoll) navProtokoll.classList.toggle('active', isProtokollView && !isDashOpen);
+      if (navProtokoll) {
+        navProtokoll.classList.toggle('active', isProtokollView && !isDashOpen);
+        if (isProtokollView && !isDashOpen) {
+          navProtokoll.setAttribute('aria-current', 'page');
+        } else {
+          navProtokoll.removeAttribute('aria-current');
+        }
+      }
       var navUebersicht = document.getElementById('nav_uebersicht');
-      if (navUebersicht) navUebersicht.classList.toggle('active', isDashOpen);
+      if (navUebersicht) {
+        navUebersicht.classList.toggle('active', isDashOpen);
+        if (isDashOpen) {
+          navUebersicht.setAttribute('aria-current', 'page');
+        } else {
+          navUebersicht.removeAttribute('aria-current');
+        }
+      }
     }
 
     // --- Auto-Shrink: Reiter-Namen ---
