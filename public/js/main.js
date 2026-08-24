@@ -154,9 +154,12 @@ document.addEventListener('DOMContentLoaded', function() {
 //     protocol.js (Modul-Load, weil die Elemente zu Modul-Load-Zeit
 //     bereits existieren und die Bindings über die App-Lebenszeit
 //     stabil sind).
-//   - data_export_btn / data_import_btn / data_import_file /
-//     import_modal_* / import_overlay: bleiben in initDataExportImport
-//     (data-io-handlers.js) — werden in Welle 4 von dort übernommen.
+//   - Daten-IO-Handler-Logik (exportData, validateImportText, …): lebt in
+//     data-io-handlers.js. Hier werden nur die statischen DOM-Bindings
+//     (#data_export_btn, #data_import_btn, #data_import_file change,
+//     #import_modal_*) registriert; initDataExportImport bleibt als
+//     leere API-Kompatibilitätsfunktion in data-io-handlers.js erhalten
+//     (Issue #441).
 function _bindClick(id, handler) {
   var el = document.getElementById(id);
   if (el && typeof handler === 'function') {
@@ -261,11 +264,17 @@ function initUIBindings() {
 
   // Footer Reset / Daten-I/O
   _bindClick('footer_reset_btn', AppGlobals.openResetModal);
-  // Footer Daten-I/O (data_export_btn, data_import_btn, data_import_file,
-  // import_modal_*) bleibt in initDataExportImport (data-io-handlers.js).
-  // Welle 4 zieht die letzten drei hierher um — danach bleibt in
-  // initDataExportImport nur noch die Konstanten/Funktionen-Registrierung
-  // übrig (die Buttons selbst wandern hier in initUIBindings).
+  // Footer Daten-I/O — Issue #441: Bindings für data_export_btn,
+  // data_import_btn und das change-Event von data_import_file leben jetzt
+  // HIER (Owner der statischen App-Shell-Bindings, idempotent via
+  // _uiBindingsRegistered). Die Modal-Aktionen
+  // (import_modal_x/_cancel/_confirm/_overlay) waren bereits hier.
+  _bindClick('data_export_btn', AppGlobals.exportData);
+  _bindClick('data_import_btn', AppGlobals.triggerImportClick);
+  var importFile = document.getElementById('data_import_file');
+  if (importFile) {
+    importFile.addEventListener('change', AppGlobals.onImportFileChange);
+  }
   _bindClick('import_modal_x', AppGlobals.cancelImportFromModal);
   _bindClick('import_modal_cancel', AppGlobals.cancelImportFromModal);
   _bindClick('import_modal_confirm', AppGlobals.confirmImportFromModal);

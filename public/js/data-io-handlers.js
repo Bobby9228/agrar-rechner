@@ -26,15 +26,15 @@
 // (render-local-protocol.js) vorfindet — die defensive Auflösung
 // passiert beim Nutzeraufruf; eine frühere Reihenfolge wäre gefährlich,
 // sobald der defensive Pfad wegfällt. Wird VOR main.js geladen, weil
-// main.js AppGlobals.initDataExportImport() im DOMContentLoaded-Handler
-// ruft — wäre data-io-handlers.js danach geladen, fehlt die Funktion
-// beim ersten Boot und der Footer-Daten-I/O reagiert auf keinen Klick.
+// main.js → initUIBindings() die hier registrierten AppGlobals-Handler an
+// die statischen Footer-Elemente bindet. Wäre data-io-handlers.js danach
+// geladen, fehlten die Handler beim ersten Boot.
 //
 // Die klassischen Top-Level-Deklarationen bleiben für bestehende
 // HTML-/Window-Nutzung erhalten; zusätzlich registriert
 // Object.assign(window.AppGlobals, …) die bisherige AppGlobals-API.
 // Verbraucher sind index.html (Footer-Buttons, Status-Bereich),
-// main.js (initDataExportImport-Aufruf im DOMContentLoaded-Handler),
+// main.js (statische Bindings in initUIBindings),
 // render-* (commitImportedState → defensive AppGlobals.renderTabs/
 // renderResults/renderView/...) und die Test-Suite.
 //
@@ -462,15 +462,16 @@ function triggerImportClick() {
 }
 
 function initDataExportImport() {
-  // Issue #418 Welle 4: Die DOM-Event-Bindings (data_export_btn, data_import_btn,
-  // data_import_file, import_modal_x, import_modal_cancel, import_modal_confirm,
-  // import_overlay) leben jetzt zentral in main.js → initUIBindings() — dort
-  // sind sie idempotent und neben allen anderen App-Shell-Bindings
-  // dokumentiert. Doppel-Bindings wurden vermieden, indem initDataExportImport
-  // hier KEIN addEventListener mehr aufruft. Die Funktion bleibt auf
-  // AppGlobals registriert, weil sie in der Test-Suite (tests/app-shell-parity.test.js) als
-  // Modul-API-Vertrag geprüft wird — und weil ein zukünftiger Aufrufer aus
-  // einem Bootstrap-Pfad sie weiterhin erwarten darf (siehe AGENTS.md).
+  // Issue #441: Die DOM-Event-Bindings (data_export_btn, data_import_btn,
+  // data_import_file change sowie import_modal_x/_cancel/_confirm/_overlay)
+  // leben zentral in main.js → initUIBindings() — dort sind sie
+  // idempotent (AppGlobals._uiBindingsRegistered) und neben allen anderen
+  // App-Shell-Bindings dokumentiert. Doppel-Bindings wurden vermieden,
+  // indem initDataExportImport hier KEIN addEventListener mehr aufruft.
+  // Die Funktion bleibt auf AppGlobals registriert, weil sie in der
+  // Test-Suite (tests/app-shell-parity.test.js) als Modul-API-Vertrag
+  // geprüft wird — und weil ein zukünftiger Aufrufer aus einem
+  // Bootstrap-Pfad sie weiterhin erwarten darf (siehe AGENTS.md).
 }
 
 Object.assign(window.AppGlobals, {

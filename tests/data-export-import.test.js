@@ -79,6 +79,7 @@ function makeExportCapture(w) {
 
   return {
     getLast: function () { return captures[captures.length - 1] || null; },
+    getCount: function () { return captures.length; },
     readTextSync: readTextSync,
     restore: function () {
       w.URL.createObjectURL = origCreate;
@@ -741,6 +742,128 @@ describe('Daten-Export/Import — AppGlobals-API', () => {
     expect(typeof w.AppGlobals.EXPORT_MAX_BYTES).toBe('number');
     expect(w.AppGlobals.EXPORT_MAX_BYTES).toBeGreaterThan(1024);
     expect(w.AppGlobals.EXPORT_MAX_BYTES).toBeLessThanOrEqual(100 * 1024 * 1024);
+  });
+});
+
+// ───────────────────────── Issue #441 — UI-Bindings-Wiring ─────────────────────────
+//
+// Issue #441: Export und Import im echten UI wieder verdrahten.
+// Commit 2165d1f (Issue #418 Welle 4) hat die DOM-Event-Bindings aus
+// initDataExportImport entfernt, ohne sie in initUIBindings zu übernehmen.
+// Folge: Klick auf #data_export_btn / #data_import_btn lösten im echten UI
+// keine App-Aktion mehr aus. Diese Tests prüfen den realen DOM-Contract
+// über Klick-/change-Events (nicht über direkte Handler-Aufrufe) und die
+// Idempotenz-Garantie von initUIBindings.
+
+describe('Issue #441 — UI-Bindings-Wiring für Daten-Export/Import', () => {
+  let w, doc;
+  beforeAll(() => { sharedDom(); });
+  beforeEach(() => { w = sharedDom().window; doc = w.document; resetState(); });
+
+  it('Klick auf #data_export_btn erzeugt genau einen gültigen JSON-Export', () => {
+    const exportBtn = doc.getElementById('data_export_btn');
+    expect(exportBtn).toBeTruthy();
+    w.state.reiter[0].hektar = 12.5;
+    w.state.reiter[0].koerner = 90000;
+    w.state.reiter[0].duenger = 200;
+    doc.getElementById('hektar').value = '12,5';
+    doc.getElementById('koerner').value = '90000';
+    doc.getElementById('duenger').value = '200';
+    w.state.kultur = 'mais';
+    w.state.erstauswahlDone = true;
+
+    const cap = makeExportCapture(w);
+    try {
+      exportBtn.click();
+      const captured = cap.getLast();
+      expect(captured, 'exportData() wurde nicht durch den Klick ausgelöst — #data_export_btn hat keinen initUIBindings-Binding').toBeTruthy();
+      const text = cap.readTextSync();
+      expect(text, 'Export-Blob ist leer').toBeTruthy();
+      const env = JSON.parse(text);
+      expect(env.app).toBe('agrar-rechner');
+      expect(env.formatVersion).toBe(1);
+      expect(typeof env.exportedAt).toBe('string');
+      expect(env.state.reiter[0].hektar).toBeCloseTo(12.5);
+      expect(env.state.reiter[0].koerner).toBe(90000);
+    } finally {
+      cap.restore();
+    }
+  });
+
+  it('Klick auf #data_import_btn löst genau einen click auf #data_import_file aus', () => {
+    const importBtn = doc.getElementById('data_import_btn');
+    const fileInput = doc.getElementById('data_import_file');
+    expect(importBtn).toBeTruthy();
+    expect(fileInput).toBeTruthy();
+    // spyOn ersetzt nur die Property auf dieser Instanz — exakt der Pfad,
+    // den triggerImportClick() über document.getElementById nimmt.
+    const clickSpy = vi.spyOn(fileInput, 'click');
+
+    importBtn.click();
+
+    expect(clickSpy, 'triggerImportClick() wurde nicht durch den Klick ausgelöst — #data_import_btn hat keinen initUIBindings-Binding').toHaveBeenCalledTimes(1);
+    clickSpy.mockRestore();
+  });
+
+  it('change auf #data_import_file mit gültiger JSON öffnet das Vorschau-Modal mit erwarteten Counts (echter FileReader-Pfad)', async () => {
+    const fileInput = doc.getElementById('data_import_file');
+    expect(fileInput).toBeTruthy();
+    const envelope = makeEnvelope({
+      reiter: [
+        { name: 'A', hektar: 5, koerner: 80000, duenger: 100, entries: [
+          { einheit: 1, duenger: 10, time: '08:00' },
+          { einheit: 1, duenger: 10, time: '09:00' }
+        ] },
+        { name: 'B', hektar: 3, koerner: 90000, duenger: 80, entries: [] }
+      ],
+      _lv: 9
+    });
+    const file = new w.File([envelope], 'agrar-import.json', { type: 'application/json' });
+    // Echter jsdom-File + FileReader-Pfad: nur die FileList-Schnittstelle
+    // simulieren (jsdom stellt DataTransfer hier nicht als Konstruktor
+    // bereit — der onImportFileChange-Pfad liest ausschließlich
+    // event.target.files[0] + new FileReader(), beides ist verfügbar).
+    Object.defineProperty(fileInput, 'files', {
+      value: { 0: file, length: 1, item: function (i) { return i === 0 ? file : null; } },
+      configurable: true,
+    });
+    fileInput.dispatchEvent(new w.Event('change', { bubbles: true }));
+
+    // FileReader ist async → deterministisch auf das Modal-Öffnen warten.
+    const modal = doc.getElementById('import_modal');
+    await vi.waitFor(function () {
+      expect(modal.classList.contains('open')).toBe(true);
+    }, { timeout: 2000, interval: 10 });
+
+    expect(modal.classList.contains('open'), 'Vorschau-Modal wurde nicht geöffnet — #data_import_file change hat keinen initUIBindings-Binding').toBe(true);
+    expect(modal.hidden).toBe(false);
+    const counts = doc.getElementById('import_modal_counts');
+    expect(counts.textContent).toContain('2 Schläge');
+    expect(counts.textContent).toContain('2 Buchungen');
+  });
+
+  it('initUIBindings() registriert die drei Listener nicht doppelt (idempotent)', () => {
+    const exportBtn = doc.getElementById('data_export_btn');
+    const importBtn = doc.getElementById('data_import_btn');
+    const fileInput = doc.getElementById('data_import_file');
+    const cap = makeExportCapture(w);
+    const fileClickSpy = vi.spyOn(fileInput, 'click');
+    try {
+      // createDom() hat initUIBindings bereits einmal aufgerufen. Weitere
+      // Aufrufe müssen dank _uiBindingsRegistered echte No-ops bleiben.
+      w.AppGlobals.initUIBindings();
+      w.AppGlobals.initUIBindings();
+      w.AppGlobals.initUIBindings();
+
+      exportBtn.click();
+      importBtn.click();
+
+      expect(cap.getCount(), 'Export-Listener wurde mehrfach registriert').toBe(1);
+      expect(fileClickSpy, 'Import-Listener wurde mehrfach registriert').toHaveBeenCalledTimes(1);
+    } finally {
+      fileClickSpy.mockRestore();
+      cap.restore();
+    }
   });
 });
 });
