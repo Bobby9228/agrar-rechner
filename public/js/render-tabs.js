@@ -15,12 +15,40 @@
 
     function renderTabs() {
       var bar = document.getElementById('tab_bar_left');
+      // Issue #446 Welle 2b: Tablist-Markup nach WAI-ARIA Authoring
+      // Practices. Rolle/aria-label wird auf #tab_bar_left gesetzt (statt
+      // auf #tab_bar), weil #tab_bar auch den Protokoll-View-Toggle enthaelt
+      // — der ist semantisch KEIN Schlag-Reiter, sondern ein View-Wechsel.
+      // setAttribute ist idempotent (zweiter Aufruf setzt denselben Wert).
+      // aria-label="Schläge" benennt die tablist fuer Screenreader.
+      bar.setAttribute('role', 'tablist');
+      bar.setAttribute('aria-label', 'Schläge');
+      // Fokus-Restore vor dem DOM-Rebuild merken: Wenn der Fokus VOR dem
+      // Rebuild auf einem .tab-btn innerhalb der Leiste lag, springen wir
+      // nach dem Rebuild auf den NEUEN aktiven Reiter (siehe Welle 2b Spec).
+      // Eingabefelder ausserhalb der Leiste (z.B. #hektar) und tab-interne
+      // Elemente (.tab-name, .tab-close) werden NICHT gekapert — kein
+      // ungewollter Fokus-Klau.
+      var focusOnTabBtn = bar.contains(document.activeElement)
+        && document.activeElement.classList
+        && document.activeElement.classList.contains('tab-btn');
       bar.innerHTML = '';
       AppGlobals.state.reiter.forEach(function(r, i) {
         var isActive = i === AppGlobals.state.activeReiter && AppGlobals.state.activeView !== 'protokoll';
         var btn = document.createElement('button');
         btn.className = 'tab-btn field-tab' + (isActive ? ' active' : '');
         btn.setAttribute('aria-label', 'Schlag ' + (i+1));
+        // Issue #446 Welle 2b: ARIA-Tab-Pattern (siehe Header-Kommentar
+        // weiter unten). KEIN aria-controls / KEIN role="tabpanel" — die
+        // Schlag-Reiter wechseln den aktiven Schlag, sie steuern kein
+        // 1:1-Panel im Sinne des ARIA-Tab-Musters. Ein aria-controls auf
+        // #card_input waere irrefuehrend (mehrere Tabs "kontrollieren"
+        // denselben Bereich, kein eigenstaendiges Panel je Tab).
+        btn.setAttribute('role', 'tab');
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        // Roving-Tabindex: nur der aktive Reiter ist Tab-Stop (-1/+0),
+        // Pfeiltasten navigieren zwischen Reitern (siehe _onTablistKeydown).
+        btn.setAttribute('tabindex', isActive ? '0' : '-1');
         // Issue #418 Welle 5: addEventListener statt onclick-Property. Die
         // alte Form war via .onclick = function() {...} — addEventListener
         // ist die CSP-konforme Variante (kein Inline-Event-Handler). Test
@@ -126,7 +154,93 @@
           navUebersicht.removeAttribute('aria-current');
         }
       }
+      // Issue #446 Welle 2b: Fokus-Restore NACH dem Rebuild. Nur wenn der
+      // Fokus vor dem Rebuild auf einem .tab-btn lag — sonst lassen wir
+      // Eingabefelder etc. in Ruhe (kein Fokus-Klau). Wenn kein .tab-btn
+      // mehr aktiv ist (z.B. waehrend Protokoll-View), bleibt der Fokus
+      // auf body — das ist OK, weil die Leiste dann ausgeblendet ist.
+      if (focusOnTabBtn) {
+        var newActive = bar.querySelector('.tab-btn.active');
+        if (newActive) newActive.focus();
+      }
     }
+
+    // --- Tastatur-Navigation auf der Tablist (Issue #446 Welle 2b) ---
+    // WAI-ARIA Authoring Practices "Tabs Pattern" (automatic activation):
+    // Pfeiltasten / Home / End bewegen Fokus UND Auswahl gleichzeitig. Die
+    // Reiter wechseln sofort die Ansicht — das passt zum UX-Flow (kein
+    // expliziter Aktivierungsschritt noetig).
+    //
+    // NICHT abgefangen werden Tasten, deren Ziel innerhalb der Leiste ein
+    // .tab-name (Editier-Textbox) oder .tab-close (Button) ist — die sollen
+    // ihre nativen Verhaltensweisen behalten:
+    //   - .tab-name: Pfeiltasten steuern den Textcursor, Home/End setzen
+    //     den Cursor innerhalb der contenteditable-Span. Der Handler im
+    //     Span ruft ohnehin stopPropagation() fuer sonstige Tasten, aber
+    //     die explizite Pruefung im Tablist-Handler ist eine zusaetzliche
+    //     Verteidigungslinie gegen Kuenftige Aenderungen am Span-Handler.
+    //   - .tab-close: Enter/Space sollen weiterhin nativ den Click
+    //     ausloesen (Welle-1-Vertrag).
+    //
+    // preventDefault() wird NUR bei tatsaechlich behandelten Tasten gerufen
+    // — andere Tasten (Tab, Buchstaben, …) sollen ihre normale Bedeutung
+    // behalten (vgl. tests/tablist-a11y.test.js "preventDefault NUR bei …").
+    function _onTablistKeydown(evt) {
+      var target = evt.target;
+      if (!target || !target.classList) return;
+      // Textbox/Close-Button: nicht abfangen
+      if (target.classList.contains('tab-name')) return;
+      if (target.classList.contains('tab-close')) return;
+      var bar = document.getElementById('tab_bar_left');
+      if (!bar) return;
+      var tabs = bar.querySelectorAll('.tab-btn.field-tab');
+      if (tabs.length === 0) return;
+      // Nur behandeln, wenn das Ziel ein .tab-btn ist (oder ein Kind ohne
+      // Sonderbehandlung oben). Damit reagieren wir nicht auf den
+      // .tab-add-Button etc.
+      var currentIdx = Array.prototype.indexOf.call(tabs, target);
+      if (currentIdx === -1) return;
+      var newIdx;
+      switch (evt.key) {
+        case 'ArrowRight':
+          newIdx = (currentIdx + 1) % tabs.length;
+          break;
+        case 'ArrowLeft':
+          newIdx = (currentIdx - 1 + tabs.length) % tabs.length;
+          break;
+        case 'Home':
+          newIdx = 0;
+          break;
+        case 'End':
+          newIdx = tabs.length - 1;
+          break;
+        default:
+          return;
+      }
+      evt.preventDefault();
+      // Gleicher Pfad wie der Klick-Handler: AppGlobals.switchReiter(idx)
+      // ruft intern switchToRechner (View-Toggle zurueck), setzt
+      // activeReiter und emittiert TAB_CHANGED → Coordinator rendert neu
+      // → Fokus-Restore in renderTabs() legt den Fokus auf den neuen
+      // aktiven Reiter.
+      AppGlobals.switchReiter(newIdx);
+    }
+
+    // Listener idempotent einmalig auf der strukturell stabilen Leiste
+    // registrieren. renderTabs() ersetzt nur die KINDER von #tab_bar_left,
+    // die Leiste selbst bleibt im DOM — ein Delegation-Listener auf der
+    // Leiste ueberlebt jeden Re-Render. Beim initialen Modul-Eval ist
+    // #tab_bar_left bereits im jsdom-DOM vorhanden (helpers.js evaluiert
+    // das Script NACH dem HTML-Parse).
+    var _tablistKeydownRegistered = false;
+    function _ensureTablistKeydown() {
+      if (_tablistKeydownRegistered) return;
+      var bar = document.getElementById('tab_bar_left');
+      if (!bar) return;
+      _tablistKeydownRegistered = true;
+      bar.addEventListener('keydown', _onTablistKeydown);
+    }
+    _ensureTablistKeydown();
 
     // --- Auto-Shrink: Reiter-Namen ---
     // Bei fester 3er-Spalte ist pro Reiter weniger Breite verfügbar als früher
