@@ -661,4 +661,60 @@ describe('Issue #443: Font-Deduplizierung und Variable-Font-Vertrag', () => {
     expect(content, 'font-weight: 200 900; (Source Serif 4, wght 200–900) fehlt').toContain('font-weight: 200 900;');
   });
 });
+
+// ─────────── Issue #445 Welle 2: Runtime-Cache-Härtung + CSP-Härtung ──────────
+//
+// Zwei Contracts:
+//   1) sw.js fetch-Handler: nur "sichere" GET-Responses landen im
+//      Runtime-Cache. Methoden != GET werden gar nicht gecacht (POST/PUT/
+//      DELETE ohnehin nicht cacheable), Opaque-Responses (no-cors cross-
+//      origin) und Fehlerseiten (4xx/5xx) und Partial Content (206) dürfen
+//      nie persistiert werden.
+//   2) public/_headers CSP: object-src 'none' — verhindert Plugin-/Flash-/
+//      Applet-Embedding, Best-Practice der gängigen CSP-Härtungs-Scanner
+//      (Mozilla Observatory, securityheaders.com).
+describe('Issue #445 Welle 2 — Runtime-Cache + CSP-Härtung', () => {
+  it('sw.js fetch-Handler prüft e.request.method === \'GET\' vor c.put()', () => {
+    const swPath = resolve(publicDir, 'sw.js');
+    const content = readFileSync(swPath, 'utf-8');
+    // GET-Methoden-Check muss vorhanden sein …
+    expect(content).toMatch(/e\.request\.method\s*===\s*['"]GET['"]/);
+    // … und VOR dem c.put()-Aufruf stehen (gleicher Block, network-first-Pfad).
+    var methodIdx = content.search(/e\.request\.method\s*===\s*['"]GET['"]/);
+    var putIdx = content.search(/c\.put\(/);
+    expect(methodIdx, 'method-Check vor c.put()').toBeGreaterThanOrEqual(0);
+    expect(putIdx, 'c.put() nach method-Check').toBeGreaterThan(methodIdx);
+  });
+
+  it('sw.js fetch-Handler prüft Response-Type (basic|cors) + Status 200 vor c.put()', () => {
+    const swPath = resolve(publicDir, 'sw.js');
+    const content = readFileSync(swPath, 'utf-8');
+    // Response-Type muss 'basic' ODER 'cors' sein (kein 'opaque' → opaque
+    // bedeutet no-cors-Cross-Origin ohne Status-/Header-Einsicht; wäre ein
+    // Cache-Hygiene-Risiko).
+    var hasBasic = /response\.type\s*===\s*['"]basic['"]/.test(content);
+    var hasCors = /response\.type\s*===\s*['"]cors['"]/.test(content);
+    expect(hasBasic || hasCors, "response.type muss 'basic' oder 'cors' als Cache-Guard prüfen").toBe(true);
+    // Status 200 (kein Redirect 3xx, kein Partial Content 206, kein Error 4xx/5xx).
+    expect(content).toMatch(/response\.status\s*===\s*200/);
+    // Beide Prüfungen müssen VOR dem c.put()-Aufruf stehen.
+    var typeIdx = content.search(/response\.type\s*===\s*['"](basic|cors)['"]/);
+    var statusIdx = content.search(/response\.status\s*===\s*200/);
+    var putIdx = content.search(/c\.put\(/);
+    expect(typeIdx, 'type-Check vor c.put()').toBeGreaterThanOrEqual(0);
+    expect(statusIdx, 'status-Check nach type-Check und vor c.put()').toBeGreaterThan(typeIdx);
+    expect(putIdx, 'c.put() nach status-Check').toBeGreaterThan(statusIdx);
+  });
+
+  it('_headers CSP enthält object-src \'none\' (#445 Welle 2)', () => {
+    const content = readFileSync(resolve(publicDir, '_headers'), 'utf-8');
+    const cspLine = content.split('\n').find((l) => l.includes('Content-Security-Policy'));
+    expect(cspLine, 'Content-Security-Policy-Zeile muss existieren').toBeTruthy();
+    // Directive-weise prüfen (CSP = "dir1; dir2; ..."), damit eine
+    // object-src-Directive neben den anderen Direktiven sauber gefunden wird.
+    const objectSrc = cspLine.split(';').map((s) => s.trim()).find((s) => s.startsWith('object-src'));
+    expect(objectSrc, 'object-src-Directive muss existieren').toBeTruthy();
+    expect(objectSrc, "object-src muss 'none' enthalten").toContain("'none'");
+  });
+});
 });

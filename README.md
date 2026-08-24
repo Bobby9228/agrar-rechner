@@ -546,6 +546,25 @@ Wie `fmt()`, aber ohne nachstehendes `,0` für ganze Zahlen (z. B. `5` statt `5,
 - **X-Content-Type-Options**: `nosniff`
 - **Cache-Control** pro Pfad: `no-cache` für HTML/JS/CSS/Manifest/SW, `max-age=604800` für Bilder.
 
+### HSTS
+
+**HSTS (`Strict-Transport-Security`) wird bewusst nicht über `public/_headers` gesetzt**, sondern auf der Cloudflare-Zone gepflegt (Dashboard → SSL/TLS → Edge Certificates → HSTS). Begründung:
+
+- HSTS wirkt **zone-weit** auf alle Hostnames unter `agrar-rechner-dev.pages.dev` (und ggf. Custom-Domains), unabhängig vom Pfad-Match der `_headers`-Datei. Es gehört damit zur Edge-Konfiguration, nicht zur Applikations-Konfiguration.
+- Ein einzelner Header-Eintrag in `_headers` würde nur für die gematchten Pfade greifen — sicherheitstechnisch schwächer und operativ leicht zu vergessen.
+- Der CSP-Stand in `_headers` bleibt für lokale Deployments referenziell nachvollziehbar; HSTS wird in einem einzigen Dashboard gepflegt.
+
+Empfohlene Cloudflare-HSTS-Konfiguration für `agrar-rechner-dev` (und alle Custom-Domains):
+
+| Feld | Wert | Begründung |
+|------|------|------------|
+| **Status** | **Enabled** | Erzwingt HTTPS für alle Folgerequests nach erstem Besuch |
+| **max-age** | **≥ 31536000** (1 Jahr) | Über der 6-Monats-Mindestempfehlung von HSTS-Preload-Listen |
+| **includeSubdomains** | nur wenn **alle** Subdomains TLS haben | Sonst bricht der Subdomain-Zugriff für Clients, die den Header bereits gespeichert haben |
+| **preload** | entfällt für `.dev` | Die TLD ist gemäß hstspreload.org bereits TLD-weit preloaded — ein separates preload-Flag bringt nichts mehr (Review #445 W2) |
+
+Aktivierung **erst nach** Bestätigung, dass alle Custom-Domains TLS-fähig sind (HTTP→HTTPS-Redirect auf Edge-Ebene existiert seit Projektstart). Status und Änderungen werden in diesem README dokumentiert; eine CI-Erinnerung ist nicht möglich, da das Dashboard manuell gepflegt wird.
+
 ### Was die App **nicht** tut (Security-by-Design)
 
 - Kein Backend, kein Auth, keine User-Accounts.

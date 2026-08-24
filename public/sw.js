@@ -76,10 +76,22 @@ self.addEventListener('fetch', e => {
   // Deploy sofort die aktuelle Version. Der Cache dient nur noch als
   // Offline-Fallback, wenn kein Netz verfügbar ist — nicht mehr als primäre
   // Quelle. Behebt die wiederholten "alte CSS trotz neuem Deploy"-Fälle.
+  //
+  // Issue #445 Welle 2: nur "sichere" GET-Responses in den Runtime-Cache.
+  // - Methode muss GET sein (POST/PUT/DELETE sind ohnehin nicht cacheable).
+  // - type 'basic'/'cors': wir haben Status + Header. 'opaque' = no-cors
+  //   Cross-Origin ohne Einsicht → niemals cachen (Cache-Hygiene).
+  // - status === 200: keine Redirects (3xx), kein Partial Content (206),
+  //   keine Fehlerseiten (4xx/5xx). Andere Status durchreichen, nicht cachen.
   e.respondWith(
     fetch(e.request).then(response => {
-      const copy = response.clone();
-      caches.open(CACHE_VERSION).then(c => c.put(e.request, copy));
+      if (e.request.method === 'GET' &&
+          response &&
+          (response.type === 'basic' || response.type === 'cors') &&
+          response.status === 200) {
+        const copy = response.clone();
+        caches.open(CACHE_VERSION).then(c => c.put(e.request, copy));
+      }
       return response;
     }).catch(() => caches.match(e.request).then(r => r || new Response('Offline', { status: 503 })))
   );
