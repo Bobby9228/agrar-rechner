@@ -1,4 +1,4 @@
-import { createDom } from './helpers.js';
+import { createDom, MODULE_LOAD_ORDER } from './helpers.js';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
@@ -322,11 +322,10 @@ describe('Issue #416 Welle 3 — settings-handlers.js App-Shell-Vertrag', () => 
   });
 
   it('tests/helpers.js lädt settings-handlers.js (Test-Helper-Parität zur Production-App-Shell)', () => {
-    const helpersContent = readFileSync(helpersPath, 'utf-8');
     expect(
-      helpersContent,
-      'fehlt in tests/helpers.js: loadModule("settings-handlers.js") — sonst sind w.fahrgassenToggle() etc. in jsdom undefined'
-    ).toMatch(/loadModule\(\s*['"]settings-handlers\.js['"]\s*\)/);
+      MODULE_LOAD_ORDER,
+      'fehlt in tests/helpers.js (MODULE_LOAD_ORDER): settings-handlers.js — sonst sind w.fahrgassenToggle() etc. in jsdom undefined'
+    ).toContain('settings-handlers.js');
   });
 
   it('sw.js STATIC_ASSETS enthält /js/settings-handlers.js (Offline-Bootstrap)', () => {
@@ -449,11 +448,10 @@ describe('Issue #416 Welle 4 — reset-handlers.js App-Shell-Vertrag', () => {
     });
 
     it('tests/helpers.js lädt reset-handlers.js (Test-Helper-Parität zur Production-App-Shell)', () => {
-        const helpersContent = readFileSync(helpersPath, 'utf-8');
         expect(
-            helpersContent,
-            'fehlt in tests/helpers.js: loadModule("reset-handlers.js") — sonst sind w.resetAll() etc. in jsdom undefined'
-        ).toMatch(/loadModule\(\s*['"]reset-handlers\.js['"]\s*\)/);
+            MODULE_LOAD_ORDER,
+            'fehlt in tests/helpers.js (MODULE_LOAD_ORDER): reset-handlers.js — sonst sind w.resetAll() etc. in jsdom undefined'
+        ).toContain('reset-handlers.js');
     });
 
     it('sw.js STATIC_ASSETS enthält /js/reset-handlers.js (Offline-Bootstrap)', () => {
@@ -588,11 +586,10 @@ describe('Issue #416 Welle 5 — drill-handlers.js App-Shell-Vertrag', () => {
     });
 
     it('tests/helpers.js lädt drill-handlers.js (Test-Helper-Parität zur Production-App-Shell)', () => {
-        const helpersContent = readFileSync(helpersPath, 'utf-8');
         expect(
-            helpersContent,
-            'fehlt in tests/helpers.js: loadModule("drill-handlers.js") — sonst sind w.drillAdd() etc. in jsdom undefined'
-        ).toMatch(/loadModule\(\s*['"]drill-handlers\.js['"]\s*\)/);
+            MODULE_LOAD_ORDER,
+            'fehlt in tests/helpers.js (MODULE_LOAD_ORDER): drill-handlers.js — sonst sind w.drillAdd() etc. in jsdom undefined'
+        ).toContain('drill-handlers.js');
     });
 
     it('sw.js STATIC_ASSETS enthält /js/drill-handlers.js (Offline-Bootstrap)', () => {
@@ -742,11 +739,10 @@ describe('Issue #416 Welle 6 — input-handlers.js App-Shell-Vertrag', () => {
     });
 
     it('tests/helpers.js lädt input-handlers.js (Test-Helper-Parität zur Production-App-Shell)', () => {
-        const helpersContent = readFileSync(helpersPath, 'utf-8');
         expect(
-            helpersContent,
-            'fehlt in tests/helpers.js: loadModule("input-handlers.js") — sonst sind w.onInputHektar() etc. in jsdom undefined'
-        ).toMatch(/loadModule\(\s*['"]input-handlers\.js['"]\s*\)/);
+            MODULE_LOAD_ORDER,
+            'fehlt in tests/helpers.js (MODULE_LOAD_ORDER): input-handlers.js — sonst sind w.onInputHektar() etc. in jsdom undefined'
+        ).toContain('input-handlers.js');
     });
 
     it('sw.js STATIC_ASSETS enthält /js/input-handlers.js (Offline-Bootstrap)', () => {
@@ -900,11 +896,10 @@ describe('Issue #416 Welle 7 — protocol-handlers.js App-Shell-Vertrag', () => 
     });
 
     it('tests/helpers.js lädt protocol-handlers.js (Test-Helper-Parität zur Production-App-Shell)', () => {
-        const helpersContent = readFileSync(helpersPath, 'utf-8');
         expect(
-            helpersContent,
-            'fehlt in tests/helpers.js: loadModule("protocol-handlers.js") — sonst sind w.setProtocolView() etc. in jsdom undefined'
-        ).toMatch(/loadModule\(\s*['"]protocol-handlers\.js['"]\s*\)/);
+            MODULE_LOAD_ORDER,
+            'fehlt in tests/helpers.js (MODULE_LOAD_ORDER): protocol-handlers.js — sonst sind w.setProtocolView() etc. in jsdom undefined'
+        ).toContain('protocol-handlers.js');
     });
 
     it('sw.js STATIC_ASSETS enthält /js/protocol-handlers.js (Offline-Bootstrap)', () => {
@@ -1156,11 +1151,10 @@ describe('Issue #416 Welle 8 — data-io-handlers.js App-Shell-Vertrag', () => {
     });
 
     it('tests/helpers.js lädt data-io-handlers.js (Test-Helper-Parität zur Production-App-Shell)', () => {
-        const helpersContent = readFileSync(helpersPath, 'utf-8');
         expect(
-            helpersContent,
-            'fehlt in tests/helpers.js: loadModule("data-io-handlers.js") — sonst sind w.exportData(), w.validateImportText() etc. in jsdom undefined'
-        ).toMatch(/loadModule\(\s*['"]data-io-handlers\.js['"]\s*\)/);
+            MODULE_LOAD_ORDER,
+            'fehlt in tests/helpers.js (MODULE_LOAD_ORDER): data-io-handlers.js — sonst sind w.exportData(), w.validateImportText() etc. in jsdom undefined'
+        ).toContain('data-io-handlers.js');
     });
 
     it('sw.js STATIC_ASSETS enthält /js/data-io-handlers.js (Offline-Bootstrap)', () => {
@@ -1364,11 +1358,10 @@ describe('Issue #417 — state-coordinator.js App-Shell-Vertrag', () => {
     });
 
     it('tests/helpers.js lädt state-coordinator.js (Test-Helper-Parität zur Production-App-Shell)', () => {
-        const helpersContent = readFileSync(helpersPath, 'utf-8');
         expect(
-            helpersContent,
-            'fehlt in tests/helpers.js: loadModule("state-coordinator.js") — sonst ist AppGlobals.appDispatch in jsdom undefined'
-        ).toMatch(/loadModule\(\s*['"]state-coordinator\.js['"]\s*\)/);
+            MODULE_LOAD_ORDER,
+            'fehlt in tests/helpers.js (MODULE_LOAD_ORDER): state-coordinator.js — sonst ist AppGlobals.appDispatch in jsdom undefined'
+        ).toContain('state-coordinator.js');
     });
 
     it('sw.js STATIC_ASSETS enthält /js/state-coordinator.js (Offline-Bootstrap)', () => {

@@ -3,6 +3,16 @@
  * Works with the modular architecture: state.js, calculations.js, ui-handlers.js,
  * render-tabs.js, render-results.js, render-drill.js, render-dashboard.js, main.js
  * (Issue #212: rendering.js was split into 4 modules in June 2026.)
+ *
+ * Issue #444 Welle 1:
+ *   - MODULE_LOAD_ORDER ist die einzige Quelle der Wahrheit für die
+ *     Ladefolge im Test-Harness. tests/test-harness.test.js vergleicht
+ *     sie 1:1 mit der <script src>-Reihenfolge aus public/index.html.
+ *   - BOOTSTRAP_STRIP_RE ist die Vorlage zum Entfernen des Production-
+ *     DOMContentLoaded-Listeners aus main.js. Sie ist verankert auf den
+ *     benannten Bootstrap _appBootstrap (siehe public/js/main.js) und
+ *     wirft beim ersten Mismatch einen harten Fehler, statt still den
+ *     ungetripten Source zu evaluieren (genau dieser Bug ist Issue #444).
  */
 import { JSDOM } from 'jsdom';
 import { readFileSync } from 'fs';
@@ -18,6 +28,51 @@ function loadModule(name) {
   try { return readFileSync(resolve(jsDir, name), 'utf-8'); }
   catch { return ''; }
 }
+
+/**
+ * Modul-Ladefolge (test parity with public/index.html).
+ * Spiegel der <script src="js/..."> Reihenfolge — ?v= Query-Strings sind
+ * hier normalisiert (siehe readIndexScripts in deploy-sanity.test.js).
+ *
+ * Wird die Liste hier geändert, MUSS index.html in derselben Änderung
+ * angepasst werden (oder umgekehrt); tests/test-harness.test.js erzwingt
+ * die Kongruenz automatisch.
+ */
+export const MODULE_LOAD_ORDER = [
+  'app-globals.js',
+  'state.js',
+  'culture.js',
+  'calculations.js',
+  'culture-handlers.js',
+  'ui-handlers.js',
+  'input-handlers.js',
+  'settings-handlers.js',
+  'reset-handlers.js',
+  'drill-handlers.js',
+  'protocol-handlers.js',
+  'tab-handlers.js',
+  'render-tabs.js',
+  'state-coordinator.js',
+  'render-results.js',
+  'render-drill.js',
+  'render-dashboard.js',
+  'render-local-protocol.js',
+  'data-io-handlers.js',
+  'main.js',
+];
+
+/**
+ * Regex, die den Production-DOMContentLoaded-Listener aus main.js entfernt.
+ *
+ * Anker auf den benannten Bootstrap `_appBootstrap` in public/js/main.js.
+ * Wenn der Production-Bootstrap-Pfad geändert wird (Umbenennung,
+ * Wechsel der Signatur, …) passt das Pattern nicht mehr und createDom
+ * wirft — der Fallback auf "nichts ersetzt" (vor Issue #444) ist damit
+ * ausgeschlossen. tests/test-harness.test.js prueft das Pattern gegen den
+ * aktuellen main.js-Source.
+ */
+export const BOOTSTRAP_STRIP_RE =
+  /document\.addEventListener\(\s*['"]DOMContentLoaded['"]\s*,\s*_appBootstrap\s*\)\s*;?/;
 
 /**
  * Creates a fresh jsdom instance with the app's JS loaded.
@@ -74,66 +129,49 @@ export function createDom() {
   // app-globals.js declares the namespace AND installs the `state` getter/setter
   // (Live-Alias für `var state`); the test harness loads the real file so the
   // test scope matches production.
-  // Issue #416 Welle 1: culture-handlers.js wird zwischen calculations.js
-  // und ui-handlers.js geladen, exakt wie in index.html.
-  // Issue #416 Welle 2: tab-handlers.js wird zwischen ui-handlers.js
-  // und render-tabs.js geladen, exakt wie in index.html.
-  // Issue #416 Welle 3: settings-handlers.js wird zwischen ui-handlers.js
-  // und tab-handlers.js geladen, exakt wie in index.html.
-  // Issue #416 Welle 4: reset-handlers.js wird zwischen settings-handlers.js
-  // und tab-handlers.js geladen, exakt wie in index.html.
-  // Issue #416 Welle 5: drill-handlers.js wird zwischen reset-handlers.js
-  // und tab-handlers.js geladen, exakt wie in index.html.
-  // Issue #416 Welle 6: input-handlers.js wird zwischen ui-handlers.js
-  // und settings-handlers.js geladen, exakt wie in index.html.
-  // Issue #416 Welle 7: protocol-handlers.js wird zwischen drill-handlers.js
-  // und tab-handlers.js geladen, exakt wie in index.html.
-  // Issue #416 Welle 8: data-io-handlers.js wird zwischen
-  // render-local-protocol.js und main.js geladen, exakt wie in index.html.
-  // Issue #417: state-coordinator.js wird zwischen render-tabs.js und
-  // render-results.js geladen (genau wie in index.html), damit initUI()
-  // die AppGlobals-Brücke (appDispatch + registerStateCoordinator)
-  // vorfindet.
-  const moduleScript = [
-    loadModule('app-globals.js'),
-    'var _internal = { carryoverCache: null, drillCalcTimer: null };',
-    loadModule('state.js'),
-    loadModule('culture.js'),
-    loadModule('calculations.js'),
-    loadModule('culture-handlers.js'),
-    loadModule('ui-handlers.js'),
-    loadModule('input-handlers.js'),
-    loadModule('settings-handlers.js'),
-    loadModule('reset-handlers.js'),
-    loadModule('drill-handlers.js'),
-    loadModule('protocol-handlers.js'),
-    loadModule('tab-handlers.js'),
-    loadModule('render-tabs.js'),
-    loadModule('state-coordinator.js'),
-    loadModule('render-results.js'),
-    loadModule('render-drill.js'),
-    loadModule('render-dashboard.js'),
-    loadModule('render-local-protocol.js'),
-    loadModule('data-io-handlers.js'),
-    // Remove DOMContentLoaded auto-init from main.js (initUI is called manually below).
-    // The actual code uses `AppGlobals.initUI()` (ADR-001, Issue #278) — match
-    // the real text so the replace actually fires. Since Issue #416 Welle 8 the
-    // block also calls initDataExportImport, so the needle must cover the whole
-    // block. If we don't strip it, the DOMContentLoaded listener fires AFTER the
-    // manual call below and registers a duplicate state coordinator listener,
-    // causing double-renders/double-persists (e.g. app-shell-parity.test.js asserting exactly 1
-    // saveState call got 2).
-    loadModule('main.js').replace(
-      "document.addEventListener('DOMContentLoaded', function() {\n  AppGlobals.initUI();\n  if (typeof AppGlobals.initDataExportImport === 'function') {\n    AppGlobals.initDataExportImport();\n  }\n});",
-      ''
-    ),
-  ].join('\n');
+  // Issue #416 Welle 1–8 + Issue #417: Die Reihenfolge spiegelt 1:1 die
+  // <script src="...">-Liste aus public/index.html wider und wird über die
+  // oben exportierte Konstante MODULE_LOAD_ORDER dokumentiert (Kongruenz-
+  // test siehe tests/test-harness.test.js).
+  const moduleScriptParts = [];
+  moduleScriptParts.push(loadModule('app-globals.js'));
+  moduleScriptParts.push('var _internal = { carryoverCache: null, drillCalcTimer: null };');
+  for (const moduleName of MODULE_LOAD_ORDER) {
+    if (moduleName === 'app-globals.js') continue; // bereits oben geladen
+    if (moduleName === 'main.js') {
+      // Issue #444 Welle 1: Statt einer fragilen String-Konstante entfernen
+      // wir den DOMContentLoaded-Listener per Regex (BOOTSTRAP_STRIP_RE).
+      // Das Pattern ist auf den benannten Bootstrap _appBootstrap in
+      // public/js/main.js verankert; bei einem Mismatch wirft createDom
+      // einen harten Fehler, statt still den ungetripten Source zu
+      // evaluieren. Verhindert, dass initUI bei createDom() doppelt läuft,
+      // falls jsdom (in einer späteren Version) DOMContentLoaded feuert.
+      const mainSource = loadModule('main.js');
+      if (!BOOTSTRAP_STRIP_RE.test(mainSource)) {
+        throw new Error(
+          'tests/helpers.js: BOOTSTRAP_STRIP_RE matcht main.js nicht — der ' +
+          'DOMContentLoaded-Listener konnte nicht entfernt werden. Vor ' +
+          'Issue #444 hat genau dieser Fail-Silent-Bug zu Doppel-' +
+          'Initialisierung geführt (Coordinator / Storage-Listener). ' +
+          'main.js prüfen und entweder das Pattern in BOOTSTRAP_STRIP_RE ' +
+          'nachziehen oder den Bootstrap-Pfad in main.js stabilisieren.'
+        );
+      }
+      moduleScriptParts.push(mainSource.replace(BOOTSTRAP_STRIP_RE, ''));
+      continue;
+    }
+    moduleScriptParts.push(loadModule(moduleName));
+  }
+  const moduleScript = moduleScriptParts.join('\n');
 
   // Load the app JS
   dom.window.eval(moduleScript);
 
   // Call initUI so the Core Subscriber is registered (app.onStateChange subscribers)
-  // This is safe since DOMContentLoaded never fires in jsdom
+  // This is safe since the DOMContentLoaded listener from main.js was stripped
+  // above. If a future jsdom version fires DOMContentLoaded regardless, the
+  // coordinator / storage listener are still idempotent (see Issue #444
+  // B/C tests).
   if (typeof dom.window.initUI === 'function') {
     dom.window.initUI();
   }

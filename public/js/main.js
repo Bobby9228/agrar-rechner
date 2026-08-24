@@ -134,9 +134,16 @@ document.addEventListener('input', function() {
   _pendingKey = null; // Nach jedem Input zurücksetzen, damit kein veralteter Wert hängt
 });
 
-document.addEventListener('DOMContentLoaded', function() {
+// Issue #444 Welle 1: Bootstrap-Body in benannte Funktion extrahiert, damit
+// tests/helpers.js den DOMContentLoaded-Listener per Regex (_appBootstrap-
+// Anker) entfernen kann statt über eine fragile String-Konstante.
+// Produktionsverhalten ist unverändert: der Listener feuert bei DOMContentLoaded
+// und ruft AppGlobals.initUI() — exakt wie vorher. Der benannte Anker ist
+// eine rein strukturelle Stabilisierung ohne Verhaltensänderung.
+function _appBootstrap() {
   AppGlobals.initUI();
-});
+}
+document.addEventListener('DOMContentLoaded', _appBootstrap);
 
 // --- initUIBindings (Issue #418 Welle 1+) ---
 //
