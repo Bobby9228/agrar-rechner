@@ -4,7 +4,7 @@
 // der fetch-Handler ist network-first (Network schlägt Cache), Nutzer sehen
 // also bei jedem Online-Besuch sofort die neue Version. Der Bump räumt
 // nur noch den Offline-Fallback-Cache auf.
-const CACHE_VERSION = 'agrar-rechner-v52';
+const CACHE_VERSION = 'agrar-rechner-v53';
 // STATIC_ASSETS muss exakt zu den lokalen Produktions-Assets aus index.html
 // passen, damit eine frische PWA-Installation (oder ein Update-SW) beim
 // ersten Offline-Restart alle Bootstrap-Dateien im Cache hat. Kongruenz wird
@@ -35,18 +35,10 @@ const STATIC_ASSETS = [
     '/js/render-local-protocol.js?v=3',
     '/js/data-io-handlers.js',
     '/js/main.js',
-    '/fonts/inter-400-latin.woff2',
-    '/fonts/inter-400-latin-ext.woff2',
-    '/fonts/inter-500-latin.woff2',
-    '/fonts/inter-500-latin-ext.woff2',
-    '/fonts/inter-600-latin.woff2',
-    '/fonts/inter-600-latin-ext.woff2',
-    '/fonts/inter-700-latin.woff2',
-    '/fonts/inter-700-latin-ext.woff2',
-    '/fonts/source-serif-4-600-latin.woff2',
-    '/fonts/source-serif-4-600-latin-ext.woff2',
-    '/fonts/source-serif-4-700-latin.woff2',
-    '/fonts/source-serif-4-700-latin-ext.woff2',
+    '/fonts/inter-variable-latin.woff2',
+    '/fonts/inter-variable-latin-ext.woff2',
+    '/fonts/source-serif-4-variable-latin.woff2',
+    '/fonts/source-serif-4-variable-latin-ext.woff2',
     '/icon.svg',
     '/icon-180.png',
     '/manifest.json',

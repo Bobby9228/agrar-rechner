@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from 'fs';
+import { createHash } from 'crypto';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { describe, expect, it } from 'vitest';
@@ -115,7 +116,8 @@ describe('Cloudflare deploy sanity', () => {
     expect(match).not.toBeNull();
     // v51 = Stand nach Issue #416 Welle 8 (data-io-handlers.js);
     // v52 = nach Issue #417 (state-coordinator.js hinzugefügt).
-    expect(match[1]).toBe('agrar-rechner-v52');
+    // v53 = nach Issue #443 (Font-Deduplizierung: 12 WOFF2 → 4 Variable Fonts).
+    expect(match[1]).toBe('agrar-rechner-v53');
   });
 
   // Issue #144: SW ohne Offline-Fallback + Registration ohne Error-Handling
@@ -555,6 +557,85 @@ describe('CSSOM-Vertrag für .dashboard-open-btn, #protokoll_tab_btn (#442)', ()
     expect(matches, 'Voraussetzung: genau eine Regel mit kombiniertem Selektor vorhanden')
       .toHaveLength(1);
     expect(matches[0].style.getPropertyPriority('display')).toBe('');
+  });
+});
+
+// ─────────── Issue #443: Font-Deduplizierung und Variable-Font-Vertrag ───────
+//
+// Im Selfhosting-Bestand (Issue #421) lagen 12 WOFF2-Dateien unter
+// public/fonts/, aber nur 4 eindeutige Inhalte (4× Inter latin, 4× Inter
+// latin-ext, 2× Source Serif 4 latin, 2× Source Serif 4 latin-ext). Google
+// liefert pro Gewicht eine eigene URL, obwohl Inter und Source Serif 4
+// bereits variable Fonts sind — derselbe Blob deckt alle Gewichte ab. Wir
+// stellen auf 4 klar benannte Variable-Font-Dateien um und schützen den
+// Vertrag hier ab.
+describe('Issue #443: Font-Deduplizierung und Variable-Font-Vertrag', () => {
+  const fontsDir = resolve(publicDir, 'fonts');
+
+  // a) Es darf keine byteidentischen WOFF2-Dateien unter public/fonts/ geben.
+  // Vor #443 gab es 8 redundante Dateien (4× Inter latin, 4× Inter latin-ext,
+  // 2× SS4 latin, 2× SS4 latin-ext). Nach #443 ist jede WOFF2 ein Unikat.
+  it('keine byteidentischen WOFF2-Dateien unter public/fonts/', () => {
+    expect(existsSync(fontsDir), 'public/fonts/ fehlt').toBe(true);
+    const files = readdirSync(fontsDir).filter((f) => /\.woff2$/i.test(f));
+    expect(files.length, 'public/fonts/ enthält keine WOFF2-Dateien').toBeGreaterThan(0);
+    const hashToFiles = new Map();
+    for (const f of files) {
+      const full = resolve(fontsDir, f);
+      const buf = readFileSync(full);
+      const h = createHash('sha256').update(buf).digest('hex');
+      if (!hashToFiles.has(h)) hashToFiles.set(h, []);
+      hashToFiles.get(h).push(f);
+    }
+    const duplicateGroups = Array.from(hashToFiles.values()).filter((g) => g.length > 1);
+    const msg = duplicateGroups.length === 0
+      ? null
+      : 'byteidentische WOFF2-Gruppen gefunden: '
+        + duplicateGroups.map((g) => '[' + g.join(', ') + ']').join(', ');
+    expect(duplicateGroups, msg).toEqual([]);
+    expect(hashToFiles.size, 'Anzahl eindeutiger SHA-256-Hashes != Anzahl Dateien').toBe(files.length);
+  });
+
+  // b) Symmetrie zwischen @font-face-URLs in styles.css und Dateien unter
+  // public/fonts/: Jede referenzierte URL muss auf eine existierende Datei
+  // zeigen, und jede WOFF2-Datei im Verzeichnis muss (mindestens) einmal
+  // referenziert sein. Damit kann keine Datei "verwaisen" (Disk ohne CSS-
+  // Referenz) und keine URL ins Leere zeigen (CSS ohne Datei).
+  it('@font-face-URLs und Font-Dateien sind deckungsgleich', () => {
+    const cssPath = resolve(publicDir, 'css', 'styles.css');
+    const content = readFileSync(cssPath, 'utf-8');
+    // Alle url('/fonts/...woff2') extrahieren und auf /fonts/-Pfade normalisieren.
+    const urlRe = /url\(\s*['"]?(\/fonts\/[^'")\s]+\.woff2)['"]?\s*\)/g;
+    const referenced = new Set();
+    var m;
+    while ((m = urlRe.exec(content)) !== null) {
+      referenced.add(m[1]);
+    }
+    expect(referenced.size, 'keine /fonts/*.woff2-URLs in styles.css gefunden').toBeGreaterThan(0);
+    expect(existsSync(fontsDir), 'public/fonts/ fehlt').toBe(true);
+    const onDisk = new Set(
+      readdirSync(fontsDir)
+        .filter((f) => /\.woff2$/i.test(f))
+        .map((f) => '/fonts/' + f)
+    );
+    expect(onDisk.size, 'public/fonts/ enthält keine WOFF2-Dateien').toBeGreaterThan(0);
+    const onlyInCss = Array.from(referenced).filter((u) => !onDisk.has(u));
+    const onlyOnDisk = Array.from(onDisk).filter((u) => !referenced.has(u));
+    expect(onlyInCss, 'URLs in styles.css ohne Datei: ' + onlyInCss.join(', ')).toEqual([]);
+    expect(onlyOnDisk, 'Dateien ohne @font-face-Referenz: ' + onlyOnDisk.join(', ')).toEqual([]);
+    expect(referenced.size, 'Anzahl @font-face-URLs != Anzahl WOFF2-Dateien').toBe(onDisk.size);
+  });
+
+  // c) Variable-Font-Gewichtsbereiche sind in styles.css deklariert. Inter
+  // deckt wght 100–900 ab, Source Serif 4 wght 200–900 (siehe fc-scan). Wir
+  // verlangen die Bereichs-Schreibweise 'font-weight: 100 900;' und
+  // 'font-weight: 200 900;', damit klar ist, dass es sich um Variable Fonts
+  // handelt und nicht um ein einzelnes statisches Gewicht.
+  it('Variable-Font-Gewichtsbereiche sind deklariert', () => {
+    const cssPath = resolve(publicDir, 'css', 'styles.css');
+    const content = readFileSync(cssPath, 'utf-8');
+    expect(content, 'font-weight: 100 900; (Inter, wght 100–900) fehlt').toContain('font-weight: 100 900;');
+    expect(content, 'font-weight: 200 900; (Source Serif 4, wght 200–900) fehlt').toContain('font-weight: 200 900;');
   });
 });
 });
