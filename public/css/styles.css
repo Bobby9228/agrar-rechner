@@ -2425,10 +2425,6 @@ html.dark .bottom-nav {
 .scrollable-content {
   padding-bottom: 12px;
 }
-   Nav-Leiste gelöst). Die alten Wege bleiben FUNKTIONAL vollständig
-   erhalten (IDs, Klassen, Klick-Handler unverändert — die ~60 Tests
-   greifen teils direkt darauf zu), werden aber nur noch per CSS
-   ausgeblendet, weil die neue Leiste sie ersetzt. --------------------- */
 
 /* Alte Wege ausblenden (nicht entfernen — s.o.) */
 .dashboard-open-btn,
@@ -2454,16 +2450,6 @@ body {
 }
 .scrollable-content {
   min-height: 0;
-}
-
-
-/* ---- Demo-Alignment v5: !important, Version ausgeblendet, Nav flacher ---- */
-
-/* !important damit die Ausblendung auch sicher hält, falls woanders eine
-   konkurrierende display-Regel für dieselben Elemente sitzt. */
-.dashboard-open-btn,
-#protokoll_tab_btn {
-  display: none !important;
 }
 
 /* Versionsnummer im Footer: Element bleibt im DOM (Tests lesen textContent),

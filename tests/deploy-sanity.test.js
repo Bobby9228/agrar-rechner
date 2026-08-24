@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { describe, expect, it } from 'vitest';
+import { JSDOM } from 'jsdom';
 
 /**
  * Cloudflare-Deploy-Sanity
@@ -488,5 +489,72 @@ describe('sw.js STATIC_ASSETS — volle Kongruenz, Dateiexistenz, keine Altlaste
     }
   });
 
+});
+
+// ─────────── Issue #442: CSSOM-Vertrag für die persistente Bottom-Nav ────────
+//
+// In styles.css stand ein verwaister Kommentarrest (schließendes */ ohne
+// öffnendes /*) direkt vor `.dashboard-open-btn, #protokoll_tab_btn { display:
+// none; }`. Ein echter Browser-CSSOM-Parser verwirft die direkt folgende
+// Regel und behält nur die spätere !important-Dublette. jsdom ist hier
+// nachsichtiger und interpretiert den Rest als (kaputten) Selektor der ersten
+// Regel; der SelektorText startet dann mit dem Text des verwaister Kommentars
+// statt mit `.dashboard-open-btn`.
+//
+// Damit der Test die echte Browser-Semantik abbildet, filtern wir streng auf
+// Regeln, deren SelektorText EXAKT der normalisierten kombinierten Selektor-
+// Form entspricht — Regeln mit korrumpiertem SelektorText (z. B. mit dem
+// Kommentar-Rest davor) zählen nicht als gültige Treffer. Vor dem Fix findet
+// der Parser genau eine gültige Regel mit `display: none !important` (Priorität
+// "important") — die erste Ausblendregel wurde wegen des Kommentarbruchs
+// verworfen. Nach dem Fix findet der Parser genau eine gültige Regel mit
+// `display: none` und leerer Priorität (kein !important).
+describe('CSSOM-Vertrag für .dashboard-open-btn, #protokoll_tab_btn (#442)', () => {
+  const cssPath = resolve(publicDir, 'css', 'styles.css');
+  const expectedSelector = '.dashboard-open-btn,#protokoll_tab_btn';
+
+  function findCombinedSelectorRules() {
+    const css = readFileSync(cssPath, 'utf-8');
+    const html = '<!DOCTYPE html><html><head><style>' + css + '</style></head>'
+      + '<body><button class="dashboard-open-btn">x</button>'
+      + '<div id="protokoll_tab_btn">y</div></body></html>';
+    const dom = new JSDOM(html, { url: 'http://localhost/' });
+    var matches = [];
+    for (var i = 0; i < dom.window.document.styleSheets.length; i++) {
+      var sheet = dom.window.document.styleSheets[i];
+      var rules;
+      try { rules = sheet.cssRules; } catch (e) { continue; }
+      for (var j = 0; j < rules.length; j++) {
+        var rule = rules[j];
+        if (!rule.selectorText) continue;
+        var normalized = rule.selectorText.replace(/\s+/g, '');
+        if (normalized === expectedSelector) {
+          matches.push(rule);
+        }
+      }
+    }
+    return matches;
+  }
+
+  it('genau eine geparste Regel mit dem kombinierten Selektor', () => {
+    var matches = findCombinedSelectorRules();
+    expect(matches, 'unerwartete Anzahl Regeln mit Selektor "' + expectedSelector
+      + '" — entweder fehlt die Ausblendregel oder es gibt eine zweite/duplizierte Variante')
+      .toHaveLength(1);
+  });
+
+  it('display der geparsten Regel ist "none"', () => {
+    var matches = findCombinedSelectorRules();
+    expect(matches, 'Voraussetzung: genau eine Regel mit kombiniertem Selektor vorhanden')
+      .toHaveLength(1);
+    expect(matches[0].style.getPropertyValue('display')).toBe('none');
+  });
+
+  it('Priorität von display ist leer (kein !important)', () => {
+    var matches = findCombinedSelectorRules();
+    expect(matches, 'Voraussetzung: genau eine Regel mit kombiniertem Selektor vorhanden')
+      .toHaveLength(1);
+    expect(matches[0].style.getPropertyPriority('display')).toBe('');
+  });
 });
 });
