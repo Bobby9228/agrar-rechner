@@ -87,15 +87,60 @@ function migrateLegacyStorageKeys() {
 // Migration frühestmöglich ausführen — vor dem ersten saveState()/loadState().
 migrateLegacyStorageKeys();
 
+// --- STATE_LIMITS (Issue #445 Welle 1) ---
+//
+// Zentrale Clamp-Ceilings für Kardinalitäten und String-Längen. Die Werte
+// sind BEWUSST großzügig gewählt:
+//   - maxTabs=200        : viele Jahre Führungsbuch sicher abgedeckt
+//   - maxEntriesPerTab=5000 : jahrzehntelange Drill-Protokolle pro Schlag
+//   - maxMachineLog=2000   : Audit-Trail über komplette Lebenszeit
+//   - maxNotizenLength=20000: absolutes Obergrenze für Schlag-Notizen
+//                              (die sanitizeTab-Logik kappt aktuell bei 500;
+//                              STATE_LIMITS dient nur als dokumentierter
+//                              Worst-Case-Schutz gegen manipulierten Storage)
+//   - maxNameLength=100   : analog für Schlag-Namen (sanitizeTab kappt bei 64)
+//
+// Defense-in-Depth gegen manipulierten oder korrupten Storage-Export: auch
+// ein absichtlich riesiges JSON darf die App nicht sprengen. parseAndSanitizeState
+// clampt still auf diese Limits (Import zeigt stattdessen verständliche Fehler-
+// codes und bricht ab — siehe validateImportText in data-io-handlers.js).
+//
+// Tests dürfen die Limits live absenken (Mutation auf AppGlobals.STATE_LIMITS
+// wirkt sofort, weil die Sanitizer-/Validierungs-Funktionen bei jedem Aufruf
+// neu lesen). Bestehende engere per-Feld-Limits (sanitizeString maxLen=64 für
+// name, =500 für notizen) bleiben unverändert — STATE_LIMITS dokumentiert nur
+// die absolute Worst-Case-Obergrenze und ist nicht der aktive Cap für die
+// UI-Eingabefelder.
+var STATE_LIMITS = {
+  maxTabs: 200,
+  maxEntriesPerTab: 5000,
+  maxMachineLog: 2000,
+  maxNotizenLength: 20000,
+  maxNameLength: 100
+};
+
+// Liest STATE_LIMITS dynamisch (Tests können via AppGlobals.STATE_LIMITS
+// einzelne Werte mutieren). Fallback auf Default falls AppGlobals noch
+// nicht initialisiert ist (Modul-Edge-Cases).
+function getStateLimits() {
+  try {
+    var al = (typeof AppGlobals !== 'undefined' && AppGlobals.STATE_LIMITS);
+    if (al && typeof al.maxTabs === 'number') return al;
+  } catch(e) { /* ignore */ }
+  return STATE_LIMITS;
+}
+
 function saveState() {
   AppGlobals.invalidateCarryoverCache();
   try {
     localStorage.setItem('agrar_rechner', JSON.stringify(state));
     return true;
   } catch(e) {
-    if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_FILE_CANT_CREATE') {
-      showSaveError();
-    }
+    // Issue #445 Welle 1 D: jeder setItem-Fehler triggert den Banner —
+    // vorher nur QuotaExceededError / NS_ERROR_FILE_CANT_CREATE. Andere
+    // Fehler (SecurityError in Privacy-Mode, TypeError, etc.) waren
+    // stille Datenverluste. console.error bleibt für Debugging.
+    showSaveError();
     console.error('saveState failed:', e);
     return false;
   }
@@ -109,6 +154,35 @@ function showSaveError() {
 function dismissSaveError() {
   var el = document.getElementById('save_error_banner');
   if (el) el.style.display = 'none';
+}
+
+// --- Korrupt-Storage-Banner (Issue #445 Welle 1 C) ---
+//
+// Wenn loadState() einen gespeicherten Wert vorfindet, dieser aber nicht
+// parsebar ist oder die Sanitize-Pipeline null liefert, wird dem Nutzer ein
+// sichtbarer Banner gezeigt. Rohstring bleibt im localStorage, bis der
+// nächste erfolgreiche saveState() ihn überschreibt (Bergung via DevTools
+// weiterhin möglich). dismiss blendet den Banner nur aus — löscht nichts.
+//
+// Der Banner erscheint NUR, wenn tatsächlich ein Wert vorhanden war — leerer
+// Storage ist kein "Korrupt"-Fall. resetAll() setzt _corruptStorageDetected
+// zurück, damit nach "Daten zurücksetzen" ein frischer (kaputter) loadState-
+// Versuch den Banner erneut triggert (Issue #445 Test C).
+var _corruptStorageDetected = false;
+
+function showStorageCorruptError() {
+  _corruptStorageDetected = true;
+  var el = document.getElementById('storage_corrupt_banner');
+  if (el) el.style.display = 'flex';
+}
+
+function dismissStorageCorruptError() {
+  var el = document.getElementById('storage_corrupt_banner');
+  if (el) el.style.display = 'none';
+}
+
+function resetCorruptStorageFlag() {
+  _corruptStorageDetected = false;
 }
 
 // --- Schema-Validierung (Issue #237) ---
@@ -261,7 +335,12 @@ function sanitizeTab(raw) {
     tab.fahrgassenBreite = sanitizeNumber(raw.fahrgassenBreite, 0);
   }
   if (Array.isArray(raw.entries)) {
+    var maxE = getStateLimits().maxEntriesPerTab;
     for (var i = 0; i < raw.entries.length; i++) {
+      // Defense-in-Depth: bei extrem großen Arrays (manipulierter Storage)
+      // frühzeitig abbrechen. Realistische Führungsbücher (auch viele Jahre)
+      // kommen mit maxEntriesPerTab=5000 nicht in diese Nähe.
+      if (tab.entries.length >= maxE) break;
       var e = sanitizeEntry(raw.entries[i]);
       if (e !== null) tab.entries.push(e);
     }
@@ -345,7 +424,12 @@ function parseAndSanitizeState(raw) {
     // Validate und übernehmen — Schema-strict ab _lv=4
     if (!Array.isArray(data.reiter) || data.reiter.length === 0) return null;
     var sanitizedReiter = [];
+    var maxTabsClamp = getStateLimits().maxTabs;
     for (var i = 0; i < data.reiter.length; i++) {
+      // Defense-in-Depth: riesige reiter-Arrays (manipulierter Storage /
+      // Riesen-Export) auf maxTabs begrenzen — verhindert UI-Crashes bei
+      // z.B. 100k Tabs.
+      if (sanitizedReiter.length >= maxTabsClamp) break;
       sanitizedReiter.push(sanitizeTab(data.reiter[i]));
     }
     // Globale Felder typgeprüft + Defaults
@@ -382,8 +466,13 @@ function parseAndSanitizeState(raw) {
     }
     // machineLog sanitizen
     var machineLog = [];
+    var maxMlClamp = getStateLimits().maxMachineLog;
     if (Array.isArray(data.machineLog)) {
       for (var mi = 0; mi < data.machineLog.length; mi++) {
+        // Defense-in-Depth gegen Riesen-Maschinen-Logs (manipulierter
+        // Storage / riesiger Import). Realistische Audit-Trails bleiben
+        // mit maxMachineLog=2000 weit unter der Grenze.
+        if (machineLog.length >= maxMlClamp) break;
         var me = sanitizeMachineLogEntry(data.machineLog[mi]);
         if (me !== null) machineLog.push(me);
       }
@@ -480,7 +569,15 @@ function loadState() {
     var saved = localStorage.getItem('agrar_rechner');
     if (!saved) return false;
     var result = parseAndSanitizeState(saved);
-    if (!result) return false;
+    if (!result) {
+      // Issue #445 Welle 1 C: gespeicherter Wert vorhanden, aber
+      // Sanitize-Pipeline lehnt ihn ab → Korrupt-Banner zeigen, damit
+      // der Nutzer den Datenverlust nicht still erleidet. Rohstring
+      // bleibt im localStorage bis zum nächsten erfolgreichen saveState
+      // (Bergung via DevTools weiterhin möglich — siehe Banner-Text).
+      showStorageCorruptError();
+      return false;
+    }
     var originalLv = result.originalLv;
     state = result.state;
     _loadStateEverSucceeded = true;
@@ -510,6 +607,12 @@ function loadState() {
     }
     return true;
   } catch(e) {
+    // getItem selbst hat geworfen (z.B. SecurityError). Rohstring ist
+    // nicht lesbar → Banner zeigen, damit der Nutzer den Datenverlust
+    // nicht still erleidet. Unterscheidung: getItem-Throw (Banner) vs.
+    // Sanitize-Reject (Banner) — beide Wege sind aus Nutzersicht "die
+    // gespeicherten Daten sind weg".
+    showStorageCorruptError();
     console.error('loadState failed:', e);
     return false;
   }
@@ -531,9 +634,19 @@ function resetLoadStateEverSucceeded() {
 Object.assign(window.AppGlobals, {
   LEGACY_KEY_MAP: LEGACY_KEY_MAP,
   ALLOWED_TAB_KEYS: ALLOWED_TAB_KEYS,
+  // Issue #445 Welle 1: zentrale Cardinality-/Längen-Ceilings als
+  // Live-Objekt exponiert. Tests können einzelne Properties mutieren
+  // (AppGlobals.STATE_LIMITS.maxTabs = 5) und die Sanitizer-Pipeline
+  // greift die neuen Werte beim nächsten Aufruf.
+  STATE_LIMITS: STATE_LIMITS,
+  getStateLimits: getStateLimits,
   migrateLegacyStorageKeys: migrateLegacyStorageKeys,
   saveState: saveState,
   dismissSaveError: dismissSaveError,
+  // Korrupt-Storage-Banner (Issue #445 C): sichtbarer Hinweis + Dismiss.
+  showStorageCorruptError: showStorageCorruptError,
+  dismissStorageCorruptError: dismissStorageCorruptError,
+  resetCorruptStorageFlag: resetCorruptStorageFlag,
   sanitizeNumber: sanitizeNumber,
   sanitizeEntry: sanitizeEntry,
   sanitizeTab: sanitizeTab,
@@ -544,6 +657,11 @@ Object.assign(window.AppGlobals, {
 });
 Object.defineProperty(window.AppGlobals, '_loadStateEverSucceeded', {
   get: function () { return _loadStateEverSucceeded; },
+  configurable: true,
+  enumerable: true,
+});
+Object.defineProperty(window.AppGlobals, '_corruptStorageDetected', {
+  get: function () { return _corruptStorageDetected; },
   configurable: true,
   enumerable: true,
 });

@@ -53,14 +53,18 @@ function getTabKoernerProEinheit(r) {
 
 // fmt — Runde auf 1 Dezimalstelle, deutsche Formatierung mit Komma.
 // DE-Rundung: "round half up" — ab .5 wird aufgerundet (0.05 → '0,1', nicht '0,0').
+// Issue #445 Welle 1: nicht-endliche Werte (NaN, Infinity, -Infinity) liefern
+// '0,0' statt 'Infinity' / 'NaN' in der UI. Vorher landete Infinity als Text
+// "Infinity" auf dem Bildschirm, weil toFixed(1) den Wert nicht abfängt.
 function fmt(n) {
-  if (n === null || n === undefined || isNaN(n)) return '0,0';
+  if (n === null || n === undefined || !isFinite(n)) return '0,0';
   var x = n * 10;
   var rounded = (x >= 0 ? Math.floor(x + 0.5) : -Math.floor(-x + 0.5)) / 10;
   return String(rounded.toFixed(1)).replace('.', ',');
 }
 
 // fmtCompact — wie fmt(), aber ohne nachstehendes ",0" für ganze Zahlen.
+// Erbt den Finite-Guard aus fmt() automatisch.
 function fmtCompact(n) {
   var s = fmt(n);
   if (s.endsWith(',0')) s = s.slice(0, -2);

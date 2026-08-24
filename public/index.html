@@ -16,7 +16,17 @@
 <body>
   <div class="app-layout">
     <div id="save_error_banner" class="save-error-banner" style="display:none">
-      <span>⚠️ <strong>Speichern fehlgeschlagen</strong> — localStorage voll. Daten gehen bei Neuladung verloren!</span>
+      <span>⚠️ <strong>Speichern fehlgeschlagen</strong> — deine letzten Änderungen konnten nicht lokal gespeichert werden (z.&nbsp;B. Speicher voll oder blockiert). Ohne Speichern gehen sie bei Neuladung verloren!</span>
+      <button aria-label="Schließen">✕</button>
+    </div>
+    <!-- Issue #445 Welle 1 C: Korrupt-Storage-Banner — erscheint, wenn
+         loadState() einen Wert im localStorage vorfindet, dieser aber nicht
+         lesbar/parsebar/Schema-konform ist. Stil analog zum Save-Error-
+         Banner. Rohstring bleibt im Storage bis zum nächsten erfolgreichen
+         saveState() (Bergung via DevTools weiter möglich). Dismiss blendet
+         nur aus, löscht nichts. -->
+    <div id="storage_corrupt_banner" class="save-error-banner" style="display:none" role="alert">
+      <span>⚠️ <strong>Gespeicherte Daten waren beschädigt</strong> — die App startet mit leeren Daten. Vorhandene Buchungen sind verloren. Über „Daten zurücksetzen" den alten Zustand verwerfen oder den Rohstring in den DevTools (Application → Local Storage) sichern.</span>
       <button aria-label="Schließen">✕</button>
     </div>
     <!-- Dashboard-Sheet ("Übersicht") lebt jetzt HIER als echtes Flex-Geschwister

@@ -147,6 +147,14 @@
       if (typeof AppGlobals.resetLoadStateEverSucceeded === 'function') {
         AppGlobals.resetLoadStateEverSucceeded();
       }
+      // Issue #445 Welle 1 C: nach "Daten zurücksetzen" soll ein
+      // nachfolgender korrupter loadState den Banner erneut zeigen
+      // können. Flag wird hier zurückgesetzt — Banner selbst bleibt
+      // sichtbar bis der Nutzer ihn aktiv wegklickt oder bis der nächste
+      // erfolgreiche saveState() ihn überschreibt.
+      if (typeof AppGlobals.resetCorruptStorageFlag === 'function') {
+        AppGlobals.resetCorruptStorageFlag();
+      }
       // Input- und Fehlerfelder zurücksetzen
       _resetInput(DOM_IDS.hektar);
       _resetInput(DOM_IDS.istHektar);

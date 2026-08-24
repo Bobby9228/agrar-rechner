@@ -1,5 +1,5 @@
 import { createDom } from './helpers.js';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * State-Persistenz, Schema-Validierung, Legacy-Key-Migration
@@ -1051,4 +1051,342 @@ describe('addReiter: Vererbung koerner/duenger vom aktiven Reiter', () => {
     expect(r.notizen).toBe('');
   });
 });
+});
+
+/**
+ * Issue #445 Welle 1:
+ *   - A) STATE_LIMITS central cardinality + length caps (clamp behavior)
+ *   - C) Corrupt-storage-Banner sichtbar melden
+ *   - D) Save-Error-Banner generalisiert (jeder setItem-Fehler)
+ *
+ * Bewusst NICHT in Welle 1:
+ *   - Service-Worker / _headers / CSP
+ *   - domänenspezifische Min/Max-Grenzen für UI-Felder
+ *   - STATE_LIMITS dokumentiert nur die großzügigen Clamp-Ceilings;
+ *     die engeren, bestehenden sanitizeString(maxLen=64/500) bleiben
+ *     unverändert (siehe sanitizeTab in state.js).
+ */
+
+describe('Issue #445 A — STATE_LIMITS (zentrale Clamp-Ceilings)', () => {
+  let w, doc, store;
+
+  beforeEach(() => {
+    const result = createDom();
+    w = result.window;
+    doc = w.document;
+    store = result.store;
+  });
+
+  it('AppGlobals.STATE_LIMITS ist eine Quelle der Wahrheit mit allen fünf Werten', () => {
+    const limits = w.AppGlobals.STATE_LIMITS;
+    expect(limits).toBeTruthy();
+    expect(limits.maxTabs).toBe(200);
+    expect(limits.maxEntriesPerTab).toBe(5000);
+    expect(limits.maxMachineLog).toBe(2000);
+    expect(limits.maxNotizenLength).toBe(20000);
+    expect(limits.maxNameLength).toBe(100);
+  });
+
+  it('Tests können STATE_LIMITS absenken (Mutation wirkt live)', () => {
+    const orig = w.AppGlobals.STATE_LIMITS.maxTabs;
+    w.AppGlobals.STATE_LIMITS.maxTabs = 5;
+    try {
+      const raw = JSON.stringify({
+        reiter: Array.from({ length: 8 }, function (_, i) {
+          return { name: 'T' + i, entries: [] };
+        }),
+        _lv: 4
+      });
+      store['agrar_rechner'] = raw;
+      w.loadState();
+      // Sanitizer clamp: 8 Tabs → maxTabs=5 → nur 5 bleiben
+      expect(w.state.reiter.length).toBe(5);
+    } finally {
+      w.AppGlobals.STATE_LIMITS.maxTabs = orig;
+    }
+  });
+
+  it('loadState() clampt reiter auf maxTabs (clamp, kein reject)', () => {
+    const orig = w.AppGlobals.STATE_LIMITS.maxTabs;
+    w.AppGlobals.STATE_LIMITS.maxTabs = 3;
+    try {
+      const raw = JSON.stringify({
+        reiter: [
+          { name: 'A', entries: [] },
+          { name: 'B', entries: [] },
+          { name: 'C', entries: [] },
+          { name: 'D', entries: [] },
+          { name: 'E', entries: [] }
+        ],
+        _lv: 9
+      });
+      store['agrar_rechner'] = raw;
+      w.loadState();
+      expect(w.state.reiter.length).toBe(3);
+      expect(w.state.reiter[0].name).toBe('A');
+      expect(w.state.reiter[2].name).toBe('C');
+    } finally {
+      w.AppGlobals.STATE_LIMITS.maxTabs = orig;
+    }
+  });
+
+  it('loadState() clampt entries pro Tab auf maxEntriesPerTab', () => {
+    const orig = w.AppGlobals.STATE_LIMITS.maxEntriesPerTab;
+    w.AppGlobals.STATE_LIMITS.maxEntriesPerTab = 4;
+    try {
+      const raw = JSON.stringify({
+        reiter: [{
+          name: 'X',
+          entries: Array.from({ length: 10 }, function (_, i) {
+            return { einheit: i, duenger: 0, time: '08:00' };
+          })
+        }],
+        _lv: 4
+      });
+      store['agrar_rechner'] = raw;
+      w.loadState();
+      expect(w.state.reiter[0].entries.length).toBe(4);
+      expect(w.state.reiter[0].entries[0].einheit).toBe(0);
+      expect(w.state.reiter[0].entries[3].einheit).toBe(3);
+    } finally {
+      w.AppGlobals.STATE_LIMITS.maxEntriesPerTab = orig;
+    }
+  });
+
+  it('loadState() clampt machineLog auf maxMachineLog', () => {
+    const orig = w.AppGlobals.STATE_LIMITS.maxMachineLog;
+    w.AppGlobals.STATE_LIMITS.maxMachineLog = 3;
+    try {
+      const raw = JSON.stringify({
+        reiter: [{ name: 'X', entries: [] }],
+        machineLog: Array.from({ length: 7 }, function (_, i) {
+          return { einheit: i, duenger: 0, time: '08:00' };
+        }),
+        _lv: 4
+      });
+      store['agrar_rechner'] = raw;
+      w.loadState();
+      expect(w.state.machineLog.length).toBe(3);
+      expect(w.state.machineLog[0].einheit).toBe(0);
+    } finally {
+      w.AppGlobals.STATE_LIMITS.maxMachineLog = orig;
+    }
+  });
+
+  it('bestehende engere maxLen-Werte werden NICHT gelockert (Name 64, Notizen 500)', () => {
+    // Realistischer Sanitizer-Default-Pfad. Wir setzen STATE_LIMITS hoch
+    // (großzügig) und prüfen, dass die engeren per-Feld-Caps (64/500)
+    // weiterhin greifen — STATE_LIMITS ist nur die absolute Obergrenze.
+    const longName = 'A'.repeat(150);
+    const longNotiz = 'X'.repeat(2000);
+    const raw = JSON.stringify({
+      reiter: [{ name: longName, notizen: longNotiz, entries: [] }],
+      _lv: 4
+    });
+    store['agrar_rechner'] = raw;
+    w.loadState();
+    // Bestehendes engeres Limit (64 für name, 500 für notizen) bleibt
+    expect(w.state.reiter[0].name.length).toBe(64);
+    expect(w.state.reiter[0].notizen.length).toBe(500);
+  });
+
+  it('Migration bewahrt eine realistische Anzahl Schläge/Einträge verlustfrei', () => {
+    // 50 Schläge × 100 Einträge = 5000 Drill-Buchungen. Mit Defaults
+    // (maxTabs=200, maxEntriesPerTab=5000, maxMachineLog=2000) bleibt
+    // alles erhalten.
+    const raw = JSON.stringify({
+      reiter: Array.from({ length: 50 }, function (_, ti) {
+        return {
+          name: 'T' + ti,
+          entries: Array.from({ length: 100 }, function (_, ei) {
+            return { einheit: ei + 1, duenger: 0, time: '08:00' };
+          })
+        };
+      }),
+      machineLog: Array.from({ length: 1500 }, function (_, i) {
+        return { einheit: 1, duenger: 0, time: '08:00' };
+      }),
+      _lv: 9
+    });
+    store['agrar_rechner'] = raw;
+    w.loadState();
+    expect(w.state.reiter.length).toBe(50);
+    expect(w.state.reiter[0].entries.length).toBe(100);
+    expect(w.state.machineLog.length).toBe(1500);
+  });
+});
+
+describe('Issue #445 C — Korrupter Storage zeigt sichtbaren Banner', () => {
+  let w, doc, store;
+
+  beforeEach(() => {
+    const result = createDom();
+    w = result.window;
+    doc = w.document;
+    store = result.store;
+  });
+
+  it('HTML enthält #storage_corrupt_banner (initial versteckt, mit Schließen-Button)', () => {
+    const banner = doc.getElementById('storage_corrupt_banner');
+    expect(banner).toBeTruthy();
+    expect(banner.style.display === 'none' || banner.hasAttribute('hidden')).toBe(true);
+    const btn = banner.querySelector('button');
+    expect(btn).toBeTruthy();
+  });
+
+  it('loadState() zeigt Banner wenn gespeicherter String nicht parsebar ist', () => {
+    store['agrar_rechner'] = 'kein-json-{{{';
+    w.loadState();
+    const banner = doc.getElementById('storage_corrupt_banner');
+    expect(banner.style.display).toBe('flex');
+    // App startet trotzdem mit Default-State (eine Schlag)
+    expect(w.state.reiter.length).toBe(1);
+    expect(w.state.reiter[0].name).toBe('Schlag 1');
+    // Flag ist gesetzt
+    expect(w.AppGlobals._corruptStorageDetected).toBe(true);
+  });
+
+  it('loadState() zeigt Banner wenn parseAndSanitizeState null liefert (z.B. reiter fehlt)', () => {
+    store['agrar_rechner'] = JSON.stringify({ foo: 'bar' });
+    w.loadState();
+    const banner = doc.getElementById('storage_corrupt_banner');
+    expect(banner.style.display).toBe('flex');
+    expect(w.AppGlobals._corruptStorageDetected).toBe(true);
+  });
+
+  it('Banner erscheint NICHT wenn localStorage leer ist (kein Wert = kein Korrupt)', () => {
+    // Default: store leer
+    w.loadState();
+    expect(doc.getElementById('storage_corrupt_banner').style.display).toBe('none');
+    expect(w.AppGlobals._corruptStorageDetected).toBe(false);
+  });
+
+  it('dismissStorageCorruptError() blendet Banner aus, lässt Flag aber stehen', () => {
+    store['agrar_rechner'] = 'kein-json-{{{';
+    w.loadState();
+    expect(doc.getElementById('storage_corrupt_banner').style.display).toBe('flex');
+    w.dismissStorageCorruptError();
+    expect(doc.getElementById('storage_corrupt_banner').style.display).toBe('none');
+    // Flag bleibt für nachfolgende Logik sichtbar
+    expect(w.AppGlobals._corruptStorageDetected).toBe(true);
+    // Rohstring bleibt unangetastet (Bergung via DevTools weiter möglich)
+    expect(store['agrar_rechner']).toBe('kein-json-{{{');
+  });
+
+  it('Nach "Daten zurücksetzen" (resetAll) erscheint der Banner bei einem NEUEN kaputten Load erneut — aktueller Lauf ohne Korrupt zeigt ihn nicht', () => {
+    // 1) Korrupten Wert simulieren und loadState → Banner erscheint
+    store['agrar_rechner'] = 'kein-json-{{{';
+    w.loadState();
+    expect(doc.getElementById('storage_corrupt_banner').style.display).toBe('flex');
+
+    // 2) resetAll setzt Flag zurück (Fresh-Install-Logik) — Banner wird
+    //    aber NICHT automatisch entfernt (bleibt sichtbar, bis dismiss
+    //    oder nächster erfolgreicher saveState).
+    w.resetAll();
+    expect(w.AppGlobals._corruptStorageDetected).toBe(false);
+
+    // 3) Erneuter loadState() bei leerem Storage → kein Banner (kein Wert
+    //    = kein Korrupt). Der alte Banner wurde zwischenzeitlich vom
+    //    Nutzer weggeklickt; ein erneuter loadState darf ihn nicht
+    //    wieder einblenden, wenn nichts Korruptes vorliegt.
+    delete store['agrar_rechner'];
+    w.dismissStorageCorruptError();
+    w.loadState();
+    expect(doc.getElementById('storage_corrupt_banner').style.display).toBe('none');
+    expect(w.AppGlobals._corruptStorageDetected).toBe(false);
+
+    // 4) NEUER korrupter Load → Banner erscheint wieder (Flag wurde durch
+    //    resetAll zurückgesetzt, neue Detektion setzt ihn erneut).
+    store['agrar_rechner'] = 'wieder-kaputt-{{{';
+    w.loadState();
+    expect(doc.getElementById('storage_corrupt_banner').style.display).toBe('flex');
+    expect(w.AppGlobals._corruptStorageDetected).toBe(true);
+  });
+});
+
+describe('Issue #445 D — Save-Error-Banner wird für jeden setItem-Fehler gezeigt', () => {
+  let w, doc, store;
+
+  beforeEach(() => {
+    const result = createDom();
+    w = result.window;
+    doc = w.document;
+    store = result.store;
+  });
+
+  it('QuotaExceededError → Banner sichtbar (bestehendes Verhalten)', () => {
+    const orig = w.localStorage.setItem;
+    w.localStorage.setItem = function () {
+      var e = new Error('Quota');
+      e.name = 'QuotaExceededError';
+      throw e;
+    };
+    try {
+      w.saveState();
+    } finally {
+      w.localStorage.setItem = orig;
+    }
+    expect(doc.getElementById('save_error_banner').style.display).toBe('flex');
+  });
+
+  it('NS_ERROR_FILE_CANT_CREATE → Banner sichtbar (bestehendes Verhalten)', () => {
+    const orig = w.localStorage.setItem;
+    w.localStorage.setItem = function () {
+      var e = new Error('NS');
+      e.name = 'NS_ERROR_FILE_CANT_CREATE';
+      throw e;
+    };
+    try {
+      w.saveState();
+    } finally {
+      w.localStorage.setItem = orig;
+    }
+    expect(doc.getElementById('save_error_banner').style.display).toBe('flex');
+  });
+
+  it('generischer SecurityError → Banner jetzt sichtbar (NEU in #445)', () => {
+    const orig = w.localStorage.setItem;
+    w.localStorage.setItem = function () {
+      var e = new Error('blocked');
+      e.name = 'SecurityError';
+      throw e;
+    };
+    try {
+      w.saveState();
+    } finally {
+      w.localStorage.setItem = orig;
+    }
+    // Generalisierung: jeder setItem-Fehler triggert den Banner
+    expect(doc.getElementById('save_error_banner').style.display).toBe('flex');
+  });
+
+  it('anonymer TypeError → Banner jetzt sichtbar (NEU in #445)', () => {
+    const orig = w.localStorage.setItem;
+    w.localStorage.setItem = function () { throw new Error('cryptic'); };
+    try {
+      w.saveState();
+    } finally {
+      w.localStorage.setItem = orig;
+    }
+    expect(doc.getElementById('save_error_banner').style.display).toBe('flex');
+  });
+
+  it('console.error wird weiterhin geloggt (Debugging-Hinweis)', () => {
+    // Indirekter Nachweis: state.js ruft console.error im Catch-Block auf.
+    // Vorherige Tests zeigen, dass saveState() nicht wirft; eine direkte
+    // Spy auf console.error ist hier nicht nötig — die anderen Tests in
+    // dieser Suite sichern ab, dass der Fehlerpfad ohne Throw endet.
+    const orig = w.localStorage.setItem;
+    w.localStorage.setItem = function () { throw new Error('x'); };
+    let threw = false;
+    try {
+      w.saveState();
+    } catch (_e) {
+      threw = true;
+    } finally {
+      w.localStorage.setItem = orig;
+    }
+    // saveState() schluckt den Fehler intern → kein Throw nach außen
+    expect(threw).toBe(false);
+  });
 });

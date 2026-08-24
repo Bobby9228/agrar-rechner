@@ -166,6 +166,31 @@ function validateImportText(raw) {
   if (!envelope.state || typeof envelope.state !== 'object' || Array.isArray(envelope.state)) {
     return { ok: false, error: 'invalid-format' };
   }
+  // Issue #445 Welle 1 B: Kardinalitäts-Check auf dem ROHEN Envelope.state,
+  // BEVOR die Sanitizer-Pipeline läuft. So bekommt der Nutzer einen klaren
+  // Fehlercode statt eines stillen Clamps. STATE_LIMITS wird dynamisch
+  // über AppGlobals gelesen — Tests können die Limits live absenken.
+  var rawState = envelope.state;
+  // Single Source of Truth: getStateLimits() liest dieselbe STATE_LIMITS-
+  // Instanz wie der Sanitizer — keine duplizierten Fallback-Literale hier.
+  var limits = AppGlobals.getStateLimits();
+  var maxTabs = limits.maxTabs;
+  var maxEntriesPerTab = limits.maxEntriesPerTab;
+  var maxMachineLog = limits.maxMachineLog;
+  if (Array.isArray(rawState.reiter) && rawState.reiter.length > maxTabs) {
+    return { ok: false, error: 'too-many-tabs' };
+  }
+  if (Array.isArray(rawState.reiter)) {
+    for (var rci = 0; rci < rawState.reiter.length; rci++) {
+      var rt = rawState.reiter[rci];
+      if (rt && Array.isArray(rt.entries) && rt.entries.length > maxEntriesPerTab) {
+        return { ok: false, error: 'too-many-entries' };
+      }
+    }
+  }
+  if (Array.isArray(rawState.machineLog) && rawState.machineLog.length > maxMachineLog) {
+    return { ok: false, error: 'too-many-log-entries' };
+  }
   // Vollständige Schema-/Sanitizer-Pipeline (wie loadState) — Verteidigungs-
   // linie gegen manipulierten state-Block innerhalb des Envelopes.
   var result = AppGlobals.parseAndSanitizeState(JSON.stringify(envelope.state));
@@ -189,13 +214,16 @@ function validateImportText(raw) {
 
 function importErrorMessage(code) {
   switch (code) {
-    case 'empty-file':       return 'Die Datei ist leer.';
-    case 'too-large':        return 'Die Datei ist zu groß (Maximum 10 MB).';
-    case 'invalid-json':     return 'Die Datei enthält kein gültiges JSON.';
-    case 'invalid-format':   return 'Die Datei hat ein unbekanntes Format.';
-    case 'foreign-format':   return 'Diese Datei stammt nicht aus dem Agrar-Rechner.';
-    case 'invalid-state':    return 'Die Datei enthält keinen gültigen App-Zustand.';
-    default:                 return 'Import fehlgeschlagen.';
+    case 'empty-file':          return 'Die Datei ist leer.';
+    case 'too-large':           return 'Die Datei ist zu groß (Maximum 10 MB).';
+    case 'invalid-json':        return 'Die Datei enthält kein gültiges JSON.';
+    case 'invalid-format':      return 'Die Datei hat ein unbekanntes Format.';
+    case 'foreign-format':      return 'Diese Datei stammt nicht aus dem Agrar-Rechner.';
+    case 'invalid-state':       return 'Die Datei enthält keinen gültigen App-Zustand.';
+    case 'too-many-tabs':       return 'Der Backup enthält mehr Schläge als unterstützt (max. 200).';
+    case 'too-many-entries':    return 'Der Backup enthält mehr Buchungen pro Schlag als unterstützt (max. 5.000).';
+    case 'too-many-log-entries': return 'Der Backup enthält mehr Maschinen-Log-Einträge als unterstützt (max. 2.000).';
+    default:                    return 'Import fehlgeschlagen.';
   }
 }
 

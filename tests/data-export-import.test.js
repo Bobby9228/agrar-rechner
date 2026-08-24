@@ -437,6 +437,130 @@ describe('Daten-Import — Validierung (validateImportText)', () => {
       expect(msg).not.toBe(code);
     });
   });
+
+  it('importErrorMessage liefert sinnvolle deutsche Texte für die neuen Kardinalitäts-Codes (#445)', () => {
+    const codes = ['too-many-tabs', 'too-many-entries', 'too-many-log-entries'];
+    codes.forEach(function (code) {
+      const msg = w.importErrorMessage(code);
+      expect(typeof msg).toBe('string');
+      expect(msg.length).toBeGreaterThan(0);
+      expect(msg).not.toBe(code);
+      // Mindestens eine sinnvolle, fachliche Andeutung:
+      expect(msg).toMatch(/schl|tab|buch|log|eintr/i);
+    });
+  });
+});
+
+// ───────────────────────── Issue #445 B — Import-Kardinalitäts-Checks ─────────────────────────
+//
+// Welle 1: validateImportText prüft die ROHEN Array-Längen in
+// envelope.state gegen STATE_LIMITS, BEVOR parseAndSanitizeState läuft.
+// Bei Überschreitung gibt es einen spezifischen Fehlercode, der Import
+// bricht früh ab statt still zu kürzen.
+
+describe('Issue #445 B — Import-Kardinalitäts-Checks gegen STATE_LIMITS', () => {
+  let w;
+  beforeAll(() => { sharedDom(); });
+  beforeEach(() => { w = sharedDom().window; resetState(); });
+
+  function envelope(state) {
+    return JSON.stringify({
+      app: 'agrar-rechner',
+      formatVersion: 1,
+      exportedAt: '2026-08-20T12:00:00.000Z',
+      state: state
+    });
+  }
+
+  it('lehnt Envelope mit reiter.length > STATE_LIMITS.maxTabs mit "too-many-tabs" ab', () => {
+    const orig = w.AppGlobals.STATE_LIMITS.maxTabs;
+    w.AppGlobals.STATE_LIMITS.maxTabs = 3;
+    try {
+      const text = envelope({
+        reiter: [
+          { name: 'A', entries: [] },
+          { name: 'B', entries: [] },
+          { name: 'C', entries: [] },
+          { name: 'D', entries: [] }
+        ],
+        _lv: 9
+      });
+      const r = w.validateImportText(text);
+      expect(r.ok).toBe(false);
+      expect(r.error).toBe('too-many-tabs');
+    } finally {
+      w.AppGlobals.STATE_LIMITS.maxTabs = orig;
+    }
+  });
+
+  it('lehnt Envelope mit zu vielen Einträgen pro Tab mit "too-many-entries" ab', () => {
+    const orig = w.AppGlobals.STATE_LIMITS.maxEntriesPerTab;
+    w.AppGlobals.STATE_LIMITS.maxEntriesPerTab = 5;
+    try {
+      const bigEntries = [];
+      for (let i = 0; i < 7; i++) bigEntries.push({ einheit: i + 1, duenger: 0, time: '08:00' });
+      const text = envelope({
+        reiter: [{ name: 'X', entries: bigEntries }],
+        _lv: 9
+      });
+      const r = w.validateImportText(text);
+      expect(r.ok).toBe(false);
+      expect(r.error).toBe('too-many-entries');
+    } finally {
+      w.AppGlobals.STATE_LIMITS.maxEntriesPerTab = orig;
+    }
+  });
+
+  it('lehnt Envelope mit zu vielen machineLog-Einträgen mit "too-many-log-entries" ab', () => {
+    const orig = w.AppGlobals.STATE_LIMITS.maxMachineLog;
+    w.AppGlobals.STATE_LIMITS.maxMachineLog = 4;
+    try {
+      const bigLog = [];
+      for (let i = 0; i < 6; i++) bigLog.push({ einheit: 1, duenger: 0, time: '08:00' });
+      const text = envelope({
+        reiter: [{ name: 'X', entries: [] }],
+        machineLog: bigLog,
+        _lv: 9
+      });
+      const r = w.validateImportText(text);
+      expect(r.ok).toBe(false);
+      expect(r.error).toBe('too-many-log-entries');
+    } finally {
+      w.AppGlobals.STATE_LIMITS.maxMachineLog = orig;
+    }
+  });
+
+  it('akzeptiert Envelope genau an der Grenze (maxTabs exakt erfüllt)', () => {
+    const orig = w.AppGlobals.STATE_LIMITS.maxTabs;
+    w.AppGlobals.STATE_LIMITS.maxTabs = 3;
+    try {
+      const text = envelope({
+        reiter: [
+          { name: 'A', entries: [] },
+          { name: 'B', entries: [] },
+          { name: 'C', entries: [] }
+        ],
+        _lv: 9
+      });
+      const r = w.validateImportText(text);
+      expect(r.ok).toBe(true);
+    } finally {
+      w.AppGlobals.STATE_LIMITS.maxTabs = orig;
+    }
+  });
+
+  it('validateImportText nutzt AppGlobals.STATE_LIMITS zur Kardinalitäts-Prüfung (Tests senken live)', () => {
+    // Default = STATE_LIMITS.maxTabs=200, maxEntriesPerTab=5000.
+    // Mit den Defaults muss ein "riesiger" (aber realistisch großer)
+    // Envelope noch durchgehen — die Limits sind bewusst großzügig.
+    const tabs = [];
+    for (let i = 0; i < 50; i++) {
+      tabs.push({ name: 'T' + i, entries: [] });
+    }
+    const text = envelope({ reiter: tabs, _lv: 9 });
+    const r = w.validateImportText(text);
+    expect(r.ok).toBe(true);
+  });
 });
 
 // ───────────────────────── Import: Vorschau + Bestätigen ─────────────────────────

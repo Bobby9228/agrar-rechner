@@ -224,6 +224,18 @@ function initUIBindings() {
     if (saveBannerClose) saveBannerClose.addEventListener('click', AppGlobals.dismissSaveError);
   }
 
+  // Korrupt-Storage-Banner (Issue #445 Welle 1 C): Schließen-Button
+  // blendet den Banner nur aus, löscht aber nichts — der Rohstring
+  // bleibt bis zum nächsten erfolgreichen saveState() im localStorage
+  // (Bergung via DevTools möglich).
+  var corruptBanner = document.getElementById('storage_corrupt_banner');
+  if (corruptBanner && typeof AppGlobals.dismissStorageCorruptError === 'function') {
+    var corruptBannerClose = corruptBanner.querySelector('button');
+    if (corruptBannerClose) {
+      corruptBannerClose.addEventListener('click', AppGlobals.dismissStorageCorruptError);
+    }
+  }
+
   // Formulare — Hektar/Koerner/Duenger/Notizen/IST-Fläche/Einheitsgröße/Fahrgassenbreite.
   // Timing ist kritisch: input feuert pro Tastendruck (Format), change/blur
   // feuern bei Fokus-Wechsel (State-Write). Browser-spezifisch feuert manchmal

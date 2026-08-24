@@ -140,6 +140,33 @@ describe('formatEinheit', () => {
   // Singular gilt nur, wenn der auf 3 Stellen angezeigte Wert exakt 1,000 ist.
 });
 
+/**
+ * Issue #445 Welle 1 — E) Formatter gegen nicht-endliche Werte absichern.
+ * fmt() rendert '0,0' für null/undefined/NaN; bisher lief Infinity durch
+ * und landete als toFixed-Text 'Infinity' in der UI. fmtCompact erbt die
+ * Korrektur automatisch (delegiert an fmt()).
+ */
+describe('Issue #445 E — fmt/fmtCompact gegen nicht-endliche Werte abgesichert', () => {
+  let w;
+  beforeEach(() => { w = createDom().window; });
+
+  it('fmt(NaN) === "0,0"', () => expect(w.fmt(NaN)).toBe('0,0'));
+  it('fmt(Infinity) === "0,0" (KEIN "Infinity"-Text mehr)', () => expect(w.fmt(Infinity)).toBe('0,0'));
+  it('fmt(-Infinity) === "0,0"', () => expect(w.fmt(-Infinity)).toBe('0,0'));
+  it('fmt(null) === "0,0"', () => expect(w.fmt(null)).toBe('0,0'));
+  it('fmt(undefined) === "0,0"', () => expect(w.fmt(undefined)).toBe('0,0'));
+
+  it('fmtCompact(NaN) === "0" (delegiert an fmt)', () => expect(w.fmtCompact(NaN)).toBe('0'));
+  it('fmtCompact(Infinity) === "0"', () => expect(w.fmtCompact(Infinity)).toBe('0'));
+  it('fmtCompact(-Infinity) === "0"', () => expect(w.fmtCompact(-Infinity)).toBe('0'));
+  it('fmtCompact(null) === "0"', () => expect(w.fmtCompact(null)).toBe('0'));
+  it('fmtCompact(undefined) === "0"', () => expect(w.fmtCompact(undefined)).toBe('0'));
+
+  it('Regression: fmt(1.5) bleibt "1,5"', () => expect(w.fmt(1.5)).toBe('1,5'));
+  it('Regression: fmtCompact(5) bleibt "5"', () => expect(w.fmtCompact(5)).toBe('5'));
+  it('Regression: fmtCompact(2.5) bleibt "2,5"', () => expect(w.fmtCompact(2.5)).toBe('2,5'));
+});
+
 describe('Core calculations', () => {
   let w;
   beforeEach(() => { w = createDom().window; });
