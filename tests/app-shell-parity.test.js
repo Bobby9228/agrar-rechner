@@ -1166,10 +1166,10 @@ describe('Issue #416 Welle 8 — data-io-handlers.js App-Shell-Vertrag', () => {
         ).toContain('/js/data-io-handlers.js');
     });
 
-    it('sw.js Network-First-Strategie, CACHE_VERSION und Query-Versionen bleiben unangetastet', () => {
+    it('sw.js Network-First-Strategie, CACHE_VERSION-Format und Query-Version-Konsistenz bleiben unangetastet', () => {
         // Stichprobe: die kanonischen Worker-Bestandteile müssen weiter
         // vorhanden sein. Eine Extraktion darf weder den Fetch-Handler noch
-        // skipWaiting/claim entfernen oder CACHE_VERSION bumpen.
+        // skipWaiting/claim entfernen.
         const swContent = readFileSync(resolve(publicDir, 'sw.js'), 'utf-8');
         expect(swContent).toMatch(/self\.skipWaiting\s*\(\s*\)/);
         expect(swContent).toMatch(/self\.clients\.claim\s*\(\s*\)/);
@@ -1178,18 +1178,105 @@ describe('Issue #416 Welle 8 — data-io-handlers.js App-Shell-Vertrag', () => {
         expect(swContent).toMatch(/fetch\s*\(\s*e\.request\s*\)/);
         expect(swContent).toMatch(/caches\.open\s*\(\s*CACHE_VERSION\s*\)/);
         expect(swContent).toMatch(/caches\.match\s*\(\s*e\.request\s*\)/);
-        // CACHE_VERSION wird durch neue Module (Issue #417: state-coordinator.js
-        // → v52), Asset-Änderungen am Precache (Issue #443: Font-Deduplizierung
-        // → v53, Issue #446 Welle 1: dialog-a11y.js → v54) gebumpet — diese
-        // Welle selbst fasst sie aber nicht an. Hier dokumentieren wir die
-        // letzte bekannte Version.
-        expect(swContent).toMatch(/const\s+CACHE_VERSION\s*=\s*['"]agrar-rechner-v54['"]/);
-        // Query-Versionen für die existierenden Skripte bleiben unverändert
-        expect(swContent).toMatch(/\/css\/styles\.css\?v=21/);
-        expect(swContent).toMatch(/\/js\/calculations\.js\?v=21/);
-        expect(swContent).toMatch(/\/js\/ui-handlers\.js\?v=22/);
-        expect(swContent).toMatch(/\/js\/render-results\.js\?v=21/);
-        expect(swContent).toMatch(/\/js\/render-local-protocol\.js\?v=3/);
+
+        // Issue #444 Welle 2: CACHE_VERSION-Format-Vertrag + Untergrenze.
+        // Vorher: harter Pin 'agrar-rechner-v54'. Jetzt: Format + ≥ v53.
+        // Damit bricht der Test nicht mehr bei jeder kleinen Bump-Aktion,
+        // aber ein versehentliches Zurück-Drehen wird weiterhin erkannt.
+        // Bump-Historie (zur Doku):
+        //   v52 = Issue #417 (state-coordinator.js hinzugefügt)
+        //   v53 = Issue #443 (Font-Deduplizierung: 12 WOFF2 → 4 Variable Fonts)
+        //   v54 = Issue #446 Welle 1 (dialog-a11y.js ins Precache aufgenommen)
+        const cacheMatch = swContent.match(/const\s+CACHE_VERSION\s*=\s*['"]([^'"]+)['"]/);
+        expect(cacheMatch, 'CACHE_VERSION-Konstante muss in sw.js vorhanden sein').not.toBeNull();
+        const cacheVersionStr = cacheMatch[1];
+        const CACHE_VERSION_RE = /^agrar-rechner-v(\d+)$/;
+        const cacheVersionParts = CACHE_VERSION_RE.exec(cacheVersionStr);
+        expect(
+            cacheVersionParts,
+            'CACHE_VERSION muss dem Format agrar-rechner-vN entsprechen (war: ' +
+                cacheVersionStr + ')'
+        ).not.toBeNull();
+        const MIN_CACHE_VERSION = 53;
+        expect(
+            parseInt(cacheVersionParts[1], 10),
+            'CACHE_VERSION ' + cacheVersionStr + ' liegt unter der Untergrenze v' +
+                MIN_CACHE_VERSION + ' — würde Offline-Clients einen älteren Cache aufzwingen.'
+        ).toBeGreaterThanOrEqual(MIN_CACHE_VERSION);
+
+        // Issue #444 Welle 2: Query-Versionen zwischen index.html und sw.js
+        // STATIC_ASSETS sind KONSISTENT (gleiche ?v= für dieselbe Datei).
+        // Vorher: fünf harte Literal-Pins, die bei jeder CSS/JS-Änderung
+        // gebrochen haben. Jetzt: pro Datei wird geprüft, dass die ?v=
+        // Werte in beiden Quellen identisch sind. Damit folgt die Query-
+        // Version der tatsächlichen App-Shell — nicht dem Test.
+        //
+        // Erfasst werden alle <script src> und <link rel="stylesheet"
+        // href>-Eintraege aus public/index.html (die jsdom-Pfade '/js/…'
+        // und '/css/…' verwenden, nicht 'js/…' wie oben).
+        const indexContent = readFileSync(resolve(publicDir, 'index.html'), 'utf-8');
+        // Helper: liest aus index.html alle <script src="…"> und
+        // <link rel="stylesheet" href="…">-Eintraege, jeweils inkl. ?v=.
+        function readIndexAssets(content) {
+            var out = [];
+            var scriptRe = /<script\s+src=["']([^"']+)["']\s*><\/script>/g;
+            var m;
+            while ((m = scriptRe.exec(content)) !== null) out.push(m[1]);
+            var cssRe = /<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']/g;
+            while ((m = cssRe.exec(content)) !== null) out.push(m[1]);
+            return out;
+        }
+        // Parse "path?v=N" → { base, version }
+        function splitAsset(s) {
+            var qIdx = s.indexOf('?');
+            if (qIdx < 0) return { base: s, version: null };
+            return {
+                base: s.substring(0, qIdx),
+                version: s.substring(qIdx + 1) // z. B. "v=21"
+            };
+        }
+        const indexAssets = readIndexAssets(indexContent);
+        // index.html referenziert Scripts/Stylesheets als relative Pfade
+        // (z. B. "js/calculations.js?v=21"), sw.js STATIC_ASSETS mit
+        // führendem "/" (z. B. "/js/calculations.js?v=21"). Wir
+        // normalisieren auf den führenden "/" und vergleichen dann.
+        const versionedAssets = indexAssets
+            .map(function (s) {
+                const parts = splitAsset(s);
+                return {
+                    base: parts.base.charAt(0) === '/' ? parts.base : '/' + parts.base,
+                    version: parts.version
+                };
+            })
+            .filter(function (a) { return /^\/(js|css)\//.test(a.base) && a.version; });
+        expect(
+            versionedAssets.length,
+            'Test-Voraussetzung: mindestens ein versionierter Asset-Eintrag in index.html'
+        ).toBeGreaterThan(0);
+        // Für jede versionierte Datei: gleiche ?v= in STATIC_ASSETS (oder
+        // ein Eintrag mit identischem base, egal welche ?v=).
+        const staticAssets = readStaticAssets(swContent);
+        for (var i = 0; i < versionedAssets.length; i++) {
+            const va = versionedAssets[i];
+            // Suche in STATIC_ASSETS den Eintrag mit demselben base.
+            const matchingStatic = staticAssets.find(function (sa) {
+                return splitAsset(sa).base === va.base;
+            });
+            expect(
+                matchingStatic,
+                'sw.js STATIC_ASSETS enthaelt kein Aequivalent zu ' + va.base +
+                    ' aus index.html — bestehende Kongruenz-Tests (deploy-sanity) ' +
+                    'wuerden bereits rot sein.'
+            ).toBeTruthy();
+            const staticVersion = splitAsset(matchingStatic).version;
+            expect(
+                staticVersion,
+                'sw.js STATIC_ASSETS-Eintrag fuer ' + va.base +
+                    ' hat KEINE ?v=-Versionierung — wuerde von einer ' +
+                    'index.html-Aenderung mit neuem ?v= stillschweigend ' +
+                    'divergieren. Konsistenz verlangt denselben Mechanismus.'
+            ).toBe(va.version);
+        }
     });
 
     it('API: alle drei Konstanten bleiben sowohl als window-Namen als auch auf AppGlobals erreichbar', () => {

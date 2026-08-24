@@ -108,17 +108,39 @@ describe('Cloudflare deploy sanity', () => {
     expect(content).toMatch(/APP_BUILD_DATE\s*=\s*['"]August 2026['"]/);
   });
 
-  it('sw.js CACHE_VERSION matches current version', () => {
+  it('sw.js CACHE_VERSION hat gültiges Format agrar-rechner-vN ≥ v53', () => {
+    // Issue #444 Welle 2: Statt eines harten Literal-Pins prüfen wir den
+    // Format-Vertrag und eine UNTERGRENZE. Damit bricht der Test nicht
+    // bei jeder kleinen Versions-Erhöhung, aber ein versehentliches
+    // Zurück-Drehen (z. B. von v54 auf v52) wird weiterhin rot.
+    //
+    // Format-Vertrag: /^agrar-rechner-v\d+$/
+    // Untergrenze: numerisch aus dem String geparst ≥ 53 (= Stand nach
+    // Issue #443 Font-Deduplizierung).
+    //
+    // v51 = nach Issue #416 Welle 8 (data-io-handlers.js)
+    // v52 = nach Issue #417 (state-coordinator.js hinzugefügt)
+    // v53 = nach Issue #443 (Font-Deduplizierung: 12 WOFF2 → 4 Variable Fonts)
+    // v54 = nach Issue #446 Welle 1 (dialog-a11y.js ins Precache aufgenommen)
     const swPath = resolve(publicDir, 'sw.js');
     const content = readFileSync(swPath, 'utf-8');
-    // CACHE_VERSION muss vorhanden sein und darf nicht leer sein
     const match = content.match(/CACHE_VERSION\s*=\s*'([^']+)'/);
     expect(match, 'CACHE_VERSION muss in sw.js vorhanden sein').not.toBeNull();
-    // v51 = Stand nach Issue #416 Welle 8 (data-io-handlers.js);
-    // v52 = nach Issue #417 (state-coordinator.js hinzugefügt).
-    // v53 = nach Issue #443 (Font-Deduplizierung: 12 WOFF2 → 4 Variable Fonts).
-    // v54 = nach Issue #446 Welle 1 (dialog-a11y.js ins Precache aufgenommen).
-    expect(match[1]).toBe('agrar-rechner-v54');
+    var versionStr = match[1];
+    var MIN_CACHE_VERSION = 53;
+    var CACHE_VERSION_RE = /^agrar-rechner-v(\d+)$/;
+    var versionMatch = CACHE_VERSION_RE.exec(versionStr);
+    expect(
+      versionMatch,
+      'CACHE_VERSION muss dem Format agrar-rechner-vN entsprechen (war: ' +
+        versionStr + ')'
+    ).not.toBeNull();
+    var numericVersion = parseInt(versionMatch[1], 10);
+    expect(
+      numericVersion,
+      'CACHE_VERSION ' + versionStr + ' liegt unter der Untergrenze v' +
+        MIN_CACHE_VERSION + ' — würde Offline-Clients einen älteren Cache aufzwingen.'
+    ).toBeGreaterThanOrEqual(MIN_CACHE_VERSION);
   });
 
   // Issue #144: SW ohne Offline-Fallback + Registration ohne Error-Handling

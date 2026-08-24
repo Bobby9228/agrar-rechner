@@ -954,18 +954,12 @@ describe('Dashboard open/close', () => {
     store = result.store;
   });
 
-  it('opens dashboard: sheet and overlay get open class', () => {
-    w.openDashboard();
-    expect(doc.getElementById('dashboard_sheet').classList.contains('open')).toBe(true);
-    expect(doc.getElementById('dashboard_overlay').classList.contains('open')).toBe(true);
-  });
-
-  it('closes dashboard via closeDashboard()', () => {
-    w.openDashboard();
-    w.closeDashboard();
-    expect(doc.getElementById('dashboard_sheet').classList.contains('open')).toBe(false);
-    expect(doc.getElementById('dashboard_overlay').classList.contains('open')).toBe(false);
-  });
+  // Drei Tests wurden in Issue #444 Welle 2 entfernt, weil sie mit dem
+  // Block "übernommen aus 11-dashboard" (Tests 'opens the dashboard sheet
+  // and overlay', 'closes the dashboard sheet and overlay', 'restores body
+  // overflow on close') 1:1 deckungsgleich waren — gleicher Testname-
+  // Effekt, identische Assertion-Kette. Siehe finalen Bericht in
+  // Issue #444 Welle 2.
 
   it('re-opening dashboard re-renders content', () => {
     w.state.reiter[0].hektar = 10;
@@ -1072,12 +1066,6 @@ describe('Dashboard open/close', () => {
     w.openDashboard();
     const fill = doc.querySelector('.dashboard-progress-fill');
     expect(fill.style.width).toBe('100%');
-  });
-
-  it('closeDashboard clears body overflow', () => {
-    w.openDashboard();
-    w.closeDashboard();
-    expect(doc.body.style.overflow).toBe('');
   });
 });
 
