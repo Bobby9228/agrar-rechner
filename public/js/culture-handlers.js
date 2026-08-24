@@ -26,44 +26,25 @@ var _kulturState = { pendingKulturChoice: null };
 
 // --- Kultur-Modal Accessibility (Fokus-Trap, gespeicherter Fokus, Escape) ---
 //
-// Minimaler, dependency-freier Helper. Speichert beim Install den zuvor
-// fokussierten Container (= in der Regel der auslösende ändern-Button),
-// verschiebt den Fokus ins erste fokussierbare Element des Dialogs und
-// fängt Tab/Shift+Tab innerhalb des Dialogs ab. Escape delegiert an
-// onEscape (First-run-Dialog übergibt null → Escape bleibt wirkungslos,
-// Wechsel-Dialog übergibt cancelChangeKultur).
+// Ab Issue #446 Welle 1 delegiert _installKulturModalA11y an den
+// generischen Dialog-Helper (dialog-a11y.js). Der kultur-spezifische
+// Blur-Schutz (state→DOM-Sync vor dem Fokus-Shift, damit der blur nicht
+// state auf den DOM-Wert zurücksetzt) bleibt HIER — das ist kein
+// generischer Dialog-Vertrag, sondern eine Eigenschaft des Wechsel-Dialogs
+// (er wird über dem aktiven Reiter-Input geöffnet).
 //
-// Cleanup wird auf modal._kulturA11yCleanup hinterlegt und von den
-// jeweiligen Close-Funktionen aufgerufen — so wird auch beim Klick auf
-// ✕ oder Abbrechen korrekt aufgeräumt und der Fokus auf das Auslöser-
-// Element zurückgegeben.
-function _getFocusableIn(root) {
-  if (!root) return [];
-  var sel = 'button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden]), textarea:not([disabled]):not([hidden]), [tabindex]:not([tabindex="-1"])';
-  return Array.from(root.querySelectorAll(sel)).filter(function(el) {
-    if (el.disabled) return false;
-    if (el.hidden) return false;
-    if (el.style && el.style.display === 'none') return false;
-    return true;
-  });
-}
-
+// Cleanup liegt unter modal._kulturA11yCleanup (kompatibel zum alten
+// Alias, identisch zum neuen _dialogA11yCleanup-Feld des Helpers).
 function _runKulturModalA11yCleanup(modal) {
-  if (modal && typeof modal._kulturA11yCleanup === 'function') {
-    var fn = modal._kulturA11yCleanup;
-    modal._kulturA11yCleanup = null;
-    try { fn(); } catch(e) {}
+  if (!modal) return;
+  if (typeof AppGlobals.runDialogA11yCleanup === 'function') {
+    AppGlobals.runDialogA11yCleanup(modal);
   }
 }
 
 function _installKulturModalA11y(modal, options) {
   if (!modal) return;
   options = options || {};
-  var prevFocus = document.activeElement;
-  var focusables = _getFocusableIn(modal);
-  var firstFocusable = focusables[0];
-  var lastFocusable = focusables[focusables.length - 1];
-
   // Vor dem Fokus-Shift: state → DOM-Inputs des aktiven Reiters
   // synchronisieren. Das Verschachteln des Fokus in den Dialog löst
   // sonst den blur-Handler des aktiven Input-Felds aus (onInputHektar /
@@ -119,44 +100,18 @@ function _installKulturModalA11y(modal, options) {
     }
   } catch(e) { /* DOM-Elemente fehlen → still skippen */ }
 
-  function handler(evt) {
-    if (evt && evt.key === 'Escape') {
-      if (typeof options.onEscape === 'function') {
-        if (evt.preventDefault) evt.preventDefault();
-        if (evt.stopPropagation) evt.stopPropagation();
-        options.onEscape();
-      }
-      // Kein onEscape → Escape bewusst ignorieren (First-run-Modal).
-      return;
-    }
-    if (!evt || evt.key !== 'Tab') return;
-    if (focusables.length === 0) {
-      if (evt.preventDefault) evt.preventDefault();
-      return;
-    }
-    var active = document.activeElement;
-    var inModal = modal.contains(active);
-    if (evt.shiftKey) {
-      if (!inModal || active === firstFocusable) {
-        if (evt.preventDefault) evt.preventDefault();
-        try { lastFocusable.focus(); } catch(e) {}
-      }
-    } else {
-      if (!inModal || active === lastFocusable) {
-        if (evt.preventDefault) evt.preventDefault();
-        try { firstFocusable.focus(); } catch(e) {}
-      }
-    }
-  }
-  modal.addEventListener('keydown', handler);
-  modal._kulturA11yCleanup = function() {
-    modal.removeEventListener('keydown', handler);
-    if (options.restoreFocus !== false && prevFocus && typeof prevFocus.focus === 'function') {
-      try { prevFocus.focus(); } catch(e) {}
-    }
-  };
-  if (firstFocusable && typeof firstFocusable.focus === 'function') {
-    try { firstFocusable.focus(); } catch(e) {}
+  // Delegation an den generischen Helper. restoreFocusTo bleibt undefined
+  // → der Helper restauriert den zuvor aktiven Fokus (= Auslöser-Button).
+  // Die historische Option options.restoreFocus === false wird aus
+  // Rückwärtskompatibilität nicht mehr genutzt (kein Caller übergibt sie);
+  // wer sie braucht, übergibt explizit restoreFocusTo: null.
+  if (typeof AppGlobals.installDialogA11y === 'function') {
+    var cleanup = AppGlobals.installDialogA11y(modal, {
+      onEscape: options.onEscape,
+    });
+    // Legacy-Alias: Bestandstests/Caller prüfen noch modal._kulturA11yCleanup.
+    modal._kulturA11yCleanup = cleanup;
+    return cleanup;
   }
 }
 

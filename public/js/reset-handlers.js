@@ -212,6 +212,12 @@
     // Zeigt/versteckt Overlay + Modal über die 'open'-Klasse (siehe styles.css).
     // Beim Öffnen werden Kontext-Infos (Tab-Name, Anzahl Tabs/Einträge) befüllt,
     // damit der Nutzer sieht, was genau gelöscht wird.
+    //
+    // Issue #446 Welle 1: Initialfokus auf dem SICHEREN Button
+    // (Abbrechen, .reset-modal-cancel), Escape delegiert an _onCancel,
+    // Fokus-Rückgabe auf den Auslöser (#footer_reset_btn). Fokus-/Trap-
+    // Verwaltung läuft über den generischen Dialog-Helper
+    // (AppGlobals.installDialogA11y aus dialog-a11y.js).
     function _countAllEntries() {
       var n = 0;
       var reiter = AppGlobals.state.reiter || [];
@@ -243,11 +249,31 @@
       var modal = document.getElementById('reset_modal');
       if (overlay) overlay.classList.add('open');
       if (modal) modal.classList.add('open');
+      // Initialfokus auf den sicheren Abbrechen-Button. Fallback: das erste
+      // Abbrechen-Element im Modal (reset_modal_cancel ✕ oben rechts).
+      var safeBtn = document.querySelector('#reset_modal .reset-modal-cancel');
+      if (!safeBtn) safeBtn = document.getElementById('reset_modal_cancel');
+      if (modal && typeof AppGlobals.installDialogA11y === 'function') {
+        AppGlobals.installDialogA11y(modal, {
+          initialFocus: safeBtn || undefined,
+          // Späte Bindung über AppGlobals (wie in data-io-handlers und
+          // render-dashboard): der Escape-Pfad löst zur Laufzeit über das
+          // App-Globals-Objekt auf, damit Tests den Cancel-Pfad über
+          // AppGlobals._onCancel beobachten können.
+          onEscape: function () { AppGlobals._onCancel(); },
+          restoreFocusTo: document.getElementById('footer_reset_btn')
+        });
+      } else if (safeBtn && safeBtn.focus) {
+        try { safeBtn.focus(); } catch(e) {}
+      }
     }
 
     function closeResetModal() {
       var overlay = document.getElementById('reset_overlay');
       var modal = document.getElementById('reset_modal');
+      if (modal && typeof AppGlobals.runDialogA11yCleanup === 'function') {
+        AppGlobals.runDialogA11yCleanup(modal);
+      }
       if (overlay) overlay.classList.remove('open');
       if (modal) modal.classList.remove('open');
     }

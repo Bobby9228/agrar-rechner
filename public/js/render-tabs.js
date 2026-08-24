@@ -58,10 +58,16 @@
         span.addEventListener('mousedown', function(evt) { evt.stopPropagation(); });
 
         if (AppGlobals.state.reiter.length > 1) {
-          var close = document.createElement('span');
+          // Issue #446 Welle 1: .tab-close als echter <button type="button">
+          // (statt span+role="button") — Enter/Space feuern nativ, Tab-Walk
+          // funktioniert, Screenreader kennen das Element als Button.
+          // aria-label nennt den Schlag-Namen, damit die Aktion eindeutig
+          // angekündigt wird (statt generisch "Schlag schließen").
+          var close = document.createElement('button');
+          close.type = 'button';
           close.className = 'tab-close';
-          close.setAttribute('role', 'button');
-          close.setAttribute('aria-label', 'Schlag schließen');
+          var tabName = r.name || ('Schlag ' + (i + 1));
+          close.setAttribute('aria-label', tabName + ' schließen');
           close.addEventListener('click', (function(idx) {
             return function(evt) {
               evt.stopPropagation();

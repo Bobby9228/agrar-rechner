@@ -113,11 +113,12 @@ describe('Cloudflare deploy sanity', () => {
     const content = readFileSync(swPath, 'utf-8');
     // CACHE_VERSION muss vorhanden sein und darf nicht leer sein
     const match = content.match(/CACHE_VERSION\s*=\s*'([^']+)'/);
-    expect(match).not.toBeNull();
+    expect(match, 'CACHE_VERSION muss in sw.js vorhanden sein').not.toBeNull();
     // v51 = Stand nach Issue #416 Welle 8 (data-io-handlers.js);
     // v52 = nach Issue #417 (state-coordinator.js hinzugefügt).
     // v53 = nach Issue #443 (Font-Deduplizierung: 12 WOFF2 → 4 Variable Fonts).
-    expect(match[1]).toBe('agrar-rechner-v53');
+    // v54 = nach Issue #446 Welle 1 (dialog-a11y.js ins Precache aufgenommen).
+    expect(match[1]).toBe('agrar-rechner-v54');
   });
 
   // Issue #144: SW ohne Offline-Fallback + Registration ohne Error-Handling

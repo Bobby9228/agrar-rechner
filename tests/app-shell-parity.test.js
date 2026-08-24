@@ -1179,10 +1179,11 @@ describe('Issue #416 Welle 8 — data-io-handlers.js App-Shell-Vertrag', () => {
         expect(swContent).toMatch(/caches\.open\s*\(\s*CACHE_VERSION\s*\)/);
         expect(swContent).toMatch(/caches\.match\s*\(\s*e\.request\s*\)/);
         // CACHE_VERSION wird durch neue Module (Issue #417: state-coordinator.js
-        // → v52) bzw. durch Asset-Änderungen am Precache (Issue #443:
-        // Font-Deduplizierung → v53) gebumpet — diese Welle selbst fasst sie
-        // aber nicht an. Hier dokumentieren wir die letzte bekannte Version.
-        expect(swContent).toMatch(/const\s+CACHE_VERSION\s*=\s*['"]agrar-rechner-v53['"]/);
+        // → v52), Asset-Änderungen am Precache (Issue #443: Font-Deduplizierung
+        // → v53, Issue #446 Welle 1: dialog-a11y.js → v54) gebumpet — diese
+        // Welle selbst fasst sie aber nicht an. Hier dokumentieren wir die
+        // letzte bekannte Version.
+        expect(swContent).toMatch(/const\s+CACHE_VERSION\s*=\s*['"]agrar-rechner-v54['"]/);
         // Query-Versionen für die existierenden Skripte bleiben unverändert
         expect(swContent).toMatch(/\/css\/styles\.css\?v=21/);
         expect(swContent).toMatch(/\/js\/calculations\.js\?v=21/);

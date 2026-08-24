@@ -228,6 +228,32 @@ function importErrorMessage(code) {
 }
 
 // --- Vorschau-Modal ---
+//
+// Issue #446 Welle 1: Initialfokus liegt NICHT mehr auf der destruktiven
+// Bestätigung (#import_modal_confirm), sondern auf einem sicheren Pfad:
+// bevorzugt der ✕-Abbrechen oben rechts (#import_modal_x), sonst der
+// untere Abbrechen-Button (#import_modal_cancel). Escape delegiert an
+// cancelImportFromModal. Fokus-Rückgabe auf den Auslöser
+// (#data_import_btn). Fokus-/Trap-/Escape-Verwaltung läuft über den
+// generischen Dialog-Helper (AppGlobals.installDialogA11y).
+
+function _installImportModalA11y(modal) {
+  if (!modal || typeof AppGlobals.installDialogA11y !== 'function') return;
+  // Sicherer Initialfokus: Abbrechen-Buttons vermeiden versehentliche
+  // Bestätigungen per Enter auf der destruktiven Schaltfläche.
+  // Priorität: ✕-Button oben rechts (sichtbar, eindeutig), dann unterer
+  // "Abbrechen"-Button. data_import_file ist HIDDEN und somit kein echtes
+  // Fokus-Ziel — wir lassen es deshalb bewusst aus.
+  var initialFocus = document.getElementById('import_modal_x')
+    || document.getElementById('import_modal_cancel');
+  AppGlobals.installDialogA11y(modal, {
+    initialFocus: initialFocus || undefined,
+    // Späte Bindung über AppGlobals (siehe reset-handlers): der Escape-Pfad
+    // löst zur Laufzeit über das App-Globals-Objekt auf.
+    onEscape: function () { AppGlobals.cancelImportFromModal(); },
+    restoreFocusTo: document.getElementById('data_import_btn')
+  });
+}
 
 function showImportPreview(parsed) {
   if (!parsed || !parsed.ok) return;
@@ -250,10 +276,7 @@ function showImportPreview(parsed) {
     overlay.classList.add('open');
     overlay.setAttribute('aria-hidden', 'false');
   }
-  var confirmBtn = document.getElementById('import_modal_confirm');
-  if (confirmBtn && typeof confirmBtn.focus === 'function') {
-    try { confirmBtn.focus(); } catch (e) {}
-  }
+  _installImportModalA11y(modal);
 }
 
 function openImportModal() {
@@ -268,11 +291,15 @@ function openImportModal() {
     overlay.classList.add('open');
     overlay.setAttribute('aria-hidden', 'false');
   }
+  _installImportModalA11y(modal);
 }
 
 function closeImportModal() {
   var modal = document.getElementById('import_modal');
   var overlay = document.getElementById('import_overlay');
+  if (modal && typeof AppGlobals.runDialogA11yCleanup === 'function') {
+    AppGlobals.runDialogA11yCleanup(modal);
+  }
   if (modal) {
     modal._importParsed = null;
     modal.classList.remove('open');

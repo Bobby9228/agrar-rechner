@@ -330,11 +330,17 @@
     modulübergreifend Notwendige.
     ============================================================================
   -->
-  <script src="js/app-globals.js"></script>
-  <script src="js/state.js"></script>
-  <script src="js/culture.js"></script>
-  <script src="js/calculations.js?v=21"></script>
-  <script src="js/culture-handlers.js"></script>
+<script src="js/app-globals.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/culture.js"></script>
+    <script src="js/calculations.js?v=21"></script>
+    <!-- Issue #446 Welle 1: Dialog-Helper (Fokus-Trap, Escape, Restore).
+         Muss VOR allen Konsumenten (culture-handlers, data-io-handlers,
+         reset-handlers, render-dashboard, render-local-protocol,
+         render-tabs) geladen sein — die registrieren sich auf AppGlobals
+         zur Laufzeit, der Helper stellt die API bereit. -->
+    <script src="js/dialog-a11y.js"></script>
+    <script src="js/culture-handlers.js"></script>
   <script src="js/ui-handlers.js?v=22"></script>
   <script src="js/input-handlers.js"></script>
   <script src="js/settings-handlers.js"></script>

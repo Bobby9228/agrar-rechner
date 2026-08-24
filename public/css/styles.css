@@ -431,6 +431,9 @@
       border: none;
       cursor: pointer;
       color: inherit;
+      /* Issue #446 Welle 1: echter <button> statt span — UA-Default-Font
+         explizit erben, damit die Visu­alität identisch zum alten span bleibt. */
+      font-family: inherit;
       opacity: 0.6;
       flex-shrink: 0;
       /* Schmaleres X als früher (44px → 28px), damit 3 Reiter + der "+ Tab"-Button

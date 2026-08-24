@@ -65,7 +65,7 @@
     // hatten, sind jetzt entry-action (Drei-Punkte) → confirm-flow.
 
 // Action-Sheet-Pending-Targets: was im offenen Sheet "schwebt".
-// { kind: 'field'|'machine', payload: {tabIdx, entryIdx} | {mlIdx} }
+// { kind: 'field'|'machine', payload: {tabIdx, entryIdx} | {mlIdx}, opener: HTMLElement }
 var _localProtocolSheetTarget = null;
 
 function setProtocolView(view) {
@@ -95,7 +95,14 @@ function toggleProtocolAccordion(tabIdx, dateKey, cardKey) {
 
 function requestLocalProtocolDelete(kind, payload, timeLabel) {
   // Sheet-Backdrop + Sheet sichtbar machen, Label/Pending speichern.
-  _localProtocolSheetTarget = { kind: kind, payload: payload, timeLabel: timeLabel };
+  // Issue #446 Welle 1: opener merken, damit beim Schließen der Fokus
+  // zurück auf den Auslöser (Drei-Punkte-Button) wandert.
+  _localProtocolSheetTarget = {
+    kind: kind,
+    payload: payload,
+    timeLabel: timeLabel,
+    opener: document.activeElement || null
+  };
   var backdrop = document.getElementById('local_protocol_sheet_backdrop');
   var sheet = document.getElementById('local_protocol_action_sheet');
   var label = document.getElementById('local_protocol_sheet_label');
@@ -116,6 +123,20 @@ function requestLocalProtocolDelete(kind, payload, timeLabel) {
   if (sheet) {
     sheet.hidden = false;
     sheet.classList.add('show');
+    // Dialog-A11y: Initialfokus in den Sheet, Tab-Trap, Escape
+    // delegiert an closeLocalProtocolSheet, Restore-Fokus auf opener.
+    // Sicherer erster Fokus = Abbrechen-Button.
+    if (typeof AppGlobals.installDialogA11y === 'function') {
+      var safeBtn = document.getElementById('local_protocol_sheet_cancel');
+      AppGlobals.installDialogA11y(sheet, {
+        initialFocus: safeBtn || undefined,
+        // Späte Bindung über AppGlobals (siehe reset-handlers).
+        onEscape: function () { AppGlobals.closeLocalProtocolSheet(); },
+        restoreFocusTo: (_localProtocolSheetTarget.opener && _localProtocolSheetTarget.opener.focus)
+          ? _localProtocolSheetTarget.opener
+          : undefined
+      });
+    }
   }
 }
 
@@ -123,6 +144,9 @@ function closeLocalProtocolSheet() {
   _localProtocolSheetTarget = null;
   var backdrop = document.getElementById('local_protocol_sheet_backdrop');
   var sheet = document.getElementById('local_protocol_action_sheet');
+  if (sheet && typeof AppGlobals.runDialogA11yCleanup === 'function') {
+    AppGlobals.runDialogA11yCleanup(sheet);
+  }
   if (backdrop) {
     backdrop.classList.remove('show');
     backdrop.hidden = true;

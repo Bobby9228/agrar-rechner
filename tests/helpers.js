@@ -43,6 +43,10 @@ export const MODULE_LOAD_ORDER = [
   'state.js',
   'culture.js',
   'calculations.js',
+  // Issue #446 Welle 1: Dialog-Helper vor allen Konsumenten geladen
+  // (culture-handlers, data-io-handlers, reset-handlers,
+  //  render-dashboard, render-local-protocol, render-tabs).
+  'dialog-a11y.js',
   'culture-handlers.js',
   'ui-handlers.js',
   'input-handlers.js',

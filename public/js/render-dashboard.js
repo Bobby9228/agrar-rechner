@@ -225,33 +225,14 @@
     // Öffnet das Dashboard-Sheet und ruft renderDashboard() auf.
     // Issue #186: muss auch nach ENTRY_CHANGED-Events den State korrekt widerspiegeln.
     // Issue #211: Fokus-Falle und Dialog-Semantik für Accessibility.
-    var _dashboardPrevFocus = null;
-
-    // Trap Tab/Shift+Tab inside the dashboard dialog (Issue #211)
-    function _dashboardKeyHandler(e) {
-      if (e.key === 'Escape') {
-        closeDashboard();
-        e.preventDefault();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-      var sheet = document.getElementById('dashboard_sheet');
-      if (!sheet) return;
-      var focusable = sheet.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-      if (focusable.length === 0) return;
-      var first = focusable[0];
-      var last = focusable[focusable.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first) { last.focus(); e.preventDefault(); }
-      } else {
-        if (document.activeElement === last) { first.focus(); e.preventDefault(); }
-      }
-    }
-
+    // Issue #446 Welle 1: Trap und Fokus-Shift werden über den
+    // generischen Dialog-Helper (AppGlobals.installDialogA11y) realisiert.
+    // Die frühere manuelle Tastatur-Handler-Registrierung am document und
+    // die Suche nach '.dashboard-close' (das im DOM nicht existiert)
+    // entfallen damit.
     function openDashboard() {
       var sheet = document.getElementById('dashboard_sheet');
       var overlay = document.getElementById('dashboard_overlay');
-      _dashboardPrevFocus = document.activeElement;
       if (sheet) sheet.classList.add('open');
       if (overlay) overlay.classList.add('open');
       document.body.style.overflow = 'hidden';
@@ -262,34 +243,44 @@
       // (eventType DASHBOARD_OPENED).
       renderDashboard();
       AppGlobals.appEmit('DASHBOARD_OPENED');
-      // Move focus into the dialog for accessibility (Issue #211)
-      // Use setTimeout to avoid jsdom focus-event side effects
-      if (sheet) {
-        setTimeout(function() {
-          var closeBtn = sheet.querySelector('.dashboard-close');
-          if (closeBtn) closeBtn.focus();
-        }, 0);
+      // Fokus + Trap + Escape über den generischen Dialog-Helper.
+      // Initialfokus: das erste fokussierbare Element im Sheet (= die
+      // Theme-Toggle-Button oben rechts). Fallback: kein expliziter Set,
+      // weil der Helper intern auf erstes Focusable fällt. Restore-Target:
+      // #nav_uebersicht (Bottom-Nav) ist der kanonische Dashboard-Öffner
+      // (siehe initUIBindings). Andere Öffner (z. B. #dashboard_open_btn
+      // im Header) bekommen ebenfalls zuverlässig ihre Restore-Stelle,
+      // weil die Bottom-Nav in beiden Fällen im DOM verankert ist.
+      if (sheet && typeof AppGlobals.installDialogA11y === 'function') {
+        var opener = document.getElementById('nav_uebersicht')
+          || document.getElementById('dashboard_open_btn');
+        AppGlobals.installDialogA11y(sheet, {
+          // Späte Bindung über AppGlobals (siehe reset-handlers).
+          onEscape: function () { AppGlobals.closeDashboard(); },
+          restoreFocusTo: opener || undefined,
+          // Asynchroner Fokus-Shift (wie vor #446): verhindert, dass der
+          // Blur des zuvor fokussierten Inputs (z.B. #hektar nach addReiter)
+          // veraltete DOM-Werte in den State zurückschreibt, bevor die
+          // regulären Sync-Pfade gelaufen sind.
+          deferInitialFocus: true
+        });
       }
-      document.addEventListener('keydown', _dashboardKeyHandler);
     }
 
     // Schließt das Dashboard-Sheet.
     function closeDashboard() {
       var sheet = document.getElementById('dashboard_sheet');
       var overlay = document.getElementById('dashboard_overlay');
+      if (sheet && typeof AppGlobals.runDialogA11yCleanup === 'function') {
+        AppGlobals.runDialogA11yCleanup(sheet);
+      }
       if (sheet) sheet.classList.remove('open');
       if (overlay) overlay.classList.remove('open');
       document.body.style.overflow = '';
-      document.removeEventListener('keydown', _dashboardKeyHandler);
       AppGlobals.state.dashboardOpen = false;
       // Issue #417: Persistenz + Tab-Bar-Nav-Indikator-Refresh laufen
       // zentral über den Coordinator (eventType DASHBOARD_CLOSED).
       AppGlobals.appEmit('DASHBOARD_CLOSED');
-      // Restore focus to the element that opened the dashboard
-      if (_dashboardPrevFocus && _dashboardPrevFocus.focus) {
-        _dashboardPrevFocus.focus();
-        _dashboardPrevFocus = null;
-      }
     }
 
     // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
