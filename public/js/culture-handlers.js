@@ -123,7 +123,7 @@ function _installKulturModalA11y(modal, options) {
 function isUntouchedInitialField(tab, tabIndex) {
   return tabIndex === 0
     && !!tab
-    && tab.koernerProEinheit === 50000
+    && tab.koernerProEinheit === AppGlobals.DEFAULT_KOERNER_PRO_EINHEIT
     && Number(tab.hektar || 0) === 0
     && Number(tab.istHektar || 0) === 0
     && Number(tab.koerner || 0) === 0

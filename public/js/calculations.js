@@ -29,7 +29,11 @@ function resolveKoernerProEinheit(r, koernerProEinheit) {
   }
   var g = AppGlobals.state && AppGlobals.state.koernerProEinheit;
   if (typeof g === 'number' && isFinite(g)) return g;
-  return 50000;
+  // Issue #447 Welle 1.4: Mais-Backstop aus zentraler SSOT-Konstante
+  // (state.js → AppGlobals.DEFAULT_KOERNER_PRO_EINHEIT). Spiegelt
+  // CULTURE_PROFILES.mais.defaultKoernerProEinheit (siehe
+  // tests/state-ssot.test.js).
+  return AppGlobals.DEFAULT_KOERNER_PRO_EINHEIT;
 }
 
 // Helper für Aufrufer, die wissen wollen, ob der Tab eine sinnvolle

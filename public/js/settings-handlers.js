@@ -169,9 +169,10 @@
         kpEl.style.borderColor = '';
       }
       if (savedEl) {
-        // Konsistent mit einheitGroesseUpdate(): 50000 (Mais-Default) ist
-        // kein Hinweis wert; alles andere zeigt den Körner/Einheit-Text.
-        if (tabKpe > 0 && tabKpe !== 50000) {
+        // Konsistent mit einheitGroesseUpdate(): Mais-Default (SSOT
+        // DEFAULT_KOERNER_PRO_EINHEIT) ist kein Hinweis wert; alles
+        // andere zeigt den Körner/Einheit-Text.
+        if (tabKpe > 0 && tabKpe !== AppGlobals.DEFAULT_KOERNER_PRO_EINHEIT) {
           savedEl.textContent = tabKpe.toLocaleString('de-DE') + ' Körner/Einheit';
         } else {
           savedEl.textContent = '';

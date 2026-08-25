@@ -17,6 +17,12 @@
 //   emoji:               Icon für Badge / Modal
 //   defaultKoernerProEinheit: 0 = "noch keine Größe, User-Eingabe nötig"
 //   empfehlung:          Text unter "Körner pro Hektar"; null = keine Zahl
+//
+// Issue #447 Welle 1.3: Raps-Default (1.500.000) wird zusätzlich als
+// benannte Top-Level-Konstante RAPS_DEFAULT_KOERNER_PRO_EINHEIT
+// exponiert (über AppGlobals), damit andere Module — insbesondere die
+// Migration 6→7 in state.js — semantisch dieselbe Konstante lesen
+// können, statt das Literal dupliziert zu führen.
 var CULTURE_PROFILES = {
   mais: {
     key: 'mais',
@@ -40,6 +46,12 @@ var CULTURE_PROFILES = {
     empfehlung: null
   }
 };
+
+// Issue #447 Welle 1.3: benannte Konstante für den Raps-Standard. Bindet
+// sich an CULTURE_PROFILES.raps.defaultKoernerProEinheit — ein versehent-
+// licher Drift zwischen beiden Werten würde direkt auffallen (state.js
+// Migration 6→7 liest diese Konstante zur Laufzeit).
+var RAPS_DEFAULT_KOERNER_PRO_EINHEIT = CULTURE_PROFILES.raps.defaultKoernerProEinheit;
 
 // Whitelist valider Kultur-Keys — alles andere (z.B. aus Cross-Tab-Sync
 // oder manipuliertem localStorage) wird auf null normalisiert.
@@ -80,6 +92,7 @@ function isValidCultureKey(key) {
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 Object.assign(window.AppGlobals, {
   CULTURE_PROFILES: CULTURE_PROFILES,
+  RAPS_DEFAULT_KOERNER_PRO_EINHEIT: RAPS_DEFAULT_KOERNER_PRO_EINHEIT,
   getCultureProfile: getCultureProfile,
   getCultureLabel: getCultureLabel,
   getCultureEmoji: getCultureEmoji,

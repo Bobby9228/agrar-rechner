@@ -267,9 +267,9 @@
           // Verteilung sein, wenn er die Restmenge der ml-Zeile nicht
           // überschreitet (gleicher oder kleinerer Anteil).
           //
-          // Schwelle Saat: 0,0005 (≈ EPSILON_EINHEIT) — passt zur internen
-          // 6-Stellen-Saat-Semantik; Legacy-Entry-Mengen werden ebenfalls
-          // als 6-Stellen-Werte verglichen.
+          // Schwelle Saat: AppGlobals.EPSILON_EINHEIT (≈ 0,0005) — passt zur
+          // internen 6-Stellen-Saat-Semantik; Legacy-Entry-Mengen werden
+          // ebenfalls als 6-Stellen-Werte verglichen.
           //
           // Schwelle Dünger: EPSILON_QUANTITY = 0,05 kg — passt zur
           // kg-/2-Stellen-Dünger-Granularität (entry.duenger ist intern
@@ -277,7 +277,7 @@
           // Schwellwert für "passt in die Verteilung"). Das ist NICHT
           // zu verwechseln mit der 0,01-kg-Rundung, die nur in
           // _buildDrillEntry zur Reduktion von Anzeigerauschen dient.
-          if (eE - candidates[ci].remE > 0.0005) continue;
+          if (eE - candidates[ci].remE > AppGlobals.EPSILON_EINHEIT) continue;
           if (eD - candidates[ci].remD > AppGlobals.EPSILON_QUANTITY) continue;
           candidates[ci].remE -= eE;
           candidates[ci].remD -= eD;

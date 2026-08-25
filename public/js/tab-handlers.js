@@ -44,10 +44,10 @@ function addReiter() {
   AppGlobals.state.reiter.forEach(function(r, i) { var m = parseInt(r.name.replace(/\D+/g, '')); if (!isNaN(m) && m > maxIdx) maxIdx = m; });
   // Per-Tab Einheitsgröße: neuen Schlag mit aktuellem Kultur-Standard
   // initialisieren. Wenn eine gültige Kultur gesetzt ist, gilt der
-  // Profil-Default (Mais=50000, Raps=1.500.000, Sonstiges=0).
-  // Ohne gültige Kultur fällt es auf den globalen koernerProEinheit
-  // zurück (Mais-Backstop=50000) — damit Frisch-Installs nicht im
-  // "Sonstiges"-Pfad landen.
+  // Profil-Default (Mais=DEFAULT_KOERNER_PRO_EINHEIT, Raps=1.500.000,
+  // Sonstiges=0). Ohne gültige Kultur fällt es auf den globalen
+  // koernerProEinheit zurück (Mais-Backstop=DEFAULT_KOERNER_PRO_EINHEIT)
+  // — damit Frisch-Installs nicht im "Sonstiges"-Pfad landen.
   var newKpe;
   if (AppGlobals.isValidCultureKey(AppGlobals.state.kultur)) {
     newKpe = AppGlobals.getDefaultKoernerProEinheit(AppGlobals.state.kultur);
@@ -55,7 +55,7 @@ function addReiter() {
              && AppGlobals.state.koernerProEinheit > 0) {
     newKpe = AppGlobals.state.koernerProEinheit;
   } else {
-    newKpe = 50000;
+    newKpe = AppGlobals.DEFAULT_KOERNER_PRO_EINHEIT;
   }
   AppGlobals.state.reiter.push({ name: 'Schlag ' + (maxIdx + 1), hektar: 0, istHektar: 0, koerner: sourceTab.koerner, duenger: sourceTab.duenger, entries: [], done: false, fahrgassenEnabled: AppGlobals.state.fahrgassenEnabled, fahrgassenBreite: AppGlobals.state.fahrgassenBreite, koernerProEinheit: newKpe, notizen: '' });
   AppGlobals.state.activeReiter = AppGlobals.state.reiter.length - 1;

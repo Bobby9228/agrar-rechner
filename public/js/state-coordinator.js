@@ -42,12 +42,9 @@
 //   RESET_ALL               | persist | renderTabs, renderResults, renderView,
 //                                          renderKulturBadge, _renderKulturEmpfehlung,
 //                                          openKulturFirstRun
-//   ENTRY_ADDED             | persist | renderTabs, renderResults, renderView
-//   ENTRY_REMOVED           | persist | renderTabs, renderResults, renderView
 //   ENTRY_CHANGED           | persist | renderTabs, renderResults, renderView
 //                                          (+ detail: renderLocalProtocol wenn Protokoll-View,
 //                                           renderDashboard wenn Dashboard offen)
-//   CALCULATION_DONE        | persist | renderTabs, renderResults, renderView
 //   SETTINGS_CHANGED        | persist | renderResults
 //   VIEW_CHANGED            | persist | renderTabs, renderView
 //                                          (+ detail: renderDrillTabList wenn Protokoll-View)
@@ -131,10 +128,7 @@ var EVENT_PLAN = {
   TAB_RENAMED:              { persist: true,  renderers: ['renderTabs'] },
   TAB_RESET:                { persist: true,  renderers: ['renderTabs', 'renderResults', 'renderView'], inline: _inlineAfterTabReset },
   RESET_ALL:                { persist: true,  renderers: ['renderTabs', 'renderResults', 'renderView', 'renderKulturBadge', '_renderKulturEmpfehlung'], inline: _inlineAfterResetAll },
-  ENTRY_ADDED:              { persist: true,  renderers: ['renderTabs', 'renderResults', 'renderView'] },
-  ENTRY_REMOVED:            { persist: true,  renderers: ['renderTabs', 'renderResults', 'renderView'] },
   ENTRY_CHANGED:            { persist: true,  renderers: ['renderTabs', 'renderResults', 'renderView'], inline: _inlineAfterEntryChanged },
-  CALCULATION_DONE:         { persist: true,  renderers: ['renderTabs', 'renderResults', 'renderView'] },
   SETTINGS_CHANGED:         { persist: true,  renderers: ['renderResults'] },
   VIEW_CHANGED:             { persist: true,  renderers: ['renderTabs', 'renderView'], inline: _inlineAfterViewChanged },
   PROTOCOL_VIEW_CHANGED:    { persist: true,  renderers: ['renderLocalProtocol'] },

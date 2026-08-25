@@ -1473,12 +1473,14 @@ describe('Issue #417 — state-coordinator.js öffentliche API', () => {
     it('getEventPlan liefert für jeden Eventtyp {persist, renderers}', () => {
         const w = createDom().window;
         const plan = w.AppGlobals.getEventPlan();
-        // Mindestens die 13 Bestands-Eventtypen aus der render-tabs-Switch
-        // (vor Issue #417) müssen im Plan sein.
+        // Issue #447 Welle 1: tote Cases ENTRY_ADDED, ENTRY_REMOVED,
+        // CALCULATION_DONE wurden aus EVENT_PLAN entfernt — sie wurden
+        // nie per appEmit emittiert. Plan beschreibt jetzt nur real
+        // ausgelöste Events.
         var expected = [
             'TAB_CHANGED', 'TAB_ADDED', 'TAB_REMOVED', 'TAB_RENAMED',
-            'TAB_RESET', 'ENTRY_ADDED', 'ENTRY_REMOVED', 'ENTRY_CHANGED',
-            'CALCULATION_DONE', 'SETTINGS_CHANGED', 'VIEW_CHANGED',
+            'TAB_RESET', 'ENTRY_CHANGED',
+            'SETTINGS_CHANGED', 'VIEW_CHANGED',
             'PROTOCOL_VIEW_CHANGED', 'DRILL_ENTRY_ADDED', 'DRILL_ENTRY_REMOVED',
             'KULTUR_CHANGED'
         ];

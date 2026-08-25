@@ -126,13 +126,13 @@
     function resetAll() {
       // Preserve UI-prefs that "Daten zurücksetzen" should NOT wipe.
       AppGlobals.state = {
-        reiter: [{ name: 'Schlag 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: false, fahrgassenBreite: 0, koernerProEinheit: 50000, notizen: '' }],
+        reiter: [{ name: 'Schlag 1', hektar: 0, istHektar: 0, koerner: 0, duenger: 0, entries: [], done: false, fahrgassenEnabled: false, fahrgassenBreite: 0, koernerProEinheit: AppGlobals.DEFAULT_KOERNER_PRO_EINHEIT, notizen: '' }],
         activeReiter: 0,
         activeView: null,
         fahrgassenEnabled: false,
         fahrgassenBreite: 0,
         einheitGroesseEnabled: false,
-        koernerProEinheit: 50000,
+        koernerProEinheit: AppGlobals.DEFAULT_KOERNER_PRO_EINHEIT,
         kultur: null,
         erstauswahlDone: false,
         machineLog: [],

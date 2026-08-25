@@ -17,6 +17,22 @@
 //   machineLog[]   — Globales Maschinen-Protokoll
 // ============================================================================
 
+// --- DEFAULT_KOERNER_PRO_EINHEIT (Issue #447 Welle 1.4) ---
+//
+// Zentraler Mais-Default (Körner pro Einheit), exportiert über AppGlobals.
+// MUSS VOR `var state = {...}` deklariert sein, damit die Object-Literal-
+// Auswertung den Wert 50000 captured (var-Hoisting würde sonst undefined
+// landen). Löst das duplizierte Literal 50.000 als Backstop und Initialwert
+// ab:
+//   - migrations (3→4, 5→6, 0→1)
+//   - resetAll() Default-Zustand
+//   - calculations.js resolveKoernerProEinheit Backstop
+//   - tab-handlers Mais-Fallback beim Kultur-Wechsel
+//   - Editor-/Vergleichslogiken für "ist Default"
+// culture.js' CULTURE_PROFILES.mais.defaultKoernerProEinheit MUSS diesen
+// Wert spiegeln (siehe tests/state-ssot.test.js Identitäts-Assertion).
+var DEFAULT_KOERNER_PRO_EINHEIT = 50000;
+
 var state = {
   reiter: [{
     name:       'Schlag 1',
@@ -26,7 +42,7 @@ var state = {
     duenger:    0,
     entries:    [],
     done:       false,
-    koernerProEinheit: 50000,
+    koernerProEinheit: DEFAULT_KOERNER_PRO_EINHEIT,
     notizen:    ''
   }],
   activeReiter:   0,
@@ -35,7 +51,7 @@ var state = {
   fahrgassenEnabled: false,
   fahrgassenBreite:   0,
   einheitGroesseEnabled: false,
-  koernerProEinheit:  50000,
+  koernerProEinheit:  DEFAULT_KOERNER_PRO_EINHEIT,
   kultur:           null,
   erstauswahlDone:   false,
   machineLog:    [],
@@ -390,7 +406,7 @@ function parseAndSanitizeState(raw) {
     var lv = originalLv;
     // Migration 0→1: Einzelne Felder → Tab-Array
     if (!data.reiter && (data.hektar !== undefined || data.koerner !== undefined)) {
-      data = { reiter: [{ name: 'Schlag 1', hektar: data.hektar || 0, istHektar: data.istHektar || 0, koerner: data.koerner || 0, duenger: data.duenger || 0, entries: data.entries || [], done: false }], activeReiter: 0, activeView: null, fahrgassenEnabled: false, fahrgassenBreite: 0, einheitGroesseEnabled: false, koernerProEinheit: 50000, machineLog: data.machineLog || [], drillPriorities: {}, _lv: 1 };
+      data = { reiter: [{ name: 'Schlag 1', hektar: data.hektar || 0, istHektar: data.istHektar || 0, koerner: data.koerner || 0, duenger: data.duenger || 0, entries: data.entries || [], done: false }], activeReiter: 0, activeView: null, fahrgassenEnabled: false, fahrgassenBreite: 0, einheitGroesseEnabled: false, koernerProEinheit: DEFAULT_KOERNER_PRO_EINHEIT, machineLog: data.machineLog || [], drillPriorities: {}, _lv: 1 };
       lv = 1;
     }
     // Migration 1→2: Globale entries → per-Tab entries
@@ -412,7 +428,7 @@ function parseAndSanitizeState(raw) {
     //   Migration in localStorage wird im loadState-Pfad zusätzlich
     //   ausgeführt, weil sie Storage-Nebenwirkungen hat).
     if (lv < 4) {
-      if (data.koernerProEinheit === undefined) data.koernerProEinheit = 50000;
+      if (data.koernerProEinheit === undefined) data.koernerProEinheit = DEFAULT_KOERNER_PRO_EINHEIT;
       if (data.einheitGroesseEnabled === undefined) data.einheitGroesseEnabled = false;
       if (!data.drillPriorities) data.drillPriorities = {};
     }
@@ -445,8 +461,8 @@ function parseAndSanitizeState(raw) {
     data.fahrgassenBreite = sanitizeNumber(data.fahrgassenBreite, 0);
     if (data.einheitGroesseEnabled === undefined) data.einheitGroesseEnabled = false;
     data.einheitGroesseEnabled = sanitizeBoolean(data.einheitGroesseEnabled, false);
-    if (data.koernerProEinheit === undefined) data.koernerProEinheit = 50000;
-    data.koernerProEinheit = sanitizeNumber(data.koernerProEinheit, 50000);
+    if (data.koernerProEinheit === undefined) data.koernerProEinheit = DEFAULT_KOERNER_PRO_EINHEIT;
+    data.koernerProEinheit = sanitizeNumber(data.koernerProEinheit, DEFAULT_KOERNER_PRO_EINHEIT);
     // Migration 5→6 (Kultur-Auswahl): bestehende Tabs bekommen den
     // effektiv verwendeten globalen kpe als per-Tab-Wert, damit
     // Berechnungen unverändert bleiben. Sonstiges hat kpe=0/leer.
@@ -488,7 +504,7 @@ function parseAndSanitizeState(raw) {
       // Sonst Default 50000.
       var globalDefault = (data.einheitGroesseEnabled && data.koernerProEinheit > 0)
         ? data.koernerProEinheit
-        : 50000;
+        : DEFAULT_KOERNER_PRO_EINHEIT;
       for (var ti = 0; ti < sanitizedReiter.length; ti++) {
         var t = sanitizedReiter[ti];
         if (t.koernerProEinheit === undefined) {
@@ -516,14 +532,14 @@ function parseAndSanitizeState(raw) {
     if (originalLv < 7 && data.kultur === 'raps' && data.erstauswahlDone === true) {
       var startTab = sanitizedReiter[0];
       var untouchedRapsStart = startTab
-        && startTab.koernerProEinheit === 50000
+        && startTab.koernerProEinheit === DEFAULT_KOERNER_PRO_EINHEIT
         && Number(startTab.hektar || 0) === 0
         && Number(startTab.istHektar || 0) === 0
         && Number(startTab.koerner || 0) === 0
         && Number(startTab.duenger || 0) === 0
         && (!Array.isArray(startTab.entries) || startTab.entries.length === 0)
         && startTab.done !== true;
-      if (untouchedRapsStart) startTab.koernerProEinheit = 1500000;
+      if (untouchedRapsStart) startTab.koernerProEinheit = AppGlobals.RAPS_DEFAULT_KOERNER_PRO_EINHEIT;
     }
     // Final: sanitisiertes reiter einsetzen
     data.reiter = sanitizedReiter;
@@ -634,6 +650,10 @@ function resetLoadStateEverSucceeded() {
 Object.assign(window.AppGlobals, {
   LEGACY_KEY_MAP: LEGACY_KEY_MAP,
   ALLOWED_TAB_KEYS: ALLOWED_TAB_KEYS,
+  // Issue #447 Welle 1.4: zentrale Mais-Default-Konstante. Kultur-Profil
+  // mais.defaultKoernerProEinheit spiegelt diesen Wert (siehe
+  // tests/state-ssot.test.js für die Identitäts-Assertion).
+  DEFAULT_KOERNER_PRO_EINHEIT: DEFAULT_KOERNER_PRO_EINHEIT,
   // Issue #445 Welle 1: zentrale Cardinality-/Längen-Ceilings als
   // Live-Objekt exponiert. Tests können einzelne Properties mutieren
   // (AppGlobals.STATE_LIMITS.maxTabs = 5) und die Sanitizer-Pipeline
