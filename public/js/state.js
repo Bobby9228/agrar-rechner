@@ -77,7 +77,9 @@ var state = {
 // Migration läuft synchron, bevor loadState()/saveState() aufgerufen werden.
 var LEGACY_KEY_MAP = {
   'mais_rechner':              'agrar_rechner',
-  'mais_rechner_theme':        'theme', // bereits in Migration 3→4 erledigt — hier nur Defensiv-Remap
+  // #448 Welle 1: Phase-3-Migration lief auf Key 'theme' — ab jetzt ist
+  // 'agrar_rechner_theme' der SSOT-Key (analog zum Daten-Key).
+  'mais_rechner_theme':        'agrar_rechner_theme',
 };
 
 function migrateLegacyStorageKeys() {
@@ -222,16 +224,6 @@ var ALLOWED_TOP_KEYS = [
   'hektar', 'istHektar', 'koerner', 'duenger', 'entries',
   'name'
 ];
-var ALLOWED_TAB_KEYS = [
-  'name', 'hektar', 'istHektar', 'koerner', 'duenger',
-  'entries', 'fahrgassenEnabled', 'fahrgassenBreite',
-  'done', 'koernerProEinheit',
-  // Migration 8→9: freier Notiz-Text pro Schlag/Reiter. Default ''
-  // wird in sanitizeTab() vergeben, damit alte States ohne dieses Feld
-  // weiterhin funktionieren (Backwards-Compat).
-  'notizen'
-];
-
 function isPlainObject(v) {
   // Schließt null, Arrays, Klassen-Instanzen und speziell
   // Objekte mit abweichendem Prototypen aus. Damit ist der einzige
@@ -600,11 +592,12 @@ function loadState() {
     // Migration 3→4 localStorage side effect: Theme-Key vereinheitlichen.
     // (migrateLegacyStorageKeys() hat das meist schon erledigt — hier nur
     //  Defensiv-Fallback für direkt migrierte Snapshots.)
+    // #448 Welle 1: SSOT-Key ist jetzt 'agrar_rechner_theme' (vorher 'theme').
     if (originalLv < 4) {
       try {
         var oldTheme = localStorage.getItem('mais_rechner_theme');
-        if (oldTheme && !localStorage.getItem('theme')) {
-          localStorage.setItem('theme', oldTheme);
+        if (oldTheme && !localStorage.getItem('agrar_rechner_theme')) {
+          localStorage.setItem('agrar_rechner_theme', oldTheme);
         }
         if (oldTheme) localStorage.removeItem('mais_rechner_theme');
       } catch(e) {}
@@ -649,7 +642,6 @@ function resetLoadStateEverSucceeded() {
 // Cross-Tab-Sync) brechen.
 Object.assign(window.AppGlobals, {
   LEGACY_KEY_MAP: LEGACY_KEY_MAP,
-  ALLOWED_TAB_KEYS: ALLOWED_TAB_KEYS,
   // Issue #447 Welle 1.4: zentrale Mais-Default-Konstante. Kultur-Profil
   // mais.defaultKoernerProEinheit spiegelt diesen Wert (siehe
   // tests/state-ssot.test.js für die Identitäts-Assertion).

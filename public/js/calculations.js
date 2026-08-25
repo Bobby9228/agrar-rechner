@@ -159,17 +159,6 @@ function getTabTotalDuenger(r) {
   return Math.max(0, r.hektar * r.duenger);
 }
 
-// kg Dünger pro Einheit Saatgut für einen Tab.
-// Formel: r.duenger × koernerProEinheit / r.koerner
-// (Herleitung: (hektar × duenger) ÷ (hektar × koerner / kpe) = duenger × kpe / koerner)
-function getDuengerProEinheit(r, koernerProEinheit) {
-  if (!r || !r.duenger || !r.koerner) return 0;
-  var kpe = resolveKoernerProEinheit(r, koernerProEinheit);
-  if (!kpe) return 0;
-  var result = r.duenger * kpe / r.koerner;
-  return isFinite(result) ? result : 0;
-}
-
 // Berechnet IST-Dünger (kg) basierend auf istHektar.
 // Formel: r.istHektar * r.duenger (kg/ha) → kg total.
 function getTabIstDuenger(r) {
@@ -217,8 +206,13 @@ function getTabUsedDuenger(r) {
 }
 
 // --- Carryover-Cache (interner State, nicht pure) ---
+//
+// #448 Welle 1: das interne Cache-Objekt heißt jetzt calcInternals (vorher
+// `_internal` — der Unterstrich suggerierte „privat/nicht benutzen", obwohl
+// der Timer bewusst per AppGlobals für drill-handlers.js exponiert wird).
+// Inhalt und API unverändert.
 
-var _internal = {
+var calcInternals = {
   carryoverCache: null,
   drillCalcTimer: null
 };
@@ -250,9 +244,9 @@ var _internal = {
 // Return pro Tab: { savedEinheit, savedDuenger, excessEinheit, excessDuenger,
 //   nettedEinheit, nettedDuenger (Legacy/Compat), sinkAdjustedE/D (Senken-Zuschlag),
 //   selfDeviationE/D (IST−SOLL für Hinweise), isSink }
-// Cached in _internal.carryoverCache; invalidateCarryoverCache() bei Änderung.
+// Cached in calcInternals.carryoverCache; invalidateCarryoverCache() bei Änderung.
 function computeAllCarryovers() {
-  if (_internal.carryoverCache !== null) return _internal.carryoverCache;
+  if (calcInternals.carryoverCache !== null) return calcInternals.carryoverCache;
 
   var reiter = AppGlobals.state.reiter;
   var n = reiter.length;
@@ -268,7 +262,7 @@ function computeAllCarryovers() {
       isSink: false
     });
   }
-  if (n === 0) { _internal.carryoverCache = result; return result; }
+  if (n === 0) { calcInternals.carryoverCache = result; return result; }
 
   // --- Hilfsfunktionen ---
   var lastEntryTime = function(i) {
@@ -299,7 +293,7 @@ function computeAllCarryovers() {
       sinkIdx = i; sinkTime = t; sinkPrio = p;
     }
   }
-  if (sinkIdx === -1) { _internal.carryoverCache = result; return result; }
+  if (sinkIdx === -1) { calcInternals.carryoverCache = result; return result; }
   result[sinkIdx].isSink = true;
 
   // PRO MATERIAL (Saat, Dünger) getrennt.
@@ -345,7 +339,7 @@ function computeAllCarryovers() {
     result[sinkIdx][fldSink] = roundResult(burden - absorbiert);
   }
 
-  _internal.carryoverCache = result;
+  calcInternals.carryoverCache = result;
   return result;
 }
 
@@ -521,7 +515,7 @@ function isTodayKey(key) {
 }
 
 function invalidateCarryoverCache() {
-  _internal.carryoverCache = null;
+  calcInternals.carryoverCache = null;
 }
 
 function getCarryover(tabIndex) {
@@ -656,37 +650,6 @@ function getTabRemaining(r, tabIdx) {
   };
 }
 
-// --- Tab-Fertig-Check (pure) ---
-
-// Prueft ob ein Tab "fertig" ist.
-//
-// SENKEN-MODELL: Fertig = remaining = 0 ODER done=true.
-// Carryover (sinkAdjusted) wird nur beruecksichtigt, wenn tabIndex mitgegeben
-// wird (Backward-Compat). Nil-safe (fehlende Felder = 0).
-//
-// Formel (konsistent mit getTabRemaining): SOLL-Basis.
-//   remaining = max(0, SOLL − used + sinkAdjusted)
-function isTabDone(r, tabIndex) {
-  if (!r || !r.entries) return true; // Keine Entries = fertig (kein Bedarf)
-  if (r.done) return true; // Manuell abgeschlossen (Issue #377)
-  // Carryover nur beruecksichtigen wenn tabIndex mitgegeben
-  var carryover = (tabIndex !== undefined)
-    ? getCarryover(tabIndex)
-    : { sinkAdjustedE: 0, sinkAdjustedD: 0 };
-  var worked = !!(r && r.istHektar > 0);
-  var solE = getTabTotalEinheiten(r);
-  var usedE = getTabUsedEinheiten(r);
-  var ownE = worked ? 0 : (solE - usedE);
-  var remainingE = Math.max(0, ownE + carryover.sinkAdjustedE);
-  if (remainingE > EPSILON_EINHEIT) return false;
-
-  var solD = getTabTotalDuenger(r);
-  var usedD = getTabUsedDuenger(r);
-  var ownD = worked ? 0 : (solD - usedD);
-  var remainingD = Math.max(0, ownD + carryover.sinkAdjustedD);
-  return remainingD <= EPSILON_QUANTITY;
-}
-
 // --- Hilfsfunktionen für Entry-Time ---
 
 // IST-Hektar-Summe für einen Tab.
@@ -738,14 +701,13 @@ Object.assign(window.AppGlobals, {
   EPSILON_QUANTITY: EPSILON_QUANTITY,
   EPSILON_EINHEIT: EPSILON_EINHEIT,
   round6: round6,
-  _internal: _internal,
+  calcInternals: calcInternals,
   resolveKoernerProEinheit: resolveKoernerProEinheit,
   getTabKoernerProEinheit: getTabKoernerProEinheit,
   computeFahrgassenFaktor: computeFahrgassenFaktor,
   getTabTotalEinheiten: getTabTotalEinheiten,
   getTabIstEinheiten: getTabIstEinheiten,
   getTabTotalDuenger: getTabTotalDuenger,
-  getDuengerProEinheit: getDuengerProEinheit,
   getTabIstDuenger: getTabIstDuenger,
   getTabSaldoE: getTabSaldoE,
   getTabSaldoD: getTabSaldoD,
@@ -757,7 +719,6 @@ Object.assign(window.AppGlobals, {
   invalidateCarryoverCache: invalidateCarryoverCache,
   getCarryover: getCarryover,
   getTabRemaining: getTabRemaining,
-  isTabDone: isTabDone,
   getTabIstHektar: getTabIstHektar,
   getTabNextTime: getTabNextTime,
   getTabKornerGesamt: getTabKornerGesamt,

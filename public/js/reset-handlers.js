@@ -43,7 +43,6 @@
       errKoerner: 'err_koerner',
       results: 'results',
       drillSection: 'drill_section',
-      drillOverflowWarn: 'drill_overflow_warn',
       fahrgassenToggle: 'fahrgassen_toggle',
       fahrgassenSettings: 'fahrgassen_settings',
       fahrgassenBreite: 'fahrgassen_breite',

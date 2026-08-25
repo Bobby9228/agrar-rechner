@@ -1048,7 +1048,7 @@ describe('Lokales Protokoll — Gesamtbilanz „eingefüllt" als reale Maschinen
     setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
       entries: [{ einheit: 2, duenger: 200, mlIdx: 0, time: '10:00' }] });
     w.state.machineLog = [
-      { einheit: 3, duenger: 250, zaehlerStand: 5, time: '10:00', distributed: 3 }
+      { einheit: 3, duenger: 250, zaehlerStand: 5, time: '10:00' }
     ];
     w.state.activeView = 'protokoll';
     w.renderLocalProtocol();
@@ -1068,7 +1068,7 @@ describe('Lokales Protokoll — Gesamtbilanz „eingefüllt" als reale Maschinen
         { einheit: 1.5, duenger: 50, time: '11:00' }
       ] });
     w.state.machineLog = [
-      { einheit: 3, duenger: 150, zaehlerStand: 5, time: '10:00', distributed: 3 }
+      { einheit: 3, duenger: 150, zaehlerStand: 5, time: '10:00' }
     ];
     w.state.activeView = 'protokoll';
     w.renderLocalProtocol();
@@ -1153,7 +1153,7 @@ describe('Lokales Protokoll — Legacy/Orphan-Heuristik (Review-Fix)', () => {
     setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
       entries: [{ einheit: 3, duenger: 250, time: ts }] });
     w.state.machineLog = [
-      { einheit: 3, duenger: 250, zaehlerStand: 5, time: hhmm, distributed: 3 }
+      { einheit: 3, duenger: 250, zaehlerStand: 5, time: hhmm }
     ];
     w.state.activeView = 'protokoll';
     w.renderLocalProtocol();
@@ -1199,7 +1199,7 @@ describe('Lokales Protokoll — Legacy/Orphan-Heuristik (Review-Fix)', () => {
     ] });
     // Maschinenlog: 3 E/200 kg aus dem Multi-Tab-Push.
     w.state.machineLog = [
-      { einheit: 3, duenger: 200, zaehlerStand: 5, time: hhmm, distributed: 3 }
+      { einheit: 3, duenger: 200, zaehlerStand: 5, time: hhmm }
     ];
     w.state.activeView = 'protokoll';
     w.renderLocalProtocol();
@@ -1218,7 +1218,7 @@ describe('Lokales Protokoll — Legacy/Orphan-Heuristik (Review-Fix)', () => {
     setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
       entries: [{ einheit: 2, duenger: 100, time: '12:00' }] });
     w.state.machineLog = [
-      { einheit: 3, duenger: 250, zaehlerStand: 5, time: '08:00', distributed: 3 }
+      { einheit: 3, duenger: 250, zaehlerStand: 5, time: '08:00' }
     ];
     w.state.activeView = 'protokoll';
     w.renderLocalProtocol();
@@ -1252,7 +1252,7 @@ describe('Lokales Protokoll — Legacy/Orphan-Heuristik (Review-Fix)', () => {
     setUpTab(w, 0, { hektar: 10, koerner: 90000, duenger: 100,
       entries: [{ einheit: 5, duenger: 200, time: ts }] });
     w.state.machineLog = [
-      { einheit: 1, duenger: 50, zaehlerStand: 5, time: '10:00', distributed: 1 }
+      { einheit: 1, duenger: 50, zaehlerStand: 5, time: '10:00' }
     ];
     w.state.activeView = 'protokoll';
     w.renderLocalProtocol();
@@ -1268,7 +1268,7 @@ describe('Lokales Protokoll — Legacy/Orphan-Heuristik (Review-Fix)', () => {
       { einheit: 2, duenger: 200, mlIdx: 0, time: '10:00' }
     ] });
     w.state.machineLog = [
-      { einheit: 3, duenger: 250, zaehlerStand: 5, time: '10:00', distributed: 3 }
+      { einheit: 3, duenger: 250, zaehlerStand: 5, time: '10:00' }
     ];
     w.state.activeView = 'protokoll';
     w.renderLocalProtocol();

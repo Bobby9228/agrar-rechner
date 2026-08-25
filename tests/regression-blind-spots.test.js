@@ -1505,15 +1505,17 @@ describe('Theme', () => {
   });
 
   describe('setStoredTheme()', () => {
-    it('persists theme to localStorage', () => {
+    it('persists theme to localStorage (SSOT-Key agrar_rechner_theme, #448 Welle 1)', () => {
       w.setStoredTheme('dark');
-      expect(w.localStorage.getItem('mais_rechner_theme')).toBe('dark');
+      expect(w.localStorage.getItem('agrar_rechner_theme')).toBe('dark');
+      // Legacy-Key wird NICHT mehr beschrieben.
+      expect(w.localStorage.getItem('mais_rechner_theme')).toBeNull();
     });
 
     it('overwrites previous theme', () => {
       w.setStoredTheme('dark');
       w.setStoredTheme('light');
-      expect(w.localStorage.getItem('mais_rechner_theme')).toBe('light');
+      expect(w.localStorage.getItem('agrar_rechner_theme')).toBe('light');
     });
   });
 
@@ -1570,8 +1572,49 @@ describe('Theme', () => {
     });
 
     it('is a no-op when no stored theme', () => {
+      w.localStorage.removeItem('agrar_rechner_theme');
       w.localStorage.removeItem('mais_rechner_theme');
       expect(() => w.initTheme()).not.toThrow();
+    });
+
+    it('migriert Legacy-Key mais_rechner_theme → agrar_rechner_theme beim Lesen', () => {
+      // #448 Welle 1: getStoredTheme() spiegelt einen vorhandenen Legacy-Key
+      // auf den neuen SSOT-Key und entfernt den Legacy-Key.
+      w.localStorage.setItem('mais_rechner_theme', 'dark');
+      expect(w.localStorage.getItem('agrar_rechner_theme')).toBeNull();
+      var v = w.getStoredTheme();
+      expect(v).toBe('dark');
+      expect(w.localStorage.getItem('agrar_rechner_theme')).toBe('dark');
+      expect(w.localStorage.getItem('mais_rechner_theme')).toBeNull();
+    });
+
+    it('neuer Key gewinnt vor Legacy-Key', () => {
+      w.localStorage.setItem('agrar_rechner_theme', 'light');
+      w.localStorage.setItem('mais_rechner_theme', 'dark');
+      expect(w.getStoredTheme()).toBe('light');
+      // Legacy-Key bleibt unangetastet, wenn der neue Key schon steht
+      // (getStoredTheme() räumt nur bei LEGACY-ONLY auf).
+      expect(w.localStorage.getItem('mais_rechner_theme')).toBe('dark');
+    });
+
+    it('migriert Legacy-Key theme → agrar_rechner_theme beim Lesen (#448 Review-Fix)', () => {
+      // 'theme' war bis #448 Welle 1 der Primärschlüssel (Phase-3-Migration).
+      // Bestandsnutzer mit gespeicherter Präferenz dürfen sie nicht verlieren.
+      w.localStorage.setItem('theme', 'dark');
+      expect(w.localStorage.getItem('agrar_rechner_theme')).toBeNull();
+      var v = w.getStoredTheme();
+      expect(v).toBe('dark');
+      expect(w.localStorage.getItem('agrar_rechner_theme')).toBe('dark');
+      expect(w.localStorage.getItem('theme')).toBeNull();
+    });
+
+    it('Legacy-Kette: theme gewinnt über mais_rechner_theme, beide werden geräumt', () => {
+      w.localStorage.setItem('theme', 'dark');
+      w.localStorage.setItem('mais_rechner_theme', 'light');
+      expect(w.getStoredTheme()).toBe('dark');
+      expect(w.localStorage.getItem('agrar_rechner_theme')).toBe('dark');
+      expect(w.localStorage.getItem('theme')).toBeNull();
+      expect(w.localStorage.getItem('mais_rechner_theme')).toBeNull();
     });
   });
 });

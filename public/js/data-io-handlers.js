@@ -9,7 +9,7 @@
 //   - Export-Download: exportData
 //   - Import-Validierung: validateImportText, importErrorMessage,
 //     showImportError
-//   - Vorschau-Modal: showImportPreview, openImportModal, closeImportModal,
+//   - Vorschau-Modal: showImportPreview, closeImportModal,
 //     confirmImportFromModal, cancelImportFromModal
 //   - Commit: syncImportedSettingsUI, commitImportedState
 //   - Status-Bereich: setExportSuccess, showExportError, showStatusError,
@@ -279,21 +279,6 @@ function showImportPreview(parsed) {
   _installImportModalA11y(modal);
 }
 
-function openImportModal() {
-  var modal = document.getElementById('import_modal');
-  var overlay = document.getElementById('import_overlay');
-  if (modal) {
-    modal.hidden = false;
-    modal.classList.add('open');
-    modal.setAttribute('aria-hidden', 'false');
-  }
-  if (overlay) {
-    overlay.classList.add('open');
-    overlay.setAttribute('aria-hidden', 'false');
-  }
-  _installImportModalA11y(modal);
-}
-
 function closeImportModal() {
   var modal = document.getElementById('import_modal');
   var overlay = document.getElementById('import_overlay');
@@ -540,7 +525,6 @@ Object.assign(window.AppGlobals, {
   validateImportText: validateImportText,
   importErrorMessage: importErrorMessage,
   showImportPreview: showImportPreview,
-  openImportModal: openImportModal,
   closeImportModal: closeImportModal,
   confirmImportFromModal: confirmImportFromModal,
   cancelImportFromModal: cancelImportFromModal,

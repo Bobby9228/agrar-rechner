@@ -520,11 +520,12 @@ describe('toggleTheme', () => {
     expect(btn.textContent).toBe('🌙');
   });
 
-  it('persists theme to localStorage', () => {
+  it('persists theme to localStorage (SSOT-Key agrar_rechner_theme, #448 Welle 1)', () => {
     w.toggleTheme();
-    expect(w.localStorage.getItem('theme')).toBe('dark');
+    expect(w.localStorage.getItem('agrar_rechner_theme')).toBe('dark');
+    expect(w.localStorage.getItem('theme')).toBeNull();
     w.toggleTheme();
-    expect(w.localStorage.getItem('theme')).toBe('light');
+    expect(w.localStorage.getItem('agrar_rechner_theme')).toBe('light');
   });
 
   it('updates theme-color meta tag to dark', () => {
@@ -633,6 +634,7 @@ describe('initTheme', () => {
   it('applies dark when system prefers dark and no stored theme', () => {
     // jsdom doesn't support matchMedia by default, so we mock it
     w.matchMedia = (query) => ({ matches: query === '(prefers-color-scheme: dark)' });
+    w.localStorage.removeItem('agrar_rechner_theme');
     w.localStorage.removeItem('theme');
     w.initTheme();
     expect(w.document.documentElement.classList.contains('dark')).toBe(true);
@@ -640,6 +642,7 @@ describe('initTheme', () => {
 
   it('applies light when system prefers light and no stored theme', () => {
     w.matchMedia = () => ({ matches: false });
+    w.localStorage.removeItem('agrar_rechner_theme');
     w.localStorage.removeItem('theme');
     w.initTheme();
     expect(w.document.documentElement.classList.contains('dark')).toBe(false);
@@ -797,7 +800,9 @@ describe('switchToProtokoll', () => {
 describe('UI-Rendering (Input-Format, Dashboard, Theme/Dark-Mode, View) — übernommen aus 23-dark-mode.test.js', () => {
 /**
  * Test 23: Dark mode — getStoredTheme, setStoredTheme, applyTheme, toggleTheme, initTheme
- * Hinweis: Theme-Key ist 'theme' (Phase 3 Migration _lv:4 vereinheitlicht den Key).
+ * Hinweis (#448 Welle 1): SSOT-Theme-Key ist jetzt 'agrar_rechner_theme'
+ * (Phase-3-Migration lief auf 'theme' → nachfolgend konsolidiert auf
+ *  'agrar_rechner_theme' als Pendant zum Daten-Key).
  */
 
 describe('getStoredTheme', () => {
@@ -808,13 +813,13 @@ describe('getStoredTheme', () => {
 
   it('returns stored theme value', () => {
     const { window: w, store } = createDom();
-    store['theme'] = 'dark';
+    store['agrar_rechner_theme'] = 'dark';
     expect(w.getStoredTheme()).toBe('dark');
   });
 
   it('returns light theme when stored', () => {
     const { window: w, store } = createDom();
-    store['theme'] = 'light';
+    store['agrar_rechner_theme'] = 'light';
     expect(w.getStoredTheme()).toBe('light');
   });
 });
@@ -823,20 +828,20 @@ describe('setStoredTheme', () => {
   it('stores dark theme in localStorage', () => {
     const { window: w, store } = createDom();
     w.setStoredTheme('dark');
-    expect(store['theme']).toBe('dark');
+    expect(store['agrar_rechner_theme']).toBe('dark');
   });
 
   it('stores light theme in localStorage', () => {
     const { window: w, store } = createDom();
     w.setStoredTheme('light');
-    expect(store['theme']).toBe('light');
+    expect(store['agrar_rechner_theme']).toBe('light');
   });
 
   it('overwrites previous theme', () => {
     const { window: w, store } = createDom();
     w.setStoredTheme('dark');
     w.setStoredTheme('light');
-    expect(store['theme']).toBe('light');
+    expect(store['agrar_rechner_theme']).toBe('light');
   });
 });
 
@@ -889,7 +894,7 @@ describe('toggleTheme', () => {
     w.toggleTheme();
 
     expect(w.document.documentElement.classList.contains('dark')).toBe(true);
-    expect(store['theme']).toBe('dark');
+    expect(store['agrar_rechner_theme']).toBe('dark');
   });
 
   it('switches from dark to light', () => {
@@ -898,21 +903,21 @@ describe('toggleTheme', () => {
     w.toggleTheme();
 
     expect(w.document.documentElement.classList.contains('dark')).toBe(false);
-    expect(store['theme']).toBe('light');
+    expect(store['agrar_rechner_theme']).toBe('light');
   });
 });
 
 describe('initTheme', () => {
   it('applies dark when stored theme is dark', () => {
     const { window: w, store } = createDom();
-    store['theme'] = 'dark';
+    store['agrar_rechner_theme'] = 'dark';
     w.initTheme();
     expect(w.document.documentElement.classList.contains('dark')).toBe(true);
   });
 
   it('applies light when stored theme is light', () => {
     const { window: w, store } = createDom();
-    store['theme'] = 'light';
+    store['agrar_rechner_theme'] = 'light';
     w.initTheme();
     expect(w.document.documentElement.classList.contains('dark')).toBe(false);
   });

@@ -61,26 +61,41 @@ window.app = {
 };
 
 // --- Dark Mode (portiert aus Inline-Code Z. 3415-3448) ---
-// Key: 'theme' in localStorage (Wert: 'dark' oder 'light', null wenn nicht
-// gesetzt). Phase-3-Migration hat den Key vereinheitlicht (vorher
-// 'mais_rechner_theme' oder '_lv:4'-Migration).
+// SSOT-Key: 'agrar_rechner_theme' in localStorage (Wert: 'dark' oder 'light',
+// null wenn nicht gesetzt). Legacy-Keys werden in getStoredTheme() lazy
+// auf den neuen Key gespiegelt und anschließend entfernt:
+//   1. 'theme' — Primärschlüssel bis #448 Welle 1 (Phase-3-Migration)
+//   2. 'mais_rechner_theme' — noch älterer Pre-Migration-Key
+// setStoredTheme() schreibt ausschließlich den neuen Key.
+// Hinweis: Bei gleichzeitig vorhandenen, ABWEICHENDEN Legacy-Keys greift
+// evtl. zuerst die Modul-Load-Migration aus state.js (LEGACY_KEY_MAP) —
+// diese Kette hier ist der Laufzeit-/Defensiv-Pfad und hält den neuen
+// Key in jedem Fall für prioritär.
 function getStoredTheme() {
   try {
-    var v = localStorage.getItem('theme');
+    var v = localStorage.getItem('agrar_rechner_theme');
     if (v !== null) return v;
-    // Migration: ältere Keys
-    v = localStorage.getItem('mais_rechner_theme');
-    if (v !== null) return v;
+    // Migration: Legacy-Keys in Altersreihenfolge (neueste zuerst).
+    var legacyKeys = ['theme', 'mais_rechner_theme'];
+    for (var i = 0; i < legacyKeys.length; i++) {
+      var legacy = localStorage.getItem(legacyKeys[i]);
+      if (legacy !== null) {
+        try {
+          localStorage.setItem('agrar_rechner_theme', legacy);
+          // Auch ältere Legacy-Stufen aufräumen, falls mehrere existieren.
+          for (var j = i; j < legacyKeys.length; j++) {
+            localStorage.removeItem(legacyKeys[j]);
+          }
+        } catch(e) { /* write-fehler → nicht kritisch */ }
+        return legacy;
+      }
+    }
     return null;
   } catch(e) { return null; }
 }
 function setStoredTheme(theme) {
   try {
-    localStorage.setItem('theme', theme);
-    // Migration: Auch ins Legacy-Key schreiben, damit Tests/Contracts, die
-    // noch 'mais_rechner_theme' lesen (Phase-3-Migration), weiterhin
-    // konsistente Werte sehen.
-    localStorage.setItem('mais_rechner_theme', theme);
+    localStorage.setItem('agrar_rechner_theme', theme);
   } catch(e) {}
 }
 function applyTheme(dark) {

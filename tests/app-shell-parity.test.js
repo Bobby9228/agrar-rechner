@@ -983,7 +983,7 @@ describe('App-Shell-Parität (Handler/Renderer/Coordinator-Brücken) — überno
  *   - Export-Download: exportData
  *   - Import-Validierung: validateImportText, importErrorMessage,
  *     showImportError
- *   - Vorschau-Modal: showImportPreview, openImportModal, closeImportModal,
+ *   - Vorschau-Modal: showImportPreview, closeImportModal,
  *     confirmImportFromModal, cancelImportFromModal
  *   - Commit: syncImportedSettingsUI, commitImportedState
  *   - Status-Bereich: setExportSuccess, showExportError, showStatusError,
@@ -1080,7 +1080,6 @@ const DATA_IO_FUNCTIONS_APPGLOBALS = [
     'validateImportText',
     'importErrorMessage',
     'showImportPreview',
-    'openImportModal',
     'closeImportModal',
     'confirmImportFromModal',
     'cancelImportFromModal',
@@ -1470,13 +1469,15 @@ describe('Issue #417 — state-coordinator.js öffentliche API', () => {
         expect(typeof w.AppGlobals.registerStateCoordinator, 'AppGlobals.registerStateCoordinator fehlt').toBe('function');
     });
 
-    it('getEventPlan liefert für jeden Eventtyp {persist, renderers}', () => {
+    it('getEventPlan liefert für jeden Eventtyp {renderers, inline?}', () => {
         const w = createDom().window;
         const plan = w.AppGlobals.getEventPlan();
         // Issue #447 Welle 1: tote Cases ENTRY_ADDED, ENTRY_REMOVED,
         // CALCULATION_DONE wurden aus EVENT_PLAN entfernt — sie wurden
         // nie per appEmit emittiert. Plan beschreibt jetzt nur real
         // ausgelöste Events.
+        // Issue #448 Welle 1: persist-Flag entfernt (immer true) — die
+        // Rückgabe ist jetzt { renderers, inline? }.
         var expected = [
             'TAB_CHANGED', 'TAB_ADDED', 'TAB_REMOVED', 'TAB_RENAMED',
             'TAB_RESET', 'ENTRY_CHANGED',
@@ -1487,17 +1488,22 @@ describe('Issue #417 — state-coordinator.js öffentliche API', () => {
         for (var i = 0; i < expected.length; i++) {
             var e = expected[i];
             expect(plan[e], 'Eventtyp ' + e + ' fehlt im Plan').toBeTruthy();
-            expect(typeof plan[e].persist, 'persist-Flag fehlt für ' + e).toBe('boolean');
             expect(Array.isArray(plan[e].renderers), 'renderers-Array fehlt für ' + e).toBe(true);
+            // persist wurde entfernt (#448 Welle 1) — keine Garantie mehr.
+            expect(plan[e].persist, 'persist-Property sollte entfernt sein').toBeUndefined();
+            // inline ist optional (nur Eventtypen mit Sonderlogik).
+            if ('inline' in plan[e]) {
+                expect(typeof plan[e].inline, 'inline muss Funktion sein wenn vorhanden').toBe('function');
+            }
         }
     });
 
-    it('Persistenz-Flag ist true für alle dokumentierten Events (heute: alle)', () => {
+    it('kein dokumentierter Eventtyp trägt das alte persist-Flag', () => {
         const w = createDom().window;
         var plan = w.AppGlobals.getEventPlan();
         for (var key in plan) {
             if (!Object.prototype.hasOwnProperty.call(plan, key)) continue;
-            expect(plan[key].persist, 'Persistenz für ' + key + ' sollte true sein').toBe(true);
+            expect(plan[key].persist, 'persist-Flag für ' + key + ' sollte entfernt sein').toBeUndefined();
         }
     });
 });

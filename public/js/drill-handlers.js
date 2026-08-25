@@ -134,6 +134,9 @@
 
     // Issue #276: _buildMachineLogEntry erzeugt den machineLog-Datensatz
     // für den Multi-Tab-Pfad (Issue #21 / #73).
+    // #448 Welle 1: das dekorative `distributed: einheit`-Feld wurde
+    // entfernt — kein Renderer/Konsument las es je (drillAdd-Verteilung
+    // wird direkt aus `einheit` und den per-Tab-Verteilungen gelesen).
     function _buildMachineLogEntry(einheit, duenger, zaehlerStand, targetHektar, activeTab) {
       return {
         time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
@@ -143,8 +146,7 @@
         hektar: zaehlerStand > 0 ? zaehlerStand : targetHektar,
         istHektar: 0,
         koerner: activeTab.koerner,
-        duengerRate: activeTab.duenger,
-        distributed: einheit
+        duengerRate: activeTab.duenger
       };
     }
 
@@ -365,8 +367,8 @@
     }
 
     function drillCalcDebounced() {
-      clearTimeout(AppGlobals._internal.drillCalcTimer);
-      AppGlobals._internal.drillCalcTimer = setTimeout(AppGlobals.drillCalcAll, 150);
+      clearTimeout(AppGlobals.calcInternals.drillCalcTimer);
+      AppGlobals.calcInternals.drillCalcTimer = setTimeout(AppGlobals.drillCalcAll, 150);
     }
 
     function drillMachineRemove(idx) {

@@ -133,7 +133,7 @@
 // Daten-Export/Import (Konstanten EXPORT_APP_KEY, EXPORT_FORMAT_VERSION,
 // EXPORT_MAX_BYTES sowie buildExportEnvelope, serializeEnvelope,
 // makeExportFilename, exportData, validateImportText, importErrorMessage,
-// showImportError, showImportPreview, openImportModal, closeImportModal,
+// showImportError, showImportPreview, closeImportModal,
 // confirmImportFromModal, cancelImportFromModal, syncImportedSettingsUI,
 // commitImportedState, setExportSuccess, showExportError, showStatusError,
 // showStatus, handleImportFile, onImportFileChange, triggerImportClick,

@@ -131,14 +131,10 @@
       // Der Cross-Tab-Saldo lebt im Drill-Log + Maschinen-Protokoll (Issue
       // #336 follow-up #5b, User-Feedback 2026-06-23, 5. Runde).
       var carryoverHint = document.getElementById('r_carryover_hint');
-      if (!carryoverHint) {
-        carryoverHint = document.createElement('div');
-        carryoverHint.id = 'r_carryover_hint';
-        carryoverHint.style.cssText = 'font-size:0.85rem;padding:4px 0;';
-        if (sollIstSection && sollIstSection.parentNode) {
-          sollIstSection.parentNode.insertBefore(carryoverHint, sollIstSection.nextSibling);
-        }
-      }
+      // #448 Welle 1: das statische Element aus index.html (#188) wird
+      // ohne createElement-Fallback konsumiert. Wenn es (noch) nicht im
+      // DOM hängt, überspringen wir das Hint-Rendering — der Carryover-
+      // Hinweis ist Präsentation, nicht kritisch.
       if (carryoverHint) {
         while (carryoverHint.firstChild) carryoverHint.removeChild(carryoverHint.firstChild);
         var savingsE = 0, savingsD = 0, excessE = 0, excessD = 0;

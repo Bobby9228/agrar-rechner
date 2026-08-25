@@ -1300,8 +1300,9 @@ describe('Drill-Protokoll (Eintragen, Multi-Tab-Verteilung Input, Maschine entfe
  *   9. Locking: bei aktivem done-Tab sind die globalen drill_einheit / drill_duenger /
  *      drill_hektar Felder disabled
  *  10. Locking: Tab-Wechsel (activeReiter) auf nicht-done-Tab entsperrt die globalen Felder
- *  11. Schema-Whitelist: `done` ist in ALLOWED_TAB_KEYS (würde sonst beim Save
- *      gestrippt werden, ist aber Top-Level auf reiter[])
+ *  11. Schema-Whitelist: `done` wird vom Per-Feld-Sanitizer in sanitizeTab()
+ *      gepflegt (Issue #377/#378); eine zentrale ALLOWED_TAB_KEYS-Liste
+ *      ist nicht mehr nötig (#448 Welle 1).
  */
 
 describe('Issue #377: manuelle Fertig-Markierung pro Tab', () => {
@@ -1318,10 +1319,6 @@ describe('Issue #377: manuelle Fertig-Markierung pro Tab', () => {
         it('Default-State (frisch) hat done: false auf reiter[0]', () => {
             // Kein localStorage → frischer State
             expect(w.state.reiter[0].done).toBe(false);
-        });
-
-        it('done ist in ALLOWED_TAB_KEYS (Schema-Whitelist)', () => {
-            expect(w.AppGlobals.ALLOWED_TAB_KEYS).toContain('done');
         });
     });
 

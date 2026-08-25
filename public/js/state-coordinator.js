@@ -31,35 +31,35 @@
 // separaten Doku-Datei, damit Renderer/Daten-Flow an einer Stelle
 // beieinanderstehen (kein Drift zwischen Code und Doku).
 //
-// Format: [eventType, persist, [renderer-funktionsnamen]]
+// Format: [eventType, [renderer-funktionsnamen]]
 //
-//   TAB_CHANGED             | persist | syncInputs, renderTabs, renderResults, renderView
-//   TAB_ADDED               | persist | syncInputs, renderTabs, renderView
-//   TAB_REMOVED             | persist | syncInputs, renderTabs, renderResults, renderView
-//   TAB_RENAMED             | persist | renderTabs
-//   TAB_RESET               | persist | renderTabs, renderResults, renderView
+//   TAB_CHANGED             | syncInputs, renderTabs, renderResults, renderView
+//   TAB_ADDED               | syncInputs, renderTabs, renderView
+//   TAB_REMOVED             | syncInputs, renderTabs, renderResults, renderView
+//   TAB_RENAMED             | renderTabs
+//   TAB_RESET               | renderTabs, renderResults, renderView
 //                                          (+ inline: Inputs/Errors/Sections auf Leerzustand)
-//   RESET_ALL               | persist | renderTabs, renderResults, renderView,
+//   RESET_ALL               | renderTabs, renderResults, renderView,
 //                                          renderKulturBadge, _renderKulturEmpfehlung,
 //                                          openKulturFirstRun
-//   ENTRY_CHANGED           | persist | renderTabs, renderResults, renderView
+//   ENTRY_CHANGED           | renderTabs, renderResults, renderView
 //                                          (+ detail: renderLocalProtocol wenn Protokoll-View,
 //                                           renderDashboard wenn Dashboard offen)
-//   SETTINGS_CHANGED        | persist | renderResults
-//   VIEW_CHANGED            | persist | renderTabs, renderView
+//   SETTINGS_CHANGED        | renderResults
+//   VIEW_CHANGED            | renderTabs, renderView
 //                                          (+ detail: renderDrillTabList wenn Protokoll-View)
-//   PROTOCOL_VIEW_CHANGED   | persist | renderLocalProtocol
-//   PROTOCOL_ACCORDION_TOGGLED | persist | renderLocalProtocolFields
-//   DRILL_ENTRY_ADDED       | persist | renderDrillTabList, renderResults, drillCalcAll
+//   PROTOCOL_VIEW_CHANGED   | renderLocalProtocol
+//   PROTOCOL_ACCORDION_TOGGLED | renderLocalProtocolFields
+//   DRILL_ENTRY_ADDED       | renderDrillTabList, renderResults, drillCalcAll
 //                                          (+ detail: renderLocalProtocol wenn Protokoll-View)
-//   DRILL_ENTRY_REMOVED     | persist | renderDrillTabList, renderResults, drillCalcAll
+//   DRILL_ENTRY_REMOVED     | renderDrillTabList, renderResults, drillCalcAll
 //                                          (+ detail: renderLocalProtocol wenn Protokoll-View)
-//   DRILL_PRIORITY_CHANGED  | persist | drillCalcAll
-//   DRILL_DONE_CHANGED      | persist | drillCalcAll, renderTabs, renderResults, renderView
+//   DRILL_PRIORITY_CHANGED  | drillCalcAll
+//   DRILL_DONE_CHANGED      | drillCalcAll, renderTabs, renderResults, renderView
 //                                          (+ detail: renderLocalProtocol wenn Protokoll-View)
-//   DASHBOARD_OPENED        | persist | renderTabs (Nav-Indikator), renderDashboard (im Caller)
-//   DASHBOARD_CLOSED        | persist | renderTabs (Nav-Indikator)
-//   KULTUR_CHANGED          | persist | renderKulturBadge, _renderKulturEmpfehlung, renderResults
+//   DASHBOARD_OPENED        | renderTabs (Nav-Indikator), renderDashboard (im Caller)
+//   DASHBOARD_CLOSED        | renderTabs (Nav-Indikator)
+//   KULTUR_CHANGED          | renderKulturBadge, _renderKulturEmpfehlung, renderResults
 //
 // Hinweis DASHBOARD_*: das eigentliche openDashboard()/closeDashboard()
 // DASHBOARD-Sheet bleibt im Caller (openDashboard) — der Coordinator
@@ -116,30 +116,34 @@ function _tryCallEach(names) {
   for (var i = 0; i < names.length; i++) _tryCall(names[i]);
 }
 
-// --- EVENT_PLAN: persist-Flag + Renderer-Liste pro Eventtyp ---
+// --- EVENT_PLAN: Renderer-Liste pro Eventtyp ---
 //
-// _persistSet ist die schnelle Lookup-Form ("persistiert dieser Eventtyp?").
-// _renderers ist die Render-Reihenfolge pro Eventtyp.
+// Jeder dokumentierte Eventtyp persistiert IMMER (kein persist-Flag —
+// das wäre für 100 % der Fälle informationslos). saveState wird in
+// appDispatch() unbedingt gerufen, sobald der Plan-Eintrag existiert.
+//
+// Inline-Spezialfälle pro Eventtyp leben als optionales `inline`-Property
+// und werden nach den dokumentierten Renderern ausgeführt.
 
 var EVENT_PLAN = {
-  TAB_CHANGED:              { persist: true,  renderers: ['syncInputsFromState', 'renderTabs', 'renderResults', 'renderView'] },
-  TAB_ADDED:                { persist: true,  renderers: ['syncInputsFromState', 'renderTabs', 'renderView'] },
-  TAB_REMOVED:              { persist: true,  renderers: ['syncInputsFromState', 'renderTabs', 'renderResults', 'renderView'] },
-  TAB_RENAMED:              { persist: true,  renderers: ['renderTabs'] },
-  TAB_RESET:                { persist: true,  renderers: ['renderTabs', 'renderResults', 'renderView'], inline: _inlineAfterTabReset },
-  RESET_ALL:                { persist: true,  renderers: ['renderTabs', 'renderResults', 'renderView', 'renderKulturBadge', '_renderKulturEmpfehlung'], inline: _inlineAfterResetAll },
-  ENTRY_CHANGED:            { persist: true,  renderers: ['renderTabs', 'renderResults', 'renderView'], inline: _inlineAfterEntryChanged },
-  SETTINGS_CHANGED:         { persist: true,  renderers: ['renderResults'] },
-  VIEW_CHANGED:             { persist: true,  renderers: ['renderTabs', 'renderView'], inline: _inlineAfterViewChanged },
-  PROTOCOL_VIEW_CHANGED:    { persist: true,  renderers: ['renderLocalProtocol'] },
-  PROTOCOL_ACCORDION_TOGGLED: { persist: true, renderers: ['renderLocalProtocolFields'] },
-  DRILL_ENTRY_ADDED:        { persist: true,  renderers: ['renderDrillTabList', 'renderResults', 'drillCalcAll'], inline: _inlineAfterDrillChange },
-  DRILL_ENTRY_REMOVED:      { persist: true,  renderers: ['renderDrillTabList', 'renderResults', 'drillCalcAll'], inline: _inlineAfterDrillChange },
-  DRILL_PRIORITY_CHANGED:   { persist: true,  renderers: ['drillCalcAll'] },
-  DRILL_DONE_CHANGED:       { persist: true,  renderers: ['drillCalcAll', 'renderTabs', 'renderResults', 'renderView'], inline: _inlineAfterDrillChange },
-  DASHBOARD_OPENED:         { persist: true,  renderers: ['renderTabs'] },
-  DASHBOARD_CLOSED:         { persist: true,  renderers: ['renderTabs'] },
-  KULTUR_CHANGED:           { persist: true,  renderers: ['renderKulturBadge', '_renderKulturEmpfehlung', 'renderResults'] }
+  TAB_CHANGED:              { renderers: ['syncInputsFromState', 'renderTabs', 'renderResults', 'renderView'] },
+  TAB_ADDED:                { renderers: ['syncInputsFromState', 'renderTabs', 'renderView'] },
+  TAB_REMOVED:              { renderers: ['syncInputsFromState', 'renderTabs', 'renderResults', 'renderView'] },
+  TAB_RENAMED:              { renderers: ['renderTabs'] },
+  TAB_RESET:                { renderers: ['renderTabs', 'renderResults', 'renderView'], inline: _inlineAfterTabReset },
+  RESET_ALL:                { renderers: ['renderTabs', 'renderResults', 'renderView', 'renderKulturBadge', '_renderKulturEmpfehlung'], inline: _inlineAfterResetAll },
+  ENTRY_CHANGED:            { renderers: ['renderTabs', 'renderResults', 'renderView'], inline: _inlineAfterEntryChanged },
+  SETTINGS_CHANGED:         { renderers: ['renderResults'] },
+  VIEW_CHANGED:             { renderers: ['renderTabs', 'renderView'], inline: _inlineAfterViewChanged },
+  PROTOCOL_VIEW_CHANGED:    { renderers: ['renderLocalProtocol'] },
+  PROTOCOL_ACCORDION_TOGGLED: { renderers: ['renderLocalProtocolFields'] },
+  DRILL_ENTRY_ADDED:        { renderers: ['renderDrillTabList', 'renderResults', 'drillCalcAll'], inline: _inlineAfterDrillChange },
+  DRILL_ENTRY_REMOVED:      { renderers: ['renderDrillTabList', 'renderResults', 'drillCalcAll'], inline: _inlineAfterDrillChange },
+  DRILL_PRIORITY_CHANGED:   { renderers: ['drillCalcAll'] },
+  DRILL_DONE_CHANGED:       { renderers: ['drillCalcAll', 'renderTabs', 'renderResults', 'renderView'], inline: _inlineAfterDrillChange },
+  DASHBOARD_OPENED:         { renderers: ['renderTabs'] },
+  DASHBOARD_CLOSED:         { renderers: ['renderTabs'] },
+  KULTUR_CHANGED:           { renderers: ['renderKulturBadge', '_renderKulturEmpfehlung', 'renderResults'] }
 };
 
 // --- Inline-Spezialfälle (Sonderlogik pro Eventtyp) ---
@@ -218,7 +222,7 @@ function appDispatch(type, data) {
     // Events benutzen können.
     return;
   }
-  if (plan.persist && typeof AppGlobals.saveState === 'function') {
+  if (typeof AppGlobals.saveState === 'function') {
     AppGlobals.saveState();
   }
   if (plan.renderers && plan.renderers.length) {
@@ -237,12 +241,17 @@ function _coordinatorListener(type, data) {
 
 // Rückgabe der Event-Plan-Tabelle (read-only-Kopie). Für Tests +
 // Doku-Tools, die den Plan programmatisch inspizieren wollen.
+// #448 Welle 1: persist wurde als informationsloses Flag entfernt —
+// die Rückgabe enthält nur noch `renderers` (immer vorhanden) und
+// `inline` (optional, wenn der Eventtyp einen Inline-Spezialfall hat).
 function getEventPlan() {
   var out = {};
   for (var key in EVENT_PLAN) {
     if (!Object.prototype.hasOwnProperty.call(EVENT_PLAN, key)) continue;
     var entry = EVENT_PLAN[key];
-    out[key] = { persist: entry.persist, renderers: entry.renderers.slice() };
+    var plan = { renderers: entry.renderers.slice() };
+    if (typeof entry.inline === 'function') plan.inline = entry.inline;
+    out[key] = plan;
   }
   return out;
 }

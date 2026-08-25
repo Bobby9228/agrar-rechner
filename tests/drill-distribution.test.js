@@ -518,7 +518,15 @@ describe('drillAdd multi-tab mode', () => {
     expect(w.state.machineLog[0].einheit).toBe(4);
     expect(w.state.machineLog[0].duenger).toBe(200);
     expect(w.state.machineLog[0].zaehlerStand).toBe(2);
-    expect(w.state.machineLog[0].distributed).toBe(4);
+    // #448 Welle 1: `distributed` wurde aus dem machineLog-Eintrag entfernt;
+    // die Verteilung ist über `einheit` (Maschinenfüllung) und die per-Tab
+    // entries (mlIdx-Verknüpfung) ablesbar.
+    expect(w.state.machineLog[0].distributed).toBeUndefined();
+    // Vertrag: der Tab, der die Maschinenfüllung komplett aufgenommen hat,
+    // hat einen Eintrag mit mlIdx-Verweis auf den machineLog-Datensatz.
+    expect(w.state.reiter[0].entries.length).toBe(1);
+    expect(w.state.reiter[0].entries[0].mlIdx).toBe(0);
+    expect(w.state.reiter[0].entries[0].einheit).toBe(4);
   });
 
   it('drillAdd links tab entries to machineLog via mlIdx', () => {

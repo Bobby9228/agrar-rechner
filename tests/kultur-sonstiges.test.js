@@ -66,12 +66,6 @@ describe('Sonstiges: Placeholder & kein NaN/Infinity', () => {
     expect(isFinite(result)).toBe(true);
   });
 
-  it('getDuengerProEinheit mit kpe=0 gibt 0', () => {
-    const { window: w } = createDom();
-    const r = { duenger: 200, koerner: 90000, koernerProEinheit: 0 };
-    expect(w.getDuengerProEinheit(r)).toBe(0);
-  });
-
   it('getTabRates mit kpe=0 gibt unitsPerHa=0', () => {
     const { window: w } = createDom();
     w.initUI();

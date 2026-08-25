@@ -198,7 +198,7 @@ var state = {
 - `jsonReviver(key, value)` — Filter für gefährliche Keys auf jeder Verschachtelungsebene
 - `parsePersistedState(raw)` — Top-Level-Sanitizer
 
-**Defense-in-Depth gegen manipulierten localStorage:** Prototype-Pollution-Schutz, Type-Injection-Schutz, ALLOWED_TOP_KEYS-Whitelist, ALLOWED_TAB_KEYS-Whitelist, Längen-Limits auf alle Strings, Number-Range-Checks.
+**Defense-in-Depth gegen manipulierten localStorage:** Prototype-Pollution-Schutz, Type-Injection-Schutz, ALLOWED_TOP_KEYS-Whitelist, Längen-Limits auf alle Strings, Number-Range-Checks. (#448 Welle 1: ALLOWED_TAB_KEYS wurde entfernt — die Tab-Felder werden per Per-Feld-Sanitizer in `sanitizeTab()` typgeprüft.)
 
 ---
 
@@ -247,11 +247,11 @@ Dünger/Einheit =  duenger × koernerProEinheit / koerner   (kg pro Einheit Saat
 | `getTabIstEinheiten(r)` | IST-Einheiten |
 | `getTabTotalDuenger(r)` | SOLL-Dünger in kg |
 | `getTabIstDuenger(r)` | IST-Dünger in kg |
-| `getDuengerProEinheit(r, kpe)` | kg Dünger pro Einheit Saatgut |
 | `getTabUsedEinheiten(r)` / `getTabUsedDuenger(r)` | Summe aller Drill-Entries |
 | `getTabRemaining(r, tabIdx)` | Noch einzufüllende Einheiten (Carryover-aware) |
-| `isTabDone(r, tabIndex)` | true wenn `used + carryover ≥ soll` (innerhalb EPSILON) |
 | `getTabRates(tabIdx)` | Saat/Dünger-Raten (kg/ha, ha/Einheit) für Maschinen-Log |
+
+(#448 Welle 1: `getDuengerProEinheit` und `isTabDone` wurden entfernt — keine produktiven Konsumenten. Ersteres war eine Test-Fixture ohne UI-Anker; Letzteres lief rein im Carryover-Cache, der jetzt über `getTabRemaining()` ablesbar ist.)
 
 ---
 
@@ -389,9 +389,9 @@ Kein Material verschwindet, kein Material wird doppelt gezählt.
 
 ### Cache
 
-`computeAllCarryovers()` cached das Ergebnis in `_internal.carryoverCache`. `invalidateCarryoverCache()` wird bei jedem `saveState()` aufgerufen.
+`computeAllCarryovers()` cached das Ergebnis in `AppGlobals.calcInternals.carryoverCache`. `invalidateCarryoverCache()` wird bei jedem `saveState()` aufgerufen.
 
-### `isTabDone(r, tabIndex)`
+### Tab-Fertig-Logik (Issue #377/#378/#448)
 
 Ein Tab gilt als „fertig", wenn die Summe aus:
 - `usedEinheit` (eingetragene Einheiten)
@@ -400,7 +400,12 @@ Ein Tab gilt als „fertig", wenn die Summe aus:
 
 ≥ `totalE` (SOLL- oder IST-Einheiten je nach Verfügbarkeit), mit Toleranz `EPSILON_QUANTITY = 0.05`.
 
-**Hinweis:** `r.done` ist ein **expliziter User-Toggle** (Issue #377), nicht von `isTabDone` abgeleitet. Beide existieren unabhängig.
+**Hinweis:** `r.done` ist ein **expliziter User-Toggle** (Issue #377), unabhängig
+von der reinen SOLL-/IST-Rechnung. Die alte Helfer-Funktion `isTabDone()`
+wurde in #448 Welle 1 entfernt — die zugrundeliegende Formel lebt jetzt im
+Per-Tab-Saldo-/Carryover-Pfad (`getTabRemaining()`) und wird in
+`tests/carryover.test.js` durch einen lokalen Test-Orakel `tabDone(w, r, i)`
+gespiegelt.
 
 ---
 
@@ -435,7 +440,7 @@ Globale Konfiguration: `state.koernerProEinheit` (Standard 50.000). Mit Toggle `
 ```javascript
 var LEGACY_KEY_MAP = {
   'mais_rechner':              'agrar_rechner',     // Hauptrepo-Rename
-  'mais_rechner_theme':        'theme'              // Theme-Key-Unifizierung
+  'mais_rechner_theme':        'agrar_rechner_theme' // Theme-Key-Konsolidierung (#448 Welle 1)
 };
 ```
 
@@ -460,7 +465,7 @@ in `render-tabs.js` (`initUI`): Listener auf `window.addEventListener('storage',
 
 ### Theme-Migration (separater Key)
 
-`localStorage['theme']` (Wert: `'dark'` oder `'light'`). Migration von `mais_rechner_theme` läuft ebenfalls beim Modul-Load.
+`localStorage['agrar_rechner_theme']` (Wert: `'dark'` oder `'light'`). Migration der Legacy-Keys läuft beim Lesen (`getStoredTheme()` spiegelt den ersten gefundenen Legacy-Wert auf den neuen Key und entfernt die Legacy-Einträge; #448 Welle 1). Legacy-Kette in Altersreihenfolge: `'mais_rechner_theme'` (vor Phase 3) → `'theme'` (Primärschlüssel bis #448 Welle 1) → `'agrar_rechner_theme'`.
 
 ---
 
@@ -606,7 +611,9 @@ burden_net     = burden − absorbiert
 remaining_i    = max(0, own_i)          für Nicht-Senken
 remaining_Senke = max(0, own_Senke + burden_net)
 
-isTabDone(r)   = (used + carryover_in − carryover_out) ≥ total  (± EPSILON)
+// isTabDone wurde in #448 Welle 1 entfernt — die gleiche Aussage liefert
+// getTabRemaining(r, tabIdx).remainingE (≤ EPSILON_EINHEIT) + remainingD
+// (≤ EPSILON_QUANTITY).
 ```
 
 ---

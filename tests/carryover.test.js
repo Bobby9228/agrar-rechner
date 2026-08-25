@@ -18,7 +18,8 @@
  *     identische Formel wie die Geschwister-Renderer.
  *
  * Helper-Invarianten:
- *   - isTabDone(t) ≡ isTabDone(t, i) — keine Carryover-Cache-Splits.
+ *   - tabDone(t) ≡ tabDone(t, i) (lokaler Test-Orakel über getTabRemaining) —
+ *     keine Carryover-Cache-Splits.
  *   - computeShownExcess(raw, co) klemmt bei 0, ist nil-safe.
  *
  * Zugehörige frühere Dateien: tests/carryover.test.js,
@@ -41,6 +42,19 @@ function setup() {
   const { dom, window: w, store } = createDom();
   w.initUI();
   return { dom, w, store };
+}
+
+// Lokaler Test-Orakel für isTabDone(): reproduziert die gelöschte Helfer-
+// Funktion (#448 Welle 1) über die öffentliche API. Semantik 1:1 zum
+// ehemaligen Berechnungs-Snippet in calculations.js (done-Toggle, leere
+// Entries = fertig, sinkAdjusted-Add wenn tabIdx mitgegeben, Saat-Gate
+// EPSILON_EINHEIT vor Dünger-Gate EPSILON_QUANTITY).
+function tabDone(w, r, tabIdx) {
+  if (!r || !r.entries) return true;
+  if (r.done) return true;
+  var rem = w.getTabRemaining(r, tabIdx);
+  if (rem.remainingE > w.AppGlobals.EPSILON_EINHEIT) return false;
+  return rem.remainingD <= w.AppGlobals.EPSILON_QUANTITY;
 }
 
 describe('IST/SOLL Savings & Carryover', () => {
@@ -591,9 +605,9 @@ describe('Issue #138: computeAllCarryovers (Senken-Modell)', () => {
     expect(co1.sinkAdjustedE).toBeCloseTo(3, 1);
     expect(co1.sinkAdjustedD).toBeCloseTo(300, 0);
     // Tab 0: own = SOLL−used = 0, nicht Senke → remaining 0 → done.
-    expect(w.isTabDone(w.state.reiter[0], 0)).toBe(true);
+    expect(tabDone(w, w.state.reiter[0], 0)).toBe(true);
     // Tab 1 (Senke): own 0 + sinkAdjusted 3 = 3 > 0 → NICHT done.
-    expect(w.isTabDone(w.state.reiter[1], 1)).toBe(false);
+    expect(tabDone(w, w.state.reiter[1], 1)).toBe(false);
     var remB = w.getTabRemaining(w.state.reiter[1], 1);
     expect(remB.remainingE).toBeCloseTo(3, 1);
     expect(remB.remainingD).toBeCloseTo(300, 0);
@@ -620,13 +634,13 @@ describe('Issue #138: computeAllCarryovers (Senken-Modell)', () => {
     w.invalidateCarryoverCache();
     w.computeAllCarryovers();
 
-    // Senken-Modell: isTabDone(t) ≡ isTabDone(t, i) konsistent.
-    expect(w.isTabDone(w.state.reiter[0])).toBe(w.isTabDone(w.state.reiter[0], 0));
-    expect(w.isTabDone(w.state.reiter[0])).toBe(true);
-    expect(w.isTabDone(w.state.reiter[0], 0)).toBe(true);
-    expect(w.isTabDone(w.state.reiter[1])).toBe(w.isTabDone(w.state.reiter[1], 1));
-    expect(w.isTabDone(w.state.reiter[1])).toBe(true);
-    expect(w.isTabDone(w.state.reiter[1], 1)).toBe(true);
+    // Senken-Modell: tabDone(t) ≡ tabDone(t, i) konsistent.
+    expect(tabDone(w, w.state.reiter[0])).toBe(tabDone(w, w.state.reiter[0], 0));
+    expect(tabDone(w, w.state.reiter[0])).toBe(true);
+    expect(tabDone(w, w.state.reiter[0], 0)).toBe(true);
+    expect(tabDone(w, w.state.reiter[1])).toBe(tabDone(w, w.state.reiter[1], 1));
+    expect(tabDone(w, w.state.reiter[1])).toBe(true);
+    expect(tabDone(w, w.state.reiter[1], 1)).toBe(true);
   });
 
   it('Ersparnis-Tab fertig bei IST; beide Tabs zeigen remaining 0', () => {
@@ -2133,3 +2147,74 @@ function baseTabs() {
           fahrgassenEnabled: false, fahrgassenBreite: 0, entries: [], done: false },
     ];
 }
+
+// ---------------------------------------------------------------------------
+// Präzisions-Verträge (aus #448 Welle 1 transplantiert aus der ehemaligen
+// tests/duenger-pro-einheit.test.js — die Suite testete nur die entfernte
+// Fixture-API; diese Assertions tragen echten Vertragswert):
+//   (1) round6-Exaktheit von getTabTotalEinheiten/getTabIstEinheiten
+//       (1/7-Fall: 0.142857/0.285714 statt Gleitkomma-Reste)
+//   (2) Senken-Restbedarf bleibt über viele kleine Mindermengen sichtbar
+//       und wird mit 3 Nachkommastellen angezeigt ('0,960 Einheiten')
+// ---------------------------------------------------------------------------
+describe('Präzisions-Verträge (#448 W1, transplantiert)', () => {
+  it('getTabTotal/IstEinheiten runden auf 6 Nachkommastellen (1/7-Fall)', () => {
+    const w = createDom().window;
+    const r = {
+      hektar: 1,
+      istHektar: 2,
+      koerner: 1,
+      koernerProEinheit: 7,
+      entries: [],
+    };
+    expect(w.getTabTotalEinheiten(r)).toBe(0.142857);
+    expect(w.getTabIstEinheiten(r)).toBe(0.285714);
+  });
+
+  it('zehn kleine Mindermengen bleiben in der Senke sichtbar (0,960 Einheiten)', () => {
+    const w = createDom().window;
+    const reiter = [];
+
+    // Zehn fertige kleine Felder: je 0,004 E weniger benötigt als eingefüllt.
+    for (let i = 0; i < 10; i++) {
+      reiter.push({
+        name: 'Klein ' + (i + 1),
+        hektar: 0.1,
+        istHektar: 0.096,
+        koerner: 50000,
+        koernerProEinheit: 50000,
+        duenger: 0,
+        entries: [{ einheit: 0.1, time: '09:' + String(i).padStart(2, '0') }],
+        done: true,
+      });
+    }
+    // Offenes Feld ist die Senke. Die zehn kleinen Mengen ergeben zusammen 0,040 E.
+    reiter.push({
+      name: 'Offen',
+      hektar: 1,
+      istHektar: 0,
+      koerner: 50000,
+      koernerProEinheit: 50000,
+      duenger: 0,
+      entries: [],
+      done: false,
+    });
+
+    w.state.reiter = reiter;
+    w.state.activeReiter = 10;
+    w.invalidateCarryoverCache();
+
+    const carryover = w.getCarryover(10);
+    const remaining = w.getTabRemaining(reiter[10], 10);
+
+    expect(carryover.sinkAdjustedE).toBe(-0.04);
+    expect(remaining.remainingE).toBe(0.96);
+    expect(w.formatEinheit(remaining.remainingE)).toBe('0,960 Einheiten');
+    // Ein offenes Feld mit Restbedarf ist nicht fertig. Der alte Aufruf
+    // isTabDone({...hektar: 0.04}) geschah OHNE tabIdx — also ohne
+    // Senken-Burden (SOLL 0,04 − Burden 0,04 wäre sonst „fertig"). Das
+    // Orakel spiegelt das über tabIdx=-1 (= getCarryover liefert Null-
+    // Carryover, siehe calculations.js) originalgetreu nach.
+    expect(tabDone(w, { ...reiter[10], hektar: 0.04 }, -1)).toBe(false);
+  });
+});

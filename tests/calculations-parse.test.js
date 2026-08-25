@@ -138,6 +138,12 @@ describe('formatEinheit', () => {
   it('-Infinity => "—" (no crash)', () => expect(w.formatEinheit(-Infinity)).toBe('—'));
   it('NaN => "—" (no crash)', () => expect(w.formatEinheit(NaN)).toBe('—'));
   // Singular gilt nur, wenn der auf 3 Stellen angezeigte Wert exakt 1,000 ist.
+  // Rundungsgrenzen (aus #448 Welle 1 transplantiert aus der ehemaligen
+  // duenger-pro-einheit.test.js): 1.0004 rundet ab, 1.0006 rundet auf.
+  it('1.0004 => singular "1,000 Einheit" (Rundungsgrenze)', () =>
+    expect(w.formatEinheit(1.0004)).toBe('1,000 Einheit'));
+  it('1.0006 => plural "1,001 Einheiten" (Rundungsgrenze)', () =>
+    expect(w.formatEinheit(1.0006)).toBe('1,001 Einheiten'));
 });
 
 /**

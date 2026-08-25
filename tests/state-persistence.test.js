@@ -755,7 +755,7 @@ describe('State-Persistenz, Schema-Validierung, Legacy-Key-Migration — überno
  *
  * Getestet werden die zwei verbliebenen Legacy-Keys:
  *   mais_rechner              → agrar_rechner
- *   mais_rechner_theme        → theme
+ *   mais_rechner_theme        → agrar_rechner_theme (SSOT-Key, #448 Welle 1)
  */
 
 const LEGACY_DATA = {
@@ -785,14 +785,14 @@ describe('Issue #235: localStorage key migration', () => {
     expect(ctx.store['mais_rechner']).toBeUndefined();
   });
 
-  it('moves mais_rechner_theme → theme', () => {
+  it('moves mais_rechner_theme → agrar_rechner_theme (SSOT, #448 Welle 1)', () => {
     const ctx = createDom();
     ctx.store['mais_rechner_theme'] = 'dark';
-    expect(ctx.store['theme']).toBeUndefined();
+    expect(ctx.store['agrar_rechner_theme']).toBeUndefined();
 
     ctx.window.app.migrateLegacyStorageKeys();
 
-    expect(ctx.store['theme']).toBe('dark');
+    expect(ctx.store['agrar_rechner_theme']).toBe('dark');
     expect(ctx.store['mais_rechner_theme']).toBeUndefined();
   });
 
@@ -832,7 +832,7 @@ describe('Issue #235: localStorage key migration', () => {
       'mais_rechner_theme'
     ]);
     expect(map['mais_rechner']).toBe('agrar_rechner');
-    expect(map['mais_rechner_theme']).toBe('theme');
+    expect(map['mais_rechner_theme']).toBe('agrar_rechner_theme');
   });
 
   it('runs automatically during module load (no legacy keys present in fresh install)', () => {
@@ -841,7 +841,7 @@ describe('Issue #235: localStorage key migration', () => {
     const ctx = createDom();
     expect(ctx.store['agrar_rechner']).toBeUndefined();
     expect(ctx.store['mais_rechner']).toBeUndefined();
-    expect(ctx.store['theme']).toBeUndefined();
+    expect(ctx.store['agrar_rechner_theme']).toBeUndefined();
   });
 });
 });

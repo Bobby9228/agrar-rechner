@@ -139,7 +139,7 @@ export function createDom() {
   // test siehe tests/test-harness.test.js).
   const moduleScriptParts = [];
   moduleScriptParts.push(loadModule('app-globals.js'));
-  moduleScriptParts.push('var _internal = { carryoverCache: null, drillCalcTimer: null };');
+  moduleScriptParts.push('var calcInternals = { carryoverCache: null, drillCalcTimer: null };');
   for (const moduleName of MODULE_LOAD_ORDER) {
     if (moduleName === 'app-globals.js') continue; // bereits oben geladen
     if (moduleName === 'main.js') {
@@ -181,8 +181,4 @@ export function createDom() {
   }
 
   return { dom, window: dom.window, store };
-}
-
-export function cleanup() {
-  // No-op — jsdom instances are garbage collected when references drop
 }

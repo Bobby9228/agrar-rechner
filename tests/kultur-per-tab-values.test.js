@@ -136,15 +136,6 @@ describe('Per-Tab-Einheitsgröße: unabhängige Berechnung', () => {
     expect(w.getTabIstEinheiten(r)).toBeCloseTo(8 * 90000 / 60000, 5);
   });
 
-  it('getDuengerProEinheit verwendet per-Tab kpe', () => {
-    const { window: w } = createDom();
-    w.initUI();
-    w.chooseKultur('mais');
-    const r = { duenger: 200, koerner: 80000 };
-    // duenger × kpe / koerner = 200 × 60000 / 80000 = 150
-    expect(w.getDuengerProEinheit(r, 60000)).toBeCloseTo(150, 5);
-  });
-
   it('Tab ohne eigene koernerProEinheit fällt auf state.koernerProEinheit zurück', () => {
     const { window: w } = createDom();
     w.initUI();
