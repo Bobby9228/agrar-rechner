@@ -329,9 +329,19 @@
     }
 
     // --- Init: UI (nach DOMContentLoaded) ---
+    //
+    // Issue #447 Welle 2b: initUI() wurde nach Verantwortlichkeiten in
+    // private Teilfunktionen zerlegt (Issue #417/#418-Architektur-Doku
+    // bleibt vollständig erhalten, Kommentare wandern mit ihren Blöcken).
+    // Die Aufrufkette bleibt exakt:
+    //   loadState → storage-Listener → registerStateCoordinator
+    //   → syncInputsFromState → renderTabs
+    //   → Settings-Restore → Views/Results-Restore → Kultur-UI
+    //   → Version-Footer → initUIBindings
+    // Teilfunktionen bleiben dateilokal (Prefix _ wie im Rest der Datei);
+    // AppGlobals.initUI ist weiterhin der einzige öffentliche Einstieg.
 
-    function initUI() {
-      AppGlobals.loadState();
+    function _installCrossTabSync() {
       // --- Cross-Tab-Synchronisation (portiert aus Inline-Code Z. 3394-3412) ---
       // Lauscht auf localStorage-Änderungen von anderen Tabs/Fenstern.
       // Der storage-Event feuert nur in Tabs, die den Wert NICHT selbst gesetzt haben.
@@ -346,6 +356,12 @@
       // (über saveState → storage-Event → andere Tabs → deren appDispatch)
       // wäre eine Endlosschleife. Daher bleibt das Re-Render hier direkt,
       // identisch zum Coordinator-Plan für TAB_CHANGED + KULTUR-CHANGED.
+      //
+      // Issue #447 Welle 2b: der frühere Inline-Duplikat-Block für
+      // Kultur-UI (Badge + Empfehlung + First-run-Modal) wurde durch den
+      // gemeinsamen _syncKulturUI()-Pfad ersetzt — der Listener und der
+      // initUI-Pfad teilen sich damit dieselbe Logik, statt parallel zu
+      // driften (Issue #417-Doku zum Plan-Parallelismus).
       window.addEventListener('storage', function(e) {
         if (e.key === 'agrar_rechner' && e.newValue) {
           try {
@@ -357,37 +373,16 @@
               AppGlobals.syncInputsFromState();
               AppGlobals.renderTabs();
               AppGlobals.renderResults();
-              // Kultur-UI konsistent halten: Badge, Empfehlung und
-              // First-run-Modal müssen dieselbe Logik wie der initUI-Pfad
-              // bekommen — sonst zeigt z.B. das Badge die alte Kultur,
-              // obwohl der andere Tab längst Raps gespeichert hat.
-              if (typeof AppGlobals.renderKulturBadge === 'function') {
-                AppGlobals.renderKulturBadge();
-              }
-              _renderKulturEmpfehlung();
-              if (!AppGlobals.state.erstauswahlDone && !AppGlobals.state.kultur) {
-                if (typeof AppGlobals.openKulturFirstRun === 'function') {
-                  AppGlobals.openKulturFirstRun();
-                }
-              } else if (typeof AppGlobals.closeKulturFirstRun === 'function') {
-                AppGlobals.closeKulturFirstRun();
-              }
+              _syncKulturUI();
             }
           } catch(err) {
             console.warn('Cross-tab sync: ungültiger State ignoriert', err);
           }
         }
       });
-      // --- State-Coordinator (Issue #417) ---
-      // Ab jetzt fließt jeder appEmit()-Aufruf durch den zentralen
-      // EVENT_PLAN (state-coordinator.js). Persistenz + Re-Render werden
-      // dort zentral entschieden — kein Handler, kein Renderer ruft
-      // saveState() mehr selbst. Die Registrierung erfolgt einmalig hier
-      // und ist damit die Single Source of Truth für die Frage "was
-      // passiert bei welchem Event?".
-      AppGlobals.registerStateCoordinator();
-      AppGlobals.syncInputsFromState();
-      AppGlobals.renderTabs();
+    }
+
+    function _restoreSettingsUI() {
       // Fahrgassen-Toggle aus State restaurieren
       var fgToggle = document.getElementById('fahrgassen_toggle');
       var fgSettings = document.getElementById('fahrgassen_settings');
@@ -427,6 +422,9 @@
       if (typeof AppGlobals.syncEinheitGroesseEditorFromTab === 'function') {
         AppGlobals.syncEinheitGroesseEditorFromTab(AppGlobals.getActiveReiter());
       }
+    }
+
+    function _restoreViewsAndResults() {
       if (AppGlobals.state.reiter[AppGlobals.state.activeReiter] && AppGlobals.state.reiter[AppGlobals.state.activeReiter].hektar > 0 && AppGlobals.state.reiter[AppGlobals.state.activeReiter].koerner > 0) {
         AppGlobals.renderResults();
         if (AppGlobals.state.activeView !== 'protokoll') {
@@ -442,6 +440,18 @@
       if (AppGlobals.state.dashboardOpen && typeof AppGlobals.openDashboard === 'function') {
         AppGlobals.openDashboard();
       }
+    }
+
+    function _syncKulturUI() {
+      // Kultur-UI konsistent halten: Badge, Empfehlung und
+      // First-run-Modal müssen dieselbe Logik wie der initUI-Pfad
+      // bekommen — sonst zeigt z.B. das Badge die alte Kultur,
+      // obwohl der andere Tab längst Raps gespeichert hat.
+      //
+      // Wird vom initUI-Pfad UND vom Cross-Tab-Sync-Listener
+      // (_installCrossTabSync) aufgerufen — Issue #447 Welle 2b hat
+      // den vorherigen Inline-Duplikat-Block in eine gemeinsame
+      // Funktion extrahiert, damit die beiden Pfade nicht driften.
       // Kultur-Badge rendern
       if (typeof AppGlobals.renderKulturBadge === 'function') {
         AppGlobals.renderKulturBadge();
@@ -459,8 +469,30 @@
         // Erstauswahl bereits getroffen → Modal sicher schließen.
         AppGlobals.closeKulturFirstRun();
       }
+    }
+
+    function _setVersionFooter() {
       var vf = document.getElementById('version_footer');
       if (vf) vf.textContent = APP_VERSION + ' · ' + APP_BUILD_DATE;
+    }
+
+    function initUI() {
+      AppGlobals.loadState();
+      _installCrossTabSync();
+      // --- State-Coordinator (Issue #417) ---
+      // Ab jetzt fließt jeder appEmit()-Aufruf durch den zentralen
+      // EVENT_PLAN (state-coordinator.js). Persistenz + Re-Render werden
+      // dort zentral entschieden — kein Handler, kein Renderer ruft
+      // saveState() mehr selbst. Die Registrierung erfolgt einmalig hier
+      // und ist damit die Single Source of Truth für die Frage "was
+      // passiert bei welchem Event?".
+      AppGlobals.registerStateCoordinator();
+      AppGlobals.syncInputsFromState();
+      AppGlobals.renderTabs();
+      _restoreSettingsUI();
+      _restoreViewsAndResults();
+      _syncKulturUI();
+      _setVersionFooter();
       // Issue #418 Welle 1: Bindings-Registrierung NACH DOMContentLoaded.
       // Idempotent — ein zweiter Aufruf (z.B. Cross-Tab-Sync-Pfad) ist ein
       // No-op. Bewusst nach renderDashboard()/renderTabs(), damit Handler-

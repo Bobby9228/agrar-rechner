@@ -1793,3 +1793,95 @@ describe('Issue #417 — Renderer-Quellcode: kein direkter saveState() mehr', ()
     });
 });
 });
+
+describe('Issue #447 Welle 2b — initUI()-Zerlegung nach Verantwortlichkeiten', () => {
+    /**
+     * Issue #447 Welle 2b: initUI() in public/js/render-tabs.js mischte fünf
+     * Verantwortlichkeiten (Cross-Tab-Sync-Listener, Settings-Restore,
+     * Views/Results-Restore, Kultur-UI, Version-Footer). Die Welle
+     * konsolidiert die Verantwortlichkeiten in private Teilfunktionen
+     * (_installCrossTabSync, _restoreSettingsUI, _restoreViewsAndResults,
+     * _syncKulturUI, _setVersionFooter), lässt aber den öffentlichen Namen
+     * AppGlobals.initUI sowie dessen Aufrufkette unverändert.
+     *
+     * Diese Suite schützt die drei Kerngarantien der Zerlegung ab:
+     *   A) AppGlobals.initUI bleibt der einzige öffentliche Einstieg.
+     *   B) Der storage-Listener ruft den gemeinsamen Kultur-Pfad —
+     *      verifiziert per renderKulturBadge-Spy bei einem
+     *      differentiellen storage-Event.
+     *   C) Source-Assert: die neue Funktion _syncKulturUI ersetzt den
+     *      bisherigen Inline-Duplikat-Body vollständig (Definition +
+     *      Aufruf im Listener + Aufruf in initUI ⇒ ≥ 3 Vorkommen).
+     */
+
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const jsDir = resolve(__dirname, '..', 'public', 'js');
+    const renderTabsPath = resolve(jsDir, 'render-tabs.js');
+
+    function src() {
+        return readFileSync(renderTabsPath, 'utf-8');
+    }
+
+    function fireStorageEvent(w, key, newValue) {
+        const event = new w.Event('storage');
+        event.key = key;
+        event.newValue = newValue;
+        event.oldValue = null;
+        event.storageArea = w.localStorage;
+        w.dispatchEvent(event);
+    }
+
+    it('A) AppGlobals.initUI existiert, ist aufrufbar und wirft nach createDom() keine Exception', () => {
+        const { window: w } = createDom();
+        expect(typeof w.AppGlobals.initUI, 'AppGlobals.initUI muss als Funktion existieren').toBe('function');
+        // helpers.js ruft createDom() schon einmal mit initUI auf — ein
+        // zweiter Aufruf muss ohne Throw laufen (Guard-Vertrag bleibt).
+        expect(() => w.AppGlobals.initUI()).not.toThrow();
+    });
+
+    it('B) Cross-Tab-Sync ruft _syncKulturUI-Pfad (renderKulturBadge) bei differentiellem Remote-State', () => {
+        // Pattern aus tests/cross-tab-sync.test.js: Spy auf
+        // AppGlobals.renderKulturBadge, dann storage-Event mit anderem
+        // State feuern. Wenn der Listener den gemeinsamen _syncKulturUI-
+        // Pfad nimmt, MUSS der Spy getriggert werden — der Inline-Block
+        // wurde ja durch den Funktionsaufruf ersetzt.
+        const { window: w } = createDom();
+        const badgeSpy = vi.spyOn(w.AppGlobals, 'renderKulturBadge');
+        const remote = JSON.parse(JSON.stringify(w.state));
+        remote.kultur = 'raps';
+        remote.erstauswahlDone = true;
+        remote.koernerProEinheit = 1500000;
+        fireStorageEvent(w, 'agrar_rechner', JSON.stringify(remote));
+        expect(
+            badgeSpy,
+            'Cross-Tab-Sync-Pfad muss renderKulturBadge rufen — sonst ist der ' +
+            'Inline-Kultur-Block nicht durch _syncKulturUI() ersetzt worden'
+        ).toHaveBeenCalled();
+        badgeSpy.mockRestore();
+    });
+
+    it('C) Source-Assert: _syncKulturUI erscheint in render-tabs.js ≥ 3× (Definition + 2 Aufrufe)', () => {
+        // Nachweis, dass der frühere Inline-Duplikat-Body wirklich durch
+        // eine benannte Funktion ersetzt wurde:
+        //   1× function-Definition _syncKulturUI
+        //   1× Aufruf im storage-Listener
+        //   1× Aufruf in initUI
+        // Ein Vorkommen < 3 deutet darauf hin, dass einer der beiden
+        // Aufrufe fehlt und der Refactor unvollständig ist.
+        // Review-Härtung (#447 Welle 2b): Zeilenkommentare werden vorher
+        // entfernt — der Bezeichner im Erklärkommentar (Z. ~362) darf den
+        // Zähler nicht mitbedienen; gezählt werden nur echte Code-Stellen
+        // (Definition/Aufruf per „_syncKulturUI(").
+        const text = src()
+            .split('\n')
+            .map(function (line) { return line.replace(/\/\/.*$/, ''); })
+            .join('\n');
+        const matches = text.match(/_syncKulturUI\s*\(/g) || [];
+        expect(
+            matches.length,
+            'render-tabs.js muss "_syncKulturUI" mindestens 3× als Code enthalten ' +
+            '(Definition + Aufruf im Listener + Aufruf in initUI). ' +
+            'Aktuell: ' + matches.length + ' Vorkommen.'
+        ).toBeGreaterThanOrEqual(3);
+    });
+});
