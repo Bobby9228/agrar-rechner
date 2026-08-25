@@ -78,8 +78,10 @@
 
     /* ===== CSS Variables (light mode) — Design 13 "Conversational Precision" ===== */
     :root {
+    color-scheme: light;
     --color-bg: #f6f2e9;
     --color-bg-card: #fffdf8;
+    --color-bg-disabled: #f3f3f3;
     --color-bg-hover: #deebd8;
     --color-bg-soft: #f1eee3;
     --color-bg-success-soft: #deebd8;
@@ -101,16 +103,13 @@
     --color-divider: #e7e0cb;
     --color-entry-diff-negative: #b4483a;
     --color-entry-diff-positive: #355e30;
-    --color-highlight-soft: #deebd8;
     --color-info: #3b6fa0;
-    --color-ios-banner-bg: #1a1a1a;
     --color-ios-banner-text: white;
     --color-primary: #355e30;
-    --color-primary-active: #4a7c3d;
     --color-primary-bright: #5c9450;
     --color-primary-dark: #254321;
     --color-primary-hover: #2c4f27;
-    --color-primary-light: #6fa562;
+    --color-primary-soft: #b7d8a2;
     --color-result-bg: #edf3e7;
     --color-success-soft: #deebd8;
     --color-text: #33301f;
@@ -124,8 +123,8 @@
     --color-text-subtle: #9b9478;
     --color-text-success: #355e30;
     --color-text-success-strong: #254321;
-    --color-update-banner-highlight: #deebd8;
     --color-warning-bg: #f3e6c7;
+    --color-warning-bg-soft: rgba(255, 193, 7, 0.10);
     --color-warning-border: #b8892e;
     --color-warning-text: #8c6a22;
     --font-display: 'Source Serif 4', Georgia, serif;
@@ -134,39 +133,31 @@
 
     /* ===== CSS Variables (dark mode overrides) — Design 13 ===== */
     html.dark {
-    --color-accent-green: #7fbb6e;
+    color-scheme: dark;
     --color-bg: #1b1f16;
     --color-bg-card: #23281c;
     --color-bg-elevated: #272d1f;
     --color-bg-hover: #323a26;
-    --color-bg-hover-dark: #323a26;
     --color-bg-soft: #1f241a;
-    --color-bg-soft-input: #1f241a;
     --color-bg-success-soft: #223420;
     --color-border: #3a4030;
     --color-border-soft: #3a4030;
     --color-card-bg: #23281c;
     --color-card-text: #efe9d8;
-    --color-carryover-bright: #6fa9e0;
     --color-danger: #e0685a;
-    --color-danger-bright: #e0685a;
     --color-danger-dark: #b4483a;
     --color-danger-soft: #c25b4c;
     --color-danger-bg-soft: #3a2620;
     --color-divider: #3a4030;
     --color-entry-diff-negative: #e0685a;
     --color-entry-diff-positive: #7fbb6e;
-    --color-highlight-soft: #7fbb6e;
     --color-info: #6fa9e0;
     --color-ios-banner-text: white;
     --color-primary: #5c9450;
-    --color-primary-active: #4a7c3d;
     --color-primary-bright: #6fa562;
     --color-primary-dark: #9ad48a;
-    --color-primary-darker: #5c9450;
     --color-primary-hover: #4a7c3d;
     --color-result-bg: #223420;
-    --color-summary-muted: #b7ae8e;
     --color-text: #efe9d8;
     --color-text-danger: #e0685a;
     --color-text-hint: #a69f82;
@@ -174,11 +165,9 @@
     --color-text-label: #b7ae8e;
     --color-text-label-darker: #d9d2bc;
     --color-text-muted: #a69f82;
-    --color-text-placeholder: #8c8567;
     --color-text-strong: #d9d2bc;
     --color-text-subtle: #8c8567;
     --color-text-success-strong: #9ad48a;
-    --color-update-banner-bg: #355e30;
     }
 
     body {
@@ -361,24 +350,6 @@
       height: 1px;
       background: var(--color-divider);
       margin: 8px 0;
-    }
-    .drill-entry-inline {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px 0;
-      border-bottom: 1px solid var(--color-divider);
-      font-size: 0.85rem;
-    }
-    .drill-entry-inline:last-of-type {
-      border-bottom: none;
-    }
-    .drill-entry-inline .entry-text {
-      color: var(--color-text-label);
-    }
-    .drill-entry-inline .entry-text span {
-      font-weight: 600;
-      color: var(--color-primary-dark);
     }
     /* Tabs */
     .tab-bar {
@@ -613,14 +584,6 @@
       display: inline-block;
       margin-right: 10px;
     }
-    .drill-prognose .prog-label {
-      font-weight: 600;
-      color: var(--color-text-label-strong);
-    }
-    .drill-prognose .prog-val {
-      color: var(--color-primary-dark);
-      font-weight: 700;
-    }
     .drill-empty {
       text-align: center;
       color: var(--color-text-hint);
@@ -682,12 +645,6 @@ font-size: 0.75rem;
     .drill-excess .entry-text::before {
       content: '↘ ';
     }
-    .carryover-hint {
-      color: var(--color-info);
-    }
-    .excess-hint {
-      color: var(--color-danger-soft);
-    }
     /* Issue #336: drei Carryover-Roh-Wert-Zeilen im Ergebnis-Tab.
        Visuell getrennt von Verbleibend/Eingefüllt via border-top und
        kleinerer Schrift. Farben folgen dem Maschinen-Protokoll-Pattern. */
@@ -715,28 +672,6 @@ font-size: 0.75rem;
     }
     .r-carryover-excess {
       color: var(--color-danger-soft);
-    }
-    .summary-muted {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--color-text-label-strong);
-    }
-    .drill-summary-total {
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 2px solid var(--color-primary);
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--color-primary-dark);
-      text-align: center;
-    }
-    .inline-row {
-      display: flex;
-      gap: 8px;
-    }
-    .inline-row .field {
-      flex: 1;
-      margin-bottom: 8px;
     }
     .drill-machine-row {
       display: flex;
@@ -1184,121 +1119,6 @@ font-size: 0.75rem;
       transform: scale(0.92);
     }
 
-    /* ===== Dark mode ===== */
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-    
-    
-    
-    
-    
-    
-    
-
-    
-    
-    
-    
-    
-    
-    
-    
-
-    
-    
-    
-    
-
-    /* Tabs dark */
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-    /* Toggle dark */
-    
-    
-    
-    
-    
-
-    /* Sticky footer dark */
-    
-    
-    
-    
-    
-
-    /* Dashboard dark */
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-    /* Drill section dark */
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-    
-    
-    
-
     /* Accessibility: prefers-reduced-motion */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -1576,10 +1396,10 @@ font-size: 0.75rem;
       align-items: center;
       gap: 6px;
       padding: 10px 14px;
-      border: 2px solid var(--color-primary-soft, #b7d8a2);
+      border: 2px solid var(--color-primary-soft);
       border-radius: 12px;
-      background: var(--color-bg-success-soft, #eaf3df);
-      color: var(--color-text-success-strong, #254321);
+      background: var(--color-bg-success-soft);
+      color: var(--color-text-success-strong);
       font-size: 0.9rem;
       font-weight: 600;
       cursor: pointer;
@@ -1587,9 +1407,9 @@ font-size: 0.75rem;
       transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
     }
     .footer-io-btn:hover {
-      background: var(--color-primary, #4a7c23);
-      border-color: var(--color-primary-dark, #254321);
-      color: var(--color-card-text, #fffdf8);
+      background: var(--color-primary);
+      border-color: var(--color-primary-dark);
+      color: var(--color-card-text);
     }
     .footer-io-btn:active { transform: scale(0.97); }
     .footer-export-btn,
@@ -1600,9 +1420,9 @@ font-size: 0.75rem;
       color: #d4e7c5;
     }
     html.dark .footer-io-btn:hover {
-      background: var(--color-primary, #4a7c23);
+      background: var(--color-primary);
       border-color: #8cc45a;
-      color: #fffdf8;
+      color: var(--color-card-text);
     }
     @media (max-width: 380px) {
       .footer-dataio { flex-direction: column; }
@@ -1614,11 +1434,11 @@ font-size: 0.75rem;
       font-size: 0.85rem;
       min-height: 1.2em;
       padding-top: 2px;
-      color: var(--color-text-muted, #5a6b48);
+      color: var(--color-text-muted);
     }
-    .data-io-status--success { color: var(--color-primary-dark, #254321); }
+    .data-io-status--success { color: var(--color-primary-dark); }
     .data-io-status--error {
-      color: var(--color-text-danger, #a83232);
+      color: var(--color-text-danger);
       font-weight: 600;
     }
     html.dark .data-io-status { color: #c1cdb0; }
@@ -1814,13 +1634,6 @@ font-size: 0.75rem;
       color: var(--color-primary-dark);
       margin: 0 0 8px;
     }
-    .kultur-modal-subtitle {
-      font-size: 0.88rem;
-      color: var(--color-text-muted);
-      line-height: 1.45;
-      margin: 0 auto 20px;
-      max-width: 340px;
-    }
     .kultur-options {
       display: flex;
       flex-direction: column;
@@ -1867,11 +1680,6 @@ font-size: 0.75rem;
       font-size: 1.02rem;
       font-weight: 700;
       color: var(--color-text);
-    }
-    .kultur-option-desc {
-      font-size: 0.82rem;
-      color: var(--color-text-muted);
-      line-height: 1.35;
     }
     .kultur-modal-note {
       font-size: 0.78rem;
@@ -3167,4 +2975,20 @@ html.dark .lp-action-sheet {
 .deim-remove:active {
   background: var(--color-danger-bg-soft);
   color: var(--color-danger-dark);
+}
+
+/* ===== prefers-reduced-motion: globaler Catch-all (MDN-Muster) =====
+   Deckt pauschal alle 32 Transitions und 11 Animationen (3 @keyframes)
+   der App ab, ohne jede einzelne Regel erneut auflisten zu müssen. Die
+   zwei bestehenden Blöcke (L1133–1141 global, L2858–2868 spezifisch
+   für Local-Protocol-Transitions) bleiben unverändert — harmlose
+   Duplikation, null Risiko. Quelle: MDN Web Docs, "prefers-reduced-
+   motion"-Pattern. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

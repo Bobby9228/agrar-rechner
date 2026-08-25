@@ -717,4 +717,125 @@ describe('Issue #445 Welle 2 — Runtime-Cache + CSP-Härtung', () => {
     expect(objectSrc, "object-src muss 'none' enthalten").toContain("'none'");
   });
 });
+
+// ─────────── Issue #448 Welle 2: CSS-Variablen-Vertrag & color-scheme ────────
+//
+// Vor #448 Welle 2 gab es in styles.css:
+//   - 14 definierte CSS-Variablen ohne jede var()-Referenz (tot).
+//   - 3 var()-Referenzen auf undefinierte Variablen (liefen nur wegen
+//     Fallback-Werten — Quelltext-Hygiene-Risiko).
+//   - kein color-scheme auf :root oder html.dark (Browser-Defaults
+//     sickerten in Formular-/Scrollbar-Farben durch).
+//
+// Diese Tests schützen den neuen Vertrag:
+//   (a) JEDE in styles.css definierte Variable wird mindestens 1× per
+//       var(--x) referenziert. Whitelist: --tab-name-scale (wird zur
+//       Laufzeit per style.setProperty in render-tabs.js gesetzt).
+//   (b) JEDE var(--x)-Referenz in styles.css hat eine Definition in
+//       styles.css. Gleiche Whitelist.
+//   (c) :root enthält color-scheme: light; html.dark enthält
+//       color-scheme: dark.
+describe('Issue #448 Welle 2: CSS-Variablen-Vertrag und color-scheme', () => {
+  const cssPath = resolve(publicDir, 'css', 'styles.css');
+  // Whitelist: Variablen, die ohne CSS-Definition existieren dürfen.
+  // --tab-name-scale wird in public/js/render-tabs.js Z.~265 per
+  // style.setProperty() gesetzt; die einzige var()-Referenz liegt in
+  // .tab-name (styles.css Z.~425).
+  const WHITELIST_UNDEFINED = new Set(['--tab-name-scale']);
+
+  function readCss() {
+    return readFileSync(cssPath, 'utf-8');
+  }
+
+  function extractDefinedVars(css) {
+    // Definitionen finden wir überall, wo `--foo: <value>;` (oder ein
+    // mehrzeiliger Wert) im :root- oder html.dark-Block steht. Wir
+    // matchen jedes `--name:`-Token innerhalb des gesamten CSS — die
+    // Variablen in diesem Repo sind ausschließlich in :root und
+    // html.dark definiert, andere Definitionen gibt es nicht.
+    const set = new Set();
+    const re = /(--[a-z][a-z0-9-]*)\s*:/g;
+    let m;
+    while ((m = re.exec(css)) !== null) {
+      set.add(m[1]);
+    }
+    return set;
+  }
+
+  function extractReferencedVars(css) {
+    const set = new Set();
+    const re = /var\(\s*(--[a-z][a-z0-9-]*)/g;
+    let m;
+    while ((m = re.exec(css)) !== null) {
+      set.add(m[1]);
+    }
+    return set;
+  }
+
+  it('(a) JEDE in styles.css definierte CSS-Variable hat mindestens 1 var()-Referenz', () => {
+    const css = readCss();
+    const defined = extractDefinedVars(css);
+    const referenced = extractReferencedVars(css);
+    // Whitelist ist nur für die andere Richtung relevant (Referenz ohne
+    // Definition). Hier prüfen wir "Definition ohne Referenz" — d.h. tote
+    // Variablen.
+    const unreferenced = Array.from(defined).filter((v) => !referenced.has(v));
+    expect(
+      unreferenced,
+      'definierte CSS-Variablen ohne var()-Referenz (tot): ' +
+        unreferenced.join(', ')
+    ).toEqual([]);
+  });
+
+  it('(b) JEDE var()-Referenz in styles.css hat eine Definition', () => {
+    const css = readCss();
+    const defined = extractDefinedVars(css);
+    const referenced = extractReferencedVars(css);
+    const undefinedRefs = Array.from(referenced).filter(
+      (v) => !defined.has(v) && !WHITELIST_UNDEFINED.has(v)
+    );
+    expect(
+      undefinedRefs,
+      'var()-Referenzen ohne CSS-Definition (nicht in Whitelist): ' +
+        undefinedRefs.join(', ')
+    ).toEqual([]);
+  });
+
+  it('Whitelist-Begründung: --tab-name-scale darf ohne CSS-Definition existieren', () => {
+    // Sicherstellen, dass die Whitelist tatsächlich aktiv ist und
+    // --tab-name-scale im CSS referenziert wird (sonst wäre die
+    // Whitelist-Erlaubnis wertlos). Wenn render-tabs.js das Setzen
+    // einstellt, müsste dieser Test ergänzt werden.
+    const css = readCss();
+    expect(extractReferencedVars(css).has('--tab-name-scale')).toBe(true);
+    expect(WHITELIST_UNDEFINED.has('--tab-name-scale')).toBe(true);
+  });
+
+  it('(c-1) :root deklariert color-scheme: light', () => {
+    const css = readCss();
+    // Sucht im :root-Block nach color-scheme: light;. Wir nutzen ein
+    // tolerantes Regex (Whitespace egal), weil Editoren unterschiedlich
+    // umbrechen können.
+    const rootBlockMatch = css.match(/:root\s*\{([\s\S]*?)\}/);
+    expect(rootBlockMatch, ':root-Block fehlt in styles.css').not.toBeNull();
+    expect(
+      rootBlockMatch[1],
+      ':root-Block muss color-scheme: light; deklarieren (Form/Farbe der nativen UI)'
+    ).toMatch(/color-scheme\s*:\s*light\s*;/);
+  });
+
+  it('(c-2) html.dark deklariert color-scheme: dark', () => {
+    const css = readCss();
+    // Erster html.dark-Block (Variablen-Override); color-scheme muss hier
+    // oder in einer späteren html.dark-Selektor-Regel stehen — wir
+    // akzeptieren beides, weil das Variablen-Override die richtige Stelle
+    // ist und mit dem ersten Block zusammenpasst.
+    const darkVarBlockMatch = css.match(/html\.dark\s*\{([\s\S]*?)\}/);
+    expect(darkVarBlockMatch, 'html.dark-Block fehlt in styles.css').not.toBeNull();
+    expect(
+      darkVarBlockMatch[1],
+      'html.dark-Variablen-Block muss color-scheme: dark; deklarieren'
+    ).toMatch(/color-scheme\s*:\s*dark\s*;/);
+  });
+});
 });
