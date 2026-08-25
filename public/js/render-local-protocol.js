@@ -38,13 +38,16 @@
         out.push({ class: 'field-status-ha', text: '— ha' });
       }
       // Carryover / Saldo-Zeile (siehe _computeTabSelfSaldo in render-drill.js)
-      // wird hier reimplementiert als reine Berechnung ohne Render-Coupling.
+      // Issue #447 Welle 2a: signed Saldo via SSOT-Helper getTabSaldoE/D;
+      // savings/excess werden lokal aus dem Vorzeichen abgeleitet.
       var savingsE = 0, savingsD = 0, excessE = 0, excessD = 0;
       if (istHek > 0 && r.hektar > 0) {
-        savingsE = AppGlobals.getTabTotalEinheiten(r) - AppGlobals.getTabIstEinheiten(r);
-        savingsD = (r.hektar - istHek) * (r.duenger || 0);
-        excessE  = AppGlobals.getTabIstEinheiten(r) - AppGlobals.getTabTotalEinheiten(r);
-        excessD  = (istHek - r.hektar) * (r.duenger || 0);
+        var saldoE = AppGlobals.getTabSaldoE(r);
+        var saldoD = AppGlobals.getTabSaldoD(r);
+        savingsE = Math.max(0, saldoE);
+        excessE  = Math.max(0, -saldoE);
+        savingsD = Math.max(0, saldoD);
+        excessD  = Math.max(0, -saldoD);
       }
       if (excessE > AppGlobals.EPSILON_EINHEIT || excessD > AppGlobals.EPSILON_QUANTITY) {
         var eParts = [];
@@ -91,34 +94,13 @@
     }
 
     function _getCurrentMachineForecast() {
+      // Issue #447 Welle 2a: dünner Wrapper um computeMachineForecast
+      // (SSOT in calculations.js). Hole die Raten aus dem aktiven Tab
+      // und übergebe sie explizit, damit die Pure-Funktion keinen
+      // State lesen muss.
       var log = AppGlobals.state.machineLog || [];
       var activeRates = AppGlobals.getTabRates(AppGlobals.state.activeReiter || 0);
-      var unitsPerHa = activeRates.unitsPerHa;
-      var duengerPerHa = activeRates.duengerPerHa;
-      var cumEinheit = 0, cumDuenger = 0, lastZaehler = 0;
-
-      for (var i = 0; i < log.length; i++) {
-        var entry = log[i] || {};
-        var zaehler = entry.zaehlerStand != null
-          ? entry.zaehlerStand
-          : (entry.hektar != null ? entry.hektar : 0);
-        var driven = Math.max(0, zaehler - lastZaehler);
-        if (unitsPerHa > 0) cumEinheit = Math.max(0, cumEinheit - driven * unitsPerHa);
-        if (duengerPerHa > 0) cumDuenger = Math.max(0, cumDuenger - driven * duengerPerHa);
-        cumEinheit += entry.einheit || 0;
-        cumDuenger += entry.duenger || 0;
-        lastZaehler = zaehler;
-      }
-
-      return {
-        hasLog: log.length > 0,
-        saatLeer: unitsPerHa > 0 && cumEinheit > 0
-          ? lastZaehler + cumEinheit / unitsPerHa
-          : null,
-        duengerLeer: duengerPerHa > 0 && cumDuenger > 0
-          ? lastZaehler + cumDuenger / duengerPerHa
-          : null
-      };
+      return AppGlobals.computeMachineForecast(log, activeRates.unitsPerHa, activeRates.duengerPerHa);
     }
 
     function _renderBalanceForecast() {
@@ -596,10 +578,15 @@
       if (!r) return false;
       var istHek = AppGlobals.getTabIstHektar ? AppGlobals.getTabIstHektar(r) : (r.istHektar || 0);
       if (istHek <= 0 || r.hektar <= 0) return false;
-      var savingsE = AppGlobals.getTabTotalEinheiten(r) - AppGlobals.getTabIstEinheiten(r);
-      var excessE  = AppGlobals.getTabIstEinheiten(r) - AppGlobals.getTabTotalEinheiten(r);
-      var savingsD = (r.hektar - istHek) * (r.duenger || 0);
-      var excessD  = (istHek - r.hektar) * (r.duenger || 0);
+      var savingsE = 0, excessE = 0, savingsD = 0, excessD = 0;
+      // Issue #447 Welle 2a: signed Saldo via SSOT-Helper getTabSaldoE/D;
+      // savings/excess werden lokal aus dem Vorzeichen abgeleitet.
+      var saldoE = AppGlobals.getTabSaldoE(r);
+      var saldoD = AppGlobals.getTabSaldoD(r);
+      savingsE = Math.max(0, saldoE);
+      excessE  = Math.max(0, -saldoE);
+      savingsD = Math.max(0, saldoD);
+      excessD  = Math.max(0, -saldoD);
       return savingsE > AppGlobals.EPSILON_EINHEIT
           || excessE > AppGlobals.EPSILON_EINHEIT
           || savingsD > AppGlobals.EPSILON_QUANTITY
@@ -814,7 +801,14 @@
         }
         var card = document.createElement('div');
         card.className = 'lp-machine-card';
-        var cumEinheit = 0, cumDuenger = 0, lastZaehler = 0;
+        // Issue #447 Welle 2a: EINMALIGER Tank-Walk pro Datumsgruppe (SSOT
+        // computeMachineForecastSeries) — die Gruppe startet bei 0, exakt
+        // wie zuvor (cum*/lastZaehler waren vorher pro Karte initialisiert).
+        var fcSeries = AppGlobals.computeMachineForecastSeries(
+          list.map(function (li) { return li.entry; }),
+          unitsPerHa,
+          duengerPerHa
+        ).series;
         for (var mi = 0; mi < list.length; mi++) {
           var it = list[mi];
           var entry = it.entry;
@@ -856,14 +850,13 @@
 
           card.appendChild(row);
 
-          // Prognose (kumulativ, siehe renderMachineLog)
-          var zaehler = entry.zaehlerStand != null ? entry.zaehlerStand : (entry.hektar != null ? entry.hektar : 0);
-          var driven = Math.max(0, zaehler - lastZaehler);
-          if (unitsPerHa > 0) cumEinheit = Math.max(0, cumEinheit - driven * unitsPerHa);
-          if (duengerPerHa > 0) cumDuenger = Math.max(0, cumDuenger - driven * duengerPerHa);
-          cumEinheit += entry.einheit || 0;
-          cumDuenger += entry.duenger || 0;
-          lastZaehler = zaehler;
+          // Issue #447 Welle 2a: Tank-Snapshot aus der einmaligen Serie
+          // dieser Datumsgruppe (SSOT computeMachineForecastSeries) — exakt
+          // der Stand nach diesem Entry, wie zuvor beim Inline-Walk.
+          var fc = fcSeries[mi];
+          var cumEinheit = fc.cumEinheit;
+          var cumDuenger = fc.cumDuenger;
+          var zaehler = fc.zaehler;
           if ((unitsPerHa > 0 && cumEinheit > 0) || (duengerPerHa > 0 && cumDuenger > 0)) {
             var forecast = document.createElement('p');
             forecast.className = 'lp-forecast';

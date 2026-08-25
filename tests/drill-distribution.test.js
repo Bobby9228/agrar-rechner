@@ -71,24 +71,33 @@ describe('renderDrillTabList', () => {
     setupMultiTab(w);
     w.renderDrillTabList();
 
-    const btn = w.document.getElementById('dtl_prio_0');
+    // Issue #447 Welle 2a: nach jedem Klick frischen Button holen, weil
+    // der Coordinator-Pfad (drillCalcAll → renderDrillTabList) die alten
+    // DOM-Knoten ersetzt. Verhalten (data-prio, Text, .active) bleibt
+    // identisch zum vorherigen Inline-Update.
+    const doc = w.document;
+    var btn = doc.getElementById('dtl_prio_0');
     expect(btn.textContent).toBe('—');
     expect(btn.getAttribute('data-prio')).toBe('0');
 
     btn.click();
+    btn = doc.getElementById('dtl_prio_0');
     expect(btn.textContent).toBe('1');
     expect(btn.getAttribute('data-prio')).toBe('1');
 
     btn.click();
+    btn = doc.getElementById('dtl_prio_0');
     expect(btn.textContent).toBe('2');
     expect(btn.getAttribute('data-prio')).toBe('2');
 
     btn.click();
+    btn = doc.getElementById('dtl_prio_0');
     expect(btn.textContent).toBe('3');
     expect(btn.getAttribute('data-prio')).toBe('3');
 
     // Cycle back to off (maxPrio = 3, so 3 >= 3 → reset to 0)
     btn.click();
+    btn = doc.getElementById('dtl_prio_0');
     expect(btn.textContent).toBe('—');
     expect(btn.getAttribute('data-prio')).toBe('0');
   });

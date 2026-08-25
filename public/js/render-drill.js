@@ -59,25 +59,22 @@
         // (siehe _updatePrioBtnAriaLabel unten).
         var tabName = r.name || ('Schlag ' + (i + 1));
         _updatePrioBtnAriaLabel(prioBtn, tabName, initPrio);
-prioBtn.addEventListener('click', (function(idx, btn, name) {
+        // Issue #447 Welle 2a: Prio-Klick delegiert vollständig an
+        // cycleDrillPriority (SSOT in drill-handlers.js). Der Renderer
+        // mutiert KEINEN State mehr und macht KEIN optimistisches DOM-
+        // Update mehr — das übernimmt der Coordinator-Pfad:
+        //   click → cycleDrillPriority(idx)
+        //         → state.drillPriorities[idx] = next
+        //         → appEmit('DRILL_PRIORITY_CHANGED')
+        //         → appDispatch → drillCalcAll → renderDrillTabList (intern)
+        //   Nach appDispatch ist das DOM IDENTISCH zum vorherigen optimisti-
+        //   schen Endergebnis (gleiche id dtl_prio_<i>, data-prio, Text,
+        //   .active-Klasse, aria-label/title via _updatePrioBtnAriaLabel).
+prioBtn.addEventListener('click', (function(idx) {
           return function() {
-            var current = parseInt(btn.getAttribute('data-prio')) || 0;
-            var maxPrio = AppGlobals.state.reiter.length;
-            var next = current >= maxPrio ? 0 : current + 1;
-            btn.setAttribute('data-prio', String(next));
-            btn.textContent = next === 0 ? '—' : String(next);
-            btn.classList.toggle('active', next > 0);
-            // Beschriftung nachgeführt, damit aria-label/title immer den
-            // aktuellen Wert spiegeln (Screenreader können nicht raten, was
-            // "—/1/2/3" inhaltlich bedeutet).
-            _updatePrioBtnAriaLabel(btn, name, next);
-            AppGlobals.state.drillPriorities[idx] = next;
-            // Issue #417: Persistenz + drillCalcAll laufen zentral über den
-            // State-Coordinator (eventType DRILL_PRIORITY_CHANGED). Renderer
-            // selbst rufen KEIN saveState() mehr.
-            AppGlobals.appEmit('DRILL_PRIORITY_CHANGED', { tabIdx: idx, priority: next });
+            AppGlobals.cycleDrillPriority(idx);
           };
-        })(i, prioBtn, tabName));
+        })(i));
         row.appendChild(prioBtn);
         var nameWrap = document.createElement('div');
         nameWrap.className = 'drill-tab-name-wrap';
@@ -241,8 +238,11 @@ prioBtn.addEventListener('click', (function(idx, btn, name) {
           var srIstHa = AppGlobals.getTabIstHektar(sr);
           if (srIstHa > 0 && sr.hektar > 0) {
             anySaldo = true;
-            saldoETotal += AppGlobals.getTabTotalEinheiten(sr) - AppGlobals.getTabIstEinheiten(sr);
-            saldoDTotal += (sr.hektar - srIstHa) * (sr.duenger || 0);
+            // Issue #447 Welle 2a: signed Saldo via SSOT-Helper
+            // (getTabSaldoE/D). Die lokalen round6 / fg-Faktor-Internas
+            // leben jetzt in calculations.js; der Renderer summiert nur.
+            saldoETotal += AppGlobals.getTabSaldoE(sr);
+            saldoDTotal += AppGlobals.getTabSaldoD(sr);
           }
         }
         if (anySaldo && (Math.abs(saldoETotal) > AppGlobals.EPSILON_EINHEIT || Math.abs(saldoDTotal) > AppGlobals.EPSILON_QUANTITY)) {
@@ -282,12 +282,17 @@ prioBtn.addEventListener('click', (function(idx, btn, name) {
     // Mehrbedarf/Ersparnis steht, fließt 1:1 in die Net-Zeile ein.
     function _computeTabSelfSaldo(rt) {
       if (!rt) return { savingsE: 0, savingsD: 0, excessE: 0, excessD: 0 };
+      // Issue #447 Welle 2a: signed Saldo via SSOT-Helper; savings/excess
+      // werden LOKAL aus dem Vorzeichen abgeleitet (Anzeige-Semantik,
+      // getrennt von Fachlogik in calculations.js).
       var sE = 0, sD = 0, eE = 0, eD = 0;
       if (rt.istHektar > 0 && rt.hektar > 0) {
-        sE = AppGlobals.getTabTotalEinheiten(rt) - AppGlobals.getTabIstEinheiten(rt);
-        sD = (rt.hektar - rt.istHektar) * (rt.duenger || 0);
-        eE = AppGlobals.getTabIstEinheiten(rt) - AppGlobals.getTabTotalEinheiten(rt);
-        eD = (rt.istHektar - rt.hektar) * (rt.duenger || 0);
+        var saldoE = AppGlobals.getTabSaldoE(rt);
+        var saldoD = AppGlobals.getTabSaldoD(rt);
+        sE = Math.max(0, saldoE);
+        eE = Math.max(0, -saldoE);
+        sD = Math.max(0, saldoD);
+        eD = Math.max(0, -saldoD);
       }
       return { savingsE: sE, savingsD: sD, excessE: eE, excessD: eD };
     }
@@ -577,9 +582,13 @@ prioBtn.addEventListener('click', (function(idx, btn, name) {
       var unitsPerHa = activeRates.unitsPerHa;
       var duengerPerHa = activeRates.duengerPerHa;
       // Walk in chronological order so the cumulative calc is forward.
-      var cumEinheit = 0;
-      var cumDuenger = 0;
-      var lastZaehler = 0;
+      // Issue #447 Welle 2a: EINMALIGER Walk über computeMachineForecastSeries
+      // (SSOT in calculations.js) — pro Entry der Tank-Snapshot nach dem
+      // Entry. Gleiche Komplexität wie der frühere Inline-Walk (O(n)), aber
+      // ohne Logik-Duplikation zur Protokoll-Ansicht. Die Anzeige (Prognose-
+      // Formatierung, "Saat leer bei …", "Dünger leer bei …") bleibt LOKAL
+      // hier, weil sie reines Rendering ist.
+      var forecastSeries = AppGlobals.computeMachineForecastSeries(log, unitsPerHa, duengerPerHa).series;
       for (var i = 0; i < log.length; i++) {
         var entry = log[i];
         var row = document.createElement('div');
@@ -617,20 +626,13 @@ prioBtn.addEventListener('click', (function(idx, btn, name) {
         })(i));
         row.appendChild(removeBtn);
         container.appendChild(row);
-        // Update cumulative tank-level: subtract driven ha since last fill, then add this fill.
-        // Issue #307: `zaehlerStand` is the drill's meter counter and starts at 0;
-        // `||` falls through 0 to `entry.hektar` (the target), so `driven = zaehler - lastZaehler`
-        // would phantom-inflate by the full target on the first entry. Use an explicit
-        // `!= null` check so a `zaehlerStand=0` entry correctly reports `driven = 0`.
-        var zaehler = entry.zaehlerStand != null
-          ? entry.zaehlerStand
-          : (entry.hektar != null ? entry.hektar : 0);
-        var driven = Math.max(0, zaehler - lastZaehler);
-        if (unitsPerHa > 0) cumEinheit = Math.max(0, cumEinheit - driven * unitsPerHa);
-        if (duengerPerHa > 0) cumDuenger = Math.max(0, cumDuenger - driven * duengerPerHa);
-        cumEinheit += entry.einheit || 0;
-        cumDuenger += entry.duenger || 0;
-        lastZaehler = zaehler;
+        // Issue #447 Welle 2a: Tank-Snapshot für diesen Entry aus der
+        // EINMALIGEN Serie (SSOT computeMachineForecastSeries) — exakt der
+        // Stand nach diesem Entry, wie zuvor beim Inline-Walk.
+        var fc = forecastSeries[i];
+        var cumEinheit = fc.cumEinheit;
+        var cumDuenger = fc.cumDuenger;
+        var zaehler = fc.zaehler;
         // Prognose row (one per entry that has rates)
         // Issue #307: per-entry check (`entry.einheit > 0`) suppresses the Saat
         // prognose on a follow-up entry that only refilled Dünger — even though

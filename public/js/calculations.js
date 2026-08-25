@@ -177,6 +177,33 @@ function getTabIstDuenger(r) {
   return Math.max(0, r.istHektar * r.duenger);
 }
 
+// --- Saldo-Funktionen (Issue #447 Welle 2a, signed SOLL−IST) ---
+//
+// SSOT für die signed Subtraktion SOLL−IST. Positive Zahl = Ersparnis
+// (SOLL > IST), negative = Mehrverbrauch (IST > SOLL). Nil-safe:
+// fehlende Felder werden als 0 behandelt (getTabTotalEinheiten /
+// getTabIstEinheiten / getTabTotalDuenger / getTabIstDuenger liefern
+// ohnehin 0 bei fehlenden Voraussetzungen).
+//
+// Bewusst KEIN neues View-Model-Objekt, KEINE Umbenennung bestehender
+// getTab*-Funktionen — minimal invasiv: nur die Subtraktion wird zu einer
+// benannten Funktion, die Anzeige-Semantik (max(0, ±saldo) → savings /
+// excess) bleibt lokal in den Renderern.
+
+// Signed Saat-Saldo: SOLL-Einheiten minus IST-Einheiten.
+// runde6-Stabilisierung analog zu getTabTotalEinheiten / getTabIstEinheiten,
+// damit Carryover-/Display-Logik keine Gleitkomma-Reste weiterträgt.
+function getTabSaldoE(r) {
+  return round6(getTabTotalEinheiten(r) - getTabIstEinheiten(r));
+}
+
+// Signed Dünger-Saldo: SOLL-Dünger minus IST-Dünger (in kg).
+// Keine 6-NK-Rundung hier — Dünger bleibt kg-genau (passt zu
+// getTabTotalDuenger / getTabIstDuenger, die ebenfalls ungerundet sind).
+function getTabSaldoD(r) {
+  return getTabTotalDuenger(r) - getTabIstDuenger(r);
+}
+
 // --- Carryover-Berechnung ---
 
 function getTabUsedEinheiten(r) {
@@ -503,6 +530,99 @@ function getCarryover(tabIndex) {
   return { savedEinheit: 0, savedDuenger: 0, excessEinheit: 0, excessDuenger: 0, nettedEinheit: 0, nettedDuenger: 0, sinkAdjustedE: 0, sinkAdjustedD: 0, selfDeviationE: 0, selfDeviationD: 0, isSink: false };
 }
 
+// --- Maschinen-Log Forecast-Walk (Issue #447 Welle 2a, SSOT) ---
+//
+// PURE Funktion: berechnet den kumulativen Tank-Stand nach jedem Entry
+// sowie die "Saat leer bei" / "Dünger leer bei" Prognose-Hektar für den
+// letzten Eintrag. Vorher lebte dieser Walk ZWEIMAL fast identisch in
+// render-drill.js (renderMachineLog) und render-local-protocol.js
+// (_getCurrentMachineForecast) — beide mit dem Issue-#307-Verhalten
+// (zaehlerStand=0 darf NICHT auf entry.hektar zurückfallen).
+//
+// Algorithmus (1:1 portiert aus den Renderern, keine Logik-Änderung):
+//   pro Entry:
+//     zaehler  = entry.zaehlerStand != null
+//                  ? entry.zaehlerStand
+//                  : (entry.hektar != null ? entry.hektar : 0)
+//     driven   = max(0, zaehler − lastZaehler)
+//     wenn unitsPerHa > 0:    cumEinheit = max(0, cumEinheit − driven*unitsPerHa)
+//     wenn duengerPerHa > 0:  cumDuenger = max(0, cumDuenger − driven*duengerPerHa)
+//     cumEinheit += entry.einheit || 0
+//     cumDuenger += entry.duenger || 0
+//     lastZaehler = zaehler
+//
+// Rückgabe (alle Felder; Saat/duenger Leer sind die finalen Prognose-Werte):
+//   hasLog       : log.length > 0
+//   cumEinheit   : kumulativer Saat-Tank-Stand nach dem letzten Entry
+//   cumDuenger   : kumulativer Dünger-Tank-Stand nach dem letzten Entry
+//   lastZaehler  : zaehler-Wert des letzten Entries (= Basis für Leer-Prognose)
+//   saatLeer     : lastZaehler + cumEinheit/unitsPerHa, oder null
+//                   wenn unitsPerHa <= 0 ODER cumEinheit <= 0
+//   duengerLeer  : lastZaehler + cumDuenger/duengerPerHa, oder null
+//                   wenn duengerPerHa <= 0 ODER cumDuenger <= 0
+//
+// Nil-safe: log === null/undefined → []; Entry-Felder fehlen → 0.
+function computeMachineForecast(log, unitsPerHa, duengerPerHa) {
+  var safeLog = log || [];
+  var cumEinheit = 0;
+  var cumDuenger = 0;
+  var lastZaehler = 0;
+  for (var i = 0; i < safeLog.length; i++) {
+    var entry = safeLog[i] || {};
+    var zaehler = entry.zaehlerStand != null
+      ? entry.zaehlerStand
+      : (entry.hektar != null ? entry.hektar : 0);
+    var driven = Math.max(0, zaehler - lastZaehler);
+    if (unitsPerHa > 0) cumEinheit = Math.max(0, cumEinheit - driven * unitsPerHa);
+    if (duengerPerHa > 0) cumDuenger = Math.max(0, cumDuenger - driven * duengerPerHa);
+    cumEinheit += entry.einheit || 0;
+    cumDuenger += entry.duenger || 0;
+    lastZaehler = zaehler;
+  }
+  var saatLeer = (unitsPerHa > 0 && cumEinheit > 0)
+    ? lastZaehler + cumEinheit / unitsPerHa
+    : null;
+  var duengerLeer = (duengerPerHa > 0 && cumDuenger > 0)
+    ? lastZaehler + cumDuenger / duengerPerHa
+    : null;
+  return {
+    hasLog: safeLog.length > 0,
+    cumEinheit: cumEinheit,
+    cumDuenger: cumDuenger,
+    lastZaehler: lastZaehler,
+    saatLeer: saatLeer,
+    duengerLeer: duengerLeer
+  };
+}
+
+// Serien-Variante (Issue #447 Welle 2a): walkt das Log EINMAL und liefert
+// pro Entry-Index den Tank-Snapshot NACH diesem Entry (cumEinheit,
+// cumDuenger, zaehler) plus hasLog — dieselbe Schrittlogik wie
+// computeMachineForecast, aber O(n) statt Prefix-Walks à O(n²).
+// Für Renderer, die je Eintrag eine Zeile mit kumulativem Stand bauen.
+// Nil-safe: log === null/undefined → [].
+function computeMachineForecastSeries(log, unitsPerHa, duengerPerHa) {
+  var safeLog = log || [];
+  var cumEinheit = 0;
+  var cumDuenger = 0;
+  var lastZaehler = 0;
+  var series = [];
+  for (var i = 0; i < safeLog.length; i++) {
+    var entry = safeLog[i] || {};
+    var zaehler = entry.zaehlerStand != null
+      ? entry.zaehlerStand
+      : (entry.hektar != null ? entry.hektar : 0);
+    var driven = Math.max(0, zaehler - lastZaehler);
+    if (unitsPerHa > 0) cumEinheit = Math.max(0, cumEinheit - driven * unitsPerHa);
+    if (duengerPerHa > 0) cumDuenger = Math.max(0, cumDuenger - driven * duengerPerHa);
+    cumEinheit += entry.einheit || 0;
+    cumDuenger += entry.duenger || 0;
+    lastZaehler = zaehler;
+    series.push({ cumEinheit: cumEinheit, cumDuenger: cumDuenger, zaehler: zaehler });
+  }
+  return { hasLog: safeLog.length > 0, series: series };
+}
+
 // Liefert pro Tab die Restbedarfe (Saatgut + Dünger) sowie Basis + Used,
 // damit Render-Sites die Anzeige konsistent speisen.
 //
@@ -627,6 +747,10 @@ Object.assign(window.AppGlobals, {
   getTabTotalDuenger: getTabTotalDuenger,
   getDuengerProEinheit: getDuengerProEinheit,
   getTabIstDuenger: getTabIstDuenger,
+  getTabSaldoE: getTabSaldoE,
+  getTabSaldoD: getTabSaldoD,
+  computeMachineForecast: computeMachineForecast,
+  computeMachineForecastSeries: computeMachineForecastSeries,
   getTabUsedEinheiten: getTabUsedEinheiten,
   getTabUsedDuenger: getTabUsedDuenger,
   computeAllCarryovers: computeAllCarryovers,

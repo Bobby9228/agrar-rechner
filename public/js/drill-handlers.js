@@ -382,6 +382,35 @@
       AppGlobals.appEmit('DRILL_ENTRY_REMOVED', { mlIdx: idx });
     }
 
+    // Issue #447 Welle 2a — cycleDrillPriority(tabIdx) SSOT.
+    //
+    // Vorher lebte der Cycle (0 → 1 → N → 0) im Click-Handler in
+    // render-drill.js, der gleichzeitig State mutierte UND das DOM
+    // optimistisch aktualisierte UND appEmit rief. Das verletzte das
+    // Architekturprinzip "Renderer mutieren keinen State".
+    //
+    // Diese Funktion ist die Single Source of Truth für den Cycle:
+    //   1. Liest aktuellen Wert via hasOwnProperty (Key fehlt → 0,
+    //      Key=0 → 0; danach next=1).
+    //   2. next = current >= reiter.length ? 0 : current + 1.
+    //   3. Setzt AppGlobals.state.drillPriorities[tabIdx] = next.
+    //   4. Emittiert DRILL_PRIORITY_CHANGED mit {tabIdx, priority: next}.
+    // Der Event-Plan ruft drillCalcAll (welcher intern renderDrillTabList
+    // triggert) — der Renderer muss KEIN optimistisches DOM-Update mehr
+    // machen, weil das DOM nach dem Re-Render bereits korrekt ist.
+    //
+    // Rückgabewert ist next (Convenience für direkte Aufrufer, z.B. Tests).
+    function cycleDrillPriority(tabIdx) {
+      var current = Object.prototype.hasOwnProperty.call(
+        AppGlobals.state.drillPriorities, String(tabIdx)
+      ) ? AppGlobals.state.drillPriorities[tabIdx] : 0;
+      var maxPrio = AppGlobals.state.reiter.length;
+      var next = current >= maxPrio ? 0 : current + 1;
+      AppGlobals.state.drillPriorities[tabIdx] = next;
+      AppGlobals.appEmit('DRILL_PRIORITY_CHANGED', { tabIdx: tabIdx, priority: next });
+      return next;
+    }
+
 // Register exposed globals on AppGlobals (ADR-001 Schritt 3, Issue #278).
 // Damit sind sie sowohl für bestehende HTML-/Window-Nutzung (onclick="drillAdd()")
 // als auch für AppGlobals-Konsumenten (render-drill, render-results, Tests,
@@ -402,4 +431,5 @@ Object.assign(window.AppGlobals, {
   _syncActiveTabLock: _syncActiveTabLock,
   drillCalcDebounced: drillCalcDebounced,
   drillMachineRemove: drillMachineRemove,
+  cycleDrillPriority: cycleDrillPriority,
 });

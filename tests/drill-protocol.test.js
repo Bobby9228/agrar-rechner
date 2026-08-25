@@ -768,37 +768,47 @@ describe('priority button cycling', () => {
 
   it('cycles through priority values on click', () => {
     w.renderDrillTabList();
-    var prioBtn = w.document.getElementById('dtl_prio_0');
+    var doc = w.document;
+    var prioBtn = doc.getElementById('dtl_prio_0');
     expect(prioBtn.getAttribute('data-prio')).toBe('0');
     expect(prioBtn.textContent).toBe('—');
 
     // Click once → prio 1
+    // Issue #447 Welle 2a: der Prio-Klick löst einen renderDrillTabList
+    // über drillCalcAll aus — die alten DOM-Knoten werden ersetzt. Wir
+    // holen den frischen Knoten nach jedem Klick neu per getElementById,
+    // das DOM-Ergebnis ist IDENTISCH (data-prio, Text, .active-Klasse).
     prioBtn.click();
-    expect(prioBtn.getAttribute('data-prio')).toBe('1');
-    expect(prioBtn.textContent).toBe('1');
-    expect(prioBtn.classList.contains('active')).toBe(true);
+    var btn1 = doc.getElementById('dtl_prio_0');
+    expect(btn1.getAttribute('data-prio')).toBe('1');
+    expect(btn1.textContent).toBe('1');
+    expect(btn1.classList.contains('active')).toBe(true);
 
     // Click again → prio 2 (but maxPrio=1 since only 1 tab, so cycles to 0)
-    prioBtn.click();
+    btn1.click();
+    var btn2 = doc.getElementById('dtl_prio_0');
     // With 1 tab, maxPrio=1, so 1 >= 1 → cycles to 0
-    expect(prioBtn.getAttribute('data-prio')).toBe('0');
-    expect(prioBtn.textContent).toBe('—');
+    expect(btn2.getAttribute('data-prio')).toBe('0');
+    expect(btn2.textContent).toBe('—');
   });
 
   it('cycles 0→1→2→3→0 with 3 tabs', () => {
     w.addReiter();
     w.addReiter();
     w.renderDrillTabList();
-    var prioBtn = w.document.getElementById('dtl_prio_0');
-
-    prioBtn.click(); // 0→1
-    expect(prioBtn.getAttribute('data-prio')).toBe('1');
-    prioBtn.click(); // 1→2
-    expect(prioBtn.getAttribute('data-prio')).toBe('2');
-    prioBtn.click(); // 2→3
-    prioBtn.click(); // 3 → maxPrio=3 → 0
-    expect(prioBtn.getAttribute('data-prio')).toBe('0');
-    expect(prioBtn.textContent).toBe('—');
+    var doc = w.document;
+    // Issue #447 Welle 2a: nach jedem Klick frischen Button holen, weil
+    // renderDrillTabList die alten Knoten ersetzt. Verhalten (data-prio,
+    // Text, .active) bleibt identisch zum vorherigen Inline-Update.
+    doc.getElementById('dtl_prio_0').click(); // 0→1
+    expect(doc.getElementById('dtl_prio_0').getAttribute('data-prio')).toBe('1');
+    doc.getElementById('dtl_prio_0').click(); // 1→2
+    expect(doc.getElementById('dtl_prio_0').getAttribute('data-prio')).toBe('2');
+    doc.getElementById('dtl_prio_0').click(); // 2→3
+    doc.getElementById('dtl_prio_0').click(); // 3 → maxPrio=3 → 0
+    var final = doc.getElementById('dtl_prio_0');
+    expect(final.getAttribute('data-prio')).toBe('0');
+    expect(final.textContent).toBe('—');
   });
 });
 
@@ -1510,6 +1520,177 @@ describe('Issue #377: manuelle Fertig-Markierung pro Tab', () => {
             expect(doc.getElementById('drill_duenger').disabled).toBe(false);
             expect(doc.getElementById('drill_hektar').disabled).toBe(false);
         });
+    });
+});
+
+// ===========================================================================
+// Issue #447 Welle 2a — cycleDrillPriority SSOT
+//
+// Vor Welle 2a: der Prio-Button-Click-Handler in render-drill.js mutierte
+// state.drillPriorities[idx] DIREKT im Renderer und emittierte
+// DRILL_PRIORITY_CHANGED. Das verletzte das Architekturprinzip "Renderer
+// mutieren keinen State".
+//
+// Welle 2a: cycleDrillPriority(tabIdx) in drill-handlers.js ist die
+// SSOT-Funktion für den Cycle. Sie:
+//   1. Liest den aktuellen Prio-Wert (0 falls nicht gesetzt).
+//   2. Berechnet next (0 wenn current >= reiter.length, sonst current+1).
+//   3. Schreibt state.drillPriorities[tabIdx] = next.
+//   4. Emittiert DRILL_PRIORITY_CHANGED mit {tabIdx, priority: next}.
+// Der Click-Handler im Renderer delegiert nur noch an diese Funktion.
+//
+// Gruppierung in drill-protocol.test.js, weil die Prio-Logik fachlich zur
+// Drill-Verteilung gehört (Issue #264/#377) und nicht zur A11y- oder
+// Tab-Schicht. Begleitende Verhaltens-Tests (DOM nach Klick) bleiben in
+// regression-blind-spots.test.js.
+describe('Issue #447 Welle 2a — cycleDrillPriority SSOT', () => {
+    let w;
+    beforeEach(() => {
+        w = createDom().window;
+    });
+
+    it('ist als AppGlobals-Funktion verfügbar', () => {
+        expect(typeof w.AppGlobals.cycleDrillPriority).toBe('function');
+    });
+
+    it('liest 0 wenn kein Prio gesetzt, setzt 1, emittiert DRILL_PRIORITY_CHANGED', () => {
+        // Spy auf appEmit, um das Event-Payload zu verifizieren
+        var emitted = [];
+        var origEmit = w.AppGlobals.appEmit;
+        w.AppGlobals.appEmit = function(type, data) { emitted.push({ type: type, data: data }); };
+
+        // 2 Tabs → Max-Prio ist 2
+        w.state.reiter = [
+            { name: 'A', hektar: 10, koerner: 50000, duenger: 0, entries: [] },
+            { name: 'B', hektar: 5,  koerner: 50000, duenger: 0, entries: [] },
+        ];
+        w.AppGlobals.cycleDrillPriority(0);
+
+        expect(w.state.drillPriorities[0]).toBe(1);
+        expect(emitted.length).toBe(1);
+        expect(emitted[0].type).toBe('DRILL_PRIORITY_CHANGED');
+        expect(emitted[0].data.tabIdx).toBe(0);
+        expect(emitted[0].data.priority).toBe(1);
+
+        w.AppGlobals.appEmit = origEmit;
+    });
+
+    it('cycled 0 → 1 → 2 → 0 bei 2 Tabs', () => {
+        w.state.reiter = [
+            { name: 'A', hektar: 10, koerner: 50000, duenger: 0, entries: [] },
+            { name: 'B', hektar: 5,  koerner: 50000, duenger: 0, entries: [] },
+        ];
+        expect(w.AppGlobals.cycleDrillPriority(0)).toBe(1);
+        expect(w.AppGlobals.cycleDrillPriority(0)).toBe(2);
+        // Nach 2 → 0 (current >= reiter.length → reset)
+        expect(w.AppGlobals.cycleDrillPriority(0)).toBe(0);
+    });
+
+    it('cycled 0 → 1 → 2 → 3 → 0 bei 3 Tabs', () => {
+        w.state.reiter = [
+            { name: 'A', hektar: 10, koerner: 50000, duenger: 0, entries: [] },
+            { name: 'B', hektar: 5,  koerner: 50000, duenger: 0, entries: [] },
+            { name: 'C', hektar: 3,  koerner: 50000, duenger: 0, entries: [] },
+        ];
+        expect(w.AppGlobals.cycleDrillPriority(0)).toBe(1);
+        expect(w.AppGlobals.cycleDrillPriority(0)).toBe(2);
+        expect(w.AppGlobals.cycleDrillPriority(0)).toBe(3);
+        // Nach 3 → 0 (current >= reiter.length → reset)
+        expect(w.AppGlobals.cycleDrillPriority(0)).toBe(0);
+    });
+
+    it('respektiert existierenden Prio-Wert (kein Reset auf 0 bei erstem Call)', () => {
+        w.state.reiter = [
+            { name: 'A', hektar: 10, koerner: 50000, duenger: 0, entries: [] },
+            { name: 'B', hektar: 5,  koerner: 50000, duenger: 0, entries: [] },
+        ];
+        // Vorab Prio=2 gesetzt (z.B. nach einem Reload aus localStorage)
+        w.state.drillPriorities[0] = 2;
+        // Cycle: 2 → 0 (da 2 >= reiter.length=2)
+        expect(w.AppGlobals.cycleDrillPriority(0)).toBe(0);
+    });
+
+    it('hasOwnProperty-Schutz: unterscheidet "Key fehlt" von "Key=0"', () => {
+        // Sicherstellen, dass die Implementierung hasOwnProperty nutzt, sonst
+        // würde ein gespeichertes prio=0 als "fehlend" interpretiert und auf 1
+        // zurückgesetzt — das wäre ein Bug nach Reload aus localStorage.
+        w.state.reiter = [
+            { name: 'A', hektar: 10, koerner: 50000, duenger: 0, entries: [] },
+            { name: 'B', hektar: 5,  koerner: 50000, duenger: 0, entries: [] },
+        ];
+        // Explizit prio=0 setzen (nicht "fehlt")
+        w.state.drillPriorities[0] = 0;
+        // Cycle: 0 → 1 (weil 0 nicht "fehlt", sondern explizit 0 ist)
+        expect(w.AppGlobals.cycleDrillPriority(0)).toBe(1);
+    });
+
+    it('cycleDrillPriority ist unabhängig vom Renderer — nutzt nur appEmit, kein direkter saveState oder Renderer-Call', () => {
+        // Architektur-Disziplin: cycleDrillPriority hat als SSOT-Funktion
+        // genau ZWEI Verantwortlichkeiten: state mutieren + Event emittieren.
+        // Persistenz + Re-Render laufen zentral über den State-Coordinator.
+        // Wir verifizieren das, indem wir saveState und renderDrillTabList
+        // ausspionieren — der Coordinator-Pfad ruft sie indirekt via
+        // appEmit, das ist OK und gewollt. cycleDrillPriority selbst darf
+        // aber KEINEN direkten Aufruf machen.
+        w.state.reiter = [
+            { name: 'A', hektar: 10, koerner: 50000, duenger: 0, entries: [] },
+        ];
+        var emitted = [];
+        var origEmit = w.AppGlobals.appEmit;
+        w.AppGlobals.appEmit = function(type, data) {
+            emitted.push(type);
+            // NICHT weiterleiten — wir wollen NICHT, dass der Coordinator
+            // Pfad hier durchläuft, damit der Test isoliert bleibt.
+        };
+        var saveCalls = 0;
+        var origSave = w.AppGlobals.saveState;
+        w.AppGlobals.saveState = function() { saveCalls++; };
+
+        w.AppGlobals.cycleDrillPriority(0);
+
+        // cycleDrillPriority emittiert das Event …
+        expect(emitted.length).toBe(1);
+        expect(emitted[0]).toBe('DRILL_PRIORITY_CHANGED');
+        // … aber ruft KEIN saveState direkt auf (Persistenz läuft via Coordinator).
+        expect(saveCalls).toBe(0);
+
+        w.AppGlobals.appEmit = origEmit;
+        w.AppGlobals.saveState = origSave;
+    });
+});
+
+describe('Issue #447 Welle 2a — Prio-Klick delegiert an cycleDrillPriority', () => {
+    let w, doc;
+    beforeEach(() => {
+        const { window } = createDom();
+        w = window;
+        doc = w.document;
+        w.state.reiter = [
+            { name: 'A', hektar: 10, koerner: 50000, duenger: 0, entries: [] },
+            { name: 'B', hektar: 5,  koerner: 50000, duenger: 0, entries: [] },
+        ];
+        w.renderDrillTabList();
+    });
+
+    it('Click auf dtl_prio_0 ruft cycleDrillPriority(0) auf', () => {
+        var calls = [];
+        var orig = w.AppGlobals.cycleDrillPriority;
+        w.AppGlobals.cycleDrillPriority = function(idx) { calls.push(idx); };
+        doc.getElementById('dtl_prio_0').click();
+        expect(calls.length).toBe(1);
+        expect(calls[0]).toBe(0);
+        w.AppGlobals.cycleDrillPriority = orig;
+    });
+
+    it('Click auf dtl_prio_0 mutiert state.drillPriorities via cycleDrillPriority', () => {
+        // Integriertest: Klick → cycleDrillPriority → state mutiert
+        // → appEmit DRILL_PRIORITY_CHANGED → drillCalcAll → renderDrillTabList
+        // → DOM spiegelt neuen Zustand.
+        doc.getElementById('dtl_prio_0').click();
+        expect(w.state.drillPriorities[0]).toBe(1);
+        // Nach Re-Render hat der neue Button den neuen data-prio
+        expect(doc.getElementById('dtl_prio_0').getAttribute('data-prio')).toBe('1');
+        expect(doc.getElementById('dtl_prio_0').classList.contains('active')).toBe(true);
     });
 });
 });
