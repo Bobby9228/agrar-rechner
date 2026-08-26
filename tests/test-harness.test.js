@@ -100,7 +100,7 @@ describe('Issue #444 A — Bootstrap-Strip aus main.js ist robust gegen Code-Dri
     // APP_VERSION, parseDE und der Service-Worker-Block noch existieren.
     const mainContent = readFileSync(mainPath, 'utf-8');
     const stripped = mainContent.replace(BOOTSTRAP_STRIP_RE, '');
-    expect(stripped, 'APP_VERSION darf nicht mit weggeStrippt werden').toMatch(/APP_VERSION\s*=\s*['"]v1\.1\.6['"]/);
+    expect(stripped, 'APP_VERSION darf nicht mit weggeStrippt werden').toMatch(/APP_VERSION\s*=\s*['"]v1\.2\.0['"]/);
     expect(stripped, 'parseDE-Helper darf nicht mit weggeStrippt werden').toMatch(/function\s+parseDE\s*\(/);
     expect(stripped, 'Service-Worker-Registrierung darf nicht mit weggeStrippt werden').toMatch(/serviceWorker\.register\s*\(\s*['"]sw\.js['"]/);
   });

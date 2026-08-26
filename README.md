@@ -722,7 +722,7 @@ Cache- oder Nutzer-Frage beantworten. Alle drei werden in
 
 | Stempel | Wert (heute) | Wo | Wofür | Wann bumpen |
 |---------|--------------|----|-------|-------------|
-| `APP_VERSION` | `v1.1.6` (in `public/js/main.js`) | Nutzersichtbar im Versions-Footer (`_setVersionFooter` in `render-tabs.js`) und im `pnpm test`-Pin (deploy-sanity) | Kommunikation „Was läuft beim Kunden?" | Bei jedem **fachlichen Release**, der dem Endnutzer mitgeteilt werden soll |
+| `APP_VERSION` | `v1.2.0` (in `public/js/main.js`) | Nutzersichtbar im Versions-Footer (`_setVersionFooter` in `render-tabs.js`) und im `pnpm test`-Pin (deploy-sanity) | Kommunikation „Was läuft beim Kunden?" | Bei jedem **fachlichen Release**, der dem Endnutzer mitgeteilt werden soll |
 | `APP_BUILD_DATE` | `August 2026` (in `public/js/main.js`) | Nutzersichtbar neben `APP_VERSION` | Zeitstempel des letzten Releases | Bei jedem Release (zusammen mit `APP_VERSION`) |
 | `CACHE_VERSION` | `agrar-rechner-v55` (in `public/sw.js`) | Service-Worker-Namespace für den **Offline-Fallback-Cache**; `activate`-Handler löscht ältere Caches | Garantiert, dass Offline-Clients einen frischen Precache bekommen | Nur wenn sich der Precache-Inhalt (`STATIC_ASSETS`) ändert — also neue Dateien dazu, alte raus, oder `?v=…`-Cache-Busting |
 | `?v=N` je Asset | aktuell `?v=22` (CSS, ui-handlers), `?v=21` (calculations, render-results), `?v=3` (render-local-protocol) | In `index.html` und `sw.js STATIC_ASSETS` | Browser-/CDN-Cache-Busting für genau dieses Asset | Bei Änderungen an der jeweiligen Datei; **muss zwischen `index.html` und `STATIC_ASSETS` immer kongruent sein** (Test: `Kongruenz: jede lokale index.html-Ressource ist in STATIC_ASSETS`) |
