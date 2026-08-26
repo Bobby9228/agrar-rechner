@@ -43,7 +43,7 @@ bug — see §6.
 - **Trigger:** push to `dev` branch (and PRs targeting `dev`)
 - **Concurrency:** `ci-${{ github.ref }}` group, in-progress runs are
   cancelled on new push
-- **Steps (CI workflow `ci.yml` / `deploy.yml`):** checkout →
+- **Steps (workflow `.github/workflows/deploy.yml`):** checkout →
   setup-node@v4 (Node 22) → pnpm/action-setup@v4 (pnpm 9) →
   `pnpm install --frozen-lockfile` → `pnpm lint` → `pnpm test`
 - **Deploy step is intentionally absent.** Deployment is handled by the
@@ -66,11 +66,21 @@ directly.
 - **Commit messages:** Conventional Commits
   (`feat:`, `fix:`, `refactor:`, `chore:`, `dx:`, etc.). Reference the
   GitHub issue: `refactor(#209): CSS variables for colors`.
+- **Synchronisations-Merges** tragen das Präfix `sync:` (z. B.
+  `sync: master auf dev-Stand bringen (v45 / v1.0.0)`) — wird für
+  `dev` → `master`-Mirror-Commits verwendet (bisher 2× in der Historie
+  praktiziert, siehe `git log --grep "^sync:"`).
 - **Node version:** 22.x (pinned via `.nvmrc`, enforced by CI).
 - **Package manager:** `pnpm` only. Commit `pnpm-lock.yaml`, never
   `package-lock.json`.
 - **Indentation:** 4 spaces, LF line endings, UTF-8, final newline
-  (enforced by `.editorconfig` and `.gitattributes`).
+  (enforced by `.editorconfig` und `.gitattributes`). Whitespace-Vertrag
+  (`trim_trailing_whitespace` + `insert_final_newline`) wird vom Editor
+  über `.editorconfig` durchgesetzt; ESLint setzt `no-trailing-spaces`
+  und `eol-last` bewusst NICHT als Rule (siehe Begründung in
+  `eslint.config.js` §"Pragmatische Off-Regeln"). Wer seinen Editor
+  sauber konfiguriert hat, sieht den Vertrag trotzdem überall
+  eingehalten.
 - **Code style:** ESLint config in repo; run `pnpm lint` before
   committing JS changes.
 - **Tests:** colocate in `tests/`, use `vitest` + `jsdom`. Since #419,

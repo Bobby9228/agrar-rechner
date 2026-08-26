@@ -838,4 +838,178 @@ describe('Issue #448 Welle 2: CSS-Variablen-Vertrag und color-scheme', () => {
     ).toMatch(/color-scheme\s*:\s*dark\s*;/);
   });
 });
+
+// ─────────── Issue #449: Doku-Sanity (Referenzen, Modulzahlen, ci.yml) ────────
+//
+// Ziel: Sicherstellen, dass die Doku-Wahrheit mit dem Repo synchron bleibt.
+// Drei Verträge:
+//   (1) JEDE in README.md / AGENTS.md in Backticks genannte Dateireferenz
+//       löst zu einer existierenden Datei auf. Pfade dürfen absolut (mit
+//       public/-, tests/-, .github/-Präfix) oder relativ zu public/ sein.
+//       Whitelist: package-lock.json (existiert NICHT im Repo, wird in
+//       AGENTS.md §2 explizit als „Bug" markiert) und CODE_DEEP_DIVE.md
+//       (user-owned, wird nicht von der Sanity erfasst, weil die Tests
+//       nur README/AGENTS lesen).
+//   (2) Modulzahl-Konsistenz: Anzahl <script src>-Tags in public/index.html
+//       === Anzahl .js-Dateien in public/js/ === die in README genannten
+//       Zahlen (Regex über den README-Text).
+//   (3) Kein ci.yml-Resteverweis in README/AGENTS (die Datei existiert nicht
+//       — die echte Workflow-Datei heißt .github/workflows/deploy.yml).
+//
+// Das ist ein bewusst enger, read-only Vertrag: keine Pflicht, jede mögliche
+// Erwähnung zu whitelisten. Wenn die Tests zu streng sind, wird die Whitelist
+// ergänzt und die Begründung inline dokumentiert.
+describe('Issue #449 — Doku-Sanity: README-/AGENTS.md-Referenzen lösen auf reale Dateien auf', () => {
+  const repoRoot = resolve(__dirname, '..');
+
+  // Whitelist: README/AGENTS erwähnen diese Dateien bewusst, obwohl sie im
+  // Repo (noch) nicht existieren. Begründung jeweils inline.
+  //   - package-lock.json: AGENTS.md §2 markiert das Auftauchen explizit als
+  //     Bug („If you see a `package-lock.json`, it is a bug"). Die Datei darf
+  //     also nicht existieren.
+  const DOC_WHITELIST = new Set([
+    'package-lock.json',
+  ]);
+
+  // Backtick-Extraktion: nur Treffer, die wie Dateipfade aussehen
+  //   (mind. ein `/` zur Abgrenzung gegen Property-Notationen wie
+  //   `state.koernerProEinheit`, eine bekannte Extension am Ende).
+  const BACKTICK_PATH_RE = /`([a-zA-Z][a-zA-Z0-9_./-]+\.(?:js|md|yml|jsonc|html|css|json|woff2|png|svg|txt|toml|mjs|yaml))`/g;
+
+  function extractBacktickedPaths(content) {
+    const out = new Set();
+    let m;
+    while ((m = BACKTICK_PATH_RE.exec(content)) !== null) {
+      const ref = m[1];
+      // Property-Notationen wie `state.X` rausfiltern: muss einen `/`
+      // enthalten, sonst ist es kein Pfad.
+      if (ref.indexOf('/') < 0) continue;
+      out.add(ref);
+    }
+    return Array.from(out);
+  }
+
+  function existsUnderPublicOrRootOrTests(ref) {
+    // Reihenfolge der Suchpfade:
+    //   1) Repo-Root (für AGENTS.md-erwähnte Files wie eslint.config.js,
+    //      vitest.config.js, wrangler.jsonc, pnpm-lock.yaml).
+    //   2) public/ (für Bare-Filenames wie index.html, manifest.json).
+    //   3) public/js/ (für Bare-Filenames wie main.js, state.js).
+    //   4) tests/ (für *.test.js-Bare-Filenames).
+    const candidates = [
+      resolve(repoRoot, ref),
+      resolve(repoRoot, 'public', ref),
+      resolve(repoRoot, 'public', 'js', ref),
+      resolve(repoRoot, 'tests', ref),
+    ];
+    for (let i = 0; i < candidates.length; i++) {
+      if (existsSync(candidates[i])) return candidates[i];
+    }
+    return null;
+  }
+
+  function checkAllRefsResolved(file) {
+    const content = readFileSync(resolve(repoRoot, file), 'utf-8');
+    const refs = extractBacktickedPaths(content);
+    expect(refs.length, file + ': keine Backtick-Pfade gefunden — Regex prüfen').toBeGreaterThan(0);
+    const missing = [];
+    const checked = [];
+    for (const ref of refs) {
+      if (DOC_WHITELIST.has(ref)) {
+        checked.push(ref + ' (whitelisted)');
+        continue;
+      }
+      const hit = existsUnderPublicOrRootOrTests(ref);
+      if (hit) {
+        checked.push(ref);
+      } else {
+        missing.push(ref);
+      }
+    }
+    expect(missing, file + ': nicht-auflösbare Backtick-Pfade (' +
+      checked.length + ' ok, ' + missing.length + ' fehlen):\n' +
+      '  ok:        ' + checked.join('\n  ok:        ') + '\n' +
+      '  vermisst:  ' + missing.join('\n  vermisst:  ')
+    ).toEqual([]);
+  }
+
+  it('README.md: jede in Backticks genannte Datei existiert im Repo (Whitelist für package-lock.json)', () => {
+    checkAllRefsResolved('README.md');
+  });
+
+  it('AGENTS.md: jede in Backticks genannte Datei existiert im Repo (Whitelist für package-lock.json)', () => {
+    checkAllRefsResolved('AGENTS.md');
+  });
+
+  it('README.md und AGENTS.md nennen kein ci.yml mehr (Workflow heißt deploy.yml)', () => {
+    const readme = readFileSync(resolve(repoRoot, 'README.md'), 'utf-8');
+    const agents = readFileSync(resolve(repoRoot, 'AGENTS.md'), 'utf-8');
+    // Wir suchen das Token `ci.yml` als eigenständige Datei-Referenz — nicht
+    // z. B. innerhalb eines Wortes oder Kommentars. Backticks umrahmen die
+    // Referenz (Doku-Konvention); das reicht für eine harte Ableitung.
+    expect(readme, 'README.md enthält noch ci.yml-Referenz').not.toMatch(/`ci\.yml`/);
+    expect(agents, 'AGENTS.md enthält noch ci.yml-Referenz').not.toMatch(/`ci\.yml`/);
+  });
+});
+
+// ─────────── Issue #449: Modulzahl-Konsistenz ─────────────────────────────────
+//
+// Die kanonische Modulzahl leitet sich aus public/index.html ab (Anzahl der
+// `<script src="js/…">`-Tags). Die gleiche Anzahl .js-Dateien muss unter
+// public/js/ liegen, und README.md muss sie konsistent nennen.
+//
+// Wir extrahieren die im README genannten Modulzahlen per Regex:
+//   - „in N Module" / „in N JS-Module" / „N Module, Lade-Reihenfolge"
+//     (Z. 60/61/77) — nur natürliche Zahlen, die im Modul-Kontext stehen.
+describe('Issue #449 — Modulzahl-Konsistenz: index.html ↔ public/js ↔ README', () => {
+  const repoRoot = resolve(__dirname, '..');
+  const publicDir = resolve(repoRoot, 'public');
+
+  function countScriptTags() {
+    const content = readFileSync(resolve(publicDir, 'index.html'), 'utf-8');
+    const re = /<script\s+src=["']js\/[^"']+["']\s*><\/script>/g;
+    let count = 0;
+    let m;
+    while ((m = re.exec(content)) !== null) count++;
+    return count;
+  }
+
+  function countJsFiles() {
+    const jsDir = resolve(publicDir, 'js');
+    const files = readdirSync(jsDir).filter((f) => /\.js$/i.test(f));
+    return files.length;
+  }
+
+  function extractReadmeModuleNumbers() {
+    // Erfasst natürliche Zahlen in Modul-Phrasen: „9 Module", „9 JS-Module",
+    // „20 Module, Lade-Reihenfolge", „24 Test-Suiten" wird bewusst
+    // NICHT erfasst (anderes Wort vor der Zahl). Wir matchen daher nur
+    // Phrasen mit „Module" im Plural direkt vor der Zahl.
+    const content = readFileSync(resolve(repoRoot, 'README.md'), 'utf-8');
+    const re = /\b(\d+)\s+Module\b/g;
+    const out = [];
+    let m;
+    while ((m = re.exec(content)) !== null) out.push(parseInt(m[1], 10));
+    return out;
+  }
+
+  it('index.html und public/js/ haben dieselbe Anzahl Module', () => {
+    const scripts = countScriptTags();
+    const files = countJsFiles();
+    expect(scripts, '<script src=…> in index.html').toBe(files);
+    expect(scripts, 'Modulzahl muss ≥ 1 sein').toBeGreaterThan(0);
+  });
+
+  it('README.md nennt die Modulzahl konsistent (jede „N Module"-Phrase)', () => {
+    const scripts = countScriptTags();
+    const files = countJsFiles();
+    const readmeNumbers = extractReadmeModuleNumbers();
+    expect(readmeNumbers.length, 'README.md: keine „N Module"-Phrase gefunden — Regex/Doku prüfen').toBeGreaterThan(0);
+    for (let i = 0; i < readmeNumbers.length; i++) {
+      expect(readmeNumbers[i], 'README.md „N Module"-Phrase # ' + (i + 1) +
+        ' weicht von der kanonischen Zahl ab (index.html=' + scripts +
+        ', public/js/=' + files + ')').toBe(scripts);
+    }
+  });
+});
 });

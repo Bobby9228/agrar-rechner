@@ -7,7 +7,7 @@
 - [ ] **WhatsApp-Protokoll-Export** — Ein Button generiert formatierten Text und teilt via `navigator.share()` direkt in WhatsApp (kein PDF, kein Backend)
 - [ ] ~~Restmengen-Countdown mit Flächen-Prognose~~ — Implementiert (drill-summary zeigt verbleibende Einheiten + Hektar-Prognose) funktioniert nicht richtig muss gefixt werden
 - [ ] **Tagesabschluss-Report** — Ein Button generiert strukturierte Tageszusammenfassung aller Felder: Hektar gesamt, Einheiten, Dünger, Laufzeit. Arbeitsbericht, Abrechnungsgrundlage und Dokumentation in einem.
-- [x] ~~Daten exportieren/importieren~~ — Implementiert (Footer-Buttons "Daten exportieren" / "Daten importieren", versionierter JSON-Envelope, parseAndSanitizeState-Pipeline, Vorschau-Modal mit Anzahl Schläge & Buchungen, vollständiger Replace ohne Merge; siehe `tests/45-data-export-import.test.js` + `public/js/ui-handlers.js` (Daten-Export/Import-Sektion) + `public/index.html` (Footer + Modal) + `public/css/styles.css` (Dark-Mode-tauglich))
+- [x] ~~Daten exportieren/importieren~~ — Implementiert (Footer-Buttons "Daten exportieren" / "Daten importieren", versionierter JSON-Envelope, parseAndSanitizeState-Pipeline, Vorschau-Modal mit Anzahl Schläge & Buchungen, vollständiger Replace ohne Merge; siehe `tests/data-export-import.test.js` + `public/js/data-io-handlers.js` (Daten-Export/Import-Sektion) + `public/index.html` (Footer + Modal) + `public/css/styles.css` (Dark-Mode-tauglich))
 - [ ] **Mehrere Druckerprofile speichern** — Eigene Sorte/Dichte-Kombinationen als Vorlage abspeichern
 
 ## Mittlere Priorität

@@ -8,7 +8,7 @@ const CACHE_VERSION = 'agrar-rechner-v55';
 // STATIC_ASSETS muss exakt zu den lokalen Produktions-Assets aus index.html
 // passen, damit eine frische PWA-Installation (oder ein Update-SW) beim
 // ersten Offline-Restart alle Bootstrap-Dateien im Cache hat. Kongruenz wird
-// durch tests/37-deploy-sanity.test.js abgesichert (lokale <script src>/
+// durch tests/deploy-sanity.test.js abgesichert (lokale <script src>/
 // <link href> + apple-touch-icon/manifest + self-gehostete Fonts in
 // public/fonts/ gegen STATIC_ASSETS).
 const STATIC_ASSETS = [

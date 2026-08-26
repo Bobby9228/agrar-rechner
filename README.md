@@ -1,6 +1,6 @@
 # Agrar-Rechner — Dokumentation
 
-> Stand: `1744697` · 488 Commits · ~7.160 LOC prod JS · ~19.860 LOC Tests · 24 Test-Suiten / 1256 Tests
+> Versionsstand: siehe Abschnitt [Versionierung & Cache](#versionierung--cache). Commit-Hash, LOC- und Test-Zähler in früheren README-Versionen wurden in #449 entfernt, weil sie bei jedem Commit veralten und keinen Doku-Mehrwert hatten.
 
 ## Inhaltsverzeichnis
 
@@ -22,8 +22,9 @@
 16. [Berechnungsformeln im Detail](#berechnungsformeln-im-detail)
 17. [Testabdeckung](#testabdeckung)
 18. [Deployment](#deployment)
-19. [Bekannte Limitationen](#bekannte-limitationen)
-20. [Mitmachen](#mitmachen)
+19. [Versionierung & Cache](#versionierung--cache)
+20. [Bekannte Limitationen](#bekannte-limitationen)
+21. [Mitmachen](#mitmachen)
 
 ---
 
@@ -49,7 +50,7 @@ Der **Agrar-Rechner** ist eine statische Single-Page Progressive Web App (PWA) f
 - **Offline-fähig** (Service Worker mit Network-First-Cache)
 - **Dark Mode** mit System-Präferenz-Erkennung
 - **Persistenz** in `localStorage` mit Cross-Tab-Synchronisierung
-- **24 Test-Suiten, 1256 Tests** (Vitest + jsdom, fachliche Suiten ohne Nummern-Präfix)
+- **24 Test-Suiten, 1256 Tests** (Vitest + jsdom, fachliche Suiten ohne Nummern-Präfix; exakte Zahlen siehe `pnpm test` Lauf)
 
 ---
 
@@ -57,10 +58,10 @@ Der **Agrar-Rechner** ist eine statische Single-Page Progressive Web App (PWA) f
 
 ### Technologie-Stack
 
-- **Vanilla JS** — keine Bundler, kein TypeScript, kein Framework. ES5-Syntax mit `var`, split in 9 Module.
-- **Statische PWA** — `index.html` + 1 CSS + 9 JS-Module + `manifest.json` + `sw.js`. Kein Build-Step.
+- **Vanilla JS** — keine Bundler, kein TypeScript, kein Framework. ES5-Syntax mit `var`, split in 21 Module.
+- **Statische PWA** — `index.html` + 1 CSS + 21 JS-Module + `manifest.json` + `sw.js`. Kein Build-Step.
 - **Persistenz** — `localStorage` mit JSON-Serialisierung, eigene Schema-Validierung.
-- **Tests** — Vitest + jsdom, 24 fachliche Suiten, 1256 Tests.
+- **Tests** — Vitest + jsdom, fachliche Suiten ohne Nummern-Präfix.
 
 ### Dateistruktur
 
@@ -74,7 +75,7 @@ agrar-rechner/
 │   ├── css/
 │   │   └── styles.css               # ~3.180 Zeilen, Custom Properties, Dark Mode, self-hosted Fonts
 │   ├── fonts/                       # WOFF2 (Inter, Source Serif 4) — self-hosted, offline
-│   ├── js/                          # 20 Module, Lade-Reihenfolge via <script>-Tags
+│   ├── js/                          # 21 Module, Lade-Reihenfolge via <script>-Tags
 │   │   ├── app-globals.js           # Namespace (AppGlobals), state-Live-Alias
 │   │   ├── state.js                 # state-Objekt, Schema-Validierung, Persistenz
 │   │   ├── culture.js               # Kultur-Profile (Mais/Raps/Sonstiges)
@@ -96,7 +97,7 @@ agrar-rechner/
 │   │   ├── data-io-handlers.js      # Daten-Export/Import (JSON-Envelope)
 │   │   └── main.js                  # Init, Theme, Service-Worker-Registration
 │   └── icon*.{svg,png}              # PWA-Icons
-├── tests/                           # Vitest, 24 Suiten, 1256 Tests
+├── tests/                           # Vitest, fachliche Suiten ohne Nummern-Präfix
 │   ├── helpers.js                   # DOM-Mock, Module-Loader (spiegelt index.html)
 │   ├── helpers/                     # Thematische Test-Helper (z.B. Invarianten)
 │   └── *.test.js                    # Fachliche Suiten ohne Nummern-Präfix (#419)
@@ -106,12 +107,12 @@ agrar-rechner/
 ├── vitest.config.js                 # jsdom env
 ├── wrangler.jsonc                   # Cloudflare Pages
 ├── .nvmrc                           # Node 22
-└── .github/workflows/ci.yml         # Lint + Test (kein Deploy-Step mehr)
+└── .github/workflows/deploy.yml     # Lint + Test (kein Deploy-Step — Deploy via Cloudflare Dashboard Git Integration)
 ```
 
 ### Lade-Reihenfolge der JS-Module
 
-Per `<script>`-Tags am Ende von `index.html` — kritisch wegen implizitem Window-Scope und ADR-001-Namespace-Pattern:
+Per `<script>`-Tags am Ende von `index.html` — kritisch wegen implizitem Window-Scope und ADR-001-Namespace-Pattern (siehe [`docs/ADR-001.md`](docs/ADR-001.md)):
 
 ```
 app-globals.js → state.js → culture.js → calculations.js
@@ -126,7 +127,7 @@ app-globals.js → state.js → culture.js → calculations.js
 Die Kongruenz dieser Liste mit `index.html` und dem Service-Worker-Precache
 (`STATIC_ASSETS`) wird von `tests/deploy-sanity.test.js` erzwungen.
 
-Jedes Modul registriert seine Exporte am Dateiende via `Object.assign(window.AppGlobals, …)`. Konsumenten greifen über `AppGlobals.funktionName()` zu, nicht über `window.funktionName()`. ADR-001 (Issue #278) dokumentiert die Migration.
+Jedes Modul registriert seine Exporte am Dateiende via `Object.assign(window.AppGlobals, …)`. Konsumenten greifen über `AppGlobals.funktionName()` zu, nicht über `window.funktionName()`. [ADR-001](docs/ADR-001.md) (Issue #278) dokumentiert die Migration.
 
 ### Datenfluss
 
@@ -171,34 +172,57 @@ var state = {
     koerner:    0,              // Körner pro Hektar
     duenger:    0,              // Dünger in kg/ha
     entries:    [],             // Drill-Protokoll-Einträge [{einheit, duenger, zaehlerStand, time, ...}]
-    done:       false           // Manueller User-Toggle "Tab fertig"
+    done:       false,          // Manueller User-Toggle "Tab fertig"
+    koernerProEinheit: 50000,   // Per-Tab Einheitsgröße (Migration 5→6; Sonstiges = 0/leer)
+    notizen:    ''              // Freier Notiz-Text pro Schlag (Migration 8→9; max. 500 Zeichen)
   }],
   activeReiter:    0,           // Index des aktiven Tabs
   activeView:      null,        // null = Rechner, 'protokoll' = Drill-Protokoll-Ansicht
   dashboardOpen:   false,       // Letzte Ansicht vor Reload (für Restore)
   fahrgassenEnabled:  false,    // Globale Fahrgassen-Korrektur
   fahrgassenBreite:    0,       // Globale Fahrgassenbreite (m)
-  einheitGroesseEnabled: false, // Benutzerdefinierte Einheiten-Größe
-  koernerProEinheit: 50000,     // Körner pro Einheit Saatgut (Standard: 50.000)
+  einheitGroesseEnabled: false, // Benutzerdefinierte Einheiten-Größe (UI-Auf-/Zuklapp-Toggle)
+  koernerProEinheit: 50000,     // Default für NEUE Tabs, bis Kultur gewählt ist
+  kultur:           null,        // 'mais' | 'raps' | 'sonstiges' (Migration 5→6)
+  erstauswahlDone:  false,      // Kultur-Erstauswahl abgeschlossen (steuert das Pflicht-Modal)
   machineLog:    [],            // Globales Maschinen-Log (alle Einfüllungen, alle Tabs)
-  drillPriorities: {}           // { tabIndex: 0|1|2|... } — 0 = keine Prio
+  drillPriorities: {},          // { tabIndex: 0|1|2|... } — 0 = keine Prio
+  protocolView:  'fields',      // Lokales Protokoll: 'fields' (Schläge) | 'machine' (Migration 7→8)
+  protocolOpenCards: {}         // YYYY-MM-DD → true im Schläge-Accordion geöffnet (Migration 7→8)
 };
 ```
 
 ### Schema-Validierung
 
-`loadState()` parst jede gespeicherte State-Datei durch eine mehrstufige Validierungspipeline (in `state.js`):
+`loadState()` und Cross-Tab-Sync teilen sich die gleiche Validierungspipeline
+(`AppGlobals.parseAndSanitizeState` in `state.js`). Der Eingabe-Rohstring
+durchläuft:
 
+- `parsePersistedState(raw)` — `JSON.parse(raw, jsonReviver)` (Reviver blockiert
+  `__proto__`/`constructor`/`prototype` auf jeder Verschachtelungsebene)
 - `sanitizeNumber(v, fallback)` — Number + Finite + NaN-Guard
-- `sanitizeString(v, fallback, maxLen)` — String + Length-Limit (verhindert Memory-Bomb)
+- `sanitizeString(v, fallback, maxLen)` — String + Length-Limit (Memory-Bomb-Schutz)
 - `sanitizeBoolean(v, fallback)` — Boolean-Coercion
+- `sanitizeEntryTime(v)` — Drill-Protokoll-`time`: numer oder `"HH:MM"`-String
 - `sanitizeEntry(raw)` — Drill-Protokoll-Eintrag
 - `sanitizeMachineLogEntry(raw)` — Maschinen-Log-Eintrag
-- `sanitizeTab(raw)` — Komplettes Tab-Objekt
-- `jsonReviver(key, value)` — Filter für gefährliche Keys auf jeder Verschachtelungsebene
-- `parsePersistedState(raw)` — Top-Level-Sanitizer
+- `sanitizeTab(raw)` — Komplettes Tab-Objekt (Per-Feld-typgeprüft, mit
+  `notizen`-String-Cap bei 500 Zeichen; siehe `STATE_LIMITS` für die absolute
+  Worst-Case-Obergrenze)
+- `isPlainObject(v)` — Helper: nur `{}`-Literale (keine Klassen-Instanzen,
+  kein `Object.create(null)`)
+- Schema-Migrationen `0→1`, `1→2`, …, `8→9` (z. B. Single-Flat → Tab-Array,
+  globale `entries` → per-Tab-`entries`, Notizen pro Schlag)
+- Top-Level-Whitelist `ALLOWED_TOP_KEYS` strippt unbekannte Keys
 
-**Defense-in-Depth gegen manipulierten localStorage:** Prototype-Pollution-Schutz, Type-Injection-Schutz, ALLOWED_TOP_KEYS-Whitelist, Längen-Limits auf alle Strings, Number-Range-Checks. (#448 Welle 1: ALLOWED_TAB_KEYS wurde entfernt — die Tab-Felder werden per Per-Feld-Sanitizer in `sanitizeTab()` typgeprüft.)
+**Defense-in-Depth gegen manipulierten localStorage:** Prototype-Pollution-Schutz
+(jsonReviver), Type-Injection-Schutz (Per-Feld-Sanity in `sanitizeTab`/`sanitizeEntry`/
+`sanitizeMachineLogEntry`), `ALLOWED_TOP_KEYS`-Whitelist, Längen-Limits auf alle
+Strings, Cardinality-Ceilings über `STATE_LIMITS` (Defense-in-Depth #445 Welle 1;
+Tests dürfen einzelne Werte live absenken). `sanitizeEntry`/`sanitizeMachineLogEntry`/
+`sanitizeTab` filtern auch `__proto__`/`constructor`/`prototype`-Keys (Per-Feld +
+JSON-Reviver, doppelt). (#448 Welle 1: `ALLOWED_TAB_KEYS` wurde entfernt — die
+Tab-Felder werden per Per-Feld-Sanitizer in `sanitizeTab()` typgeprüft.)
 
 ---
 
@@ -457,7 +481,21 @@ Siehe [State → Schema-Validierung](#schema-validierung). Verhindert Crashes be
 
 ### Cross-Tab-Sync
 
-in `render-tabs.js` (`initUI`): Listener auf `window.addEventListener('storage', ...)`. Wenn ein anderer Tab den State schreibt, wird der neue State geladen, aber **die Schema-Validierung aus `loadState()` wird NICHT angewendet** (siehe [Bekannte Limitationen](#bekannte-limitationen) TODO-Eintrag).
+In `render-tabs.js` (`_installCrossTabSync`, aufgerufen aus `initUI`): Listener
+auf `window.addEventListener('storage', …)`. Der `storage`-Event feuert nur in
+Tabs, die den Wert nicht selbst geschrieben haben. Wenn ein anderer Tab den
+State schreibt, läuft der Remote-JSON durch dieselbe Pipeline wie
+`loadState()` — `AppGlobals.parseAndSanitizeState(e.newValue)` —
+inklusive `jsonReviver`, Schema-Migrationen (0→1, 1→2, …, 8→9) und
+Top-Level-Whitelist (`ALLOWED_TOP_KEYS`). Nur wenn `result.state` von
+`AppGlobals.state` abweicht, wird `AppGlobals.state = remote` gesetzt und
+direkt re-rendert (`syncInputsFromState`, `renderTabs`, `renderResults`,
+`_syncKulturUI`).
+
+Das Re-Render läuft **bewusst am State-Coordinator vorbei** — eine
+`appDispatch`-Schleife über `saveState → storage-Event → andere Tabs → deren
+appDispatch` wäre eine Endlosschleife. Begründung im Header-Kommentar
+`_installCrossTabSync` (Issue #417).
 
 ### Quota-Handling
 
@@ -620,7 +658,11 @@ remaining_Senke = max(0, own_Senke + burden_net)
 
 ## Testabdeckung
 
-**24 fachliche Suiten, 1256 Tests** — alle in Vitest+jsdom, laufen via `pnpm test` (seit #419 ohne Nummern-Präfixe: kultur-*, carryover, drill-distribution, app-shell-parity, …).
+Fachliche Suiten ohne Nummern-Präfixe (seit #419: `kultur-*`, `carryover`,
+`drill-distribution`, `app-shell-parity`, `cross-tab-sync`,
+`data-export-import`, `deploy-sanity`, …). Aktuelle Suiten- und Test-Zahlen
+zeigt `pnpm test` direkt — wir pflegen hier bewusst keinen statischen Zähler
+mehr (veraltet sonst bei jeder Welle, siehe Issue #449).
 
 Die Test-Suite deckt substantiell mehr ab als „happy path":
 
@@ -657,7 +699,7 @@ Deployed als **Cloudflare Pages** (Static Assets), Projekt `agrar-rechner-dev`.
 
 **Network-First** für alle Requests (nicht nur HTML). Cache dient nur als Offline-Fallback, nicht als primäre Quelle. `skipWaiting()` + `clients.claim()` für sofortige Aktivierung neuer Versionen.
 
-`CACHE_VERSION = 'agrar-rechner-v47'` ist nur noch Namespace für den Offline-Cache; muss seit der Network-First-Umstellung **nicht** mehr manuell gebumpt werden.
+`CACHE_VERSION` ist nur noch Namespace für den Offline-Cache; muss seit der Network-First-Umstellung **nicht** mehr manuell gebumpt werden. Aktueller Stand siehe `sw.js`; Vertrag (Format + Untergrenze) in `tests/deploy-sanity.test.js`.
 
 ### Cache-Header (`public/_headers`)
 
@@ -672,22 +714,78 @@ Deployed als **Cloudflare Pages** (Static Assets), Projekt `agrar-rechner-dev`.
 
 ---
 
+## Versionierung & Cache
+
+Die App pflegt **drei parallele Versionsstempel**, die jeweils eine andere
+Cache- oder Nutzer-Frage beantworten. Alle drei werden in
+`tests/deploy-sanity.test.js` vertraglich abgesichert.
+
+| Stempel | Wert (heute) | Wo | Wofür | Wann bumpen |
+|---------|--------------|----|-------|-------------|
+| `APP_VERSION` | `v1.1.6` (in `public/js/main.js`) | Nutzersichtbar im Versions-Footer (`_setVersionFooter` in `render-tabs.js`) und im `pnpm test`-Pin (deploy-sanity) | Kommunikation „Was läuft beim Kunden?" | Bei jedem **fachlichen Release**, der dem Endnutzer mitgeteilt werden soll |
+| `APP_BUILD_DATE` | `August 2026` (in `public/js/main.js`) | Nutzersichtbar neben `APP_VERSION` | Zeitstempel des letzten Releases | Bei jedem Release (zusammen mit `APP_VERSION`) |
+| `CACHE_VERSION` | `agrar-rechner-v55` (in `public/sw.js`) | Service-Worker-Namespace für den **Offline-Fallback-Cache**; `activate`-Handler löscht ältere Caches | Garantiert, dass Offline-Clients einen frischen Precache bekommen | Nur wenn sich der Precache-Inhalt (`STATIC_ASSETS`) ändert — also neue Dateien dazu, alte raus, oder `?v=…`-Cache-Busting |
+| `?v=N` je Asset | aktuell `?v=22` (CSS, ui-handlers), `?v=21` (calculations, render-results), `?v=3` (render-local-protocol) | In `index.html` und `sw.js STATIC_ASSETS` | Browser-/CDN-Cache-Busting für genau dieses Asset | Bei Änderungen an der jeweiligen Datei; **muss zwischen `index.html` und `STATIC_ASSETS` immer kongruent sein** (Test: `Kongruenz: jede lokale index.html-Ressource ist in STATIC_ASSETS`) |
+
+### Wann bumpe ich was?
+
+- **Fachliche / UI-Änderung** → `APP_VERSION` (Minor- oder Patch-Bump) +
+  `APP_BUILD_DATE` + das/die `?v=N` an den **tatsächlich** geänderten
+  Assets. **Nicht** `CACHE_VERSION` — das Network-First-Design stellt
+  bei jedem Online-Besuch ohnehin die neueste Version bereit.
+- **Neue Datei** in `index.html`/`sw.js`-Precache → `?v=N` ist nicht
+  nötig, aber `STATIC_ASSETS` muss den neuen Eintrag enthalten.
+  `CACHE_VERSION` muss gebumpt werden, damit der `activate`-Handler
+  alte Caches aufräumt.
+- **Reines Refactor ohne Verhaltensänderung** → kein Bump. Die Tests
+  bleiben grün, die Doku-/Code-Linienreferenzen passen weiterhin.
+
+### Vertrags-Tests
+
+- `APP_VERSION`-Format (`v\d+\.\d+\.\d+`) und `APP_BUILD_DATE`-Vorhandensein:
+  `tests/deploy-sanity.test.js > main.js exposes the current minor release
+  version and build date`.
+- `CACHE_VERSION`-Format (`^agrar-rechner-v\d+$`) + numerische Untergrenze
+  (≥ v53 nach Font-Deduplizierung #443): `tests/deploy-sanity.test.js >
+  sw.js CACHE_VERSION hat gültiges Format agrar-rechner-vN ≥ v53`.
+- `STATIC_ASSETS ↔ index.html`-Kongruenz:
+  `tests/deploy-sanity.test.js > Kongruenz: jede lokale index.html-Ressource
+  ist in STATIC_ASSETS`.
+- Modulzahl-Konsistenz `index.html == public/js/*.js == README`:
+  `tests/deploy-sanity.test.js > Issue #449 — Modulzahl-Konsistenz`.
+
+---
+
 ## Bekannte Limitationen
 
 - **`style-src 'unsafe-inline'`** — UI-Module setzen dynamisch `.style.cssText` (z.B. Carryover-Hints). `script-src` kommt seit #418/#436 **ohne** `'unsafe-inline'` aus (keine Inline-Handler mehr, alle Bindings via `addEventListener`).
 - **Cross-Tab-Sync umgeht Teile der Schema-Validierung nicht mehr** — Remote-State läuft seit #418-Ära über dieselbe `parseAndSanitizeState`-Pipeline wie `loadState()`. Verbleibend: ein kompromittierter Tab kann weiterhin gültig aussehenden, aber fachlich falschen State schreiben (kein Signatur-Schutz).
-- **CSS-Version `?v=21`** an mehreren Stellen (`index.html` + `sw.js`) — Drift-Risiko bei künftigen CSS-Änderungen. Langfristig auf network-first-Cache-Busting umstellen.
-- **Touch-Targets teilweise < 44×44 px** — `.tab-close`, `.drill-prio-btn`, `.theme-toggle`, `.reset-modal-x`. WCAG-Verbesserung offen.
+- **CSS-Version `?v=22`** an mehreren Stellen (`index.html` + `sw.js`) — Drift-Risiko bei künftigen CSS-Änderungen. Langfristig auf network-first-Cache-Busting umstellen.
 - **WCAG-Kontrast** an einigen Stellen unter 4,5:1 (Placeholder, Dashboard-Statusfarben). Verbesserung offen.
-- **WAI-ARIA Tab-Pattern** unvollständig — kein `role="tablist"`, keine Arrow-Key-Navigation. A11y-Verbesserung offen.
-- **Reset-Modal ohne Focus-Trap / Escape-Handler** — `openResetModal()` setzt nur CSS-Klasse.
-- **Dashboard ohne `.dashboard-close`-Element** — `render-dashboard.js` sucht danach, es existiert nicht. Focus-Management bricht.
 - **System-Theme-Änderung** wird nach Start nicht verfolgt (kein `matchMedia(...).addEventListener('change', …)`).
 - **Keine responsiven Breakpoints** im CSS — einzige `@media`-Regel ist `prefers-reduced-motion`.
-- **Test-Numerierung kollidiert** (`43-*` 2×, `44-*` 2×, `NN-*`) — Cleanup offen.
-- **`onInputFormat` ist 84 LOC mit 5 Verzweigungen** — Testbarkeit eingeschränkt, Extraktion als pure function offen.
-- **`ui-handlers.js` ist 997-LOC-God-File** — Tab-Mgmt, Drill, Reset, Input-Format in einer Datei. Split offen.
-- **`0.05` Magic-Number** 43× statt Konstante `EPSILON_QUANTITY` — Konsolidierung offen.
+- **`onInputFormat` ist eine lange Funktion** mit mehreren Verzweigungen — Testbarkeit eingeschränkt, Extraktion als pure function offen.
+
+Bereits erledigte Punkte, die in früheren Limitationen-Listen auftauchten
+und hier nur noch als Referenz stehen:
+
+- ~~**Touch-Targets teilweise < 44×44 px**~~ — umgesetzt in #446 Welle 2a.
+- ~~**WAI-ARIA Tab-Pattern** unvollständig~~ — `role="tablist"` +
+  Arrow-Key-Navigation seit #446 Welle 2b.
+- ~~**Reset-Modal ohne Focus-Trap / Escape-Handler**~~ — generischer
+  Dialog-Helper (`dialog-a11y.js`) mit Trap + Escape seit #446 Welle 1
+  (`openResetModal()` nutzt `installDialogA11y`).
+- ~~**Dashboard ohne `.dashboard-close`-Element**~~ — Suche nach dem
+  nicht-existenten Selector wurde in #446 Welle 1 entfernt; das
+  Dashboard-Overlay nutzt ebenfalls den Dialog-Helper.
+- ~~**Test-Numerierung kollidiert**~~ — Konsolidierung in #419: alle
+  Suiten ohne Nummern-Präfix.
+- ~~**`ui-handlers.js` ist 997-LOC-God-File**~~ — aufgeteilt in
+  `tab-handlers.js`, `settings-handlers.js`, `reset-handlers.js`,
+  `drill-handlers.js`, `protocol-handlers.js`, `data-io-handlers.js`
+  (Issues #212, #416).
+- ~~**`0.05` Magic-Number** 43× statt Konstante `EPSILON_QUANTITY`~~ —
+  zentrale Konstante in `calculations.js` seit #447 Welle 1.
 
 Detaillierte Liste: siehe die jeweiligen Modul-Header-Kommentare in `public/js/`.
 

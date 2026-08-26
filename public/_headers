@@ -6,7 +6,7 @@
 # ist PFLICHT — Cloudflare parst die Datei streng ("Expected a path before
 # headers", Code 100324). Beim Kommentar-Umbau in #418 Welle 6 wurde sie
 # versehentlich gelöscht und ALLE Workers-Builds brachen deterministisch
-# (siehe Issue #436). tests/37-deploy-sanity.test.js stellt sicher, dass
+# (siehe Issue #436). tests/deploy-sanity.test.js stellt sicher, dass
 # jede Header-Zeile eine Pfad-Zeile hat.
 /*
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'

@@ -1,5 +1,19 @@
 # Agrar-Rechner – Umbau in Etappen
 
+> **Stand:** Die Deep-Dive-Runden **#441–#448** sind abgeschlossen
+> (Daten-Export/Import-Rückverdrahtung, Test-Harness-Härtung, Versionspins,
+> CSP- und Runtime-Cache-Härtung, A11y-Welle 1+2, Konstanten-/Event-SSOT,
+> Renderer-Entkopplung, `initUI()`-Zerlegung, Theme-Key-SSOT, CSS-Dead-Code
+> + `color-scheme`/`reduced-motion`). Verweise auf die jeweiligen Issues
+> finden sich in den Commit-Messages und im README-Änderungsverlauf
+> (`git log --grep "#[0-9]\+:"`).
+>
+> **Offen:** das zentrale Tracking-Issue für ausstehende Aufräumarbeiten
+> heißt **#440** und sammelt die Themen, die aus den Deep-Dive-Runden
+> als „nice to have" übrig geblieben sind (z. B. einzelne
+> `render-results.js`-Helper-Konsolidierungen, weitere
+> Konstanten-Extraktionen). Doku-Wahrheitspass läuft in **#449**.
+
 ## Ziel
 
 Den bestehenden Agrar-Rechner schrittweise zu einer besonders zuverlässigen, leicht bedienbaren und später erweiterbaren App umbauen – **ohne riskanten Komplett-Neubau**.
